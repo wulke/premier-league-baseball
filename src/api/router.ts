@@ -1,0 +1,58 @@
+const express = require('express');
+const router = express.Router();
+import db from '../db/client';
+import * as handlers from './handlers';
+import { Endpoints } from './endpoints';
+
+db.sync();
+
+router.get(Endpoints.GetGameWorld, async (req: any, res: any) => {
+  await handlers.getGameWorld(Number(req.params.gwId))
+    .then((response) => {
+      res.send(response);
+    })
+    .catch ((error) => {
+      console.error(error);
+      res.send(error);
+    });
+});
+
+router.get(Endpoints.GetGameWorlds, async (req: any, res: any) => {
+  await handlers.getGameWorlds()
+    .then((response) => {
+      res.send(response);
+    })
+    .catch ((error) => {
+      console.error(error);
+      res.send(error);
+    });
+});
+
+router.post(Endpoints.NewGameWorld, async (req: any, res: any) => {
+  console.debug(req.body);
+  await handlers.newGameWorld({
+    name: req.body.name,
+    leagues: req.body.leagues,
+    teams: req.body.teams,
+    year: req.body.year
+  }).then((response) => {
+    res.send(response);
+  }).catch((error) => {
+    console.error(error);
+    res.send(error);
+  });
+});
+
+router.post(Endpoints.NewSeason, async (req: any, res: any) => {
+  console.debug(req.body);
+  await handlers.newSeason(req.params.gwId)
+    .then((response) => {
+      res.send(response);
+    })
+    .catch((error) => {
+      console.error(error);
+      res.send(error);
+    });
+});
+
+export { router };

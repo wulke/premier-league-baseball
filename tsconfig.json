@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        /* Visit https://aka.ms/tsconfig.json to read more about this file */
+        "target": "ES2016",             /*  Set the JavaScript language version for emitted JavaScript and include compatible lbirary declarations */
+        "jsx": "react-jsx",             /* Specify which JSX code is generated */
+        "jsxImportSource": "preact",    /* Specify module specifier used to import the JSX factory functions when using `jsx: react-jsx*` */
+        "module": "commonjs",           /* Specify which module code is generated */
+        "baseUrl": "./",                /* Specify the base directory to resolve non-relative module naems. */
+        "paths": {                      /*  Specify a set of entries that re-map imports to additional lookup locations */
+            "react": ["./node_modules/preact/compat/"],
+            "react-dom": ["./node_modules/preact/compat"]
+        },
+        "resolveJsonModule": true,      /* Enable importing of .json files */
+        "outDir": "./dist",             /* Specify an output folder for all emitted files. */
+        "esModuleInterop": true,        /* Emit additional JavaScript to ease support for importing commonjs modules */
+        "strict": true,                 /* Enable all strict type-checking options */
+        "noImplicitAny": false,         /* Enable error reporting for expressions and declerations with an impled any type... */
+        "skipLibCheck": true            /* Skip type checking all .d.ts files */
+    },
+    "include": [
+        "src/"
+    ],
+    "exclude": [
+        "test/**/*.test.ts",
+        "src/ui"
+    ]
+}
