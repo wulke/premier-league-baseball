@@ -137,6 +137,7 @@ export {
   NewGameWorld,
   TeamConfig,
   LeagueConfig,
+  LeagueType,
   DivisionConfig,
   useDefaultGameWorld
 };

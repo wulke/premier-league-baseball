@@ -81,7 +81,7 @@ const DivisionFactory = (id?: number): IDivision => {
       const div = await db.models.Division.findByPk(id)
         .then((result) => { if (!result) throw Error('division error'); return result })
         .then(({ dataValues }) => dataValues);
-      console.debug(div);
+      // console.debug(div);
 
       // (1) check that hte season is complete for this division
       if (!isSeasonComplete(currentYear)) throw Error(`Season is not complete for div='${id}' and year='${currentYear}'`);
@@ -108,7 +108,7 @@ const DivisionFactory = (id?: number): IDivision => {
        * ...
        */
       const gameWeeks = await generateGames(teams, div.config.gameFormula);
-      console.debug(gameWeeks);
+      // console.debug(gameWeeks);
       gameWeeks.forEach(async (week: [number, number][]) => {
         /* todo: scheduledDate will be determined by the game week requirements of the League */
         const games = await db.models.Game.bulkCreate(week.map((game) => {
@@ -118,7 +118,7 @@ const DivisionFactory = (id?: number): IDivision => {
             // scheduldDate: ???
           }
         })).then((result) => result.map(({ dataValues }) => dataValues));
-        console.debug(games);
+        // console.debug(games);
         // const divGames = await db.models.DivisionSeasonGame.bulkCreate(games.map((game) => {
         //   return {}
         // }));

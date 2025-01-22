@@ -6,10 +6,10 @@ module.exports = {
   collectCoverageFrom: ['src/**/*.{ts,tsx}'],
   coverageDirectory: 'coverage',
   coveragePathIgnorePatterns: [ '/node_modules/', '/src/ui/' ],
-  coverageReports: ['json', 'text', 'lcov', 'clover', 'html' ],
+  coverageReporters: ['json', 'text', 'lcov', 'clover', 'html' ],
   globalSetup: './test/setup.ts',
   globalTeardown: './test/teardown.ts',
-  moduleNameWrapper: {
+  moduleNameMapper: {
     '^react$': 'preact/compat',
     '^react-dom/test-utils$': 'preact/test-utils',
     '^react-dom$': 'preact/compat',
