@@ -28,11 +28,11 @@ const applyAssociations = (sequelize) => {
   Division.hasMany(DivisionSeason, { foreignKey: 'divisionId' });
   // Game
   Game.belongsToMany(DivisionSeason, { foreignKey: 'gameId', through: DivisionSeasonGame });
-  DivisionSeason.belongsToMany(Game, { through: DivisionSeasonGame });
+  DivisionSeason.belongsToMany(Game, { foreignKey: 'divisionSeasonId', through: DivisionSeasonGame });
   DivisionSeasonGame.belongsTo(Game, { foreignKey: 'gameId' });
-  DivisionSeasonGame.belongsTo(DivisionSeason);
+  DivisionSeasonGame.belongsTo(DivisionSeason, { foreignKey: 'divisionSeasonId' });
   Game.hasMany(DivisionSeasonGame, { foreignKey: 'gameId' });
-  DivisionSeason.hasMany(DivisionSeasonGame);
+  DivisionSeason.hasMany(DivisionSeasonGame, { foreignKey: 'divisionSeasonId' });
 };
 
 export { applyAssociations };

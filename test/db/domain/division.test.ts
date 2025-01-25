@@ -36,7 +36,7 @@ describe('DivisionFactory', () => {
     await DivisionFactory(id).newSeason(gw.year);
     let d = await db.models.Division.findByPk(id, { include: db.models.DivisionSeason })
       .then((division) => { if (!division) throw Error(); return division.dataValues });
-    console.debug(d);
+    // console.debug(d);
     expect(d.DivisionSeasons.length).toStrictEqual(leagueConfig.divisions[0].defaultTeams.length);
     
     let divisionSeasons = d.DivisionSeasons.map(({ dataValues }) => dataValues);
@@ -45,5 +45,6 @@ describe('DivisionFactory', () => {
     )).toBeTruthy();
 
     // Games + DivisionSeasonGames
+    // tests???
   });
 });

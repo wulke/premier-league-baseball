@@ -97,15 +97,16 @@ const DivisionFactory = (id?: number): IDivision => {
           year: currentYear + 1
         }))
       ).then((results) => results.map(({ dataValues }) => dataValues));
+      console.debug(divTeams);
 
       /**
        * TODO:
        * 
        * Need to generate the games for this division.
-       * BAsed on League config for game weeks
-       * LEague config will determine when the actual Division game weeks are scheduled
+       * Based on League config for game weeks
+       * League config will determine when the actual Division game weeks are scheduled
        * 
-       * ...
+       * ... how to determine scheduledDate? ...
        */
       const gameWeeks = await generateGames(teams, div.config.gameFormula);
       // console.debug(gameWeeks);
@@ -119,11 +120,16 @@ const DivisionFactory = (id?: number): IDivision => {
           }
         })).then((result) => result.map(({ dataValues }) => dataValues));
         // console.debug(games);
-        // const divGames = await db.models.DivisionSeasonGame.bulkCreate(games.map((game) => {
-        //   return {}
-        // }));
-        // console.debug(divGames);
-
+        const divGames = await db.models.DivisionSeasonGame.bulkCreate(
+          games.reduce((prev, curr) => {
+            // console.debug(curr);
+            prev.push(
+              { gameId: curr.id, divisionSeasonId: divTeams.find((t) => t.teamId === curr.homeTeam).id },
+              { gameId: curr.id, divisionSeasonId: divTeams.find((t) => t.teamId === curr.awayTeam).id }
+            )
+            return prev;
+          }, [])).then((d) => d.map(({ dataValues }) => dataValues));
+        console.debug(divGames);
       });
 
       return divTeams;
