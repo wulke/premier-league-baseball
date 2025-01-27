@@ -13,7 +13,7 @@ const GameWorldFactory = (id?: number): IGameWorld => {
     create: async (config: NewGameWorld) => {
       // create game world
       const gw = await db.models.GameWorld.create({
-        config,
+        config: { ...config, inProgress: false },
       }).then(({ dataValues }) => dataValues);
       // create teams
       const teams = await Promise.all(config.teams?.map(async (teamConfig) => 
@@ -26,7 +26,7 @@ const GameWorldFactory = (id?: number): IGameWorld => {
       return { ...gw, leagues, teams };
     },
     find: async () => 
-      id ? await db.models.GameWorld.findByPk(id)
+      id ? await db.models.GameWorld.findByPk(id, { include: [db.models.League, db.models.Team]})
          : await db.models.GameWorld.findAll(),
     newSeason: async () => {
       if (!id) throw Error('no game world to start new season');
@@ -42,6 +42,7 @@ const GameWorldFactory = (id?: number): IGameWorld => {
             const currentYear = gw.year;
             // (1) increment year <= do we want to move this?
             await db.models.GameWorld.increment({ year: 1 }, { where: { id: gw.id }});
+            await db.models.GameWorld.update({ config: { ...gw.config, inProgress: true }}, { where: { id: gw.id }});
             // (2) for each League.newSeason()
             await Promise.all(
               gw.Leagues
@@ -54,7 +55,7 @@ const GameWorldFactory = (id?: number): IGameWorld => {
             console.error(error);
             await transaction.rollback();
           }
-          return;
+          return GameWorldFactory(id).find();
         });
     }
   }

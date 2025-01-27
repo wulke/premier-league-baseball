@@ -22,7 +22,7 @@ const applyAssociations = (sequelize) => {
   Division.belongsTo(League, { foreignKey: 'leagueId' });
   Division.belongsToMany(Team, { foreignKey: 'divisionId', through: 'DivisionSeason' });
   // DivisionSeason
-  DivisionSeason.belongsTo(Team, { foreignKey: 'temaId' });
+  DivisionSeason.belongsTo(Team, { foreignKey: 'teamId' });
   DivisionSeason.belongsTo(Division, { foreignKey: 'divisionId' });
   Team.hasMany(DivisionSeason, { foreignKey: 'teamId' });
   Division.hasMany(DivisionSeason, { foreignKey: 'divisionId' });

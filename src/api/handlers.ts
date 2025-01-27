@@ -1,4 +1,4 @@
-import { GameWorldFactory } from '../db/domain';
+import { GameWorldFactory, LeagueFactory } from '../db/domain';
 import { NewGameWorld } from './models';
 
 const getGameWorld = async (id: number) => {
@@ -11,6 +11,12 @@ const getGameWorlds = async () => {
   const gameWorlds = await GameWorldFactory().find();
   console.debug(gameWorlds);
   return gameWorlds;
+};
+
+const getLeague = async (id: number) => {
+  const league = await LeagueFactory(id).get();
+  console.debug(league);
+  return league;
 };
 
 const newGameWorld = async (config: NewGameWorld) => {
@@ -28,6 +34,7 @@ const newSeason = async (id: number) => {
 export {
   getGameWorld,
   getGameWorlds,
+  getLeague,
   newGameWorld,
   newSeason
 };

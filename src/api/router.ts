@@ -28,6 +28,17 @@ router.get(Endpoints.GetGameWorlds, async (req: any, res: any) => {
     });
 });
 
+router.get(Endpoints.GetLeague, async (req: any, res: any) => {
+  await handlers.getLeague(Number(req.params.leagueId))
+    .then((response) => {
+      res.send(response);
+    })
+    .catch((error) => {
+      console.error(error);
+      res.send(error);
+    });
+});
+
 router.post(Endpoints.NewGameWorld, async (req: any, res: any) => {
   console.debug(req.body);
   await handlers.newGameWorld({

@@ -10,8 +10,10 @@
   "scripts": {
     "build": "tsc && npx parcel build src/ui/index.html --no-cache",
     "build:clean": "npm run clean && npm run build",
+    "build:docker": "docker build -t premier-league-baseball .",
     "clean": "rm -rf dist",
-    "start": "node dist/index.js",
+    "start": "nodemon dist/index.js",
+    "start:docker": "docker run -p 8080:3000 premier-league-baseball",
     "test": "dotenv -e .env.test -- jest",
     "test:single": "dotenv -e .env.test -- jest -i"
   },

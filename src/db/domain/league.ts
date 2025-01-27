@@ -5,6 +5,7 @@ import { Op } from 'sequelize';
 
 interface ILeague {
   create: (gwId: number, config: any, teamIdRefs: number[]) => any;
+  get: () => any;
   isSeasonComplete: (year: number) => any;
   newSeason: (year: number) => any;
 };
@@ -12,7 +13,7 @@ interface ILeague {
 const LeagueFactory = (id?: number): ILeague => {
   const getLeague = async () => {
     /* todo: support for dynamic options */
-    return await db.models.League.findByPk(id, { include: db.models.Division })
+    return await db.models.League.findByPk(id, { include: { model: db.models.Division, include: [db.models.Team] }})
       .then((league) => {
         if (!league) throw Error(`Invalid League '${id}`);
         return league.dataValues;
@@ -59,6 +60,7 @@ const LeagueFactory = (id?: number): ILeague => {
       ));
       return league;
     },
+    get: getLeague,
     newSeason: async (currentYear: number) => {
       const league = await getLeague();
       // (1) check all season is complete
