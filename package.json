@@ -15,6 +15,7 @@
     "start": "nodemon dist/index.js",
     "start:docker": "docker run -p 8080:3000 premier-league-baseball",
     "test": "dotenv -e .env.test -- jest",
+    "test:coverage": "dotenv -e .env.test -- jest --coverage",
     "test:single": "dotenv -e .env.test -- jest -i"
   },
   "alias": {
