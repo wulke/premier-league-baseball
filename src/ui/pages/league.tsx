@@ -1,5 +1,34 @@
+import React from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { Endpoints } from '../../api/endpoints';
+
+const Division = ({ division }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    console.info('Loading division: ', division);
+    /* ! todo ! fetch the current table standings */
+  }, [division]);
+
+  return (
+    <>
+      {/* Collapsible Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between"
+        }}
+      >
+        <span>Division {division.id} - {division.config.name}</span>
+        {/* <button className="IconButton">
+          {isOpen ? <ExpandMoreIcon /> : <CloseIcon /> }
+        </button> */}
+      </div>
+      {division.Teams.map((team) => <div>Team {team.config.name}</div>)}
+    </>
+  );
+};
 
 const League = (props) => {
   const gwId = props.gwId;
@@ -26,7 +55,10 @@ const League = (props) => {
   /* ? todo ? different view structure for league type ? */
 
   return (
-    <>League {league.id} Home</>
+    <>
+      <p>League {league.id} Home</p>
+      {league!.Divisions.map((division) => <div><Division division={division} /></div>)}
+    </>
   )
 };
 

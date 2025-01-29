@@ -66,4 +66,17 @@ router.post(Endpoints.NewSeason, async (req: any, res: any) => {
     });
 });
 
+router.post(Endpoints.SimulateGame, async (req: any, res: any) => {
+  console.debug(`Simulate Game ${req.params.id}: ${req.body}`);
+  await handlers.simulateGame(req.params.gwId)
+    .then((response) => {
+      console.debug(response);
+      res.send(response);
+    })
+    .catch((error) => {
+      console.error(error);
+      res.send(error);
+    });
+});
+
 export { router };

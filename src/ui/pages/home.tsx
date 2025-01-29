@@ -2,7 +2,6 @@ import { useEffect, useState } from "preact/hooks";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { route } from "preact-router";
 import { styled } from "@stitches/react";
-import * as Separator from '@radix-ui/react-separator';
 import { Endpoints } from '../../api/endpoints';
 import { NewGameWorld, useDefaultGameWorld } from '../../api/models';
 
@@ -24,14 +23,6 @@ const GameWorlds = ({ gameWorlds }) => {
           <Button onClick={() => route(`${id}`)}>
             {id}
           </Button>
-          {index !== gameWorlds.length && (
-            <Separator.Root
-              clasName="SeparatorRoot"
-              decorative
-              orientation='vertical'
-              style={{ margin: '0 15px' }}
-            />
-          )}
         </>
       ))}
     </div>

@@ -1,5 +1,7 @@
-import { GameWorldFactory, LeagueFactory } from '../db/domain';
+import { GameFactory, GameWorldFactory, LeagueFactory } from '../db/domain';
 import { NewGameWorld } from './models';
+
+/* ! todo ! will we need to start splitting this by model? */
 
 const getGameWorld = async (id: number) => {
   const gameWorld = await GameWorldFactory(id).find();
@@ -31,10 +33,20 @@ const newSeason = async (id: number) => {
   return response;
 };
 
+const simulateGame = async (id: number) => {
+  /* ! todo ! move to actual simulation logic */
+  const homeResult = Math.floor(Math.random() * 10);
+  const awayResult = Math.floor(Math.random() * 10);
+  const response = GameFactory(id).result(homeResult, awayResult);
+  console.debug(response);
+  return response;
+};
+
 export {
   getGameWorld,
   getGameWorlds,
   getLeague,
   newGameWorld,
-  newSeason
+  newSeason,
+  simulateGame,
 };
