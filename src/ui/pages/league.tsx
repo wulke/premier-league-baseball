@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Endpoints } from '../../api/endpoints';
 import { useParams } from 'react-router';
+import { Collapsible } from 'radix-ui';
+import { ArrowDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 const Division = ({ division }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,7 +13,7 @@ const Division = ({ division }) => {
   }, [division]);
 
   return (
-    <>
+    <Collapsible.Root>
       {/* Collapsible Header */}
       <div
         style={{
@@ -21,12 +23,17 @@ const Division = ({ division }) => {
         }}
       >
         <span>Division {division.id} - {division.config.name}</span>
-        {/* <button className="IconButton">
-          {isOpen ? <ExpandMoreIcon /> : <CloseIcon /> }
-        </button> */}
+        <Collapsible.Trigger asChild>
+          <button>
+            {isOpen ? <ArrowDownIcon /> : <XMarkIcon /> }
+          </button>
+        </Collapsible.Trigger>
       </div>
-      {division.Teams.map((team) => <div>Team {team.config.name}</div>)}
-    </>
+
+      <Collapsible.Content>
+        {division.Teams.map((team) => <div>Team {team.config.name}</div>)}
+      </Collapsible.Content>
+    </Collapsible.Root>
   );
 };
 

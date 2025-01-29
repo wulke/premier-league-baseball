@@ -30,9 +30,11 @@
   },
   "homepage": "https://github.com/wulke/premier-league-baseball#readme",
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@stitches/react": "^1.2.8",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "radix-ui": "^1.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.2",

@@ -20,11 +20,13 @@
 
 ## Dependencies
 * [dotenv](https://github.com/motdotla/dotenv)
-* [preact](https://preactjs.com/guide/v10/refs)
-* [preact-router](https://github.com/preactjs/preact-router)
+* [heroicons](https://github.com/tailwindlabs/heroicons)
+* ~~[preact](https://preactjs.com/guide/v10/refs)~~
+* ~~[preact-router](https://github.com/preactjs/preact-router)~~
 * [parcel](https://parceljs.org/getting-started/webapp/)
 * [radix-ui](https://www.radix-ui.com/primitives/docs/overview/introduction)
 * [react-hook-form](https://react-hook-form.com/get-started#integratingwithUIlibraries)
+* [react-router](https://reactrouter.com/start/library/)
 * [sequelize](https://sequelize.org/docs/v6/getting-started/)
 * [stithces](https://stitches.dev/docs/styling)
 * [nodemon](https://github.com/remy/nodemon#nodemon)
