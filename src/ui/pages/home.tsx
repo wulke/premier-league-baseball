@@ -1,9 +1,9 @@
-import { useEffect, useState } from "preact/hooks";
+import React, { useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { route } from "preact-router";
 import { styled } from "@stitches/react";
 import { Endpoints } from '../../api/endpoints';
 import { NewGameWorld, useDefaultGameWorld } from '../../api/models';
+import { useNavigate } from 'react-router';
 
 const Button = styled('button', {
   backgroundColor: 'gainsboro',
@@ -16,11 +16,12 @@ const Button = styled('button', {
 });
 
 const GameWorlds = ({ gameWorlds }) => {
+  const navigate = useNavigate(); /* todo: replace with <Link /> */
   return (
     <div style={{ display: 'flex' }}>
       {gameWorlds.map(({ id, ...rest}, index) => (
         <>
-          <Button onClick={() => route(`${id}`)}>
+          <Button onClick={() => navigate(`/${id}`)}>
             {id}
           </Button>
         </>
@@ -30,7 +31,7 @@ const GameWorlds = ({ gameWorlds }) => {
 };
 
 const PrepNewGameForm = ({ isVisible, onCancel }) => {
-  if (!isVisible) return <></>;
+  const navigate = useNavigate(); /* todo: replace with <Link /> */
 
   const { register, handleSubmit }= useForm<NewGameWorld>({
     defaultValues: useDefaultGameWorld()
@@ -45,7 +46,10 @@ const PrepNewGameForm = ({ isVisible, onCancel }) => {
       },
       body: JSON.stringify(data)
     }).then((response) => response.json())
-      .then((gameWorld) => route(`${gameWorld.id}`))
+      .then((gameWorld) => {
+        console.info(gameWorld);
+        navigate(`/${gameWorld.id}`);
+      })
       .catch(console.error);
 
     const Container = styled('div', {
@@ -57,6 +61,8 @@ const PrepNewGameForm = ({ isVisible, onCancel }) => {
     const TextInput = styled('input', {
       type: 'text'
     });
+
+    if (!isVisible) return <></>;
 
     return (
       <form onSubmit={handleSubmit(submit)}>

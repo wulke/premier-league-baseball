@@ -1,6 +1,6 @@
-import React from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import React, { useEffect, useState } from 'react';
 import { Endpoints } from '../../api/endpoints';
+import { useParams } from 'react-router';
 
 const Division = ({ division }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,9 +30,8 @@ const Division = ({ division }) => {
   );
 };
 
-const League = (props) => {
-  const gwId = props.gwId;
-  const leagueId = props.leagueId;
+const League = () => {
+  const { gwId, leagueId } = useParams();
   const [league, setLeague] = useState(null);
   
   useEffect(() => {

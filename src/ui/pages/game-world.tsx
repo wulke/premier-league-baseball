@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'preact/hooks';
+import React, { useEffect, useState } from 'react';
 import { Endpoints } from '../../api/endpoints';
 import { styled } from "@stitches/react";
-import { route } from "preact-router";
+import { useParams, useNavigate } from 'react-router';
 
 const Button = styled('button', {
   backgroundColor: 'gainsboro',
@@ -13,13 +13,14 @@ const Button = styled('button', {
   },
 });
 
-const GameWorld = (props) => {
-  const gwId = props.gwId;
+const GameWorld = () => {
+  const { gwId } = useParams();
   const [gw, setGw] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const get = async () => {
-      return await fetch(Endpoints.GetGameWorld.replace(':gwId', gwId), {
+      return await fetch(Endpoints.GetGameWorld.replace(':gwId', gwId!), {
         method: 'GET',
         mode: 'cors',
         headers: {
@@ -33,7 +34,7 @@ const GameWorld = (props) => {
   }, [gwId]);
 
   const startNewSeason = async () => {
-    await fetch(Endpoints.NewSeason.replace(':gwId', gwId), {
+    await fetch(Endpoints.NewSeason.replace(':gwId', gwId!), {
       method: 'POST',
       mode: 'cors',
       headers: {
@@ -44,7 +45,7 @@ const GameWorld = (props) => {
       .then(setGw)
       .then(() => {
         // route to first League overview
-        route(`${gwId}/${gw?.Leagues[0].id}`)
+        navigate(`/${gwId}/${gw?.Leagues[0].id}`);
       });
   };
 
@@ -57,7 +58,7 @@ const GameWorld = (props) => {
       }
       {gw.Leagues.map((league) => (
         <>
-          <Button key={league.id} onClick={() => { console.info(`Clicking league ${league.id}`); route(`${gwId}/${league.id}`); }}>{league.name}</Button>
+          <Button key={league.id} onClick={() => { console.info(`Clicking league ${league.id}`); navigate(`/${gwId}/${league.id}`); }}>{league.name}</Button>
         </>
       ))}
     </div>

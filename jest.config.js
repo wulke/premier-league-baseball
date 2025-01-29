@@ -9,12 +9,12 @@ module.exports = {
   coverageReporters: ['json', 'text', 'lcov', 'clover', 'html' ],
   globalSetup: './test/setup.ts',
   globalTeardown: './test/teardown.ts',
-  moduleNameMapper: {
-    '^react$': 'preact/compat',
-    '^react-dom/test-utils$': 'preact/test-utils',
-    '^react-dom$': 'preact/compat',
-    '^react/jsx-runtime$': 'preact/jsx-runtime'
-  },
+  // moduleNameMapper: {
+  //   '^react$': 'preact/compat',
+  //   '^react-dom/test-utils$': 'preact/test-utils',
+  //   '^react-dom$': 'preact/compat',
+  //   '^react/jsx-runtime$': 'preact/jsx-runtime'
+  // },
   testEnvironment: 'node',
   testMatch: [
     '**/test/**/*.test.[jt]s?(x)',
