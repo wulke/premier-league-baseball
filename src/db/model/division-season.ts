@@ -27,6 +27,9 @@ module.exports = (sequelize: any) => {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    bracketSlot: {
+      type: DataTypes.INTEGER,
+    },
   }, {
     indexes: [{
       unique: true,

@@ -28,6 +28,12 @@ router.get(Endpoints.GetGameWorlds, async (req: any, res: any) => {
     });
 });
 
+router.get(Endpoints.GetLeagueStandings, async (req: any, res: any) => {
+  await handlers.getLeagueStandings(Number(req.params.leagueId))
+    .then((response) => res.send(response))
+    .catch((error) => { console.error(error); res.send(error); });
+});
+
 router.get(Endpoints.GetLeague, async (req: any, res: any) => {
   await handlers.getLeague(Number(req.params.leagueId))
     .then((response) => {
@@ -64,6 +70,16 @@ router.post(Endpoints.NewSeason, async (req: any, res: any) => {
       console.error(error);
       res.send(error);
     });
+});
+
+router.get(Endpoints.GetTeamSchedule, async (req: any, res: any) => {
+  const teamId = Number(req.params.teamId);
+  const gwId = Number(req.query.gwId);
+  const leagueId = req.query.leagueId ? Number(req.query.leagueId) : undefined;
+
+  await handlers.getTeamSchedule(teamId, gwId, leagueId)
+    .then((response) => res.send(response))
+    .catch((error) => { console.error(error); res.send(error); });
 });
 
 router.post(Endpoints.SimulateGame, async (req: any, res: any) => {

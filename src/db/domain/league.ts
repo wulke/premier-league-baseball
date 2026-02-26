@@ -1,4 +1,4 @@
-import { LeagueConfig } from "../../api/models";
+import { DefaultStandingsConfig, DivisionStandings, LeagueConfig, StandingsConfig } from "../../api/models";
 import { DivisionFactory } from './division';
 import db from '../client';
 import { Op } from 'sequelize';
@@ -8,6 +8,7 @@ interface ILeague {
   get: () => any;
   isSeasonComplete: (year: number) => any;
   newSeason: (year: number) => any;
+  getStandings: () => Promise<DivisionStandings[]>;
 };
 
 const LeagueFactory = (id?: number): ILeague => {
@@ -41,8 +42,29 @@ const LeagueFactory = (id?: number): ILeague => {
       });
   };
 
+  const getStandings = async (): Promise<DivisionStandings[]> => {
+    const league = await db.models.League.findByPk(id, {
+      include: [db.models.GameWorld, db.models.Division]
+    }).then((l) => {
+      if (!l) throw Error(`Invalid League '${id}'`);
+      return l.dataValues;
+    });
+
+    const year: number = league.GameWorld.year;
+    const standingsConfig: StandingsConfig = league.config.standingsConfig ?? DefaultStandingsConfig;
+
+    return Promise.all(
+      league.Divisions.map(async ({ dataValues: div }) => ({
+        divisionId: div.id,
+        divisionName: div.config.name,
+        standings: await DivisionFactory(div.id).getStandings(year, standingsConfig),
+      }))
+    );
+  };
+
   return {
     isSeasonComplete,
+    getStandings,
     create: async (gwId: number, config: LeagueConfig, teamIdRefs: number[]) => {
       const league = await db.models.League.create({
         config,

@@ -15,6 +15,9 @@ module.exports = (sequelize: any) => {
       type: DataTypes.INTEGER,
       // fk reference to Team.id
     },
+    round: {
+      type: DataTypes.INTEGER,
+    },
     scheduledDate: {
       type: DataTypes.DATE,
     },

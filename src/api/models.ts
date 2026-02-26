@@ -2,16 +2,79 @@ enum GameWorldType {
   PremierLeague = 'Premier League',
 };
 
+interface StandingsConfig {
+  mode: 'table' | 'elimination';
+  points: {
+    win: number;
+    loss: number;
+    draw?: number;
+  };
+}
+
+const DefaultStandingsConfig: StandingsConfig = {
+  mode: 'table',
+  points: { win: 3, draw: 1, loss: 0 }
+};
+
+interface TeamStanding {
+  teamId: number;
+  teamName: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  runsFor: number;
+  runsAgainst: number;
+  runDifference: number;
+  points: number;
+}
+
+interface TeamSeasonGame {
+  gameId: number;
+  scheduledDate: string | null;
+  homeTeamId: number;
+  homeTeamName: string;
+  awayTeamId: number;
+  awayTeamName: string;
+  divisionId: number;
+  divisionName: string;
+  roundLabel?: string | null;
+  homeTeamResult: number | null;
+  awayTeamResult: number | null;
+}
+
+interface TeamSeasonSchedule {
+  teamId: number;
+  teamName: string;
+  year: number;
+  games: TeamSeasonGame[];
+}
+
+type TeamSeasonCalendar = TeamSeasonSchedule;
+
+interface DivisionStandings {
+  divisionId: number;
+  divisionName: string;
+  standings: TeamStanding[];
+}
+
 interface LeagueConfig {
   name: string;
   type: LeagueType;
   divisions: DivisionConfig[];
   gameFormula?: GameFormula[];
+  standingsConfig?: StandingsConfig;
 };
+interface SchedulingConfig {
+  startDate: string;
+  intervalDays: number;
+}
+
 interface DivisionConfig {
   name: string;
   defaultTeams: any[];
   gameFormula?: GameFormula[];
+  schedulingConfig?: SchedulingConfig;
 };
 interface TeamConfig {
   name: string;
@@ -139,5 +202,13 @@ export {
   LeagueConfig,
   LeagueType,
   DivisionConfig,
+  SchedulingConfig,
+  StandingsConfig,
+  DefaultStandingsConfig,
+  TeamStanding,
+  TeamSeasonGame,
+  TeamSeasonSchedule,
+  TeamSeasonCalendar,
+  DivisionStandings,
   useDefaultGameWorld
 };

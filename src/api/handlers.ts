@@ -1,4 +1,4 @@
-import { GameFactory, GameWorldFactory, LeagueFactory } from '../db/domain';
+import { GameFactory, GameWorldFactory, LeagueFactory, TeamFactory } from '../db/domain';
 import { NewGameWorld } from './models';
 
 /* ! todo ! will we need to start splitting this by model? */
@@ -19,6 +19,10 @@ const getLeague = async (id: number) => {
   const league = await LeagueFactory(id).get();
   console.debug(league);
   return league;
+};
+
+const getLeagueStandings = async (leagueId: number) => {
+  return await LeagueFactory(leagueId).getStandings();
 };
 
 const newGameWorld = async (config: NewGameWorld) => {
@@ -42,10 +46,16 @@ const simulateGame = async (id: number) => {
   return response;
 };
 
+const getTeamSchedule = async (teamId: number, gwId: number, leagueId?: number) => {
+  return await TeamFactory(teamId).getSchedule(gwId, leagueId);
+};
+
 export {
   getGameWorld,
   getGameWorlds,
   getLeague,
+  getLeagueStandings,
+  getTeamSchedule,
   newGameWorld,
   newSeason,
   simulateGame,
