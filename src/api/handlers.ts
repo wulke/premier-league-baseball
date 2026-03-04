@@ -38,12 +38,11 @@ const newSeason = async (id: number) => {
 };
 
 const simulateGame = async (id: number) => {
-  /* ! todo ! move to actual simulation logic */
-  const homeResult = Math.floor(Math.random() * 10);
-  const awayResult = Math.floor(Math.random() * 10);
-  const response = await GameFactory(id).result(homeResult, awayResult);
-  console.debug(response);
-  return response;
+  return await GameFactory(id).simulate();
+};
+
+const simulateBatchGames = async (gwId: number, endDate?: string) => {
+  return await GameFactory().simulateBatch(gwId, endDate);
 };
 
 const getTeamSchedule = async (teamId: number, gwId: number, leagueId?: number) => {
@@ -58,5 +57,6 @@ export {
   getTeamSchedule,
   newGameWorld,
   newSeason,
+  simulateBatchGames,
   simulateGame,
 };

@@ -6,6 +6,7 @@ const enum Endpoints {
   GetTeamSchedule = '/api/team/:teamId/calendar',
   NewGameWorld = '/api/gameWorld/new',
   NewSeason = '/api/gameWorld/:gwId/season/new',
+  BatchSimulateGames = '/api/gameWorld/:gwId/simulate',
   SimulateGame = '/api/game/:gameId/simulate',
   // ViewGame = '/api/game/:gameId/view
   // PlayGame = '/api/game/:gameId/play

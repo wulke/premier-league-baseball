@@ -1,6 +1,7 @@
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
-import { simulateGame } from '../../../src/api/handlers';
+import { simulateGame, simulateBatchGames as simulateBatchGamesHandler } from '../../../src/api/handlers';
+import { GameSimulationError } from '../../../src/db/domain/errors';
 import db from '../../../src/db/client';
 
 interface ResponseState {
@@ -87,19 +88,29 @@ const simulateSingleGame = async (world: WorldState, gameId: number) => {
     const body = await simulateGame(gameId);
     world.response = { statusCode: 200, body };
   } catch (error) {
-    world.response = { statusCode: 500, error };
+    if (error instanceof GameSimulationError) {
+      world.response = { statusCode: error.statusCode, error };
+    } else {
+      world.response = { statusCode: 500, error };
+    }
   }
 };
 
 const simulateBatchGames = async (world: WorldState, gameWorldId: number, endDate?: string) => {
-  void gameWorldId;
-  void endDate;
-
   if (world.forceDbError) {
     world.response = { statusCode: 500, error: new Error('Injected database error') };
     return;
   }
-  world.response = { statusCode: 501, error: new Error('Batch simulation endpoint not implemented') };
+  try {
+    const body = await simulateBatchGamesHandler(gameWorldId, endDate);
+    world.response = { statusCode: 200, body };
+  } catch (error) {
+    if (error instanceof GameSimulationError) {
+      world.response = { statusCode: error.statusCode, error };
+    } else {
+      world.response = { statusCode: 500, error };
+    }
+  }
 };
 
 const getSimulatedGames = (world: WorldState): any[] => {
@@ -138,7 +149,8 @@ const registerSteps = ({ given, when, then, and }: any) => {
     await db.models.GameWorld.create({
       id,
       year: parsedYear,
-      config: { currentDate }
+      currentDate,
+      config: {}
     });
   });
 
@@ -225,7 +237,7 @@ const registerSteps = ({ given, when, then, and }: any) => {
     }
 
     await db.models.GameWorld.update(
-      { config: { currentDate: null } },
+      { currentDate: null },
       { where: { id: world.gameWorldId } }
     );
   });

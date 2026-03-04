@@ -82,16 +82,23 @@ router.get(Endpoints.GetTeamSchedule, async (req: any, res: any) => {
     .catch((error) => { console.error(error); res.send(error); });
 });
 
+router.post(Endpoints.BatchSimulateGames, async (req: any, res: any) => {
+  await handlers.simulateBatchGames(Number(req.params.gwId), req.body?.endDate)
+    .then((response) => res.send(response))
+    .catch((error) => {
+      console.error(error);
+      res.status(error.statusCode ?? 500).send({ error: error.message ?? 'Internal server error' });
+    });
+});
+
 router.post(Endpoints.SimulateGame, async (req: any, res: any) => {
-  console.debug(`Simulate Game ${req.params.id}: ${req.body}`);
-  await handlers.simulateGame(req.params.gwId)
+  await handlers.simulateGame(Number(req.params.gameId))
     .then((response) => {
-      console.debug(response);
       res.send(response);
     })
     .catch((error) => {
       console.error(error);
-      res.send(error);
+      res.status(error.statusCode ?? 500).send({ error: error.message ?? 'Internal server error' });
     });
 });
 

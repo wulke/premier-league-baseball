@@ -22,9 +22,9 @@ module.exports = (sequelize: any) => {
       type: DataTypes.DATE,
     },
     status: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM('SCHEDULED', 'IN_PROGRESS', 'COMPLETED'),
       allowNull: false,
-      defaultValue: 'SCHEDULED'
+      defaultValue: 'SCHEDULED',
     },
     /* ! todo ! re-evaluate how results and game logs should be stored */
     homeTeamResult: {
@@ -33,5 +33,9 @@ module.exports = (sequelize: any) => {
     awayTeamResult: {
       type: DataTypes.INTEGER
     }
+  }, {
+    indexes: [
+      { fields: ['scheduledDate'] }
+    ]
   });
 };
