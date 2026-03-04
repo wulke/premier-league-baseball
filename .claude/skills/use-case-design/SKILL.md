@@ -43,18 +43,9 @@ Once you have a clear use case statement, summarise it back to the user in one s
 
 ## Step 2 — BPMN Process Flow Diagram
 
-**Before drawing anything**, read the existing process flow files relevant to the use case:
+**Before drawing anything**, read the existing process flow files relevant to the use case under `docs/architecture/process-flow/`. Identify any existing flows that are relevant to the new use case, either as sub-flows or as related flows that share similar steps. Note these for reference.
 
-```
-@docs/architecture/process-flow/start-new-season-gameworld.md
-@docs/architecture/process-flow/start-new-season-league.md
-@docs/architecture/process-flow/start-new-season-division.md
-@docs/architecture/process-flow/record-game-result.md
-@docs/architecture/process-flow/create-game.md
-@docs/architecture/process-flow/get-league.md
-@docs/architecture/process-flow/find-game-world.md
-@docs/architecture/process-flow/check-league-season-complete.md
-```
+Then, create a BPMN-style process flow diagram using Mermaid `flowchart TD` syntax. The diagram should cover the entire flow from the initial user action to the final response, including all decision points and error paths. Reference existing sub-flows where they are reused.
 
 Identify which existing flows this use case touches or extends. Note them explicitly. These references should be included in the final diagram with `click` annotations linking to the relevant `.md` files.
 
@@ -66,6 +57,8 @@ Then produce a **BPMN-style process flow** using Mermaid `flowchart TD` syntax. 
 - Label database operations (e.g. `FindByPk`, `Create`, `Update`, `transaction`)
 
 Present the diagram to the user with a brief written explanation of each major step. Save the proposal as a temp file for external review until a final approved version is ready. Ask the user to review and provide feedback before proceeding to Step 3. Iterate on the diagram until the user approves it. Once approved, delete the temp file and save the final version to `docs/architecture/process-flow/<use-case-slug>.md` where `<use-case-slug>` is the use case name in kebab-case (e.g. `simulate-game.md`).
+
+After the BPMN diagram is approved and saved, re-review the existing process-flows to check for any duplication or overlaps where potential refactoring and modularilization could occur. If you identify any opportunities to extract common sub-flows or refactor existing flows to reduce duplication, propose these as well and iterate with the user until a final set of modularized flows is agreed upon.  
 
 ---
 

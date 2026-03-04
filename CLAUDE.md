@@ -17,6 +17,7 @@ npm run start          # Run Node server (requires built dist/)
 npm test               # Run Jest tests with .env.test
 npm run test:coverage  # Run tests with coverage report
 npm run test:single    # Run tests single-threaded
+npm run test:bdd       # Run gherkin tests
 
 # Docker
 npm run build:docker   # Build Docker image
@@ -44,6 +45,14 @@ src/
 test/
   db/domain/        # Jest tests for domain factories
 ```
+
+### Documentation
+The `docs/architecture` directory maintains the implementation-agnostic designs related to the project.
+- `docs/architecture/data-model` -> the latest data model structure. Ensure this is updated when code changes impact any data models in `src/db/model`
+- `docs/architecture/design` -> will contain working docs for individual Use Cases or Process Flows that support different Epics (under `docs/architecture/roadmap` for Epics).
+- `docs/architecture/process-flow` -> the low-level access patterns that are used to build out given Use Cases.
+- `docs/architecture/roadmap` -> Epic-level groupings that will scope major and minor releases that focus on adding content and capabilities to the game loop for the user.
+- `docs/architecture/test-cases` -> These help the system focus on test driven and behavioral driven development to ensure user-story style tests are added with every feature.
 
 ### Data Flow
 
