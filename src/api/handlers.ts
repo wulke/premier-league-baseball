@@ -41,7 +41,7 @@ const simulateGame = async (id: number) => {
   /* ! todo ! move to actual simulation logic */
   const homeResult = Math.floor(Math.random() * 10);
   const awayResult = Math.floor(Math.random() * 10);
-  const response = GameFactory(id).result(homeResult, awayResult);
+  const response = await GameFactory(id).result(homeResult, awayResult);
   console.debug(response);
   return response;
 };

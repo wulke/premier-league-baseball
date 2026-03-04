@@ -21,6 +21,11 @@ module.exports = (sequelize: any) => {
     scheduledDate: {
       type: DataTypes.DATE,
     },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'SCHEDULED'
+    },
     /* ! todo ! re-evaluate how results and game logs should be stored */
     homeTeamResult: {
       type: DataTypes.INTEGER

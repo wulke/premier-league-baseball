@@ -20,6 +20,7 @@ const GameFactory = (id?: number): IGame => {
       return await db.models.Game.update({
         homeTeamResult: homeTeam,
         awayTeamResult: awayTeam,
+        status: 'COMPLETED'
       }, {
         where: {
           id: {
