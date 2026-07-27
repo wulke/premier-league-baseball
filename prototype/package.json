@@ -13,7 +13,8 @@
     "dev:mlb": "parcel references/mlb/index.html --port 3005 --no-cache",
     "dev:fpl": "parcel references/fpl/index.html --port 3006 --no-cache",
     "dev:eafc": "parcel references/eafc/index.html --port 3007 --no-cache",
-    "build": "parcel build tailwind/index.html shadcn/index.html mui/index.html stitches/index.html references/mlb/index.html references/fpl/index.html references/eafc/index.html index.html --no-cache --dist-dir dist"
+    "dev:savant": "parcel references/savant/index.html --port 3008 --no-cache",
+    "build": "parcel build tailwind/index.html shadcn/index.html mui/index.html stitches/index.html references/mlb/index.html references/fpl/index.html references/eafc/index.html references/savant/index.html index.html --no-cache --dist-dir dist"
   },
   "dependencies": {
     "@emotion/react": "^11.13.5",

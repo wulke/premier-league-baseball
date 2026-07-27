@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --club: #0469a5; /* MLB blue default; switch-club retints the your-club row */
+}
+html, body {
+  background: #ffffff;
+  color: #14213d;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+/* Savant tables: tight, tabular, right-leaning numerics */
+.savant-table { font-variant-numeric: tabular-nums; }
