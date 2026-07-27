@@ -35,6 +35,7 @@ window.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {
 
 global.window = window;
 global.document = window.document;
+global.location = window.location;
 try { Object.defineProperty(global, "navigator", { value: window.navigator, configurable: true }); }
 catch { /* Node 22 exposes a read-only navigator; libs read window.navigator anyway */ }
 global.HTMLElement = window.HTMLElement;

@@ -54,6 +54,22 @@ three references for round 1:
 | **Switch-club idiom** | re-tints your-club row border | re-themes plum highlight + badge ring | re-themes the **hero glow** dramatically |
 | **Where it sits on #8's band** | broadcast/official end | management-game end | energy/spectacle end |
 
+A **4th reference — Baseball Savant** — is also available. It sits *outside* the
+#8 band: light-themed, data-tool register (MLB navy strip, dense zebra table,
+sortable headers, filter pills, the famous **percentile color scale** on Pts &
+Pyth%). It's the page you asked for after the three dark options didn't land —
+and it surfaces the **light-vs-dark fork** (it tensions with #8's dark-chrome
+decision; see the ticket thread).
+
+The Savant reference also has **two extra page types** to test whether the
+register generalizes beyond a table:
+- **Team Overview** (`/references/savant/team/?team=N`) — team-identity strip +
+  record, a team-level percentile profile, and a roster linking to players.
+- **Player Overview** (`/references/savant/player/?player=N`) — the iconic
+  **percentile-bar profile** (10 stats as colored bars), the high-signal test.
+
+Navigate by clicking a team name in the standings → team page → player page.
+
 Core stat columns (P W D L RF RA RD Pts — the data model) are identical across
 all three; each reference adds its own app-native *furniture* (GB / Form / hero),
 because that furniture is part of what makes each feel like itself. The "switch
@@ -131,6 +147,7 @@ prototype/
     mlb/           round 1 — MLB app dark
     fpl/           round 1 — FPL dark
     eafc/          round 1 — EA Sports FC hub
+    savant/        round 1 — Baseball Savant (light; + team/ and player/ pages)
   tailwind/        round 2 — option A
   shadcn/          round 2 — option B (Radix + Tailwind + CSS-var tokens)
   mui/             round 2 — option C (DataGrid)

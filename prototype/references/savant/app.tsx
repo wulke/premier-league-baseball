@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import { divisions, league, clubTeamId, type TeamStanding } from "../../shared/mock-data";
 import { teams, type TeamIdentity } from "../../shared/tokens";
+import { percentileColor, inkOn, pyth } from "./savant-data";
 
 // Baseball Savant: the Statcast-nerd pole. Light theme, MLB navy/blue, a data
 // table you could live in. The signature is the percentile color scale
@@ -16,34 +17,6 @@ const useAccent = (clubId: number) =>
   useEffect(() => {
     document.documentElement.style.setProperty("--club", identity(clubId).primary);
   }, [clubId]);
-
-// pythagorean expectation: W% ≈ RF^2 / (RF^2 + RA^2). Real baseball-derived.
-const pyth = (rf: number, ra: number) => {
-  const a = rf * rf, b = ra * ra;
-  return a / (a + b);
-};
-
-// Savant's diverging percentile scale: 0 (red) → 50 (yellow) → 100 (dark green).
-const STOPS: [number, [number, number, number]][] = [
-  [0, [215, 25, 32]],     // #d71920 worst
-  [50, [253, 225, 0]],    // #fde100 avg
-  [100, [27, 110, 59]],   // #1b6e3b elite
-];
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const percentileColor = (pct: number): string => {
-  // pct 0..100
-  let lo = STOPS[0], hi = STOPS[STOPS.length - 1];
-  for (let i = 0; i < STOPS.length - 1; i++) {
-    if (pct >= STOPS[i][0] && pct <= STOPS[i + 1][0]) { lo = STOPS[i]; hi = STOPS[i + 1]; break; }
-  }
-  const t = (pct - lo[0]) / (hi[0] - lo[0] || 1);
-  const r = Math.round(lerp(lo[1][0], hi[1][0], t));
-  const g = Math.round(lerp(lo[1][1], hi[1][1], t));
-  const b = Math.round(lerp(lo[1][2], hi[1][2], t));
-  return `rgb(${r}, ${g}, ${b})`;
-};
-// text color that stays legible on the gradient cell
-const inkOn = (pct: number) => (pct < 32 || pct > 70 ? "#ffffff" : "#14213d");
 
 // trend arrow from most-recent result
 const Trend = ({ last }: { last: "W" | "D" | "L" }) => {
@@ -148,11 +121,11 @@ const SavantTable = ({ rows, clubId }: { rows: TeamStanding[]; clubId: number })
                 <td className="px-2 py-1.5 text-center font-num font-700 text-ink-md">{i + 1}</td>
                 <td className="px-2 py-1.5 text-center"><Trend last={row.form[0]} /></td>
                 <td className="px-2 py-1.5 text-left">
-                  <span className="inline-flex items-center gap-1.5">
+                  <a href={`team.html?team=${row.teamId}`} className="inline-flex items-center gap-1.5">
                     <span className="inline-block h-2 w-2 rounded-full" style={{ background: id.primary }} />
                     <span className={`font-num font-600 ${isClub ? "text-ink-hi" : "text-mlb-link hover:underline"}`}>{row.teamName}</span>
                     {isClub && <span className="ml-1 font-num text-[9px] font-700 uppercase tracking-wide text-club">★ your club</span>}
-                  </span>
+                  </a>
                 </td>
                 <td className="px-2 py-1.5 text-center font-num text-ink-md">{row.played}</td>
                 <td className="px-2 py-1.5 text-center font-num font-600 text-ink-hi">{row.won}</td>
