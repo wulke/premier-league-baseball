@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --club: #00e5ff; /* re-themed by switch-club; drives the hero glow */
+}
+html, body {
+  background: #07070a;
+  color: #fff;
+  font-family: "Oswald", system-ui, sans-serif;
+}
+
+/* the signature EAFC hero: oversized title with a soft radial glow in the
+   club's identity color. Switching clubs re-themes the glow dramatically. */
+.eafc-hero {
+  background:
+    radial-gradient(ellipse 70% 120% at 18% -10%, color-mix(in srgb, var(--club) 55%, transparent) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 90% at 90% 0%, color-mix(in srgb, var(--club) 22%, transparent) 0%, transparent 55%);
+}
+
+.eafc-card-top {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--club) 16%, transparent) 0%, transparent 28%);
+}
+
+.eafc-row-glow:hover {
+  box-shadow: 0 0 28px -6px var(--club), inset 0 0 0 1px color-mix(in srgb, var(--club) 60%, transparent);
+}
+
+.eafc-leader {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--club) 10%, transparent) 0%, transparent 40%);
+}

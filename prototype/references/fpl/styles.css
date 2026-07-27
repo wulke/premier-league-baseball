@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --club: #00ff87; /* re-themed by switch-club; tints your-club row + badge */
+}
+html, body {
+  background: #171a24;
+  color: #f4f5f8;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}

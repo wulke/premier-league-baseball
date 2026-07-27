@@ -9,7 +9,11 @@
     "dev:shadcn": "parcel shadcn/index.html --port 3002 --no-cache",
     "dev:mui": "parcel mui/index.html --port 3003 --no-cache",
     "dev:stitches": "parcel stitches/index.html --port 3004 --no-cache",
-    "build": "parcel build tailwind/index.html shadcn/index.html mui/index.html stitches/index.html --no-cache --dist-dir dist"
+    "dev:refs": "concurrently -n mlb,fpl,eafc -c red,green,yellow \"npm:dev:mlb\" \"npm:dev:fpl\" \"npm:dev:eafc\"",
+    "dev:mlb": "parcel references/mlb/index.html --port 3005 --no-cache",
+    "dev:fpl": "parcel references/fpl/index.html --port 3006 --no-cache",
+    "dev:eafc": "parcel references/eafc/index.html --port 3007 --no-cache",
+    "build": "parcel build tailwind/index.html shadcn/index.html mui/index.html stitches/index.html references/mlb/index.html references/fpl/index.html references/eafc/index.html --no-cache --dist-dir dist"
   },
   "dependencies": {
     "@emotion/react": "^11.13.5",
@@ -33,6 +37,7 @@
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.1.0",
+    "jsdom": "^25.0.1",
     "parcel": "^2.13.3",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",

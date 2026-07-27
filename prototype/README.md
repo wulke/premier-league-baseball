@@ -1,122 +1,118 @@
 # UI styling-approach prototypes — wayfinder #9
 
-> **Throwaway.** These four mini-apps exist only so the styling/component
-> approach can be decided by reacting to real rendered UI (wayfinder map #2,
-> ticket #9). They are **not** part of the shipping app and live on a throwaway
-> branch (`prototype/ui-styling`). The real rebuild happens later, as normal
-> LID feature work, once an approach is chosen.
+> **Throwaway.** These mini-apps exist only so the visual reference and the
+> styling/component approach can be decided by reacting to real rendered UI
+> (wayfinder map #2, ticket #9). They are **not** part of the shipping app and
+> live on a throwaway branch (`prototype/ui-styling`). The real rebuild happens
+> later, as normal LID feature work.
 
-Same representative surface rendered four ways: the **league / standings page**
-— a 10-column standings table (data density), per-row team identity color
-(team-identity-as-atmosphere), collapsible divisions (an interactive primitive),
-and a "switch club" control that re-themes the page accent to the selected team
-(the **token-swap** axis — a hard requirement from #8's visual-direction
-decision). All four use the **same mock data** (`shared/mock-data.ts`) and the
-**same dark chrome tokens** (`shared/tokens.ts`) from #8, so the only variable
-is the styling approach.
+Same representative surface every time: the **league / standings page**, on the
+same mock data (`shared/mock-data.ts`). Two rounds, sequenced — because the
+visual reference and the styling mechanism are **different decisions** and
+reward different evidence.
 
-## Run it
+---
+
+## Round 1 — pick the visual reference (the current decision)
+
+#8 named a *band* — MLB app dark / FPL dark / EA Sports FC hub — and explicitly
+left "which one is the anchor" to this ticket, to be chosen "by reacting to real
+rendered UI, not blind." So round 1 renders the standings page **three ways**,
+each faithfully channeling one app's dark-mode design language. The styling
+mechanism is held **constant** (Tailwind across all three) so the only variable
+is the visual reference. React to these and pick the anchor.
 
 ```bash
-cd prototype
-npm install
-npm run dev      # lights up all four on ports 3001–3004
+npm run dev:refs      # MLB :3005 · FPL :3006 · EAFC :3007
 ```
 
-then open:
+| | MLB app dark | FPL dark | EA Sports FC hub |
+|---|---|---|---|
+| **URL** | :3005 | :3006 | :3007 |
+| **Background** | near-black flat `#0B0B0D` | dark navy-charcoal `#171A24` | near-black + radial gradient/glow `#07070A` |
+| **Team color** | thin 3px row left-border (restrained) | semantic — form pills, kit badges, fixture chips | large gradient blocks + hero glow (spectacle) |
+| **Typography** | Roboto Condensed, tabular nums, broadcast | Inter, chip-heavy, rounded | Oswald + Archivo Black, oversized display hero |
+| **Density** | high, all divisions open, strong rules | medium, gamified, rank arrows + form pills | low, big cards, whitespace, glow |
+| **Signature furniture** | **GB** column (baseball-native), strong rules | PL-purple brand, color-coded status, **Form** pills | electric cyan + gold leader, gradient **hero** |
+| **Switch-club idiom** | re-tints your-club row border | re-themes plum highlight + badge ring | re-themes the **hero glow** dramatically |
+| **Where it sits on #8's band** | broadcast/official end | management-game end | energy/spectacle end |
 
-| Option | URL | Stack |
-|---|---|---|
-| **A — Tailwind** | http://localhost:3001 | atomic utilities |
-| **B — shadcn/ui** | http://localhost:3002 | Radix + Tailwind + CSS-var tokens |
-| **C — MUI** | http://localhost:3003 | `@mui/material` + `@mui/x-data-grid` |
-| **D — Radix + Stitches + Heroicons** | http://localhost:3004 | your existing chosen stack |
+Core stat columns (P W D L RF RA RD Pts — the data model) are identical across
+all three; each reference adds its own app-native *furniture* (GB / Form / hero),
+because that furniture is part of what makes each feel like itself. The "switch
+club" control stays in every build (the token-swap requirement from #8 carries
+through), expressed in each reference's idiom — a bonus signal for how
+team-identity-as-atmosphere reads differently per reference.
 
-(`npm run build` builds all four to `dist/`; `node smoke.mjs <opt>` jsdom-mounts
-an option's bundle to confirm it renders under React 19.)
+**What to evaluate here:** the *feel* of each. Which one's density, team-color
+usage, and atmosphere matches how you want PLB to read? That pick is the
+**visual reference** decision. It says nothing yet about Tailwind vs MUI vs
+Stitches — round 2 handles that.
 
-React 19 + Parcel 2 stay fixed (per map Notes). Each option is a self-contained
-Parcel entry with its own config, so they don't interfere.
+### ⚠️ Don't conflate the two decisions
 
-## What each demonstrates (the token-swap mechanism — the #8 requirement)
+Round 1 is **not** "which styling library." Every round-1 build is Tailwind. If
+you find yourself reacting to "I like how the table sorts" or "this feels
+lighter," that's mechanism talk — park it for round 2. Here, react only to the
+visual language.
 
-Every option implements the *same* "switch club → re-theme accent" behaviour,
-but via its **native** token mechanism. That difference is the point of the round.
+---
 
-- **A · Tailwind** — identity accent is a CSS custom property; `tailwind.config`
-  maps the `accent` token to `var(--accent)`. Switching clubs = setting two CSS
-  vars. Chrome palette is static in the config.
-- **B · shadcn/ui** — the whole theme is CSS variables (`--background`,
-  `--primary`, …); Tailwind tokens reference them via `hsl(var(--…))`. Switching
-  clubs = swapping `--primary`. This is the canonical shadcn theming model and
-  the most direct expression of "token-swappable by construction."
-- **C · MUI** — the theme is a JS object (`createTheme`); switching clubs =
-  rebuilding the theme with a new `palette.primary.main` and re-applying it via
-  `ThemeProvider`. The DataGrid also ships a **density toggle** (compact /
-  standard / comfortable) + sorting + filtering + export for free — MUI's
-  whole pitch for a data-heavy management app.
-- **D · Radix + Stitches + Heroicons** — tokens live in `createStitches()`;
-  each club is a `createTheme()` that returns a className applied to the root.
-  Styled components via `styled()`; Collapsible via Radix; chevron via Heroicons.
+## Round 2 — pick the styling/component approach (follows the anchor)
 
-## Neutral comparison (facts only — the verdict is yours)
+The four approach builds (A/B/C/D below) were the **first** pass. They rendered
+identically on purpose — which surfaced the methodological error: a visual
+comparison can't distinguish styling mechanisms, so there was nothing to react
+to. They're parked here for the follow-up round, which will re-run a
+**capability-stretching** screen (e.g. a dense sortable player-stats table + a
+menu/command-palette + full per-team re-skinning) through all four, in the
+visual direction chosen in round 1. The reaction becomes "which approach
+handled the hard screen without fighting me."
+
+```bash
+npm run dev          # A :3001 · B :3002 · C :3003 · D :3004
+```
 
 | | A · Tailwind | B · shadcn/ui | C · MUI | D · Radix+Stitches+Heroicons |
 |---|---|---|---|---|
-| Token mechanism | CSS var + config map | CSS vars (full theme) | JS theme object | `createTheme` className |
-| Built-in data grid | no (hand-rolled table) | no (hand-rolled) | **yes — DataGrid** (sort/density/filter/export) | no (hand-rolled) |
-| Accessible primitives | hand-rolled here | Radix (Collapsible) | native (Accordion) | Radix (Collapsible) |
-| Bundle (built) | ~200 KB JS + 7 KB CSS | ~38 KB JS + 8 KB CSS | **~782 KB JS** | ~24 KB JS (runtime CSS) |
-| Reuses your installed deps | — | **radix-ui ✓** | — | **radix-ui ✓, stitches ✓, heroicons ✓** |
-| React 19 (runtime mount) | ✓ | ✓ | ✓ | ✓ |
+| Token mechanism (club-switch re-theme) | CSS var + config map | CSS vars (full theme) | JS `createTheme` | `createTheme` className |
+| Built-in data grid | no | no | **DataGrid** (sort/density/filter/export) | no |
+| Bundle (built) | ~200 KB | ~38 KB | **~782 KB** | ~24 KB |
+| React 19 mount | ✓ | ✓ | ✓ | ✓ |
 
-## Findings worth reacting to (surfaced while building — not a verdict)
+**Findings from building round 2 (carry into the follow-up):**
+1. **D runs fine on React 19** — Stitches' React-19 reputation did *not* show up; the one crash was an import typo. So "Stitches won't run here" is not a blocker; unmaintained-since-2022 is the separate, open question.
+2. **The `radix-ui` umbrella needs a version pin under Parcel 2** — floating it pulled primitives whose `@radix-ui/primitive` conditional export Parcel can't resolve (build failure). Pinned to `radix-ui@1.1.2` + `@radix-ui/primitive@1.1.1`. Individual `@radix-ui/react-*` packages (what shadcn expects) sidestep this.
+3. **Stitches `$token` only resolves inside `styled()`/`css()`**, not plain inline `style={{}}` — felt in a table full of per-cell tone variants.
+4. **MUI's DataGrid is the only option that delivers #8's "opt-in density" for free** (density toggle, sort, filter, export) — but at ~782 KB and the most opinionated theming.
 
-1. **Option D works under React 19.** Stitches' reputation for React-19 trouble
-   did not show up here — all four mount cleanly in a jsdom render (verified by
-   `smoke.mjs`). The one runtime crash during the build was *my* import typo,
-   not Stitches. So the "Stitches is dead / won't run on React 19" concern is
-   *not* a blocker on its own merits — the maintenance/abandonment question is
-   separate and still yours to weigh.
-2. **The `radix-ui` umbrella + Parcel 2 needs a version pin.** Floating
-   `radix-ui` pulled primitives that use a newer `@radix-ui/primitive`
-   conditional export Parcel can't resolve → build failure. Pinned to the same
-   `radix-ui@1.1.2` + `@radix-ui/primitive@1.1.1` the main repo already uses
-   (via an `overrides` entry). If the project stays on the umbrella, this pin
-   should be explicit; the cleaner long-term move most teams adopt is the
-   individual `@radix-ui/react-*` packages (which is what shadcn expects).
-3. **Stitches `$token` substitution only works inside `styled()`/`css()`**,
-   not in plain React inline `style={{}}`. Any dynamic, conditionally-styled
-   element has to use resolved literals inline (or be promoted to a styled
-   component). Noticeable in a table full of per-cell tone variants.
-4. **MUI's value prop is real but heavy.** The DataGrid gives you the whole
-   "data-first, opt-in density" UX from #8 out of the box — but at ~782 KB and
-   with the most opinionated theming model (least like the others).
-5. **Tailwind + shadcn are the closest cousins** (shadcn is Radix + Tailwind +
-   CSS vars). If the shortlist narrows to these two, the real question becomes
-   "do we want pre-built accessible components (B) or build them ourselves (A)?"
+---
 
-## Open forks for the decision (the ticket doesn't resolve itself)
+## Run / verify
 
-These are yours to call after reacting to the running prototypes:
+```bash
+npm install
+npm run dev:refs    # round 1: the three visual references (the current decision)
+npm run dev         # round 2: the four approach builds (parked for follow-up)
+npm run build       # builds all seven to dist/
+node smoke.mjs <dist-relative-path>   # e.g. references/mlb  or  tailwind  or  mui
+```
 
-- Which approach (or pair) survives the reaction?
-- Built-in DataGrid (C) vs. hand-rolled tables (A/B/D) — is MUI's data-grid
-  density worth its weight and opinions for *this* app?
-- Component-library posture: own your markup + utilities (A), copy-in
-  components on Radix (B), full library (C), or styled-primitive layer (D)?
-- Does the maintenance status of Stitches (unmaintained since 2022) outweigh
-  that it's already installed and works — i.e. is D a finish-what-we-started
-  choice or a sunk-cost one?
+`smoke.mjs` jsdom-mounts a built bundle to confirm it renders under React 19.
+All seven build, mount, and serve over HTTP.
 
 ## Structure
 
 ```
 prototype/
-  shared/        mock standings + the dark chrome tokens from #8 (shared by all)
-  tailwind/      option A
-  shadcn/        option B  (lib/utils.ts cn helper, components/ui/* copy-ins)
-  mui/           option C
-  stitches/      option D  (stitches.config.ts tokens + createTheme per club)
-  smoke.mjs      jsdom mount check (one option per process)
+  shared/          mock standings + team-identity tokens (shared by all builds)
+  references/
+    mlb/           round 1 — MLB app dark
+    fpl/           round 1 — FPL dark
+    eafc/          round 1 — EA Sports FC hub
+  tailwind/        round 2 — option A
+  shadcn/          round 2 — option B (Radix + Tailwind + CSS-var tokens)
+  mui/             round 2 — option C (DataGrid)
+  stitches/        round 2 — option D (your existing chosen stack)
+  smoke.mjs        jsdom mount check
 ```
