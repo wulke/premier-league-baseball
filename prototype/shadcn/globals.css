@@ -1,0 +1,29 @@
+/* shadcn option — the whole theme is CSS variables; Tailwind tokens reference
+   them via hsl(var(--...)). Swapping a club = swapping --primary /
+   --primary-foreground. This is the canonical shadcn theming model and the
+   closest thing to #8's "token-swappable by construction". */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 217 14% 10%;
+  --surface: 219 14% 14%;
+  --card: 217 14% 18%;
+  --hover: 217 14% 21%;
+  --foreground: 215 16% 91%;
+  --muted-foreground: 218 9% 66%;
+  --subtle-foreground: 220 9% 46%;
+  --border: 219 14% 20%;
+  --border-strong: 217 16% 27%;
+  --primary: 217 91% 64%; /* swapped to the selected club's identity */
+  --primary-foreground: 0 0% 100%;
+  --radius: 0.625rem;
+}
+
+html,
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}

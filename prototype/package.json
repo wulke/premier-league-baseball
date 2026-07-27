@@ -1,0 +1,41 @@
+{
+  "name": "plb-ui-prototype",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Throwaway UI-styling-approach prototypes (wayfinder #9). Not part of the shipping app.",
+  "scripts": {
+    "dev": "concurrently -n tw,shadcn,mui,stitches -c blue,magenta,yellow,cyan \"npm:dev:tw\" \"npm:dev:shadcn\" \"npm:dev:mui\" \"npm:dev:stitches\"",
+    "dev:tw": "parcel tailwind/index.html --port 3001 --no-cache",
+    "dev:shadcn": "parcel shadcn/index.html --port 3002 --no-cache",
+    "dev:mui": "parcel mui/index.html --port 3003 --no-cache",
+    "dev:stitches": "parcel stitches/index.html --port 3004 --no-cache",
+    "build": "parcel build tailwind/index.html shadcn/index.html mui/index.html stitches/index.html --no-cache --dist-dir dist"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.13.5",
+    "@emotion/styled": "^11.13.5",
+    "@heroicons/react": "^2.2.0",
+    "@mui/material": "^6.4.0",
+    "@mui/x-data-grid": "^7.23.0",
+    "@stitches/react": "^1.2.8",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "radix-ui": "1.1.2",
+    "tailwind-merge": "^2.6.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "overrides": {
+    "@radix-ui/primitive": "1.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "parcel": "^2.13.3",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3"
+  }
+}

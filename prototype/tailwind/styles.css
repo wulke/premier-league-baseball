@@ -1,0 +1,18 @@
+/* Tailwind option — CSS vars carry the swappable tokens (team identity).
+   The chrome palette is static in tailwind.config.js; the *accent* is a var,
+   so switching clubs = setting two CSS custom properties. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --accent: #4f8df7;
+  --accent-on: #ffffff;
+}
+
+html,
+body {
+  background: #15171c;
+  color: #e8eaed;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
