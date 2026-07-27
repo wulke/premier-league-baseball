@@ -121,7 +121,7 @@ const SavantTable = ({ rows, clubId }: { rows: TeamStanding[]; clubId: number })
                 <td className="px-2 py-1.5 text-center font-num font-700 text-ink-md">{i + 1}</td>
                 <td className="px-2 py-1.5 text-center"><Trend last={row.form[0]} /></td>
                 <td className="px-2 py-1.5 text-left">
-                  <a href={`team.html?team=${row.teamId}`} className="inline-flex items-center gap-1.5">
+                  <a href={`team/?team=${row.teamId}`} className="inline-flex items-center gap-1.5">
                     <span className="inline-block h-2 w-2 rounded-full" style={{ background: id.primary }} />
                     <span className={`font-num font-600 ${isClub ? "text-ink-hi" : "text-mlb-link hover:underline"}`}>{row.teamName}</span>
                     {isClub && <span className="ml-1 font-num text-[9px] font-700 uppercase tracking-wide text-club">★ your club</span>}

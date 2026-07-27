@@ -70,6 +70,12 @@ register generalizes beyond a table:
 
 Navigate by clicking a team name in the standings → team page → player page.
 
+A **dark variant** of all three Savant pages lives at `/references/savant-dark/`
+(and `/team/`, `/player/` under it). It shares the Savant component code
+verbatim (symlinked) — only the palette inverts. It exists to settle the
+**light-vs-dark fork** using a register whose structure you've already said works:
+flip light ↔ dark on the same page and react only to the theme.
+
 Core stat columns (P W D L RF RA RD Pts — the data model) are identical across
 all three; each reference adds its own app-native *furniture* (GB / Form / hero),
 because that furniture is part of what makes each feel like itself. The "switch
@@ -148,6 +154,7 @@ prototype/
     fpl/           round 1 — FPL dark
     eafc/          round 1 — EA Sports FC hub
     savant/        round 1 — Baseball Savant (light; + team/ and player/ pages)
+    savant-dark/   round 1 — Baseball Savant, dark variant (same code, palette inverted)
   tailwind/        round 2 — option A
   shadcn/          round 2 — option B (Radix + Tailwind + CSS-var tokens)
   mui/             round 2 — option C (DataGrid)

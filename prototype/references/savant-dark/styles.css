@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark Savant variant. Same component code as light Savant (symlinked); only
+   the palette inverts via tailwind.config.js token values. The percentile
+   gradient lives as rgb() literals in savant-data.ts (shared) — it's the same
+   red→yellow→green on both themes. Worth reacting to: does it read on dark? */
+:root {
+  --club: #5b9bff; /* default before a club is selected */
+}
+html, body {
+  background: #0E1015;
+  color: #E8EAED;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+.savant-table { font-variant-numeric: tabular-nums; }
