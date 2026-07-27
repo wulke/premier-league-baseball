@@ -1,3 +1,7 @@
 dist
 node_modules
 .parcel-cache
+.DS_Store
+*.sqlite
+.env
+.envrc
