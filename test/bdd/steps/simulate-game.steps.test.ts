@@ -1,7 +1,7 @@
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import { simulateGame, simulateBatchGames as simulateBatchGamesHandler } from '../../../src/api/handlers';
-import { GameSimulationError } from '../../../src/db/domain/errors';
+import { DomainError } from '../../../src/db/domain/errors';
 import db from '../../../src/db/client';
 
 interface ResponseState {
@@ -88,7 +88,7 @@ const simulateSingleGame = async (world: WorldState, gameId: number) => {
     const body = await simulateGame(gameId);
     world.response = { statusCode: 200, body };
   } catch (error) {
-    if (error instanceof GameSimulationError) {
+    if (error instanceof DomainError) {
       world.response = { statusCode: error.statusCode, error };
     } else {
       world.response = { statusCode: 500, error };
@@ -105,7 +105,7 @@ const simulateBatchGames = async (world: WorldState, gameWorldId: number, endDat
     const body = await simulateBatchGamesHandler(gameWorldId, endDate);
     world.response = { statusCode: 200, body };
   } catch (error) {
-    if (error instanceof GameSimulationError) {
+    if (error instanceof DomainError) {
       world.response = { statusCode: error.statusCode, error };
     } else {
       world.response = { statusCode: 500, error };

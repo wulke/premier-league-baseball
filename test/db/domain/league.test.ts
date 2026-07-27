@@ -6,6 +6,7 @@ import { Op } from 'sequelize';
 describe('LeagueFactory (initial Season)', () => {
   let gw;
   beforeAll(async () => {
+    await db.sync({ force: true });
     gw = await GameWorldFactory().create(useDefaultGameWorld());
   });
   it('create: Creates correct default League configuration', async () => {

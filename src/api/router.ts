@@ -1,20 +1,19 @@
 const express = require('express');
 const router = express.Router();
-import db from '../db/client';
 import * as handlers from './handlers';
 import { Endpoints } from './endpoints';
 
-db.sync();
+const sendError = (res: any, error: any) => {
+  console.error(error);
+  res.status(error.statusCode ?? 500).send({ error: error.message ?? 'Internal server error' });
+};
 
 router.get(Endpoints.GetGameWorld, async (req: any, res: any) => {
   await handlers.getGameWorld(Number(req.params.gwId))
     .then((response) => {
       res.send(response);
     })
-    .catch ((error) => {
-      console.error(error);
-      res.send(error);
-    });
+    .catch((error) => sendError(res, error));
 });
 
 router.get(Endpoints.GetGameWorlds, async (req: any, res: any) => {
@@ -22,16 +21,13 @@ router.get(Endpoints.GetGameWorlds, async (req: any, res: any) => {
     .then((response) => {
       res.send(response);
     })
-    .catch ((error) => {
-      console.error(error);
-      res.send(error);
-    });
+    .catch((error) => sendError(res, error));
 });
 
 router.get(Endpoints.GetLeagueStandings, async (req: any, res: any) => {
   await handlers.getLeagueStandings(Number(req.params.leagueId))
     .then((response) => res.send(response))
-    .catch((error) => { console.error(error); res.send(error); });
+    .catch((error) => sendError(res, error));
 });
 
 router.get(Endpoints.GetLeague, async (req: any, res: any) => {
@@ -39,10 +35,7 @@ router.get(Endpoints.GetLeague, async (req: any, res: any) => {
     .then((response) => {
       res.send(response);
     })
-    .catch((error) => {
-      console.error(error);
-      res.send(error);
-    });
+    .catch((error) => sendError(res, error));
 });
 
 router.post(Endpoints.NewGameWorld, async (req: any, res: any) => {
@@ -54,10 +47,7 @@ router.post(Endpoints.NewGameWorld, async (req: any, res: any) => {
     year: req.body.year
   }).then((response) => {
     res.send(response);
-  }).catch((error) => {
-    console.error(error);
-    res.send(error);
-  });
+  }).catch((error) => sendError(res, error));
 });
 
 router.post(Endpoints.NewSeason, async (req: any, res: any) => {
@@ -66,10 +56,7 @@ router.post(Endpoints.NewSeason, async (req: any, res: any) => {
     .then((response) => {
       res.send(response);
     })
-    .catch((error) => {
-      console.error(error);
-      res.send(error);
-    });
+    .catch((error) => sendError(res, error));
 });
 
 router.get(Endpoints.GetTeamSchedule, async (req: any, res: any) => {
@@ -79,16 +66,13 @@ router.get(Endpoints.GetTeamSchedule, async (req: any, res: any) => {
 
   await handlers.getTeamSchedule(teamId, gwId, leagueId)
     .then((response) => res.send(response))
-    .catch((error) => { console.error(error); res.send(error); });
+    .catch((error) => sendError(res, error));
 });
 
 router.post(Endpoints.BatchSimulateGames, async (req: any, res: any) => {
   await handlers.simulateBatchGames(Number(req.params.gwId), req.body?.endDate)
     .then((response) => res.send(response))
-    .catch((error) => {
-      console.error(error);
-      res.status(error.statusCode ?? 500).send({ error: error.message ?? 'Internal server error' });
-    });
+    .catch((error) => sendError(res, error));
 });
 
 router.post(Endpoints.SimulateGame, async (req: any, res: any) => {
@@ -96,10 +80,7 @@ router.post(Endpoints.SimulateGame, async (req: any, res: any) => {
     .then((response) => {
       res.send(response);
     })
-    .catch((error) => {
-      console.error(error);
-      res.status(error.statusCode ?? 500).send({ error: error.message ?? 'Internal server error' });
-    });
+    .catch((error) => sendError(res, error));
 });
 
 export { router };

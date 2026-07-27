@@ -4,6 +4,10 @@ import { useDefaultGameWorld } from '../../../src/api/models';
 import { Op } from 'sequelize';
 
 describe('GameWorldFactory', () => {
+  beforeAll(async () => {
+    await db.sync({ force: true });
+  });
+
   it('Creates a new game world', async () => {
     const config = useDefaultGameWorld();
     const gw = await GameWorldFactory().create(config);

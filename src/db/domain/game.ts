@@ -1,6 +1,6 @@
 import { Op } from 'sequelize';
 import db from '../client';
-import { GameSimulationError } from './errors';
+import { DomainError } from './errors';
 
 const toDateStr = (d: any): string => new Date(d).toISOString().slice(0, 10);
 
@@ -29,21 +29,21 @@ const GameFactory = (id?: number) => {
 
     simulate: async () => {
       const game = await db.models.Game.findByPk(id);
-      if (!game) throw new GameSimulationError('the game was not found', 404);
+      if (!game) throw new DomainError('the game was not found', 404);
 
       const { status, scheduledDate } = game.dataValues;
 
       if (status === 'COMPLETED') {
-        throw new GameSimulationError('the game has already been completed', 422);
+        throw new DomainError('the game has already been completed', 422);
       }
       if (status === 'IN_PROGRESS') {
-        throw new GameSimulationError('the game cannot be simulated in its current status', 422);
+        throw new DomainError('the game cannot be simulated in its current status', 422);
       }
 
       if (scheduledDate != null) {
         const dsg = await db.models.DivisionSeasonGame.findOne({ where: { gameId: id } });
         if (!dsg) {
-          throw new GameSimulationError('the GameWorld has no current date configured', 422);
+          throw new DomainError('the GameWorld has no current date configured', 422);
         }
         const ds = await db.models.DivisionSeason.findByPk(dsg.dataValues.divisionSeasonId);
         const division = await db.models.Division.findByPk(ds!.dataValues.divisionId);
@@ -51,11 +51,11 @@ const GameFactory = (id?: number) => {
         const gameWorld = await db.models.GameWorld.findByPk(league!.dataValues.gameWorldId);
 
         if (!gameWorld || gameWorld.dataValues.currentDate == null) {
-          throw new GameSimulationError('the GameWorld has no current date configured', 422);
+          throw new DomainError('the GameWorld has no current date configured', 422);
         }
 
         if (toDateStr(scheduledDate) > gameWorld.dataValues.currentDate) {
-          throw new GameSimulationError('the game is scheduled for a future date', 422);
+          throw new DomainError('the game is scheduled for a future date', 422);
         }
       }
 
@@ -73,16 +73,16 @@ const GameFactory = (id?: number) => {
 
     simulateBatch: async (gwId: number, endDate?: string) => {
       const gameWorld = await db.models.GameWorld.findByPk(gwId);
-      if (!gameWorld) throw new GameSimulationError('the GameWorld was not found', 404);
+      if (!gameWorld) throw new DomainError('the GameWorld was not found', 404);
 
       const { currentDate } = gameWorld.dataValues;
 
       if (!currentDate && !endDate) {
-        throw new GameSimulationError('the GameWorld has no current date configured', 422);
+        throw new DomainError('the GameWorld has no current date configured', 422);
       }
 
       if (endDate && currentDate && endDate > currentDate) {
-        throw new GameSimulationError("the endDate exceeds the GameWorld's current date", 422);
+        throw new DomainError("the endDate exceeds the GameWorld's current date", 422);
       }
 
       const effectiveEndDate: string = endDate ?? currentDate;

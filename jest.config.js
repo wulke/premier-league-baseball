@@ -23,8 +23,6 @@ module.exports = {
         '**/test/api/**/*.test.ts',
         '**/test/bdd/**/*.test.ts'
       ],
-      globalSetup: './test/setup.ts',
-      globalTeardown: './test/teardown.ts',
     },
     {
       ...commonConfig,
