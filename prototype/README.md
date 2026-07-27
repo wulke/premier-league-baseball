@@ -85,7 +85,7 @@ team-identity-as-atmosphere reads differently per reference.
 
 **What to evaluate here:** the *feel* of each. Which one's density, team-color
 usage, and atmosphere matches how you want PLB to read? That pick is the
-**visual reference** decision. It says nothing yet about Tailwind vs MUI vs
+**visual reference** decision. It says nothing yet about Tailwind vs shadcn vs
 Stitches — round 2 handles that.
 
 ### ⚠️ Don't conflate the two decisions
@@ -97,33 +97,25 @@ visual language.
 
 ---
 
-## Round 2 — pick the styling/component approach (follows the anchor)
+## Round 2 — styling/component approach (DECIDED)
 
-The four approach builds (A/B/C/D below) were the **first** pass. They rendered
-identically on purpose — which surfaced the methodological error: a visual
-comparison can't distinguish styling mechanisms, so there was nothing to react
-to. They're parked here for the follow-up round, which will re-run a
-**capability-stretching** screen (e.g. a dense sortable player-stats table + a
-menu/command-palette + full per-team re-skinning) through all four, in the
-visual direction chosen in round 1. The reaction becomes "which approach
-handled the hard screen without fighting me."
+The styling approach was decided by **judgment, not a further prototype round**,.
+after round 1's findings did enough of the work:
 
-```bash
-npm run dev          # A :3001 · B :3002 · C :3003 · D :3004
-```
+- **Selected:** the existing **Radix + Stitches + Heroicons** stack (`stitches/`).
+  Already installed, runs cleanly under React 19 (verified — the one Stitches
+  crash during the build was an import typo, not a compat issue), and the dark
+  Savant token-swap was trivial in it.
+- **Ruled out:** **MUI / DataGrid** — removed from this prototype entirely.
+  Though its DataGrid uniquely delivered "opt-in density" for free, the weight
+  (~782 KB) and opinionated theming didn't fit; the user disliked it.
+- **Not pursued further:** Tailwind and shadcn remain as explored options in
+  `tailwind/` and `shadcn/` for reference, but were not selected.
 
-| | A · Tailwind | B · shadcn/ui | C · MUI | D · Radix+Stitches+Heroicons |
-|---|---|---|---|---|
-| Token mechanism (club-switch re-theme) | CSS var + config map | CSS vars (full theme) | JS `createTheme` | `createTheme` className |
-| Built-in data grid | no | no | **DataGrid** (sort/density/filter/export) | no |
-| Bundle (built) | ~200 KB | ~38 KB | **~782 KB** | ~24 KB |
-| React 19 mount | ✓ | ✓ | ✓ | ✓ |
-
-**Findings from building round 2 (carry into the follow-up):**
-1. **D runs fine on React 19** — Stitches' React-19 reputation did *not* show up; the one crash was an import typo. So "Stitches won't run here" is not a blocker; unmaintained-since-2022 is the separate, open question.
-2. **The `radix-ui` umbrella needs a version pin under Parcel 2** — floating it pulled primitives whose `@radix-ui/primitive` conditional export Parcel can't resolve (build failure). Pinned to `radix-ui@1.1.2` + `@radix-ui/primitive@1.1.1`. Individual `@radix-ui/react-*` packages (what shadcn expects) sidestep this.
-3. **Stitches `$token` only resolves inside `styled()`/`css()`**, not plain inline `style={{}}` — felt in a table full of per-cell tone variants.
-4. **MUI's DataGrid is the only option that delivers #8's "opt-in density" for free** (density toggle, sort, filter, export) — but at ~782 KB and the most opinionated theming.
+**Findings from the approach exploration (carried into the rebuild):**
+1. **Stitches runs fine on React 19** — the reputation didn't materialize; unmaintained-since-2022 stays a known, accepted trade-off of the chosen stack.
+2. **The `radix-ui` umbrella needs a version pin under Parcel 2** — floating it pulled primitives whose `@radix-ui/primitive` conditional export Parcel can't resolve (build failure). Pinned to `radix-ui@1.1.2` + `@radix-ui/primitive@1.1.1` (an `overrides` entry). Individual `@radix-ui/react-*` packages sidestep this and may be worth adopting during the rebuild.
+3. **Stitches `$token` only resolves inside `styled()`/`css()`**, not plain inline `style={{}}` — a convention to hold during the rebuild.
 
 ---
 
@@ -134,7 +126,7 @@ npm install
 npm start          # build all seven + serve at http://localhost:4000 (landing page links to everything)
 npm run build      # build only
 npm run serve      # serve an existing dist/ on :4000
-node smoke.mjs <dist-relative-path>   # e.g. references/mlb  or  tailwind  or  mui
+node smoke.mjs <dist-relative-path>   # e.g. references/mlb  or  tailwind  or  stitches
 ```
 
 `npm run dev:<name>` (e.g. `dev:fpl`) runs Parcel's dev server for a **single**
@@ -142,7 +134,7 @@ option with live reload — but only one at a time; multiple concurrent Parcel
 dev servers from this root contaminate each other (see "Serving model" above).
 
 `smoke.mjs` jsdom-mounts a built bundle to confirm it renders under React 19.
-All seven build, mount, and serve over HTTP.
+All entries build, mount, and serve over HTTP.
 
 ## Structure
 
@@ -155,11 +147,10 @@ prototype/
     eafc/          round 1 — EA Sports FC hub
     savant/        round 1 — Baseball Savant (light; + team/ and player/ pages)
     savant-dark/   round 1 — Baseball Savant, dark variant (same code, palette inverted)
-  tailwind/        round 2 — option A
-  shadcn/          round 2 — option B (Radix + Tailwind + CSS-var tokens)
-  mui/             round 2 — option C (DataGrid)
-  stitches/        round 2 — option D (your existing chosen stack)
-  index.html       landing page (links to all seven)
+  tailwind/        explored — option A (atomic utilities)
+  shadcn/          explored — option B (Radix + Tailwind + CSS-var tokens)
+  stitches/        SELECTED — Radix + Stitches + Heroicons (the chosen approach)
+  index.html       landing page (links to all entries)
   serve.mjs        dependency-free static server for the built output
   smoke.mjs        jsdom mount check
 ```

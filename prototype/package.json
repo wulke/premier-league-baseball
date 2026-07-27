@@ -8,21 +8,16 @@
     "serve": "node serve.mjs",
     "dev:tw": "parcel tailwind/index.html --port 3001 --no-cache",
     "dev:shadcn": "parcel shadcn/index.html --port 3002 --no-cache",
-    "dev:mui": "parcel mui/index.html --port 3003 --no-cache",
     "dev:stitches": "parcel stitches/index.html --port 3004 --no-cache",
     "dev:mlb": "parcel references/mlb/index.html --port 3005 --no-cache",
     "dev:fpl": "parcel references/fpl/index.html --port 3006 --no-cache",
     "dev:eafc": "parcel references/eafc/index.html --port 3007 --no-cache",
     "dev:savant": "parcel references/savant/index.html --port 3008 --no-cache",
     "dev:savant-dark": "parcel references/savant-dark/index.html --port 3009 --no-cache",
-    "build": "parcel build tailwind/index.html shadcn/index.html mui/index.html stitches/index.html references/mlb/index.html references/fpl/index.html references/eafc/index.html references/savant/index.html references/savant/team/index.html references/savant/player/index.html references/savant-dark/index.html references/savant-dark/team/index.html references/savant-dark/player/index.html index.html --no-cache --dist-dir dist"
+    "build": "parcel build tailwind/index.html shadcn/index.html stitches/index.html references/mlb/index.html references/fpl/index.html references/eafc/index.html references/savant/index.html references/savant/team/index.html references/savant/player/index.html references/savant-dark/index.html references/savant-dark/team/index.html references/savant-dark/player/index.html index.html --no-cache --dist-dir dist"
   },
   "dependencies": {
-    "@emotion/react": "^11.13.5",
-    "@emotion/styled": "^11.13.5",
     "@heroicons/react": "^2.2.0",
-    "@mui/material": "^6.4.0",
-    "@mui/x-data-grid": "^7.23.0",
     "@stitches/react": "^1.2.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
