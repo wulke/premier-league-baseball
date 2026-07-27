@@ -4,16 +4,16 @@
   "private": true,
   "description": "Throwaway UI-styling-approach prototypes (wayfinder #9). Not part of the shipping app.",
   "scripts": {
-    "dev": "concurrently -n tw,shadcn,mui,stitches -c blue,magenta,yellow,cyan \"npm:dev:tw\" \"npm:dev:shadcn\" \"npm:dev:mui\" \"npm:dev:stitches\"",
+    "start": "npm run build && node serve.mjs",
+    "serve": "node serve.mjs",
     "dev:tw": "parcel tailwind/index.html --port 3001 --no-cache",
     "dev:shadcn": "parcel shadcn/index.html --port 3002 --no-cache",
     "dev:mui": "parcel mui/index.html --port 3003 --no-cache",
     "dev:stitches": "parcel stitches/index.html --port 3004 --no-cache",
-    "dev:refs": "concurrently -n mlb,fpl,eafc -c red,green,yellow \"npm:dev:mlb\" \"npm:dev:fpl\" \"npm:dev:eafc\"",
     "dev:mlb": "parcel references/mlb/index.html --port 3005 --no-cache",
     "dev:fpl": "parcel references/fpl/index.html --port 3006 --no-cache",
     "dev:eafc": "parcel references/eafc/index.html --port 3007 --no-cache",
-    "build": "parcel build tailwind/index.html shadcn/index.html mui/index.html stitches/index.html references/mlb/index.html references/fpl/index.html references/eafc/index.html --no-cache --dist-dir dist"
+    "build": "parcel build tailwind/index.html shadcn/index.html mui/index.html stitches/index.html references/mlb/index.html references/fpl/index.html references/eafc/index.html index.html --no-cache --dist-dir dist"
   },
   "dependencies": {
     "@emotion/react": "^11.13.5",

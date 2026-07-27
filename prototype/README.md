@@ -23,8 +23,25 @@ mechanism is held **constant** (Tailwind across all three) so the only variable
 is the visual reference. React to these and pick the anchor.
 
 ```bash
-npm run dev:refs      # MLB :3005 · FPL :3006 · EAFC :3007
+npm install
+npm start      # builds all 7 + serves at http://localhost:4000
 ```
+
+Then open **http://localhost:4000** — a landing page links to everything. The
+three references for round 1:
+
+- http://localhost:4000/references/mlb/ — MLB app dark
+- http://localhost:4000/references/fpl/ — FPL dark
+- http://localhost:4000/references/eafc/ — EA Sports FC hub
+
+> **Serving model.** The references are served from the **built** output, not
+> Parcel's dev server. Reason: multiple Parcel dev servers run from one project
+> root cross-contaminate (every port ends up serving one entry — that's the bug
+> that made them look identical), and a single multi-entry dev server falls back
+> to the first entry for every URL. A static serve of the build is correct and
+> reliable. If you want live-reload while editing one option, run its
+> `npm run dev:<name>` script **alone** (e.g. `npm run dev:fpl`) — only one
+> Parcel process at a time is safe.
 
 | | MLB app dark | FPL dark | EA Sports FC hub |
 |---|---|---|---|
@@ -92,11 +109,15 @@ npm run dev          # A :3001 · B :3002 · C :3003 · D :3004
 
 ```bash
 npm install
-npm run dev:refs    # round 1: the three visual references (the current decision)
-npm run dev         # round 2: the four approach builds (parked for follow-up)
-npm run build       # builds all seven to dist/
+npm start          # build all seven + serve at http://localhost:4000 (landing page links to everything)
+npm run build      # build only
+npm run serve      # serve an existing dist/ on :4000
 node smoke.mjs <dist-relative-path>   # e.g. references/mlb  or  tailwind  or  mui
 ```
+
+`npm run dev:<name>` (e.g. `dev:fpl`) runs Parcel's dev server for a **single**
+option with live reload — but only one at a time; multiple concurrent Parcel
+dev servers from this root contaminate each other (see "Serving model" above).
 
 `smoke.mjs` jsdom-mounts a built bundle to confirm it renders under React 19.
 All seven build, mount, and serve over HTTP.
@@ -114,5 +135,7 @@ prototype/
   shadcn/          round 2 — option B (Radix + Tailwind + CSS-var tokens)
   mui/             round 2 — option C (DataGrid)
   stitches/        round 2 — option D (your existing chosen stack)
+  index.html       landing page (links to all seven)
+  serve.mjs        dependency-free static server for the built output
   smoke.mjs        jsdom mount check
 ```
