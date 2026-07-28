@@ -26,6 +26,7 @@ interface WorldState {
   forceDbError: boolean;
 }
 
+// @spec SIM-001..SIM-015 (simulate-game acceptance)
 const feature = loadFeature(path.resolve(__dirname, '../features/simulate-game.feature'));
 
 const createWorld = (): WorldState => ({

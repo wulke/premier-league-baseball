@@ -55,7 +55,6 @@ The `docs/architecture` directory maintains the implementation-agnostic designs 
 - `docs/architecture/design` -> working docs for individual Use Cases or Process Flows.
 - `docs/architecture/process-flow` -> low-level access patterns.
 - `docs/architecture/roadmap` -> Epic-level groupings scoping major releases.
-- `docs/architecture/test-cases` -> Implementation-agnostic Gherkin feature files.
 - `docs/architecture/prd` -> Product Requirement Documents for major technical tasks.
 - `docs/architecture/standards` -> constitution-style backend conventions (domain layer ownership, schema modeling, error handling, testing, API contract) that every feature is expected to conform to, not restate.
 
@@ -63,3 +62,19 @@ The `docs/architecture` directory maintains the implementation-agnostic designs 
 
 - **Backend:** Uses `jest-cucumber` in a `node` environment. Mocks the database or uses an in-memory SQLite instance.
 - **Frontend:** Uses `jest-cucumber` + `React Testing Library` in a `jsdom` environment. Mocks `fetch` / API responses via `test/ui/test-utils.tsx`.
+
+---
+
+## Linked-Intent Development
+
+This repository follows the Linked-Intent Development (LID) methodology. [`LID.md`](LID.md) is the source of truth for the LID workflow, approval gates, traceability, and bug-fix protocol. All feature additions and bug fixes must follow the **Arrow of Intent**: `HLD → LLD → EARS → Tests → Code`.
+
+### Navigation
+
+| What you need | Where to look |
+|---|---|
+| LID methodology (source of truth) | [`LID.md`](LID.md) |
+| High-level design (HLD) | `docs/high-level-design.md` |
+| Low-level designs (LLD) | `docs/llds/` |
+| EARS specs | `docs/specs/` |
+| Acceptance scenarios (Gherkin) | `test/bdd/features/`, `test/ui/features/` (tagged `@spec`) |
