@@ -5,6 +5,10 @@ import { GameFormula, LeagueConfig, LeagueType } from '../../src/api/models';
 import { router } from '../../src/api/router';
 
 describe('League standings API', () => {
+  beforeAll(async () => {
+    await db.sync({ force: true });
+  });
+
   it('GET /api/league/:leagueId/standings handler returns standings grouped by division', async () => {
     const gw = await db.models.GameWorld.create({ config: {} }).then(({ dataValues }) => dataValues);
     const teams = await Promise.all(

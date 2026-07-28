@@ -6,7 +6,11 @@ require('dotenv').config();
 const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: process.env.DATABASE_URL,
-  logging: false
+  logging: false,
+  // sqlite (especially ':memory:') is single-writer; a pool of >1 connections
+  // would each open their own separate in-memory database and silently miss
+  // each other's tables/rows.
+  pool: { max: 1 }
 });
 
 // model definitions

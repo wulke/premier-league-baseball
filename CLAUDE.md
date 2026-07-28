@@ -57,6 +57,7 @@ The `docs/architecture` directory maintains the implementation-agnostic designs 
 - `docs/architecture/roadmap` -> Epic-level groupings scoping major releases.
 - `docs/architecture/test-cases` -> Implementation-agnostic Gherkin feature files.
 - `docs/architecture/prd` -> Product Requirement Documents for major technical tasks.
+- `docs/architecture/standards` -> constitution-style backend conventions (domain layer ownership, schema modeling, error handling, testing, API contract) that every feature is expected to conform to, not restate.
 
 ### Testing Strategy (BDD)
 

@@ -19,6 +19,7 @@ describe('DivisionFactory', () => {
   };
 
   beforeAll(async () => {
+    await db.sync({ force: true });
     gw = await db.models.GameWorld.create({ config: {} });
   });
 
