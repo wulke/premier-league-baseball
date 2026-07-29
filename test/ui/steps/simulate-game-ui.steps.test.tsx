@@ -246,13 +246,11 @@ const ensureCalendar = async () => {
 };
 
 const ensureCrossFlow = async () => {
-  mountProvider(
-    <>
-      <AppHeader />
-      <TeamCalendar />
-    </>,
-    'crossflow',
-  );
+  // TeamCalendar renders its own AppHeader (#24 wired AppHeader into every /:gwId page), so
+  // mounting a second standalone <AppHeader /> alongside it would duplicate
+  // [data-testid="batch-simulate"]. TeamCalendar alone gives the cross-flow scenarios both the
+  // batch button and the per-row simulate UI they need.
+  mountProvider(<TeamCalendar />, 'crossflow');
   await flush();
 };
 

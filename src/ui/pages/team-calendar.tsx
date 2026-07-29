@@ -3,8 +3,10 @@ import { useParams } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { TeamSeasonCalendar, TeamSeasonGame } from '../../api/models';
 import { AppHeader } from '../components/app-header';
+import { useGameWorldContext } from '../context/game-world-context';
 
 type CalendarFilter = 'all' | 'scheduled' | 'played';
+type SimulateRowStatus = 'idle' | 'loading' | 'error';
 
 const isPlayed = (game: TeamSeasonGame) =>
   game.homeTeamResult !== null && game.awayTeamResult !== null;
@@ -26,10 +28,76 @@ const formatGameDate = (value: string | null): string => {
 const monthLabel = (value: string): string =>
   new Date(value).toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
 
-const GameRow = ({ game, teamId }: { game: TeamSeasonGame; teamId: string }) => {
+const GameRow = ({
+  game,
+  teamId,
+  simulateStatus,
+  onSimulate,
+}: {
+  game: TeamSeasonGame;
+  teamId: string;
+  simulateStatus: SimulateRowStatus;
+  onSimulate: () => void;
+}) => {
   const isHome = game.homeTeamId === Number(teamId);
   const opponent = isHome ? game.awayTeamName : game.homeTeamName;
-  const played = isPlayed(game);
+
+  // Flow A (SIMUI-019..026): the result cell branches on `game.status` first (COMPLETED /
+  // IN_PROGRESS render their own indicator), then on the per-row `simulateStatus` for a
+  // still-SCHEDULED game (idle button / loading spinner / persistent error icon — no retry).
+  const renderResultCell = () => {
+    if (game.status === 'COMPLETED') {
+      return (
+        <span data-testid={`score-${game.gameId}`} style={{ fontWeight: 700, fontSize: '0.9rem' }}>
+          {isHome
+            ? `${game.homeTeamResult}–${game.awayTeamResult}`
+            : `${game.awayTeamResult}–${game.homeTeamResult}`}
+        </span>
+      );
+    }
+
+    if (game.status === 'IN_PROGRESS') {
+      return (
+        <span data-testid={`status-${game.gameId}`} style={{ fontSize: '0.75rem', color: '#aaa', fontWeight: 500 }}>
+          In Progress
+        </span>
+      );
+    }
+
+    if (simulateStatus === 'loading') {
+      return (
+        <span data-testid={`spinner-${game.gameId}`} style={{ fontSize: '0.75rem', color: '#888' }}>
+          Simulating…
+        </span>
+      );
+    }
+
+    if (simulateStatus === 'error') {
+      return (
+        <span data-testid={`error-${game.gameId}`} role="img" aria-label="Simulation failed" style={{ color: '#c00', fontSize: '0.95rem' }}>
+          ⚠
+        </span>
+      );
+    }
+
+    return (
+      <button
+        data-testid={`simulate-${game.gameId}`}
+        onClick={onSimulate}
+        style={{
+          padding: '4px 12px',
+          border: '1px solid #ccc',
+          borderRadius: '4px',
+          background: '#fff',
+          cursor: 'pointer',
+          fontSize: '0.78rem',
+          fontWeight: 600,
+        }}
+      >
+        Simulate
+      </button>
+    );
+  };
 
   return (
     <div style={{
@@ -72,17 +140,9 @@ const GameRow = ({ game, teamId }: { game: TeamSeasonGame; teamId: string }) => 
         </span>
       </div>
 
-      {/* Result or status */}
+      {/* Result, status, or simulate action */}
       <div style={{ textAlign: 'right', minWidth: '64px' }}>
-        {played ? (
-          <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>
-            {isHome
-              ? `${game.homeTeamResult}–${game.awayTeamResult}`
-              : `${game.awayTeamResult}–${game.homeTeamResult}`}
-          </span>
-        ) : (
-          <span style={{ fontSize: '0.75rem', color: '#aaa', fontWeight: 500 }}>Scheduled</span>
-        )}
+        {renderResultCell()}
       </div>
     </div>
   );
@@ -95,7 +155,11 @@ const TeamCalendar = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [statusFilter, setStatusFilter] = useState<CalendarFilter>('all');
   const [divisionFilter, setDivisionFilter] = useState<string>('all');
-  const [refreshToken, setRefreshToken] = useState<number>(0);
+  const [retryToken, setRetryToken] = useState<number>(0);
+  const [simulateState, setSimulateState] = useState<Map<number, SimulateRowStatus>>(new Map());
+  // Flow A — subscribe to the shared refreshToken (LLD Flow C) so a batch simulate elsewhere
+  // (AppHeader) triggers a full re-fetch here, keeping single-row and batch simulate consistent.
+  const { refreshToken: contextRefreshToken } = useGameWorldContext();
 
   useEffect(() => {
     if (!teamId) return;
@@ -103,6 +167,7 @@ const TeamCalendar = () => {
 
     setIsLoading(true);
     setError(null);
+    setSimulateState(new Map());
 
     const qs = new URLSearchParams();
     if (gwId) qs.append('gwId', gwId);
@@ -129,7 +194,36 @@ const TeamCalendar = () => {
     });
 
     return () => { isMounted = false; };
-  }, [gwId, leagueId, refreshToken, teamId]);
+  }, [gwId, leagueId, retryToken, contextRefreshToken, teamId]);
+
+  const handleSimulate = (gameId: number) => {
+    setSimulateState((prev) => new Map(prev).set(gameId, 'loading'));
+
+    fetch(Endpoints.SimulateGame.replace(':gameId', String(gameId)), {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+    }).then((response) => (response.ok ? response.json() : Promise.reject(response)))
+      .then((result) => {
+        // Patch the row in-place (LLD Flow A) — no full re-fetch needed for a single-game win.
+        setCalendar((prev) => (prev ? {
+          ...prev,
+          games: prev.games.map((g) => (g.gameId === gameId
+            ? { ...g, status: result.status, homeTeamResult: result.homeTeamResult, awayTeamResult: result.awayTeamResult }
+            : g)),
+        } : prev));
+        setSimulateState((prev) => {
+          const next = new Map(prev);
+          next.delete(gameId);
+          return next;
+        });
+      })
+      .catch(() => {
+        // Error icon persists (no retry) until the player navigates away or the calendar
+        // re-fetches via refreshToken.
+        setSimulateState((prev) => new Map(prev).set(gameId, 'error'));
+      });
+  };
 
   const divisions = useMemo(() => {
     const options = new Map<string, string>();
@@ -167,7 +261,7 @@ const TeamCalendar = () => {
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
 
-      {/* Shared header (Flow B). Per-row simulate + refreshToken subscription land in #25. */}
+      {/* Shared header (Flow B). */}
       <AppHeader backLink={`/${gwId}/${leagueId}`} backLabel="League" />
 
       {/* Team identity */}
@@ -250,7 +344,7 @@ const TeamCalendar = () => {
         <div style={{ border: '1px solid #fcc', background: '#fff8f8', borderRadius: '6px', padding: '16px' }}>
           <p style={{ margin: '0 0 10px', color: '#c00', fontSize: '0.9rem' }}>{error}</p>
           <button
-            onClick={() => setRefreshToken((v) => v + 1)}
+            onClick={() => setRetryToken((v) => v + 1)}
             style={{ padding: '6px 14px', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
           >
             Retry
@@ -283,7 +377,13 @@ const TeamCalendar = () => {
             </span>
           </h3>
           {games.map((game) => (
-            <GameRow key={game.gameId} game={game} teamId={teamId!} />
+            <GameRow
+              key={game.gameId}
+              game={game}
+              teamId={teamId!}
+              simulateStatus={simulateState.get(game.gameId) ?? 'idle'}
+              onSimulate={() => handleSimulate(game.gameId)}
+            />
           ))}
         </div>
       ))}

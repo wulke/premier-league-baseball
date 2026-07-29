@@ -89,6 +89,7 @@ const TeamFactory = (id?: number): ITeam => {
         roundLabel: game.round != null ? `Round ${game.round}` : null,
         homeTeamResult: game.homeTeamResult,
         awayTeamResult: game.awayTeamResult,
+        status: game.status,
       }));
 
       return {
