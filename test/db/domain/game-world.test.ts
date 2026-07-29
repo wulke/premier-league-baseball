@@ -42,4 +42,18 @@ describe('GameWorldFactory', () => {
     const leagues = await db.models.League.findAll({ where: { gameWorldId: { [Op.eq]: gw.id }}});
     // todo write the tests...
   });
+
+  // @spec GWS-001
+  it('newSeason: rethrows errors from failed rollover work', async () => {
+    const gw = await GameWorldFactory().create(useDefaultGameWorld());
+    const originalIncrement = db.models.GameWorld.increment;
+    const rolloverError = new Error('forced season rollover failure');
+
+    db.models.GameWorld.increment = jest.fn().mockRejectedValueOnce(rolloverError) as typeof originalIncrement;
+    try {
+      await expect(GameWorldFactory(gw.id).newSeason()).rejects.toThrow(rolloverError.message);
+    } finally {
+      db.models.GameWorld.increment = originalIncrement;
+    }
+  });
 });

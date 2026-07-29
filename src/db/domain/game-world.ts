@@ -28,6 +28,7 @@ const GameWorldFactory = (id?: number): IGameWorld => {
     find: async () => 
       id ? await db.models.GameWorld.findByPk(id, { include: [db.models.League, db.models.Team]})
          : await db.models.GameWorld.findAll(),
+    // @spec GWS-001
     newSeason: async () => {
       if (!id) throw Error('no game world to start new season');
       return await db.models.GameWorld.findByPk(id, { include: db.models.League })
@@ -54,6 +55,7 @@ const GameWorldFactory = (id?: number): IGameWorld => {
           } catch (error) {
             console.error(error);
             await transaction.rollback();
+            throw error;
           }
           return GameWorldFactory(id).find();
         });
