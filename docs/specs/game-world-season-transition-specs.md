@@ -4,7 +4,7 @@ Backend requirements for `GameWorldFactory(id).newSeason()` season rollover beha
 
 | ID | Requirement | Status |
 |---|---|---|
-| GWS-001 | WHEN `GameWorldFactory(id).newSeason()` encounters an error while advancing the GameWorld or starting any League season THE system SHALL roll back the season transition and reject with the original error instead of returning a success-shaped GameWorld payload | [ ] → #37 |
+| GWS-001 | WHEN `GameWorldFactory(id).newSeason()` encounters an error while advancing the GameWorld or starting any League season THE system SHALL roll back the season transition and reject with the original error instead of returning a success-shaped GameWorld payload | [x] → #37 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 

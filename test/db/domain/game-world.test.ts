@@ -50,9 +50,10 @@ describe('GameWorldFactory', () => {
     const rolloverError = new Error('forced season rollover failure');
 
     db.models.GameWorld.increment = jest.fn().mockRejectedValueOnce(rolloverError) as typeof originalIncrement;
-
-    await expect(GameWorldFactory(gw.id).newSeason()).rejects.toThrow(rolloverError.message);
-
-    db.models.GameWorld.increment = originalIncrement;
+    try {
+      await expect(GameWorldFactory(gw.id).newSeason()).rejects.toThrow(rolloverError.message);
+    } finally {
+      db.models.GameWorld.increment = originalIncrement;
+    }
   });
 });
