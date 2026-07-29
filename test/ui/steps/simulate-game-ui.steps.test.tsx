@@ -61,16 +61,27 @@ interface FetchCall {
   url: string;
 }
 
+interface Deferred {
+  resolve: (value: any) => void;
+}
+
 interface WorldState {
   // GameWorld payload served by GET /api/gameWorld/:gwId
   gw: Record<string, unknown>;
   gwFetchStatus: number;
   // Calendar games served by GET /api/team/:teamId/calendar
   games: Record<string, unknown>[];
-  // Batch (AppHeader) response, read lazily at flush time
+  // Batch (AppHeader) response, staged by a "When POST returns …" step then handed to the
+  // deferred below.
   batchResponse: BatchResponse;
-  // Per-game single-simulate response, read lazily at flush time
+  // Per-game single-simulate response, staged then handed to the per-game deferred.
   singleResponse: Record<number, SingleResponse>;
+  // In-flight POST fetches held as deferreds: the "When POST returns …" steps resolve them
+  // explicitly (after staging) so the component's .then() drains deterministically under
+  // flush(). A pending promise avoids React 18's sync-act microtask-trapping, which otherwise
+  // left the click-fired fetch chain un-drained.
+  batchDeferred: Deferred | null;
+  singleDeferred: Map<number, Deferred>;
   // Recorded outbound requests (assertions on re-fetch / no-duplicate-fetch)
   fetchCalls: FetchCall[];
   // What has been mounted this scenario (mount helpers are idempotent)
@@ -91,6 +102,8 @@ const createWorld = (): WorldState => ({
   games: [],
   batchResponse: { status: 200, simulated: [{}], skipped: [] },
   singleResponse: {},
+  batchDeferred: null,
+  singleDeferred: new Map<number, Deferred>(),
   fetchCalls: [],
   mounted: 'none',
   calendarFetchCount: 0,
@@ -120,16 +133,18 @@ const installFetch = () => {
       return Promise.resolve(resolveWith(world.gwFetchStatus, world.gw));
     }
     if (method === 'POST' && /\/api\/gameWorld\/\d+\/simulate$/.test(url)) {
-      const r = world.batchResponse;
-      return Promise.resolve(resolveWith(r.status, { simulated: r.simulated, skipped: r.skipped }));
+      // Deferred: stays pending until a "When POST returns …" step calls resolveBatch() (after
+      // staging world.batchResponse), so the staged response is what the component sees when
+      // flush() drains the .then() chain. See the Deferred notes in WorldState.
+      return new Promise((resolve) => {
+        world.batchDeferred = { resolve };
+      });
     }
     if (method === 'POST' && /\/api\/game\/(\d+)\/simulate$/.test(url)) {
       const gameId = Number(url.match(/\/api\/game\/(\d+)\/simulate$/)![1]);
-      const r = world.singleResponse[gameId] ?? {
-        status: 200,
-        body: { status: 'COMPLETED', homeTeamResult: 5, awayTeamResult: 2 },
-      };
-      return Promise.resolve(resolveWith(r.status, r.body));
+      return new Promise((resolve) => {
+        world.singleDeferred.set(gameId, { resolve });
+      });
     }
     if (method === 'GET' && /\/api\/team\/\d+\/calendar/.test(url)) {
       world.calendarFetchCount += 1;
@@ -150,6 +165,24 @@ const installFetch = () => {
 
 const countCalls = (method: string, pattern: RegExp) =>
   world.fetchCalls.filter((c) => c.method === method && pattern.test(c.url)).length;
+
+// Resolve the in-flight POST deferreds with the staged response. Called by the "When POST
+// returns …" steps AFTER they stage world.batchResponse / world.singleResponse[gameId].
+const resolveBatch = () => {
+  const d = world.batchDeferred;
+  if (!d) return;
+  const r = world.batchResponse;
+  d.resolve({ ok: r.status >= 200 && r.status < 400, status: r.status, json: () => Promise.resolve({ simulated: r.simulated, skipped: r.skipped }) });
+  world.batchDeferred = null;
+};
+
+const resolveSingle = (gameId: number) => {
+  const d = world.singleDeferred.get(gameId);
+  if (!d) return;
+  const r = world.singleResponse[gameId] ?? { status: 200, body: { status: 'COMPLETED', homeTeamResult: 5, awayTeamResult: 2 } };
+  d.resolve({ ok: r.status >= 200 && r.status < 400, status: r.status, json: () => Promise.resolve(r.body) });
+  world.singleDeferred.delete(gameId);
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test-only context probe (Flow C) — renders the context value into the DOM so
@@ -213,13 +246,11 @@ const ensureCalendar = async () => {
 };
 
 const ensureCrossFlow = async () => {
-  mountProvider(
-    <>
-      <AppHeader />
-      <TeamCalendar />
-    </>,
-    'crossflow',
-  );
+  // TeamCalendar renders its own AppHeader (#24 wired AppHeader into every /:gwId page), so
+  // mounting a second standalone <AppHeader /> alongside it would duplicate
+  // [data-testid="batch-simulate"]. TeamCalendar alone gives the cross-flow scenarios both the
+  // batch button and the per-row simulate UI they need.
+  mountProvider(<TeamCalendar />, 'crossflow');
   await flush();
 };
 
@@ -373,11 +404,9 @@ const registerSteps = ({ given, when, then }: any) => {
   // (Given). Registered ONCE (autoBindSteps matches by text only, keyword ignored).
   const clickBatch = async () => {
     await ensureAppHeader();
-    // Sync act: flushes the synchronous "submitting" state without draining the fetch
-    // microtask, so a later "When POST returns …" step can still stage the response.
-    act(() => {
-      fireEvent.click(batchButton());
-    });
+    // fireEvent already wraps in act; an extra sync act(...) here traps the fetch microtasks so
+    // a later flush() can't drain them (React 18), so click directly.
+    fireEvent.click(batchButton());
   };
   given('the player clicks "Simulate Today"', clickBatch);
 
@@ -398,6 +427,7 @@ const registerSteps = ({ given, when, then }: any) => {
     // SIMUI-013 relies on the ~3s auto-dismiss timer — switch to fake timers BEFORE
     // flushing so the component schedules that timer under the fake clock.
     if (Number(skipped) === 0) jest.useFakeTimers();
+    resolveBatch();
     await flush();
   });
 
@@ -431,6 +461,7 @@ const registerSteps = ({ given, when, then }: any) => {
 
   when(/^POST \/api\/gameWorld\/(\d+)\/simulate returns a 200 response$/, async () => {
     world.batchResponse = { status: 200, simulated: [{}], skipped: [] };
+    resolveBatch();
     await flush();
   });
 
@@ -446,6 +477,7 @@ const registerSteps = ({ given, when, then }: any) => {
 
   when(/^POST \/api\/gameWorld\/(\d+)\/simulate returns a server error$/, async () => {
     world.batchResponse = { status: 500, simulated: [], skipped: [] };
+    resolveBatch();
     await flush();
   });
 
@@ -459,8 +491,9 @@ const registerSteps = ({ given, when, then }: any) => {
 
   given('batch simulation has failed and the Retry button is visible', async () => {
     await ensureAppHeader();
-    clickBatch();
+    await clickBatch();
     world.batchResponse = { status: 500, simulated: [], skipped: [] };
+    resolveBatch();
     await flush();
   });
 
@@ -545,6 +578,7 @@ const registerSteps = ({ given, when, then }: any) => {
       status: 200,
       body: { status: 'COMPLETED', homeTeamResult: Number(home), awayTeamResult: Number(away) },
     };
+    resolveSingle(Number(gameId));
     await flush();
   });
 
@@ -574,6 +608,7 @@ const registerSteps = ({ given, when, then }: any) => {
       body: { status: 'COMPLETED', homeTeamResult: 4, awayTeamResult: 3 },
     };
     fireEvent.click(screen.getByTestId(`simulate-${gameId}`));
+    resolveSingle(Number(gameId));
     await flush();
   });
 
@@ -583,6 +618,7 @@ const registerSteps = ({ given, when, then }: any) => {
 
   when(/^POST \/api\/game\/(\d+)\/simulate returns a 4xx error$/, async (gameId: string) => {
     world.singleResponse[Number(gameId)] = { status: 422, body: { error: 'Unprocessable' } };
+    resolveSingle(Number(gameId));
     await flush();
   });
 
@@ -600,6 +636,7 @@ const registerSteps = ({ given, when, then }: any) => {
     await ensureCalendar();
     fireEvent.click(screen.getByTestId(`simulate-${gameId}`));
     world.singleResponse[Number(gameId)] = { status: 422, body: { error: 'Unprocessable' } };
+    resolveSingle(Number(gameId));
     await flush();
   });
 
@@ -627,6 +664,7 @@ const registerSteps = ({ given, when, then }: any) => {
     // Reflect the batch result in the calendar data so the re-fetch returns updated scores.
     world.games = world.games.map((g) => (g.gameId === 42 ? { ...g, status: 'COMPLETED', homeTeamResult: 7, awayTeamResult: 4 } : g));
     fireEvent.click(batchButton());
+    resolveBatch();
     await flush();
   });
 
@@ -651,6 +689,7 @@ const registerSteps = ({ given, when, then }: any) => {
     world.batchResponse = { status: 200, simulated: [makeGame({ gameId: 42 })], skipped: [] };
     world.games = world.games.map((g) => (g.gameId === 42 ? { ...g, status: 'COMPLETED', homeTeamResult: 6, awayTeamResult: 2 } : g));
     fireEvent.click(batchButton());
+    resolveBatch();
     await flush();
   });
 

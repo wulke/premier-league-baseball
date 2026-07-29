@@ -41,6 +41,7 @@ interface TeamSeasonGame {
   roundLabel?: string | null;
   homeTeamResult: number | null;
   awayTeamResult: number | null;
+  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED';
 }
 
 interface TeamSeasonSchedule {

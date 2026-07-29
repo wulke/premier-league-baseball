@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Endpoints } from '../../api/endpoints';
-import { useParams, useNavigate, Link } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import { useGameWorldContext } from '../context/game-world-context';
+import { AppHeader } from '../components/app-header';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
 
@@ -48,23 +49,9 @@ const GameWorld = () => {
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
 
-      {/* Nav bar */}
-      <header style={{
-        borderBottom: '2px solid #000',
-        padding: '14px 0',
-        marginBottom: '32px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <Link
-          to="/"
-          style={{ textDecoration: 'none', color: '#555', fontSize: '0.85rem', fontWeight: 500 }}
-        >
-          ← Game Worlds
-        </Link>
-        <span style={{ fontSize: '0.8rem', color: '#999' }}>Premier League Baseball</span>
-      </header>
+      {/* Shared header (Flow B) — replaces the page-local nav bar so the batch Simulate Today
+          action and breadcrumb live in one place across the /:gwId subtree. */}
+      <AppHeader backLink="/" backLabel="Game Worlds" />
 
       {/* Game World Identity */}
       <div style={{ marginBottom: '36px' }}>

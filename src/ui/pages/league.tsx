@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Endpoints } from '../../api/endpoints';
 import { DivisionStandings, TeamStanding } from '../../api/models';
-import { useNavigate, useParams, Link } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { Collapsible } from 'radix-ui';
+import { AppHeader } from '../components/app-header';
 
 const StandingsTable = ({
   standings,
@@ -197,23 +198,8 @@ const League = () => {
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
 
-      {/* Nav bar */}
-      <header style={{
-        borderBottom: '2px solid #000',
-        padding: '14px 0',
-        marginBottom: '32px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <Link
-          to={`/${gwId}`}
-          style={{ textDecoration: 'none', color: '#555', fontSize: '0.85rem', fontWeight: 500 }}
-        >
-          ← Game World
-        </Link>
-        <span style={{ fontSize: '0.8rem', color: '#999' }}>Premier League Baseball</span>
-      </header>
+      {/* Shared header (Flow B) */}
+      <AppHeader backLink={`/${gwId}`} backLabel="Game World" />
 
       {/* League identity */}
       <div style={{ marginBottom: '32px' }}>
