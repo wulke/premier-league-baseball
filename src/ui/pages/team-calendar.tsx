@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router';
+import { useParams } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { TeamSeasonCalendar, TeamSeasonGame } from '../../api/models';
+import { AppHeader } from '../components/app-header';
 
 type CalendarFilter = 'all' | 'scheduled' | 'played';
 
@@ -166,23 +167,8 @@ const TeamCalendar = () => {
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
 
-      {/* Nav bar */}
-      <header style={{
-        borderBottom: '2px solid #000',
-        padding: '14px 0',
-        marginBottom: '32px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <Link
-          to={`/${gwId}/${leagueId}`}
-          style={{ textDecoration: 'none', color: '#555', fontSize: '0.85rem', fontWeight: 500 }}
-        >
-          ← League
-        </Link>
-        <span style={{ fontSize: '0.8rem', color: '#999' }}>Premier League Baseball</span>
-      </header>
+      {/* Shared header (Flow B). Per-row simulate + refreshToken subscription land in #25. */}
+      <AppHeader backLink={`/${gwId}/${leagueId}`} backLabel="League" />
 
       {/* Team identity */}
       <div style={{ marginBottom: '28px' }}>
