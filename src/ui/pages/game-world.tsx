@@ -1,25 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Endpoints } from '../../api/endpoints';
 import { useParams, useNavigate, Link } from 'react-router';
+import { useGameWorldContext } from '../context/game-world-context';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
 
 const GameWorld = () => {
   const { gwId } = useParams();
-  const [gw, setGw] = useState<any>(null);
+  const { gw, invalidate } = useGameWorldContext();
   const [startSeasonStatus, setStartSeasonStatus] = useState<StartSeasonStatus>('idle');
   const [startSeasonError, setStartSeasonError] = useState<string | null>(null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    fetch(Endpoints.GetGameWorld.replace(':gwId', gwId!), {
-      method: 'GET',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' }
-    }).then((r) => r.json())
-      .then(setGw)
-      .catch(console.error);
-  }, [gwId]);
 
   const startNewSeason = async () => {
     if (!gwId) return;
@@ -35,7 +26,9 @@ const GameWorld = () => {
       if (!response.ok) throw Error(`Failed to start new season (${response.status})`);
       return response.json();
     }).then((updatedGw) => {
-      setGw(updatedGw);
+      // LLD u3 — refresh the shared context gw instead of a divergent local copy so AppHeader's
+      // chip/batch guard stays in sync after a season start.
+      invalidate();
       setStartSeasonStatus('success');
       if (updatedGw?.Leagues?.length > 0) {
         navigate(`/${gwId}/${updatedGw.Leagues[0].id}`);
