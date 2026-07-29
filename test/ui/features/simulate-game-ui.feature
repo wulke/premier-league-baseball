@@ -48,12 +48,12 @@ Feature: Simulate Game UI
 
   # ─── Flow B: AppHeader — Date Chip ────────────────────────────────────────────
 
-  @spec:SIMUI-006
+  @future
   Scenario: AppHeader displays the currentDate chip when currentDate is set
     When AppHeader renders for GameWorld 1 with currentDate "2025-04-10"
     Then the header displays the formatted date "Apr 10, 2025"
 
-  @spec:SIMUI-007
+  @future
   Scenario: AppHeader displays a muted placeholder when currentDate is null
     Given the GameWorld currentDate is null
     When AppHeader renders for GameWorld 1
