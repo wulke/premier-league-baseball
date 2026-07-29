@@ -1,6 +1,6 @@
 # Specs: Simulate Game UI
 
-UI requirements for the simulate-game React frontend, covering the three coordinated flows from `docs/architecture/design/simulate-game-ui-proposal.md`: **Flow C** — `GameWorldProvider` (React Context owning `gw` + `refreshToken`), **Flow B** — `AppHeader` (shared `currentDate` chip + batch "Simulate Today" state machine), and **Flow A** — `TeamCalendar`/`GameRow` per-row simulate. Components are not yet implemented; every spec below is **Active** (`[ ]`), to be satisfied by #23 (`GameWorldProvider`), #24 (`AppHeader`), and #25 (`TeamCalendar`/`GameRow`).
+UI requirements for the simulate-game React frontend, covering the three coordinated flows from `docs/architecture/design/simulate-game-ui-proposal.md`: **Flow C** — `GameWorldProvider` (React Context owning `gw` + `refreshToken`), **Flow B** — `AppHeader` (batch "Simulate Today" state machine; the `currentDate` chip is retired this branch — see SIMUI-006/007), and **Flow A** — `TeamCalendar`/`GameRow` per-row simulate. Components are not yet implemented; every spec below is **Active** (`[ ]`), to be satisfied by #23 (`GameWorldProvider`), #24 (`AppHeader`), and #25 (`TeamCalendar`/`GameRow`).
 
 | ID | Requirement | Status |
 |---|---|---|
@@ -9,8 +9,8 @@ UI requirements for the simulate-game React frontend, covering the three coordin
 | SIMUI-003 | WHEN invalidate() is called and the re-fetch returns updated GameWorld data THE system SHALL propagate the updated gw to every consuming child component | [ ] |
 | SIMUI-004 | WHEN the GameWorld page renders within the GameWorldProvider THE system SHALL read gw from context and SHALL NOT issue its own GET /api/gameWorld/:gwId request | [ ] |
 | SIMUI-005 | WHEN the GameWorldProvider mounts for a GameWorld IF the GET /api/gameWorld/:gwId fetch fails THE system SHALL expose gw as null so that child pages render without crashing | [ ] |
-| SIMUI-006 | WHEN AppHeader renders IF the GameWorld currentDate is set THE system SHALL display the formatted currentDate chip | [ ] |
-| SIMUI-007 | WHEN AppHeader renders IF the GameWorld currentDate is null THE system SHALL display a muted "No date set" placeholder | [ ] |
+| SIMUI-006 | ~~WHEN AppHeader renders IF the GameWorld currentDate is set THE system SHALL display the formatted currentDate chip~~ **Retired (out of scope this branch)** — currentDate display moved to the future left-pane nav; resolved by the [#21](https://github.com/wulke/premier-league-baseball/issues/21) chip-placement prototype. | [~] |
+| SIMUI-007 | ~~WHEN AppHeader renders IF the GameWorld currentDate is null THE system SHALL display a muted "No date set" placeholder~~ **Retired (out of scope this branch)** — see SIMUI-006; same deferral to the future left-pane nav ([#21](https://github.com/wulke/premier-league-baseball/issues/21)). | [~] |
 | SIMUI-008 | WHEN any of the GameWorld, League, or TeamCalendar pages renders THE system SHALL render the shared AppHeader component on each | [ ] |
 | SIMUI-009 | WHEN AppHeader renders IF gw.config.inProgress is true and gw.currentDate is set THE system SHALL show the "Simulate Today" button visible and enabled | [ ] |
 | SIMUI-010 | WHEN AppHeader renders IF gw.config.inProgress is false THE system SHALL NOT show the "Simulate Today" button | [ ] |
@@ -33,13 +33,13 @@ UI requirements for the simulate-game React frontend, covering the three coordin
 | SIMUI-027 | WHEN a batch simulation succeeds from AppHeader IF the TeamCalendar page is mounted THE system SHALL increment refreshToken via invalidate() and the TeamCalendar SHALL re-fetch GET /api/team/:teamId/calendar | [ ] |
 | SIMUI-028 | WHEN a batch simulation completes IF a previously-SCHEDULED game was simulated THE system SHALL, after the TeamCalendar re-fetch, display that game's updated score and remove its "Simulate" button | [ ] |
 
-*Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
+*Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred, `[~]` Retired (out of scope this branch).*
 
 ## Traceability
 
-- **Gherkin:** `test/ui/features/simulate-game-ui.feature` — one `@spec:SIMUI-###` tag per scenario (28 scenarios). The `@future` "Advance Date blocked by skipped-game warning" scenario is out of scope for this branch (belongs to the future Advance Date use case) and carries no `@spec` tag.
-- **Step definitions:** `test/ui/steps/simulate-game-ui.steps.test.ts` — to be created by [#22](https://github.com/wulke/premier-league-baseball/issues/22); will carry the `// @spec SIMUI-001..SIMUI-028` header comment binding every scenario.
+- **Gherkin:** `test/ui/features/simulate-game-ui.feature` — one `@spec:SIMUI-###` tag per scenario (**26 in-scope scenarios**). SIMUI-006/007 (currentDate chip display) are re-tagged `@future` — retired to the future left-pane nav ([#44](https://github.com/wulke/premier-league-baseball/issues/44), [#21](https://github.com/wulke/premier-league-baseball/issues/21)). The `@future` "Advance Date blocked by skipped-game warning" scenario is likewise out of scope for this branch and carries no `@spec` tag.
+- **Step definitions:** `test/ui/steps/simulate-game-ui.steps.test.ts` — to be created by [#22](https://github.com/wulke/premier-league-baseball/issues/22); will carry a `// @spec` header comment binding the **26** in-scope scenarios (SIMUI-001..SIMUI-028 excluding the retired SIMUI-006/007).
 - **Code entry points** (each lists the IDs it implements) — to be authored by the implementation tickets:
   - `src/ui/context/game-world-context.tsx` (`GameWorldProvider` + `useGameWorldContext`) — [#23](https://github.com/wulke/premier-league-baseball/issues/23) — SIMUI-001..SIMUI-005
-  - `src/ui/components/app-header.tsx` (`AppHeader`) — [#24](https://github.com/wulke/premier-league-baseball/issues/24) — SIMUI-006..SIMUI-018
+  - `src/ui/components/app-header.tsx` (`AppHeader`) — [#24](https://github.com/wulke/premier-league-baseball/issues/24) — SIMUI-008..SIMUI-018 (SIMUI-006/007 retired; ships without a chip)
   - `src/ui/pages/team-calendar.tsx` (`TeamCalendar`/`GameRow`) — [#25](https://github.com/wulke/premier-league-baseball/issues/25) — SIMUI-019..SIMUI-028
