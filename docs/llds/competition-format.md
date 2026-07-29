@@ -103,5 +103,5 @@ today); the League Cup's single division does the same.
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-full-season-simulation-league--league-cup) |
 | **This LLD** | `docs/llds/competition-format.md` |
 | EARS | `docs/specs/competition-format-specs.md` — `CFG-001`.. |
-| Code | `src/api/models.ts` (`CompetitionFormat`, `LeagueConfig`, `DivisionConfig`, `DefaultLeagues`) |
+| Code | `src/api/models.ts` (`CompetitionFormat`, `STANDARD_LEAGUE_FORMAT`, `STANDARD_CUP_FORMAT`, `resolveCompetitionFormat`, `LeagueConfig`, `DivisionConfig`, `DefaultLeagues`) |
 | Decision record | [#36](https://github.com/wulke/premier-league-baseball/issues/36) |
