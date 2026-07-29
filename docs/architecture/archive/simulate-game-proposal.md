@@ -1,3 +1,5 @@
+> Superseded by docs/high-level-design.md and docs/llds/game-simulation.md as of LID backfill.
+
 # Use Case Design: Simulate a Game
 
 ## Step 1 — Use Case Summary
@@ -194,7 +196,7 @@ The existing `POST /api/game/:gameId/simulate` is kept for single-game simulatio
 
 ## Step 4 — Gherkin Test Cases
 
-Generated and saved to [`docs/architecture/test-cases/simulate-game.feature`](../test-cases/simulate-game.feature).
+Generated and saved to [`test/bdd/features/simulate-game.feature`](../../../test/bdd/features/simulate-game.feature).
 
 Scenarios covered:
 

@@ -1,3 +1,5 @@
+> Superseded by docs/high-level-design.md and docs/llds/game-simulation.md as of LID backfill.
+
 # Implementation Plan: Simulate a Game
 
 ## Summary

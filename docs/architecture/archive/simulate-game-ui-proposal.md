@@ -1,3 +1,5 @@
+> Superseded by docs/high-level-design.md and docs/llds/simulate-game-ui.md as of LID backfill.
+
 # Use Case Design: Simulate Game UI
 
 ## Step 1 — Use Case Summary
@@ -15,9 +17,9 @@ The player triggers simulation of one or more scheduled games from the React fro
 ### Related Backend Design
 
 The backend simulate-game use case is fully designed and planned:
-- Proposal: `docs/architecture/design/simulate-game-proposal.md`
-- Implementation plan: `docs/architecture/prd/simulate-game-plan.md`
-- Gherkin tests: `docs/architecture/test-cases/simulate-game.feature`
+- Proposal: `docs/architecture/archive/simulate-game-proposal.md`
+- Implementation plan: `docs/architecture/archive/simulate-game-plan.md`
+- Gherkin tests: `test/bdd/features/simulate-game.feature`
 
 Backend endpoints consumed by this UI:
 - `POST /api/game/:gameId/simulate` — single-game
@@ -277,7 +279,7 @@ None. This is a pure UI use case — no new database tables, columns, or indexes
 
 ## Step 4 — Gherkin Test Cases
 
-Generated and saved to [`docs/architecture/test-cases/simulate-game-ui.feature`](../test-cases/simulate-game-ui.feature).
+Generated and saved to [`test/ui/features/simulate-game-ui.feature`](../../../test/ui/features/simulate-game-ui.feature).
 
 Scenarios covered:
 
