@@ -63,7 +63,7 @@ interface LeagueConfig {
   name: string;
   type: LeagueType;
   divisions: DivisionConfig[];
-  gameFormula?: GameFormula[];
+  format?: CompetitionFormat;
   standingsConfig?: StandingsConfig;
 };
 interface SchedulingConfig {
@@ -74,7 +74,7 @@ interface SchedulingConfig {
 interface DivisionConfig {
   name: string;
   defaultTeams: any[];
-  gameFormula?: GameFormula[];
+  format?: CompetitionFormat;
   schedulingConfig?: SchedulingConfig;
 };
 interface TeamConfig {
@@ -86,40 +86,61 @@ enum LeagueType {
   LeagueCup = 'League Cup'
 };
 
-enum GameFormula {
-  ONE_LEG = '1_LEG',
-  TWO_LEG = '2_LEG',
-  Bo1 = 'Bo1',
-  Bo3 = 'Bo3',
-  Bo5 = 'Bo5',
-  ROUND_ROBIN = 'ROUND_ROBIN',
-  AGGREGATE = 'AGGREGATE',
-  KNOCKOUT = 'KNOCKOUT',
-  REDRAW = 'REDRAW'
+type CompetitionLegs = 'ONE_LEG' | 'TWO_LEG';
+type CompetitionSeriesLength = 'Bo1' | 'Bo3' | 'Bo5';
+type CompetitionTiebreak = 'AGGREGATE_SCORE' | 'OVERTIME' | 'ANOTHER_GAME_W_OVERTIME';
+type CompetitionSeeding = 'FIXED' | 'REDRAW';
+
+type CompetitionFormat = {
+  legs: CompetitionLegs;
+  seriesLength: CompetitionSeriesLength;
+  tiebreak?: CompetitionTiebreak;
+} & (
+  | { structure: 'ROUND_ROBIN' }
+  | { structure: 'KNOCKOUT'; seeding: CompetitionSeeding }
+);
+
+const STANDARD_LEAGUE_FORMAT: CompetitionFormat = {
+  structure: 'ROUND_ROBIN',
+  legs: 'TWO_LEG',
+  seriesLength: 'Bo1',
+  tiebreak: 'AGGREGATE_SCORE',
 };
+
+const STANDARD_CUP_FORMAT: CompetitionFormat = {
+  structure: 'KNOCKOUT',
+  legs: 'ONE_LEG',
+  seriesLength: 'Bo3',
+  seeding: 'REDRAW',
+};
+
+// @spec CFG-001
+const resolveCompetitionFormat = (
+  divisionConfig: DivisionConfig,
+  leagueConfig: LeagueConfig
+): CompetitionFormat | undefined => divisionConfig.format ?? leagueConfig.format;
 
 const DefaultLeagues = {
   [GameWorldType.PremierLeague]: [
     {
       name: GameWorldType.PremierLeague,
       type: LeagueType.League,
+      format: STANDARD_LEAGUE_FORMAT,
       divisions: [
         {
           name: GameWorldType.PremierLeague,
           defaultTeams: [...Array(44).keys()].slice(0,20),
-          gameFormula: [GameFormula.TWO_LEG, GameFormula.Bo1, GameFormula.ROUND_ROBIN, GameFormula.AGGREGATE]
         },
         {
           name: 'Championship',
           defaultTeams: [...Array(44).keys()].slice(20,44),
-          gameFormula: [GameFormula.TWO_LEG, GameFormula.Bo1, GameFormula.ROUND_ROBIN, GameFormula.AGGREGATE]
         },
       ]
     },
     {
       name: 'League Cup',
       type: LeagueType.LeagueCup,
-      gameFormula: [GameFormula.ONE_LEG, GameFormula.Bo3, GameFormula.KNOCKOUT, GameFormula.REDRAW],
+      format: STANDARD_CUP_FORMAT,
       divisions: [
         {
           name: '1st Round',
@@ -197,7 +218,7 @@ const useDefaultGameWorld = (gwType: GameWorldType = GameWorldType.PremierLeague
 
 export {
   GameWorldType,
-  GameFormula,
+  CompetitionFormat,
   NewGameWorld,
   TeamConfig,
   LeagueConfig,
@@ -211,5 +232,8 @@ export {
   TeamSeasonSchedule,
   TeamSeasonCalendar,
   DivisionStandings,
+  STANDARD_CUP_FORMAT,
+  STANDARD_LEAGUE_FORMAT,
+  resolveCompetitionFormat,
   useDefaultGameWorld
 };

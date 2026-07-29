@@ -1,7 +1,21 @@
 import { GameWorldFactory, LeagueFactory } from '../../../src/db/domain';
-import { GameFormula, LeagueConfig, LeagueType, useDefaultGameWorld } from '../../../src/api/models';
+import { LeagueConfig, LeagueType, useDefaultGameWorld } from '../../../src/api/models';
 import db from '../../../src/db/client';
 import { Op } from 'sequelize';
+
+const ROUND_ROBIN_FORMAT = {
+  structure: 'ROUND_ROBIN' as const,
+  legs: 'ONE_LEG' as const,
+  seriesLength: 'Bo1' as const,
+  tiebreak: 'AGGREGATE_SCORE' as const,
+};
+
+const KNOCKOUT_FORMAT = {
+  structure: 'KNOCKOUT' as const,
+  legs: 'ONE_LEG' as const,
+  seriesLength: 'Bo1' as const,
+  seeding: 'FIXED' as const,
+};
 
 describe('LeagueFactory (initial Season)', () => {
   let gw;
@@ -49,12 +63,12 @@ describe('LeagueFactory (initial Season)', () => {
         {
           name: 'Division A',
           defaultTeams: [0, 1],
-          gameFormula: [GameFormula.ONE_LEG, GameFormula.Bo1, GameFormula.ROUND_ROBIN, GameFormula.AGGREGATE]
+          format: ROUND_ROBIN_FORMAT,
         },
         {
           name: 'Division B',
           defaultTeams: [2, 3],
-          gameFormula: [GameFormula.ONE_LEG, GameFormula.Bo1, GameFormula.ROUND_ROBIN, GameFormula.AGGREGATE]
+          format: ROUND_ROBIN_FORMAT,
         }
       ]
     };
@@ -123,7 +137,7 @@ describe('LeagueFactory (initial Season)', () => {
       divisions: [{
         name: 'Single Division',
         defaultTeams: [0, 1],
-        gameFormula: [GameFormula.ONE_LEG, GameFormula.Bo1, GameFormula.ROUND_ROBIN, GameFormula.AGGREGATE]
+        format: ROUND_ROBIN_FORMAT,
       }]
     };
 
@@ -171,7 +185,7 @@ describe('LeagueFactory (initial Season)', () => {
       divisions: [{
         name: 'Round 1',
         defaultTeams: [0, 1],
-        gameFormula: [GameFormula.ONE_LEG, GameFormula.Bo1, GameFormula.KNOCKOUT]
+        format: KNOCKOUT_FORMAT,
       }]
     };
 

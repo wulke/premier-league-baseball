@@ -1,4 +1,4 @@
-import { DefaultStandingsConfig, DivisionStandings, LeagueConfig, StandingsConfig } from "../../api/models";
+import { DefaultStandingsConfig, DivisionStandings, LeagueConfig, StandingsConfig, resolveCompetitionFormat } from "../../api/models";
 import { DivisionFactory } from './division';
 import db from '../client';
 import { Op } from 'sequelize';
@@ -66,6 +66,7 @@ const LeagueFactory = (id?: number): ILeague => {
     isSeasonComplete,
     getStandings,
     create: async (gwId: number, config: LeagueConfig, teamIdRefs: number[]) => {
+      // @spec CFG-001
       const league = await db.models.League.create({
         config,
         gameWorldId: gwId
@@ -75,7 +76,7 @@ const LeagueFactory = (id?: number): ILeague => {
           config: Object.assign({}, {
             ...divisionConfig,
             defaultTeams: divisionConfig.defaultTeams.map((idx) => teamIdRefs[idx]),
-            gameFormula: divisionConfig.gameFormula ?? config.gameFormula,
+            format: resolveCompetitionFormat(divisionConfig, config),
           }),
           leagueId: league.id
         })

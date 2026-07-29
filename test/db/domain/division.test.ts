@@ -1,6 +1,20 @@
-import { DefaultStandingsConfig, GameFormula, LeagueConfig, LeagueType, TeamConfig } from '../../../src/api/models';
+import { DefaultStandingsConfig, LeagueConfig, LeagueType, TeamConfig } from '../../../src/api/models';
 import db from '../../../src/db/client';
 import { DivisionFactory, LeagueFactory, TeamFactory } from '../../../src/db/domain';
+
+const ONE_LEG_ROUND_ROBIN_FORMAT = {
+  structure: 'ROUND_ROBIN' as const,
+  legs: 'ONE_LEG' as const,
+  seriesLength: 'Bo1' as const,
+  tiebreak: 'AGGREGATE_SCORE' as const,
+};
+
+const TWO_LEG_ROUND_ROBIN_FORMAT = {
+  structure: 'ROUND_ROBIN' as const,
+  legs: 'TWO_LEG' as const,
+  seriesLength: 'Bo1' as const,
+  tiebreak: 'AGGREGATE_SCORE' as const,
+};
 
 describe('DivisionFactory', () => {
   let gw;
@@ -13,7 +27,7 @@ describe('DivisionFactory', () => {
       {
         name: 'Test Division',
         defaultTeams: [...Array(teamConfigs.length).keys()],
-        gameFormula: [GameFormula.TWO_LEG, GameFormula.Bo1, GameFormula.ROUND_ROBIN, GameFormula.AGGREGATE]
+        format: TWO_LEG_ROUND_ROBIN_FORMAT,
       }
     ]
   };
@@ -63,7 +77,7 @@ describe('DivisionFactory', () => {
       divisions: [{
         name: 'Standings Division',
         defaultTeams: [...Array(sgwTeams.length).keys()],
-        gameFormula: [GameFormula.ONE_LEG, GameFormula.Bo1, GameFormula.ROUND_ROBIN, GameFormula.AGGREGATE]
+        format: ONE_LEG_ROUND_ROBIN_FORMAT,
       }]
     };
     const sgLeague = await LeagueFactory().create(sgw.id, sgLeagueConfig, sgwTeams.map(({ id }) => id));
@@ -150,7 +164,7 @@ describe('DivisionFactory', () => {
           divisions: [{
             name: 'ONE_LEG Division',
             defaultTeams: [...Array(N).keys()],
-            gameFormula: [GameFormula.ONE_LEG, GameFormula.Bo1, GameFormula.ROUND_ROBIN, GameFormula.AGGREGATE]
+            format: ONE_LEG_ROUND_ROBIN_FORMAT,
           }]
         }, sgTeams.map(({ id }) => id));
         sgDivId = await db.models.League.findByPk(sgLeague.id, { include: db.models.Division })
@@ -212,7 +226,7 @@ describe('DivisionFactory', () => {
           divisions: [{
             name: 'TWO_LEG Division',
             defaultTeams: [...Array(N).keys()],
-            gameFormula: [GameFormula.TWO_LEG, GameFormula.Bo1, GameFormula.ROUND_ROBIN, GameFormula.AGGREGATE]
+            format: TWO_LEG_ROUND_ROBIN_FORMAT,
           }]
         }, tlTeams.map(({ id }) => id));
         tlDivId = await db.models.League.findByPk(tlLeague.id, { include: db.models.Division })
@@ -267,7 +281,7 @@ describe('DivisionFactory', () => {
       );
       const league = await LeagueFactory().create(iscGw.id, {
         name: 'ISC League', type: LeagueType.League,
-        divisions: [{ name: 'ISC Division', defaultTeams: [0, 1], gameFormula: [GameFormula.ONE_LEG, GameFormula.ROUND_ROBIN] }]
+        divisions: [{ name: 'ISC Division', defaultTeams: [0, 1], format: ONE_LEG_ROUND_ROBIN_FORMAT }]
       }, teams.map(({ id }) => id));
       iscDivId = await db.models.League.findByPk(league.id, { include: db.models.Division })
         .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });

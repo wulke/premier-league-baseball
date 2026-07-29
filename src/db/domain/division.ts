@@ -1,4 +1,4 @@
-import { GameFormula, SchedulingConfig, StandingsConfig, TeamStanding } from '../../api/models';
+import { CompetitionFormat, SchedulingConfig, StandingsConfig, TeamStanding } from '../../api/models';
 import { GameFactory } from './game';
 import db from '../client';
 
@@ -47,7 +47,7 @@ const DivisionFactory = (id?: number): IDivision => {
   };
 
   /** T4: generates matchday rounds for table (ROUND_ROBIN) leagues */
-  const generateTableGames = (teams: number[], gameFormula: GameFormula[]): { round: number; pairings: [number, number][] }[] => {
+  const generateTableGames = (teams: number[], format: CompetitionFormat): { round: number; pairings: [number, number][] }[] => {
     const rounds: { round: number; pairings: [number, number][] }[] = [];
     const num = teams.length;
     const rotatedTeams = [...teams];
@@ -68,7 +68,7 @@ const DivisionFactory = (id?: number): IDivision => {
     rounds.sort(() => Math.random() - 0.5);
     rounds.forEach((r, i) => { r.round = i + 1; });
 
-    if (gameFormula.includes(GameFormula.TWO_LEG)) {
+    if (format.legs === 'TWO_LEG') {
       const firstLegCount = rounds.length;
       const secondLeg = [...rounds].sort(() => Math.random() - 0.5);
       secondLeg.forEach((r, i) => {
@@ -179,12 +179,12 @@ const DivisionFactory = (id?: number): IDivision => {
       if (!(await isSeasonComplete(currentYear))) throw Error(`Season is not complete for div='${id}' and year='${currentYear}'`);
 
       const newYear = currentYear + 1;
-      const { gameFormula, schedulingConfig } = div.config;
+      const { format, schedulingConfig } = div.config;
 
       // (2) get team ids for the new season
       const teams: number[] = await getSeedTeamIdsForDivision(newYear);
 
-      if (gameFormula.includes(GameFormula.KNOCKOUT)) {
+      if (format.structure === 'KNOCKOUT') {
         // --- T7: ELIMINATION PATH ---
 
         // (3) create DivisionSeason entries with bracketSlot assigned by seed order
@@ -200,7 +200,7 @@ const DivisionFactory = (id?: number): IDivision => {
         // (4) pair teams for round 1
         //   REDRAW: random shuffle before pairing
         //   fixed bracket: pair by slot order (slot 0 vs 1, slot 2 vs 3, ...)
-        const ordered = gameFormula.includes(GameFormula.REDRAW)
+        const ordered = format.seeding === 'REDRAW'
           ? [...teams].sort(() => Math.random() - 0.5)
           : [...teams];
 
@@ -213,7 +213,7 @@ const DivisionFactory = (id?: number): IDivision => {
         await createRoundGames(round1Pairings, 1, scheduleDate(schedulingConfig, 0), divTeams);
 
         // (6) TWO_LEG: also create round 2 return legs immediately (home/away swapped)
-        if (gameFormula.includes(GameFormula.TWO_LEG)) {
+        if (format.legs === 'TWO_LEG') {
           const returnLeg: [number, number][] = round1Pairings.map(([h, a]) => [a, h]);
           await createRoundGames(returnLeg, 2, scheduleDate(schedulingConfig, 1), divTeams);
         }
@@ -228,7 +228,7 @@ const DivisionFactory = (id?: number): IDivision => {
         ).then((results) => results.map(({ dataValues }) => dataValues));
 
         // (4) generate all matchday rounds with round numbers
-        const matchdays = generateTableGames(teams, gameFormula);
+        const matchdays = generateTableGames(teams, format);
 
         // (5) create games for each matchday in sequence
         for (const { round, pairings } of matchdays) {

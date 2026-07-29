@@ -1,8 +1,15 @@
 import db from '../../src/db/client';
 import { LeagueFactory } from '../../src/db/domain';
 import { Endpoints } from '../../src/api/endpoints';
-import { GameFormula, LeagueConfig, LeagueType } from '../../src/api/models';
+import { LeagueConfig, LeagueType } from '../../src/api/models';
 import { router } from '../../src/api/router';
+
+const STANDARD_TEST_FORMAT = {
+  structure: 'ROUND_ROBIN' as const,
+  legs: 'ONE_LEG' as const,
+  seriesLength: 'Bo1' as const,
+  tiebreak: 'AGGREGATE_SCORE' as const,
+};
 
 describe('League standings API', () => {
   beforeAll(async () => {
@@ -22,7 +29,7 @@ describe('League standings API', () => {
       divisions: [{
         name: 'API Division',
         defaultTeams: [0, 1],
-        gameFormula: [GameFormula.ONE_LEG, GameFormula.Bo1, GameFormula.ROUND_ROBIN, GameFormula.AGGREGATE]
+        format: STANDARD_TEST_FORMAT,
       }]
     };
     const league = await LeagueFactory().create(gw.id, leagueConfig, teams.map(({ id }) => id));

@@ -198,7 +198,7 @@ Add `bracketSlot: DataTypes.INTEGER` (nullable) to `DivisionSeason`. Update the 
 ### T7 — Elimination round-1 generation in `newSeason()`
 **Files:** `src/db/domain/division.ts`, `docs/architecture/process-flow/start-new-season-division.md`
 
-When `gameFormula` includes `KNOCKOUT`, branch away from round-robin logic:
+When `format.structure` is `KNOCKOUT`, branch away from round-robin logic:
 - Assign a `bracketSlot` to each `DivisionSeason` entry (0, 1, 2, …, N-1)
 - Pair teams for round 1:
   - `REDRAW`: shuffle team IDs then pair sequentially

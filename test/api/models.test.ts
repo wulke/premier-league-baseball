@@ -44,11 +44,11 @@ describe('competition format config', () => {
       seeding: 'REDRAW',
     };
 
-    // @ts-expect-error CFG-002: ROUND_ROBIN cannot set seeding
     const invalidRoundRobin: CompetitionFormat = {
       structure: 'ROUND_ROBIN',
       legs: 'ONE_LEG',
       seriesLength: 'Bo1',
+      // @ts-expect-error CFG-002: ROUND_ROBIN cannot set seeding
       seeding: 'FIXED',
     };
 
