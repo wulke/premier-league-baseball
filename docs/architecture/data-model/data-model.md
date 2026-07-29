@@ -52,6 +52,13 @@ erDiagram
     int divisionSeasonId FK
   }
 
+  SEASON_RESULT {
+    int id PK
+    int divisionId FK
+    int year
+    int championTeamId "FK to Team.id — nullable until decided"
+  }
+
   GAME_WORLD ||--o{ LEAGUE : has_many
   GAME_WORLD ||--o{ TEAM : has_many
   LEAGUE ||--o{ DIVISION : has_many
@@ -64,8 +71,13 @@ erDiagram
   GAME ||--o{ DIVISION_SEASON_GAME : has_many
   DIVISION_SEASON ||--o{ DIVISION_SEASON_GAME : has_many
   GAME }o--o{ DIVISION_SEASON : "through DivisionSeasonGame"
+
+  DIVISION ||--o{ SEASON_RESULT : has_many
 ```
 
 Notes
 - `DivisionSeason` has a unique composite index on `(divisionId, teamId, year)`.
 - `Game.homeTeam` and `Game.awayTeam` are intended FKs to `Team.id` but are not defined as Sequelize associations yet.
+- `SeasonResult` (new, [HLD: Full Season Simulation](../../high-level-design.md#hld-full-season-simulation-league--league-cup)) is a general-purpose historical-fact table, not a live-season field — one row per `(divisionId, year)` once that division's season is decided. Populated for `KNOCKOUT` divisions when a round resolves to a single winner, and for the top-tier `ROUND_ROBIN` division when `isSeasonComplete` flips true. It is the single place the UI's champion banner reads from, regardless of competition structure. See `docs/llds/knockout-bracket.md`.
+- `Division.config` (JSON) carries a `CompetitionFormat` — a discriminated union on `structure` (`ROUND_ROBIN` | `KNOCKOUT`) that replaces the old flat `GameFormula[]` array; resolved as `divisionConfig.format ?? leagueConfig.format`. See `docs/llds/competition-format.md`. Not modeled as ERD columns since it lives inside the existing `config` JSON blob, not new typed columns.
+- `Game.round` (existing, previously matchday-only) and `DivisionSeason.bracketSlot` (existing) are reused as-is for knockout round-advancement — no new `Game`/`DivisionSeason` columns were needed for the bracket redesign. Byes are `Game` rows with `awayTeam: null`, already-`COMPLETED`; tiebreaker games reuse the tied legs' `round` number rather than introducing a new field.
