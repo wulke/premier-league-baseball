@@ -11,7 +11,7 @@ Introduces the concept of time as a gameplay constraint.
 
 ## Epic 2: Matchday Execution (Batch Simulation Engine)
 Handles the bulk simulation of games to allow efficient season progression.
-*   **Detailed Design:** See [Simulate a Game Use Case](../design/simulate-game-proposal.md)
+*   **Detailed Design:** See [Simulate a Game Use Case](../archive/simulate-game-proposal.md)
 *   **Key Requirements:**
     *   Implement Batch Simulation API (`POST /api/gameWorld/:gwId/simulate`).
     *   Add `status` (SCHEDULED, IN_PROGRESS, COMPLETED) to the `Game` model.
@@ -77,7 +77,7 @@ divisions; looping `newSeason()` into a second season; a multi-season "new seaso
 ---
 
 ## Infrastructure Prerequisite (Current Design)
-Before implementing these epics, the following data model changes identified in the [Simulate a Game Use Case](../design/simulate-game-proposal.md) are required:
+Before implementing these epics, the following data model changes identified in the [Simulate a Game Use Case](../archive/simulate-game-proposal.md) are required:
 1.  **Game Model:** Add `status` (`ENUM('SCHEDULED', 'IN_PROGRESS', 'COMPLETED')`).
 2.  **GameWorld Model:** Add `currentDate` (`DATEONLY`).
 3.  **New `SeasonResult` model:** `divisionId`, `year`, `championTeamId` (nullable) — see `docs/llds/knockout-bracket.md`.

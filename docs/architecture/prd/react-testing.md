@@ -35,7 +35,7 @@ Establish a robust Testing-Library + Jest-Cucumber infrastructure to enable BDD 
 
 ### Task 4: UI BDD Scaffold — "Simulate Today" Action
 **File(s):** `test/ui/features/simulate-batch-ui.feature`, `test/ui/steps/simulate-batch-ui.steps.test.tsx`
-*   Create the first UI Gherkin feature based on the `simulate-game-ui-proposal.md`.
+*   Create the first UI Gherkin feature based on the archived `simulate-game-ui-proposal.md`.
 *   Implement the step definitions using RTL to click the "Simulate Today" button and verify the success summary.
 
 ### Task 5: Update `CLAUDE.md` and Scripts

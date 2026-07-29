@@ -13,7 +13,7 @@
 > `src/ui/` code.
 >
 > Upstream: [HLD](../high-level-design.md) · Proposal:
-> [`docs/architecture/design/simulate-game-ui-proposal.md`](../architecture/design/simulate-game-ui-proposal.md)
+> [`docs/architecture/archive/simulate-game-ui-proposal.md`](../architecture/archive/simulate-game-ui-proposal.md)
 > · EARS: [`docs/specs/simulate-game-ui-specs.md`](../specs/simulate-game-ui-specs.md)
 > (`SIMUI-001`…`SIMUI-028`) · Gherkin: `test/ui/features/simulate-game-ui.feature`
 > (28 scenarios, one `@spec:SIMUI-###` tag each) · Backend LLD:
@@ -204,7 +204,7 @@ surface something the proposal does not address.
 | Layer | Artifact |
 |---|---|
 | HLD | [`docs/high-level-design.md`](../high-level-design.md) |
-| Use-case design | [`docs/architecture/design/simulate-game-ui-proposal.md`](../architecture/design/simulate-game-ui-proposal.md) |
+| Use-case design | [`docs/architecture/archive/simulate-game-ui-proposal.md`](../architecture/archive/simulate-game-ui-proposal.md) |
 | **This LLD** | `docs/llds/simulate-game-ui.md` |
 | Backend LLD (sibling) | [`docs/llds/game-simulation.md`](./game-simulation.md) |
 | EARS | `docs/specs/simulate-game-ui-specs.md` — `SIMUI-001`…`SIMUI-028` |

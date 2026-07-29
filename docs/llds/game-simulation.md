@@ -7,7 +7,7 @@
 > called out in the [Edge Case Probe](#edge-case-probe).
 >
 > Upstream: [HLD: Simulate Game](../high-level-design.md) · EARS: `docs/specs/simulate-game-specs.md`
-> (`SIM-001`..`SIM-015`) · PRD: `docs/architecture/prd/simulate-game-plan.md` ·
+> (`SIM-001`..`SIM-015`) · PRD: `docs/architecture/archive/simulate-game-plan.md` ·
 > Gherkin: `test/bdd/features/simulate-game.feature`
 
 ## Scope

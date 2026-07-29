@@ -1,6 +1,6 @@
 # Specs: Simulate Game UI
 
-UI requirements for the simulate-game React frontend, covering the three coordinated flows from `docs/architecture/design/simulate-game-ui-proposal.md`: **Flow C** — `GameWorldProvider` (React Context owning `gw` + `refreshToken`), **Flow B** — `AppHeader` (batch "Simulate Today" state machine; the `currentDate` chip is retired this branch — see SIMUI-006/007), and **Flow A** — `TeamCalendar`/`GameRow` per-row simulate. Components are not yet implemented; every spec below is **Active** (`[ ]`), to be satisfied by #23 (`GameWorldProvider`), #24 (`AppHeader`), and #25 (`TeamCalendar`/`GameRow`).
+UI requirements for the simulate-game React frontend, covering the three coordinated flows from `docs/architecture/archive/simulate-game-ui-proposal.md`: **Flow C** — `GameWorldProvider` (React Context owning `gw` + `refreshToken`), **Flow B** — `AppHeader` (batch "Simulate Today" state machine; the `currentDate` chip is retired this branch — see SIMUI-006/007), and **Flow A** — `TeamCalendar`/`GameRow` per-row simulate. Components are not yet implemented; every spec below is **Active** (`[ ]`), to be satisfied by #23 (`GameWorldProvider`), #24 (`AppHeader`), and #25 (`TeamCalendar`/`GameRow`).
 
 | ID | Requirement | Status |
 |---|---|---|
