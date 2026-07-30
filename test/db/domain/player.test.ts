@@ -1,7 +1,9 @@
 // @spec PATTR-001,PATTR-002,PATTR-003
+import { PlayerAttributes } from '../../../src/api/models';
 import db from '../../../src/db/client';
+import { PlayerFactory, primaryPosition } from '../../../src/db/domain/player';
 
-const nonPitcherAttributes = {
+const nonPitcherAttributes: PlayerAttributes = {
   contact: 71,
   power: 64,
   armStrength: 58,
@@ -33,9 +35,6 @@ describe('Player model + attribute schema', () => {
 
   // @spec PATTR-001
   it('@spec PATTR-001 derives primary position from the highest-rated positions entry', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { primaryPosition } = require('../../../src/db/domain/player');
-
     expect(
       primaryPosition({
         attributes: nonPitcherAttributes,
@@ -51,23 +50,19 @@ describe('Player model + attribute schema', () => {
       config: { name: 'Chicago Whales' }
     }).then(({ dataValues }) => dataValues);
 
-    const player = await db.models.Player.create({
-      teamId: null,
-      gameWorldId: gameWorld.id,
-      attributes: nonPitcherAttributes,
-    }).then(({ dataValues }) => dataValues);
+    const player = await PlayerFactory().create(gameWorld.id, nonPitcherAttributes, null);
 
-    await db.models.Player.create({
-      teamId: team.id,
-      gameWorldId: gameWorld.id,
-      attributes: {
+    await PlayerFactory().create(
+      gameWorld.id,
+      {
         ...nonPitcherAttributes,
         positions: {
           ...nonPitcherAttributes.positions,
           Pitcher: 91,
         },
       },
-    });
+      team.id
+    );
 
     const gameWorldWithPlayers = await db.models.GameWorld.findByPk(gameWorld.id, {
       include: [db.models.Player],
