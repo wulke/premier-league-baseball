@@ -5,10 +5,10 @@ Backend requirements for the League-level bracket-state endpoint (`GET /api/leag
 
 | ID | Requirement | Status |
 |---|---|---|
-| API-001 | WHEN GET /api/league/:leagueId/bracket is called IF no League with that id exists THE system SHALL reject the request | [ ] |
-| API-002 | WHEN GET /api/league/:leagueId/bracket is called THE system SHALL return, for each division, `divisionId`, `divisionName`, `structure`, an optional `champion` sourced from `SeasonResult`, and `rounds` (empty for `ROUND_ROBIN` divisions) | [ ] |
-| API-003 | WHEN a KNOCKOUT division is mid-redraw (a round has resolved but the next round's games are not yet generated) THE system SHALL return the resolved rounds as `COMPLETE`/`IN_PROGRESS` and the ungenerated round as `PENDING` with null-teamed ties | [ ] |
-| API-004 | WHEN a division's `champion` is present THE system SHALL source it from `SeasonResult.championTeamId` identically for both `ROUND_ROBIN` and `KNOCKOUT` divisions | [ ] |
+| API-001 | WHEN GET /api/league/:leagueId/bracket is called IF no League with that id exists THE system SHALL reject the request | [x] → #56 |
+| API-002 | WHEN GET /api/league/:leagueId/bracket is called THE system SHALL return, for each division, `divisionId`, `divisionName`, `structure`, an optional `champion` sourced from `SeasonResult`, and `rounds` (empty for `ROUND_ROBIN` divisions) | [x] → #56 |
+| API-003 | WHEN a KNOCKOUT division is mid-redraw (a round has resolved but the next round's games are not yet generated) THE system SHALL return the resolved rounds as `COMPLETE`/`IN_PROGRESS` and the ungenerated round as `PENDING` with null-teamed ties | [x] → #56 |
+| API-004 | WHEN a division's `champion` is present THE system SHALL source it from `SeasonResult.championTeamId` identically for both `ROUND_ROBIN` and `KNOCKOUT` divisions | [x] → #56 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 

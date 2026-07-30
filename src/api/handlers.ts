@@ -25,6 +25,11 @@ const getLeagueStandings = async (leagueId: number) => {
   return await LeagueFactory(leagueId).getStandings();
 };
 
+// @spec API-001,API-002,API-003,API-004
+const getLeagueBracket = async (leagueId: number) => {
+  return await LeagueFactory(leagueId).getBracket();
+};
+
 const newGameWorld = async (config: NewGameWorld) => {
   const newGameWorld = await GameWorldFactory().create(config);
   console.debug(newGameWorld);
@@ -54,6 +59,7 @@ const getTeamSchedule = async (teamId: number, gwId: number, leagueId?: number) 
 export {
   getGameWorld,
   getGameWorlds,
+  getLeagueBracket,
   getLeague,
   getLeagueStandings,
   getTeamSchedule,

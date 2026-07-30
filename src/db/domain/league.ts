@@ -1,4 +1,4 @@
-import { DefaultStandingsConfig, DivisionStandings, LeagueConfig, StandingsConfig, resolveCompetitionFormat } from "../../api/models";
+import { DefaultStandingsConfig, DivisionStandings, LeagueConfig, LeagueDivisionBracket, StandingsConfig, resolveCompetitionFormat } from "../../api/models";
 import { DivisionFactory } from './division';
 import db from '../client';
 import { Op } from 'sequelize';
@@ -8,6 +8,7 @@ interface ILeague {
   get: () => any;
   isSeasonComplete: (year: number) => any;
   newSeason: (year: number) => any;
+  getBracket: () => Promise<LeagueDivisionBracket[]>;
   getStandings: () => Promise<DivisionStandings[]>;
 };
 
@@ -62,8 +63,34 @@ const LeagueFactory = (id?: number): ILeague => {
     );
   };
 
+  // @spec API-001,API-002,API-003,API-004
+  const getBracket = async (): Promise<LeagueDivisionBracket[]> => {
+    const league = await db.models.League.findByPk(id, {
+      include: [db.models.GameWorld, db.models.Division]
+    }).then((l) => {
+      if (!l) throw Error(`Invalid League '${id}'`);
+      return l.dataValues;
+    });
+
+    const year: number = league.GameWorld.year;
+
+    return Promise.all(
+      league.Divisions.map(async ({ dataValues: div }) => {
+        const bracket = await DivisionFactory(div.id).getBracket(year);
+        return {
+          divisionId: div.id,
+          divisionName: div.config.name,
+          structure: div.config.format.structure,
+          ...(bracket.champion ? { champion: bracket.champion } : {}),
+          rounds: bracket.rounds,
+        };
+      })
+    );
+  };
+
   return {
     isSeasonComplete,
+    getBracket,
     getStandings,
     create: async (gwId: number, config: LeagueConfig, teamIdRefs: number[]) => {
       // @spec CFG-001
