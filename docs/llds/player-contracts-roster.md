@@ -11,16 +11,22 @@ hooked into Team creation. Depends on `Player.attributes` shape (`docs/llds/play
 Does not cover Contract-expiry enforcement/free-agency, or transfer/trade mechanics — both explicitly
 deferred past this schema map (see HLD "Out of scope").
 
-## Current implementation slice (`#73`)
+## Current implementation slice (`#74`)
 
-`#73` lands only the schema surface required for later roster generation:
+`#73` landed the schema surface required for roster generation:
 
 - `Contract` Sequelize model registration
 - `Player`/`Team` associations to `Contract`
-- exported roster-size constants for later generation work
+- exported roster-size constants
 
-It does **not** implement the roster-generation algorithm below, roster-size enforcement, or any
-runtime behavior tied to `Contract.endYear`.
+`#74` completes the runtime slice described below:
+
+- `PlayerFactory.generateRoster(teamId, gwId)` creates the initial roster
+- `TeamFactory.create()` calls `generateRoster()` immediately after the `Team` row exists
+- generated `Player.teamId` and issued `Contract.teamId` are written together at this call site
+
+Roster-size enforcement beyond generation-by-construction and any runtime behavior tied to
+`Contract.endYear` remain out of scope.
 
 ## Interface / Data Model
 
@@ -138,5 +144,5 @@ generateRoster(teamId, gwId):
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-players-attributes-stats--contracts) |
 | **This LLD** | `docs/llds/player-contracts-roster.md` |
 | EARS | `docs/specs/player-contracts-specs.md` — `PCON-001`.. |
-| Code | `src/db/model/contract.ts` (`Contract`), `src/db/model/associations.ts`, `src/db/domain/contract.ts` (`MIN_ROSTER_SIZE`, `MAX_ROSTER_SIZE`); roster generation remains future work in `src/db/domain/player.ts` and `src/db/domain/team.ts` |
+| Code | `src/db/model/contract.ts` (`Contract`), `src/db/model/associations.ts`, `src/db/domain/contract.ts` (`MIN_ROSTER_SIZE`, `MAX_ROSTER_SIZE`), `src/db/domain/player.ts` (`generateRoster`), `src/db/domain/team.ts` (`TeamFactory.create()` hook) |
 | Decision record | [#63](https://github.com/wulke/premier-league-baseball/issues/63), [#64](https://github.com/wulke/premier-league-baseball/issues/64) |
