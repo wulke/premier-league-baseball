@@ -1,10 +1,16 @@
+import { Transaction } from 'sequelize';
 import { PlayerAttributes, PlayerPosition, PlayerRecord } from '../../api/models';
 import db from '../client';
 import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE } from './contract';
 
+interface GenerateRosterOptions {
+  gameWorldYear?: number;
+  transaction?: Transaction;
+}
+
 interface IPlayer {
   create: (gameWorldId: number, attributes: PlayerAttributes, teamId?: number | null) => Promise<PlayerRecord>;
-  generateRoster: (teamId: number, gameWorldId: number) => Promise<PlayerRecord[]>;
+  generateRoster: (teamId: number, gameWorldId: number, options?: GenerateRosterOptions) => Promise<PlayerRecord[]>;
 }
 
 const PLAYER_POSITIONS: PlayerPosition[] = [
@@ -83,10 +89,11 @@ const PlayerFactory = (): IPlayer => {
     create,
 
     // @spec PCON-001,PCON-002,PCON-003,PCON-004,PCON-007
-    generateRoster: async (teamId: number, gameWorldId: number) => {
-      const gameWorld = await db.models.GameWorld.findByPk(gameWorldId).then((gw) => {
+    generateRoster: async (teamId: number, gameWorldId: number, options: GenerateRosterOptions = {}) => {
+      const { gameWorldYear, transaction } = options;
+      const year = gameWorldYear ?? await db.models.GameWorld.findByPk(gameWorldId, { transaction }).then((gw) => {
         if (!gw) throw Error(`GameWorld '${gameWorldId}' not found`);
-        return gw.dataValues;
+        return gw.dataValues.year;
       });
 
       const headcount = MIN_ROSTER_SIZE + Math.floor(Math.random() * (MAX_ROSTER_SIZE - MIN_ROSTER_SIZE + 1));
@@ -97,16 +104,16 @@ const PlayerFactory = (): IPlayer => {
           gameWorldId,
           attributes: generatePlayerAttributes(),
         }))
-      ).then((rows) => rows.map(({ dataValues }) => dataValues));
+      , { transaction }).then((rows) => rows.map(({ dataValues }) => dataValues));
 
       await db.models.Contract.bulkCreate(
         players.map((player) => ({
           playerId: player.id,
           teamId,
-          startYear: gameWorld.year,
-          endYear: gameWorld.year,
+          startYear: year,
+          endYear: year,
         }))
-      );
+      , { transaction });
 
       return players;
     },
@@ -122,5 +129,4 @@ const primaryPosition = (player: Pick<PlayerRecord, 'attributes'>): PlayerPositi
   ), PLAYER_POSITIONS[0]);
 };
 
-export { PlayerFactory, primaryPosition };
-export { allocateRosterSlots };
+export { PlayerFactory, primaryPosition, allocateRosterSlots };

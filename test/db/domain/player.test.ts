@@ -29,6 +29,20 @@ const nonPitcherAttributes: PlayerAttributes = {
   ],
 };
 
+const EXPECTED_PITCHER_COUNTS: Record<number, number> = {
+  20: 8,
+  21: 8,
+  22: 9,
+  23: 9,
+  24: 10,
+  25: 10,
+  26: 10,
+  27: 11,
+  28: 11,
+  29: 12,
+  30: 12,
+};
+
 describe('Player model + attribute schema', () => {
   beforeAll(async () => {
     await db.sync({ force: true });
@@ -94,7 +108,7 @@ describe('Player model + attribute schema', () => {
         .map(([, count]) => count);
 
       expect(slots).toHaveLength(headcount);
-      expect(pitcherCount).toBe(Math.round(headcount * 0.4));
+      expect(pitcherCount).toBe(EXPECTED_PITCHER_COUNTS[headcount]);
       expect(fielderCounts).toHaveLength(8);
       expect(Math.max(...fielderCounts) - Math.min(...fielderCounts)).toBeLessThanOrEqual(1);
     }
