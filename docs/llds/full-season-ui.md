@@ -93,8 +93,15 @@ for a Cup), not one per Division card.
 ### GameWorld hub "Season Complete" block (new, `src/ui/pages/game-world.tsx`)
 
 ```ts
-// Existing "Season — In Progress" block (reads gw.config?.inProgress today) becomes computed:
-const seasonComplete = leagues.every((l) => l.champion != null); // both Leagues decided
+// Existing "Season — In Progress" block becomes computed from live league bracket fetches:
+const seasonSummary = await Promise.all(
+  leagues.map(async (league) => ({
+    leagueId: league.id,
+    leagueName: league.config.name,
+    champion: await getTopLevelChampion(league.id), // from GetLeagueBracket
+  }))
+);
+const seasonComplete = seasonSummary.every((league) => league.champion != null);
 // renders either:
 //   "Season — In Progress"
 //   "Season {year} — Complete   🏆 Premier League: <team> · 🏆 League Cup: <team>"
@@ -123,9 +130,28 @@ unmodified.
      ELSE → render StandingsTable(standings)
 3. IF division.champion present AND division is top-tier (or the Cup's sole division):
      render champion banner in place of the "in progress" subtitle
-4. IF division.champion present → disable that division's simulate-triggering controls
-   (consistent with existing batch-button enablement guards) — navigation (team-click → calendar,
-   BracketView expand-on-click) stays interactive; no dimming/watermark/final-layout treatment
+4. IF division.champion present on the League page's champion-producing division:
+     suppress/disable that page's simulate-triggering control for the decided competition
+   navigation (team-click → calendar, BracketView expand-on-click) stays interactive; no
+   dimming/watermark/final-layout treatment
+
+### Computing the hub block from league brackets
+
+```
+1. GameWorld page reads gw.Leagues from GameWorldProvider as it does today
+2. IF gw.config?.inProgress is false:
+     preserve the existing "No active season" block and start-season CTA
+3. ELSE:
+     GET /api/league/:leagueId/bracket for each league row
+4. FOR each league:
+     pick the champion-producing division
+       a. League type "League"      -> division.config.isTopTier === true
+       b. League type "League Cup"  -> the sole division / first bracket entry
+     resolve championTeamId -> team name from the League payload's Division team roster
+5. Render "Season {year} — Complete" only when every league has a champion
+6. OTHERWISE render "Season {year} — In Progress" with champion text for decided leagues and
+   "In progress" for undecided leagues
+```
 ```
 
 ### Bracket byes / series rendering (from the `BracketTie` shape, `bracket-api.md`)
@@ -145,11 +171,11 @@ IF a division has no games at all: render existing "No bracket yet — season no
 
 | # | Condition | Handling | Spec |
 |---|---|---|---|
-| e1 | Only one League decided | Hub's Season block shows that champion + "In progress" for the other; header banner stays "In Progress" until **both** decided → "Season Complete." No intermediate three-state model — `decided` ≡ `isSeasonComplete`/champion-row-exists, nothing between. | UI-002 |
+| e1 | Only one League decided | Hub's Season block shows that champion + "In progress" for the other; header banner stays "In Progress" until **both** decided → "Season Complete." No intermediate three-state model — `decided` ≡ champion-row-exists, nothing between. | UI-002 |
 | e2 | `TeamCalendar`'s existing "Competition" filter dropdown | Currently filters by division within one league; continues to work unchanged once the backing query is unscoped — it will naturally list divisions from both leagues. | UI-004 |
 | e2a | `TeamCalendar` row for a knockout bye (`awayTeamId: null`, completed) | Render opponent as `Bye`, suppress the scoreline rather than showing `1-null`, and treat the row as played/completed for filter/count purposes. | UI-010 |
 | e3 | Round-level competition labeling | No new row-level competition badge — existing `divisionName` + `roundLabel` (e.g. "Championship", "League Cup · 1st Round") already read as distinct competitions at a glance; not duplicated per-row. | — |
-| e4 | Decided-but-interactive state | Explicitly **not** locked — team rows stay clickable to calendar, `BracketView` expand-on-click still works post-decision. Only simulate controls disable. | UI-003 |
+| e4 | Decided-but-interactive state | Explicitly **not** locked — team rows stay clickable to calendar, `BracketView` expand-on-click still works post-decision. Only the League-page simulate control for that decided competition disables/hides. | UI-003 |
 | e5 | Multi-season transition UX | Out of scope for this MVP; flagged here as deferred to a future wayfinder map once this single-season MVP lands — "Start Season" does not reappear on the hub once decided (multi-season looping is out of scope). | — |
 
 ## Traceability

@@ -21,6 +21,7 @@ type AppHeaderProps = {
   // (the SIMUI-009..018 specs mount <AppHeader /> with no props); pages pass their own crumb.
   backLink?: string;
   backLabel?: string;
+  hideBatchControl?: boolean;
 };
 
 const primaryBtn: React.CSSProperties = {
@@ -37,7 +38,8 @@ const primaryBtn: React.CSSProperties = {
 const summaryStyle: React.CSSProperties = { fontSize: '0.85rem', color: '#3a7d4d', fontWeight: 600 };
 const warningStyle: React.CSSProperties = { fontSize: '0.85rem', color: '#b8860b', fontWeight: 600 };
 
-const AppHeader = ({ backLink, backLabel }: AppHeaderProps) => {
+// @spec UI-003
+const AppHeader = ({ backLink, backLabel, hideBatchControl = false }: AppHeaderProps) => {
   const { gw, invalidate } = useGameWorldContext();
   const [batchStatus, setBatchStatus] = useState<BatchStatus>('idle');
   const [batchResult, setBatchResult] = useState<BatchResult | null>(null);
@@ -81,6 +83,7 @@ const AppHeader = ({ backLink, backLabel }: AppHeaderProps) => {
   };
 
   const renderBatchRegion = () => {
+    if (hideBatchControl) return null;
     // SIMUI-010/011 — no button when the guard fails. Other states (e.g. a persistent error or
     // warning) still render so the player isn't left without feedback.
     if (!canBatch && batchStatus === 'idle') return null;

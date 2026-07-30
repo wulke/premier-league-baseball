@@ -1,17 +1,79 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Endpoints } from '../../api/endpoints';
 import { useParams, useNavigate } from 'react-router';
 import { useGameWorldContext } from '../context/game-world-context';
 import { AppHeader } from '../components/app-header';
+import { getChampionDivisionId, getChampionTeamName } from '../champion';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
+type LeagueSeasonSummary = {
+  leagueId: number;
+  leagueName: string;
+  championName: string | null;
+};
 
+// @spec UI-002,LIFE-001
 const GameWorld = () => {
   const { gwId } = useParams();
   const { gw, invalidate } = useGameWorldContext();
   const [startSeasonStatus, setStartSeasonStatus] = useState<StartSeasonStatus>('idle');
   const [startSeasonError, setStartSeasonError] = useState<string | null>(null);
+  const [leagueSeasonSummary, setLeagueSeasonSummary] = useState<LeagueSeasonSummary[]>([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!gwId || !gw?.config?.inProgress) {
+      setLeagueSeasonSummary([]);
+      return;
+    }
+
+    const leagues: any[] = gw.Leagues ?? [];
+    if (leagues.length === 0) {
+      setLeagueSeasonSummary([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    Promise.all(
+      leagues.map(async (leagueRow) => {
+        const [leagueResponse, bracketResponse] = await Promise.all([
+          fetch(Endpoints.GetLeague.replace(':leagueId', String(leagueRow.id)), {
+            method: 'GET',
+            mode: 'cors',
+            headers: { 'Content-Type': 'application/json' },
+          }).then((response) => (response.ok ? response.json() : {})),
+          fetch(Endpoints.GetLeagueBracket.replace(':leagueId', String(leagueRow.id)), {
+            method: 'GET',
+            mode: 'cors',
+            headers: { 'Content-Type': 'application/json' },
+          }).then((response) => (response.ok ? response.json() : [])),
+        ]);
+
+        const championDivisionId = getChampionDivisionId(leagueResponse);
+        const championDivision = Array.isArray(bracketResponse)
+          ? bracketResponse.find((entry: any) => entry.divisionId === championDivisionId)
+          : null;
+
+        return {
+          leagueId: leagueRow.id,
+          leagueName: leagueRow.config?.name ?? `League ${leagueRow.id}`,
+          championName: getChampionTeamName(leagueResponse, championDivision ? [championDivision] : []),
+        };
+      }),
+    )
+      .then((summary) => {
+        if (!cancelled) setLeagueSeasonSummary(summary);
+      })
+      .catch((error) => {
+        console.error(error);
+        if (!cancelled) setLeagueSeasonSummary([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [gw, gwId]);
 
   const startNewSeason = async () => {
     if (!gwId) return;
@@ -45,6 +107,10 @@ const GameWorld = () => {
 
   const nextYear = gw.year + 1;
   const leagues: any[] = gw.Leagues ?? [];
+  const seasonComplete = leagueSeasonSummary.length > 0 && leagueSeasonSummary.every((league) => league.championName);
+  const seasonSummaryText = leagueSeasonSummary.map((league) =>
+    league.championName ? `🏆 ${league.leagueName}: ${league.championName}` : `${league.leagueName}: In progress`,
+  ).join(' · ');
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
@@ -86,10 +152,10 @@ const GameWorld = () => {
           {gw.config?.inProgress ? (
             <>
               <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '6px' }}>
-                Season {gw.year} — In Progress
+                Season {gw.year} — {seasonComplete ? 'Complete' : 'In Progress'}
               </div>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#555' }}>
-                Navigate to a league below to view standings and simulate games.
+                {seasonSummaryText || 'Navigate to a league below to view standings and simulate games.'}
               </p>
             </>
           ) : (

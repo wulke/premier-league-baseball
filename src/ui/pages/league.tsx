@@ -4,6 +4,7 @@ import { BracketRound, BracketTie, DivisionStandings, LeagueDivisionBracket, Tea
 import { useNavigate, useParams } from 'react-router';
 import { Collapsible } from 'radix-ui';
 import { AppHeader } from '../components/app-header';
+import { formatLeagueChampionBanner, getChampionBracket, getChampionTeamName } from '../champion';
 
 const StandingsTable = ({
   standings,
@@ -317,7 +318,7 @@ const Division = ({
   );
 };
 
-// @spec UI-004,UI-005,UI-006,UI-007,UI-008
+// @spec UI-001,UI-003,UI-004,UI-005,UI-006,UI-007,UI-008
 const League = () => {
   const { gwId, leagueId } = useParams();
   const navigate = useNavigate();
@@ -363,12 +364,17 @@ const League = () => {
   const openTeamCalendar = (teamId: number) => navigate(`/${gwId}/team/${teamId}/calendar`);
   const hasAnyStandings = standings.some((s) => s.standings.length > 0);
   const hasAnyBracketRounds = divisionBrackets.some((division) => division.rounds.length > 0);
+  const championBanner = formatLeagueChampionBanner(
+    league,
+    getChampionTeamName(league, divisionBrackets),
+  );
+  const championDivision = getChampionBracket(league, divisionBrackets);
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
 
       {/* Shared header (Flow B) */}
-      <AppHeader backLink={`/${gwId}`} backLabel="Game World" />
+      <AppHeader backLink={`/${gwId}`} backLabel="Game World" hideBatchControl={Boolean(championBanner)} />
 
       {/* League identity */}
       <div style={{ marginBottom: '32px' }}>
@@ -392,8 +398,7 @@ const League = () => {
           )}
         </div>
         <p style={{ margin: 0, fontSize: '0.85rem', color: '#888' }}>
-          {league.Divisions?.length ?? 0} division{league.Divisions?.length !== 1 ? 's' : ''}
-          {hasAnyStandings || hasAnyBracketRounds ? ' · Season in progress' : ' · No active season'}
+          {championBanner ?? `${league.Divisions?.length ?? 0} division${league.Divisions?.length !== 1 ? 's' : ''}${hasAnyStandings || hasAnyBracketRounds ? ' · Season in progress' : ' · No active season'}`}
         </p>
       </div>
 

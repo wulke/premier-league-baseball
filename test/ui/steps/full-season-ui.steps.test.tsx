@@ -1,11 +1,11 @@
-// @spec:UI-004 @spec:UI-005 @spec:UI-006 @spec:UI-007 @spec:UI-008 @spec:UI-010
+// @spec:UI-001 @spec:UI-002 @spec:UI-003 @spec:UI-004 @spec:UI-005 @spec:UI-006 @spec:UI-007 @spec:UI-008 @spec:UI-010 @spec:LIFE-001
 import React from 'react';
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { render } from '../test-utils';
 import { GameWorldProvider } from '../../../src/ui/context/game-world-context';
-import { League, TeamCalendar } from '../../../src/ui/pages';
+import { GameWorld, League, TeamCalendar } from '../../../src/ui/pages';
 
 type MockParams = { gwId?: string; leagueId?: string; teamId?: string };
 
@@ -29,6 +29,9 @@ type MockLeagueResponse = {
   standings: any[];
   bracket: any[];
 };
+
+const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const mockNavigate = jest.fn();
 let mockParams: MockParams = {};
@@ -295,18 +298,145 @@ const leagueResponses: Record<string, MockLeagueResponse> = {
     ],
     bracket: [],
   },
+  '6': {
+    league: {
+      id: 6,
+      gameWorldId: 1,
+      config: { name: 'Premier League', type: 'League' },
+      Divisions: [
+        {
+          id: 61,
+          config: { name: 'Premier Division', isTopTier: true },
+          Teams: [
+            { id: 7, config: { name: 'River City' } },
+            { id: 9, config: { name: 'Capital City' } },
+          ],
+        },
+        {
+          id: 62,
+          config: { name: 'Championship', isTopTier: false },
+          Teams: [
+            { id: 81, config: { name: 'Hill Town' } },
+            { id: 82, config: { name: 'Dockside' } },
+          ],
+        },
+      ],
+    },
+    standings: [
+      {
+        divisionId: 61,
+        standings: [
+          {
+            teamId: 7,
+            teamName: 'River City',
+            played: 38,
+            won: 30,
+            drawn: 4,
+            lost: 4,
+            runsFor: 92,
+            runsAgainst: 28,
+            runDifference: 64,
+            points: 94,
+          },
+          {
+            teamId: 9,
+            teamName: 'Capital City',
+            played: 38,
+            won: 28,
+            drawn: 3,
+            lost: 7,
+            runsFor: 87,
+            runsAgainst: 34,
+            runDifference: 53,
+            points: 87,
+          },
+        ],
+      },
+    ],
+    bracket: [
+      {
+        divisionId: 61,
+        divisionName: 'Premier Division',
+        structure: 'ROUND_ROBIN',
+        champion: { teamId: 7 },
+        rounds: [],
+      },
+      {
+        divisionId: 62,
+        divisionName: 'Championship',
+        structure: 'ROUND_ROBIN',
+        rounds: [],
+      },
+    ],
+  },
+  '7': {
+    league: {
+      id: 7,
+      gameWorldId: 1,
+      config: { name: 'League Cup', type: 'League Cup' },
+      Divisions: [
+        {
+          id: 71,
+          config: { name: 'League Cup', format: { structure: 'KNOCKOUT' } },
+          Teams: [
+            { id: 201, config: { name: 'Manchester City' } },
+            { id: 202, config: { name: 'Leeds United' } },
+          ],
+        },
+      ],
+    },
+    standings: [],
+    bracket: [
+      {
+        divisionId: 71,
+        divisionName: 'League Cup',
+        structure: 'KNOCKOUT',
+        champion: { teamId: 201 },
+        rounds: [
+          {
+            round: 3,
+            label: 'Final',
+            status: 'COMPLETE',
+            ties: [
+              {
+                kind: 'SERIES',
+                teamA: { teamId: 201, teamName: 'Manchester City' },
+                teamB: { teamId: 202, teamName: 'Leeds United' },
+                winnerTeamId: 201,
+                games: [
+                  {
+                    gameId: 701,
+                    status: 'COMPLETED',
+                    homeTeamId: 201,
+                    homeTeamName: 'Manchester City',
+                    awayTeamId: 202,
+                    awayTeamName: 'Leeds United',
+                    homeTeamResult: 2,
+                    awayTeamResult: 1,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
 };
 
-const gameWorldPayload = {
+const baseGameWorldPayload = {
   id: 1,
   year: 2025,
   currentDate: '2025-04-10',
   config: { inProgress: true, name: 'World One' },
   Leagues: [
-    { id: 3, config: { name: 'Premier League', type: 'League' } },
-    { id: 4, config: { name: 'League Cup Qualifying', type: 'League Cup' } },
+    { id: 6, config: { name: 'Premier League', type: 'League' } },
+    { id: 7, config: { name: 'League Cup', type: 'League Cup' } },
   ],
 };
+
+let currentLeagueResponses: Record<string, MockLeagueResponse> = clone(leagueResponses);
+let currentGameWorldPayload = clone(baseGameWorldPayload);
 
 let fetchCalls: Array<{ method: string; url: string }> = [];
 
@@ -323,19 +453,19 @@ const installFetch = () => {
         json: () => Promise.resolve(body),
       });
 
-    if (method === 'GET' && /\/api\/gameWorld\/1$/.test(url)) return response(gameWorldPayload);
+    if (method === 'GET' && /\/api\/gameWorld\/1$/.test(url)) return response(currentGameWorldPayload);
     if (method === 'GET' && /\/api\/team\/7\/calendar/.test(url)) {
       return response({ teamId: 7, teamName: 'River City', year: 2025, games: teamSchedule });
     }
 
     const leagueMatch = url.match(/\/api\/league\/(\d+)$/);
-    if (method === 'GET' && leagueMatch) return response(leagueResponses[leagueMatch[1]]?.league ?? {});
+    if (method === 'GET' && leagueMatch) return response(currentLeagueResponses[leagueMatch[1]]?.league ?? {});
 
     const standingsMatch = url.match(/\/api\/league\/(\d+)\/standings$/);
-    if (method === 'GET' && standingsMatch) return response(leagueResponses[standingsMatch[1]]?.standings ?? []);
+    if (method === 'GET' && standingsMatch) return response(currentLeagueResponses[standingsMatch[1]]?.standings ?? []);
 
     const bracketMatch = url.match(/\/api\/league\/(\d+)\/bracket$/);
-    if (method === 'GET' && bracketMatch) return response(leagueResponses[bracketMatch[1]]?.bracket ?? []);
+    if (method === 'GET' && bracketMatch) return response(currentLeagueResponses[bracketMatch[1]]?.bracket ?? []);
 
     return response({});
   }) as jest.Mock;
@@ -356,11 +486,20 @@ const renderLeague = async (leagueId: string) => {
       <League />
     </GameWorldProvider>,
   );
-  await screen.findByRole('heading', { name: leagueResponses[leagueId].league.config.name });
+  await screen.findByRole('heading', { name: currentLeagueResponses[leagueId].league.config.name });
+};
+
+const renderGameWorld = async () => {
+  render(
+    <GameWorldProvider gwId="1">
+      <GameWorld />
+    </GameWorldProvider>,
+  );
+  await screen.findByRole('heading', { name: currentGameWorldPayload.config.name });
 };
 
 const getDivisionCard = (leagueId: string, divisionName: string) => {
-  const division = leagueResponses[leagueId].league.Divisions.find((entry: any) => entry.config.name === divisionName);
+  const division = currentLeagueResponses[leagueId].league.Divisions.find((entry: any) => entry.config.name === divisionName);
   if (!division) throw new Error(`Unknown division ${divisionName} for league ${leagueId}`);
   return screen.getByTestId(`division-card-${division.id}`);
 };
@@ -369,6 +508,8 @@ beforeEach(() => {
   mockNavigate.mockReset();
   mockParams = {};
   fetchCalls = [];
+  currentLeagueResponses = clone(leagueResponses);
+  currentGameWorldPayload = clone(baseGameWorldPayload);
   installFetch();
 });
 
@@ -630,6 +771,140 @@ defineFeature(feature, (test) => {
       for (const teamName of teamList.split(', ').map((team) => team.trim())) {
         expect(card.getByRole('button', { name: teamName })).toBeInTheDocument();
       }
+    });
+  });
+
+  test('Decided round-robin leagues show a champion banner and disable simulation', ({ given, when, then, and }) => {
+    given(/^a GameWorld with id (\d+) exists for the full-season UI$/, () => {
+      /* fetch mock provides the fixture */
+    });
+
+    given(/^the League page loads for league "([^"]+)"$/, (leagueId: string) => {
+      mockParams = { gwId: '1', leagueId };
+    });
+
+    when('the League page renders', async () => {
+      await renderLeague(mockParams.leagueId!);
+    });
+
+    then(/^the League identity block shows "([^"]+)"$/, (text: string) => {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    });
+
+    and(/^the League identity block does not show "([^"]+)"$/, (text: string) => {
+      expect(screen.queryByText(new RegExp(text, 'i'))).toBeNull();
+    });
+
+    and('the simulate control for the decided League is not shown', () => {
+      expect(screen.queryByTestId('batch-simulate')).toBeNull();
+    });
+
+    when(/^the player clicks team "([^"]+)" from the League page$/, (teamName: string) => {
+      fireEvent.click(screen.getByRole('button', { name: teamName }));
+    });
+
+    then(/^the app navigates to "([^"]+)"$/, (target: string) => {
+      expect(mockNavigate).toHaveBeenCalledWith(target);
+    });
+  });
+
+  test('Decided cups show a cup champion banner and disable simulation', ({ given, when, then, and }) => {
+    given(/^a GameWorld with id (\d+) exists for the full-season UI$/, () => {
+      /* fetch mock provides the fixture */
+    });
+
+    given(/^the League page loads for league "([^"]+)"$/, (leagueId: string) => {
+      mockParams = { gwId: '1', leagueId };
+    });
+
+    when('the League page renders', async () => {
+      await renderLeague(mockParams.leagueId!);
+    });
+
+    then(/^the League identity block shows "([^"]+)"$/, (text: string) => {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    });
+
+    and('the simulate control for the decided League is not shown', () => {
+      expect(screen.queryByTestId('batch-simulate')).toBeNull();
+    });
+
+    when(/^the player expands the "([^"]+)" knockout series$/, (teamName: string) => {
+      fireEvent.click(
+        within(getDivisionCard(mockParams.leagueId!, 'League Cup')).getByRole('button', { name: new RegExp(teamName, 'i') }),
+      );
+    });
+
+    then(/^the "([^"]+)" card shows game score "([^"]+)"$/, (divisionName: string, gameLabel: string) => {
+      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).getByText(gameLabel)).toBeInTheDocument();
+    });
+  });
+
+  test('GameWorld hub shows one decided champion while the other competition remains in progress', ({ given, when, then, and }) => {
+    given(/^a GameWorld with id (\d+) exists for the full-season UI$/, () => {
+      /* fetch mock provides the fixture */
+    });
+
+    given('the GameWorld page loads with only the league champion decided', () => {
+      mockParams = { gwId: '1' };
+      currentLeagueResponses['6'].bracket[0].champion = { teamId: 7 };
+      delete currentLeagueResponses['7'].bracket[0].champion;
+    });
+
+    when('the GameWorld page renders', async () => {
+      await renderGameWorld();
+    });
+
+    then(/^the Season block shows "([^"]+)"$/, async (text: string) => {
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(escapeRegExp(text)))).toBeInTheDocument();
+      });
+    });
+
+    and(/^the Season block shows "([^"]+)"$/, async (text: string) => {
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(escapeRegExp(text)))).toBeInTheDocument();
+      });
+    });
+
+    and(/^the Season block shows "([^"]+)"$/, async (text: string) => {
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(escapeRegExp(text)))).toBeInTheDocument();
+      });
+    });
+  });
+
+  test('GameWorld hub shows Season Complete once both competitions are decided', ({ given, when, then, and }) => {
+    given(/^a GameWorld with id (\d+) exists for the full-season UI$/, () => {
+      /* fetch mock provides the fixture */
+    });
+
+    given('the GameWorld page loads with both league champions decided', () => {
+      mockParams = { gwId: '1' };
+      currentLeagueResponses['6'].bracket[0].champion = { teamId: 7 };
+      currentLeagueResponses['7'].bracket[0].champion = { teamId: 201 };
+    });
+
+    when('the GameWorld page renders', async () => {
+      await renderGameWorld();
+    });
+
+    then(/^the Season block shows "([^"]+)"$/, async (text: string) => {
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(escapeRegExp(text)))).toBeInTheDocument();
+      });
+    });
+
+    and(/^the Season block shows "([^"]+)"$/, async (text: string) => {
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(escapeRegExp(text)))).toBeInTheDocument();
+      });
+    });
+
+    and(/^the Season block shows "([^"]+)"$/, async (text: string) => {
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(escapeRegExp(text)))).toBeInTheDocument();
+      });
     });
   });
 });

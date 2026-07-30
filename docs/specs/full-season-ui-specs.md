@@ -6,10 +6,10 @@ and season-lifecycle display (`src/ui/pages/league.tsx`, `src/ui/pages/game-worl
 
 | ID | Requirement | Status |
 |---|---|---|
-| LIFE-001 | WHEN determining whether a season is complete THE UI SHALL derive it from each competition's existing `isSeasonComplete`/`SeasonResult`-presence checks, with no new persisted GameWorld-level state | [ ] |
-| UI-001 | WHEN a division has a `SeasonResult` row for the current year THE League page SHALL show a champion banner on the League identity block in place of the in-progress subtitle | [ ] |
-| UI-002 | WHEN both Leagues in a GameWorld are decided THE GameWorld hub SHALL show a computed "Season Complete" block naming both champions; WHILE only one is decided THE hub SHALL show that champion and "In progress" for the other | [ ] |
-| UI-003 | WHEN a division `isSeasonComplete` THE UI SHALL disable simulate controls scoped to that division while leaving team-click navigation and bracket expand-on-click interactive | [ ] |
+| LIFE-001 | WHEN determining whether a season is complete THE UI SHALL derive it from each League's `GetLeagueBracket` champion presence at render time, with no new persisted GameWorld-level state | [x] |
+| UI-001 | WHEN a League's champion-producing division has a `SeasonResult` row for the current year THE League page SHALL show a champion banner on the League identity block in place of the in-progress subtitle, using `🏆 Cup Champion: <team> · Final` for the League Cup and `🏆 <League> Champion: <team> · Table decided` for the round-robin League | [x] |
+| UI-002 | WHEN both Leagues in a GameWorld are decided THE GameWorld hub SHALL show a computed `Season Complete` block naming both champions; WHILE only one is decided THE hub SHALL show that champion and `In progress` for the other | [x] |
+| UI-003 | WHEN a League page's champion-producing division is decided THE UI SHALL disable that page's simulate-triggering control while leaving team-click navigation and bracket expand-on-click interactive | [x] |
 | UI-004 | WHEN a user navigates to a team's calendar THE system SHALL show that team's games across all leagues in the GameWorld at route `/:gwId/team/:teamId/calendar`, with no `leagueId` scoping | [x] |
 | UI-005 | WHEN a Division's `structure` is `KNOCKOUT` THE Division card SHALL render `BracketView` grouped by round instead of `StandingsTable` | [x] |
 | UI-006 | WHEN a round contains byes THE `BracketView` SHALL group them under a "Byes (N)" subheading listing team names inline | [x] |
