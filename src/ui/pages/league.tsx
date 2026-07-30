@@ -4,6 +4,7 @@ import { BracketRound, BracketTie, DivisionStandings, LeagueDivisionBracket, Tea
 import { useNavigate, useParams } from 'react-router';
 import { Collapsible } from 'radix-ui';
 import { AppHeader } from '../components/app-header';
+import { formatLeagueChampionBanner, getChampionBracket, getChampionTeamName } from '../champion';
 
 const StandingsTable = ({
   standings,
@@ -136,27 +137,6 @@ const getSeriesSummary = (tie: Extract<BracketTie, { kind: 'SERIES' }>) => {
 const getGameSummary = (tie: Extract<BracketTie, { kind: 'SERIES' }>, gameIndex: number) => {
   const game = tie.games[gameIndex];
   return `Game ${gameIndex + 1}: ${game.homeTeamName} ${game.homeTeamResult ?? '–'}–${game.awayTeamResult ?? '–'} ${game.awayTeamName ?? 'TBD'}`;
-};
-
-const getChampionDivision = (league: any, divisionBrackets: LeagueDivisionBracket[]) => {
-  if (!league?.Divisions?.length) return null;
-
-  const championDivisionId = league.config?.type === 'League Cup'
-    ? league.Divisions[0]?.id
-    : league.Divisions.find((division: any) => division.config?.isTopTier === true)?.id ?? league.Divisions[0]?.id;
-
-  return divisionBrackets.find((entry) => entry.divisionId === championDivisionId) ?? null;
-};
-
-const getTeamName = (league: any, teamId?: number) => {
-  if (!league || teamId == null) return null;
-
-  for (const division of league.Divisions ?? []) {
-    const team = (division.Teams ?? []).find((entry: any) => entry.id === teamId);
-    if (team) return team.config?.name ?? `Team ${teamId}`;
-  }
-
-  return null;
 };
 
 // @spec UI-005,UI-006,UI-007,UI-008
@@ -384,13 +364,11 @@ const League = () => {
   const openTeamCalendar = (teamId: number) => navigate(`/${gwId}/team/${teamId}/calendar`);
   const hasAnyStandings = standings.some((s) => s.standings.length > 0);
   const hasAnyBracketRounds = divisionBrackets.some((division) => division.rounds.length > 0);
-  const championDivision = getChampionDivision(league, divisionBrackets);
-  const championTeamName = getTeamName(league, championDivision?.champion?.teamId);
-  const championBanner = championTeamName
-    ? league.config?.type === 'League Cup'
-      ? `🏆 Cup Champion: ${championTeamName} · Final`
-      : `🏆 ${league.config?.name ?? `League ${leagueId}`} Champion: ${championTeamName} · Table decided`
-    : null;
+  const championBanner = formatLeagueChampionBanner(
+    league,
+    getChampionTeamName(league, divisionBrackets),
+  );
+  const championDivision = getChampionBracket(league, divisionBrackets);
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>

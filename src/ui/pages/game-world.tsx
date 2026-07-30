@@ -3,29 +3,13 @@ import { Endpoints } from '../../api/endpoints';
 import { useParams, useNavigate } from 'react-router';
 import { useGameWorldContext } from '../context/game-world-context';
 import { AppHeader } from '../components/app-header';
+import { getChampionDivisionId, getChampionTeamName } from '../champion';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
 type LeagueSeasonSummary = {
   leagueId: number;
   leagueName: string;
   championName: string | null;
-};
-
-const getChampionDivisionId = (league: any) => {
-  if (!league?.Divisions?.length) return null;
-  if (league.config?.type === 'League Cup') return league.Divisions[0]?.id ?? null;
-  return league.Divisions.find((division: any) => division.config?.isTopTier === true)?.id ?? league.Divisions[0]?.id ?? null;
-};
-
-const getChampionName = (league: any, championTeamId?: number) => {
-  if (!league || championTeamId == null) return null;
-
-  for (const division of league.Divisions ?? []) {
-    const team = (division.Teams ?? []).find((entry: any) => entry.id === championTeamId);
-    if (team) return team.config?.name ?? `Team ${championTeamId}`;
-  }
-
-  return null;
 };
 
 // @spec UI-002,LIFE-001
@@ -74,7 +58,7 @@ const GameWorld = () => {
         return {
           leagueId: leagueRow.id,
           leagueName: leagueRow.config?.name ?? `League ${leagueRow.id}`,
-          championName: getChampionName(leagueResponse, championDivision?.champion?.teamId),
+          championName: getChampionTeamName(leagueResponse, championDivision ? [championDivision] : []),
         };
       }),
     )
