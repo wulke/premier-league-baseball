@@ -94,5 +94,5 @@ Game completes with real per-player events (future SimulationEngine capability)
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-players-attributes-stats--contracts) |
 | **This LLD** | `docs/llds/player-stats.md` |
 | EARS | `docs/specs/player-stats-specs.md` — `PSTAT-001`.. |
-| Code | *(not yet implemented — this map is planning-only)* `src/db/model/` (`PlayerGameStats`) |
+| Code | `src/db/model/player-game-stats.ts`, `src/db/model/associations.ts` |
 | Decision record | [#61](https://github.com/wulke/premier-league-baseball/issues/61), [#62](https://github.com/wulke/premier-league-baseball/issues/62) |

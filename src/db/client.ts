@@ -19,6 +19,7 @@ const modelDefinitions = [
   require('./model/league'),
   require('./model/team'),
   require('./model/player'),
+  require('./model/player-game-stats'),
   require('./model/division'),
   require('./model/division-season'),
   require('./model/game'),
