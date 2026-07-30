@@ -1,7 +1,8 @@
 Feature: Full-Season UI
 
   The team calendar route is GameWorld-scoped so one schedule view can show League and
-  League Cup games together for the same team and season.
+  League Cup games together for the same team and season, and the hub/league identity
+  blocks compute season-champion state from live bracket data.
 
   Background:
     Given a GameWorld with id 1 exists for the full-season UI
@@ -73,3 +74,38 @@ Feature: Full-Season UI
     When the League page renders
     Then the "League Cup Qualifying" card shows "No bracket yet — season not started."
     And the "League Cup Qualifying" card shows roster teams "Rovers, Wanderers, Athletic, County"
+
+  @spec:UI-001 @spec:UI-003
+  Scenario: Decided round-robin leagues show a champion banner and disable simulation
+    Given the League page loads for league "6"
+    When the League page renders
+    Then the League identity block shows "🏆 Premier League Champion: River City · Table decided"
+    And the League identity block does not show "Season in progress"
+    And the simulate control for the decided League is not shown
+    When the player clicks team "River City" from the League page
+    Then the app navigates to "/1/team/7/calendar"
+
+  @spec:UI-001 @spec:UI-003
+  Scenario: Decided cups show a cup champion banner and disable simulation
+    Given the League page loads for league "7"
+    When the League page renders
+    Then the League identity block shows "🏆 Cup Champion: Manchester City · Final"
+    And the simulate control for the decided League is not shown
+    When the player expands the "Manchester City" knockout series
+    Then the "League Cup" card shows game score "Game 1: Manchester City 2–1 Leeds United"
+
+  @spec:UI-002 @spec:LIFE-001
+  Scenario: GameWorld hub shows one decided champion while the other competition remains in progress
+    Given the GameWorld page loads with only the league champion decided
+    When the GameWorld page renders
+    Then the Season block shows "Season 2025 — In Progress"
+    And the Season block shows "🏆 Premier League: River City"
+    And the Season block shows "League Cup: In progress"
+
+  @spec:UI-002 @spec:LIFE-001
+  Scenario: GameWorld hub shows Season Complete once both competitions are decided
+    Given the GameWorld page loads with both league champions decided
+    When the GameWorld page renders
+    Then the Season block shows "Season 2025 — Complete"
+    And the Season block shows "🏆 Premier League: River City"
+    And the Season block shows "🏆 League Cup: Manchester City"
