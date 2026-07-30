@@ -46,6 +46,10 @@ describe('Player model + attribute schema', () => {
   // @spec PATTR-002,PATTR-003
   it('@spec PATTR-002 @spec PATTR-003 persists uniform pitches for a free-agent player', async () => {
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2046 }).then(({ dataValues }) => dataValues);
+    const team = await db.models.Team.create({
+      gameWorldId: gameWorld.id,
+      config: { name: 'Chicago Whales' }
+    }).then(({ dataValues }) => dataValues);
 
     const player = await db.models.Player.create({
       teamId: null,
@@ -53,8 +57,29 @@ describe('Player model + attribute schema', () => {
       attributes: nonPitcherAttributes,
     }).then(({ dataValues }) => dataValues);
 
+    await db.models.Player.create({
+      teamId: team.id,
+      gameWorldId: gameWorld.id,
+      attributes: {
+        ...nonPitcherAttributes,
+        positions: {
+          ...nonPitcherAttributes.positions,
+          Pitcher: 91,
+        },
+      },
+    });
+
+    const gameWorldWithPlayers = await db.models.GameWorld.findByPk(gameWorld.id, {
+      include: [db.models.Player],
+    });
+    const teamWithPlayers = await db.models.Team.findByPk(team.id, {
+      include: [db.models.Player],
+    });
+
     expect(player.teamId).toBeNull();
     expect(player.attributes.pitches).toEqual(nonPitcherAttributes.pitches);
     expect(player.attributes.positions).toEqual(nonPitcherAttributes.positions);
+    expect(gameWorldWithPlayers?.dataValues.Players).toHaveLength(2);
+    expect(teamWithPlayers?.dataValues.Players).toHaveLength(1);
   });
 });

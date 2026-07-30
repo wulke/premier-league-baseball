@@ -6,18 +6,24 @@ const applyAssociations = (sequelize) => {
     Game,
     GameWorld,
     League,
+    Player,
     SeasonResult,
     Team
   } = sequelize.models;
 
   // GameWorld
   GameWorld.hasMany(League, { foreignKey: 'gameWorldId' });
+  GameWorld.hasMany(Player, { foreignKey: 'gameWorldId' });
   GameWorld.hasMany(Team, { foreignKey: 'gameWorldId' });
   // League
   League.belongsTo(GameWorld, { foreignKey: 'gameWorldId' });
   League.hasMany(Division, { foreignKey: 'leagueId' });
+  // Player
+  Player.belongsTo(GameWorld, { foreignKey: 'gameWorldId' });
+  Player.belongsTo(Team, { foreignKey: 'teamId' });
   // Team
   Team.belongsTo(GameWorld, { foreignKey: 'gameWorldId' });
+  Team.hasMany(Player, { foreignKey: 'teamId' });
   Team.belongsToMany(Division, { foreignKey: 'teamId', through: 'DivisionSeason' });
   // Division
   Division.belongsTo(League, { foreignKey: 'leagueId' });
