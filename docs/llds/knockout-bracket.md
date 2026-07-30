@@ -31,6 +31,10 @@ SeasonResult {
 General-purpose (not knockout-only): also written by the round-robin League once its top-tier
 division decides (`docs/llds/full-season-ui.md`, #40). One row per `(divisionId, year)`.
 
+For `ROUND_ROBIN`, "decides" means: a completed-game recheck observes `DivisionFactory.isSeasonComplete(year)`
+has become true, the division's `config.isTopTier === true`, and the current standings leader is
+therefore the League champion for that year. Non-top-tier divisions never write a `SeasonResult`.
+
 ### Reused fields (no schema change)
 
 | Model | Field | Reuse |
@@ -148,6 +152,25 @@ resolveKnockoutGameCompletion(gameId)  → advanceKnockoutRound(divisionId, year
   commits** (edge case e4 — never mid-transaction). `advanceKnockoutRound` is idempotent, so
   repeat calls for other games in the same round no-op.
 
+### Round-robin champion recording (#54)
+
+The same shared game-completion path also rechecks `ROUND_ROBIN` divisions for champion writes:
+
+```
+resolveRoundRobinGameCompletion(gameId):
+  load the completed game's division + year
+  IF division.format.structure != 'ROUND_ROBIN' → no-op
+  IF division.config.isTopTier !== true         → no-op
+  IF SeasonResult(divisionId, year) exists      → no-op
+  IF DivisionFactory(divisionId).isSeasonComplete(year) != true → no-op
+  standings = DivisionFactory(divisionId).getStandings(year, league.standingsConfig ?? default)
+  IF standings[0] exists:
+    SeasonResult.insert({ divisionId, year, championTeamId: standings[0].teamId })
+```
+
+This keeps `SeasonResult` as the single read-model for champions across both structures while
+preserving the "only the top tier counts as League champion" decision from #40.
+
 ### Idempotency guards (defensive re-trigger safety)
 
 `advanceKnockoutRound` returns early when:
@@ -191,6 +214,8 @@ overtime winner leads that leg's score by ≥ 1 — making both the leg (non-dra
 | e4 | Round-advancement trigger ordering | Fires as a side effect of *whichever* game completion (single or batch) happens to be the round's last — batch simulate resolves many games in one transaction, so the check for "last unresolved game in round" must run after all of that transaction's writes, not per-row mid-transaction, to avoid a false "round complete" on a partially-written batch. | CUP-001 |
 | e5 | `REDRAW` reshuffling round sizes | REDRAW must never change round *sizes* (fixed at generation time) — only pairing order. A shuffle implementation that also varies bye counts per round would violate the power-of-2 invariant established at generation. | CUP-007 |
 | e6 | `SeasonResult` write timing | Upserted (not inserted blindly) — round-advancement could in principle be re-triggered defensively; `championTeamId` should not be overwritten once set for a `(divisionId, year)`. | CUP-002 |
+| e8 | Lower-division round-robin completion | Ignored for `SeasonResult` purposes even if the division has a standings leader — only `config.isTopTier === true` may write the League champion row. | LCH-003 |
+| e9 | Re-checking an already-decided round-robin division | Existing `SeasonResult` row wins; no duplicate row and no overwrite of `championTeamId`. | LCH-004 |
 | e7 | `seriesLength` (`Bo3`/`Bo5`) vs. `legs` | This LLD's tie resolution operates on `legs` (`ONE_LEG`/`TWO_LEG`), not `seriesLength` — best-of-N series generation is not yet implemented (see `competition-format.md` e3); a `KNOCKOUT` division's `seriesLength` field is currently inert. | — |
 
 ## Traceability
