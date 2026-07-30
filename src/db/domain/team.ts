@@ -2,6 +2,7 @@ import { Op } from 'sequelize';
 import { TeamConfig, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
 import db from '../client';
 import { getKnockoutRoundLabel } from './knockout';
+import { PlayerFactory } from './player';
 
 interface ITeam {
   create: (gwId: number, config: TeamConfig) => any;
@@ -10,11 +11,13 @@ interface ITeam {
 
 const TeamFactory = (id?: number): ITeam => {
   return {
+    // @spec PCON-001,PCON-004,PCON-007
     create: async (gwId: number, config: TeamConfig) => {
       const team = await db.models.Team.create({
         config,
         gameWorldId: gwId
       }).then(({ dataValues }) => dataValues);
+      await PlayerFactory().generateRoster(team.id, gwId);
       return team;
     },
 

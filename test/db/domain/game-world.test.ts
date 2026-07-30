@@ -41,7 +41,7 @@ describe('GameWorldFactory', () => {
     const teams = await db.models.Team.findAll({ where: { gameWorldId: { [Op.eq]: gw.id }}});
     const leagues = await db.models.League.findAll({ where: { gameWorldId: { [Op.eq]: gw.id }}});
     // todo write the tests...
-  });
+  }, 15000);
 
   // @spec GWS-001
   it('newSeason: rethrows errors from failed rollover work', async () => {

@@ -89,7 +89,7 @@ describe('Player model + attribute schema', () => {
       }, {});
 
       const pitcherCount = counts.Pitcher ?? 0;
-      const fielderCounts = Object.entries(counts)
+      const fielderCounts: number[] = Object.entries(counts)
         .filter(([position]) => position !== 'Pitcher')
         .map(([, count]) => count);
 
