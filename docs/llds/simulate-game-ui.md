@@ -28,8 +28,9 @@ routing and page-migration changes that connect them:
   Context that owns `gw` state and a `refreshToken` invalidation counter — one `GET /api/gameWorld/:gwId`
   per `/:gwId` session, shared across every consumer.
 - **Flow B — `AppHeader`** (`src/ui/components/app-header.tsx`, **NEW**): a shared header
-  rendered on every `/:gwId` page. Shows the `currentDate` chip and owns the batch
-  "Simulate Today" state machine.
+  rendered on every `/:gwId` page. Right-aligned CTA owns the batch "Simulate Today" state
+  machine (no `currentDate` display — retired per [#44](https://github.com/wulke/premier-league-baseball/issues/44),
+  deferred to a future left-pane nav).
 - **Flow A — `TeamCalendar`/`GameRow`** (`src/ui/pages/team-calendar.tsx`, **MODIFIED**):
   per-row single-game simulate via a `simulateState` map, plus a `refreshToken` subscription
   so a batch simulate elsewhere triggers a full re-fetch.
@@ -97,7 +98,7 @@ type SimulateStatus = 'idle' | 'loading' | 'error';
 | Need | Current state of the code | Gap |
 |---|---|---|
 | `game.status` to gate the Simulate button (SIMUI-019/020/021) | `TeamSeasonGame` in `src/api/models.ts` carries **no** `status` — only nullable `homeTeamResult`/`awayTeamResult`. The calendar builder in `src/db/domain/team.ts` (`getSchedule`) maps each `Game` and drops `status`. | Either surface `game.status` on the calendar endpoint + model (a backend change for #25), or infer simulatable-ness. Result-null **cannot** distinguish `SCHEDULED` from `IN_PROGRESS` (both have null results), so SIMUI-021 ("no button for `IN_PROGRESS`") is unsatisfiable without `status`. See Edge Case Probe (u1). |
-| `gw.currentDate` for the chip + batch guard (SIMUI-006/009) | `GameWorld.currentDate` is `DATEONLY`, nullable, and **not** seeded by `newSeason()` (per backend LLD e6). | The chip and the batch guard already tolerate `null`; the lifecycle footgun is backend-owned and tracked there. |
+| `gw.currentDate` for the batch guard (SIMUI-009) | `GameWorld.currentDate` is `DATEONLY`, nullable, and **not** seeded by `newSeason()` (per backend LLD e6). | The batch guard already tolerates `null`; the lifecycle footgun is backend-owned and tracked there. |
 
 ---
 
@@ -117,7 +118,7 @@ type SimulateStatus = 'idle' | 'loading' | 'error';
      b. re-run the fetch in step 2; setGw replaces prior gw    # SIMUI-003
 4. Context value memoized on { gw, refreshToken, invalidate }.
 5. Consumers via useGameWorldContext():
-     - AppHeader       → gw.currentDate (chip), gw.config.inProgress (button guard); calls invalidate() on batch success
+     - AppHeader       → gw.config.inProgress and gw.currentDate (button guard); calls invalidate() on batch success
      - TeamCalendar    → reads refreshToken into its game-fetch useEffect dep array    # SIMUI-027
      - GameWorld/League → read gw for display (NO own fetch)                            # SIMUI-004
 ```
@@ -133,22 +134,18 @@ or an element-wrapper around the matched page. See Edge Case Probe (u8).
 1. AppHeader renders on every /:gwId page, inside the provider subtree.                # SIMUI-008
 2. Guard (evaluated on every render from context):
      if gw == null OR gw.config?.inProgress !== true OR gw.currentDate == null
-        → render breadcrumb + chip only; NO "Simulate Today" button.                   # SIMUI-009/010/011
-3. chip:
-     currentDate set  → formatted date chip                                            # SIMUI-006
-     currentDate null → muted "No date set" placeholder                                # SIMUI-007
-   (Pixel placement within the header is NOT specified here — deferred to the #21 prototype.)
-4. batchStatus == idle      → button "Simulate Today", enabled.
+        → render breadcrumb only; NO "Simulate Today" button.                          # SIMUI-009/010/011
+3. batchStatus == idle      → button "Simulate Today", enabled.
    batchStatus == submitting→ button disabled, label "Simulating…".                    # SIMUI-012
-5. click (idle) → batchStatus = submitting; POST /api/gameWorld/:gwId/simulate.
-6. on 200:
+4. click (idle) → batchStatus = submitting; POST /api/gameWorld/:gwId/simulate.
+5. on 200:
      skipped.length == 0 → batchStatus = success-clean; show "N simulated · 0 skipped";
                            call invalidate(); schedule auto-dismiss→idle after ~3000ms. # SIMUI-013/015
      skipped.length  > 0 → batchStatus = success-skipped; show "Y games could not be simulated";
                            HIDE the button; call invalidate(); warning PERSISTS (no timer). # SIMUI-014/015
-7. on non-200 → batchStatus = error; show error message + "Retry" button;
+6. on non-200 → batchStatus = error; show error message + "Retry" button;
                 do NOT call invalidate() (refreshToken unchanged).                      # SIMUI-016/018
-8. click Retry → go to step 5 (submitting).                                            # SIMUI-017
+7. click Retry → go to step 4 (submitting).                                            # SIMUI-017
 ```
 
 ### Flow A — `TeamCalendar` / `GameRow` single-game simulate
@@ -187,8 +184,8 @@ surface something the proposal does not address.
 |---|---|---|---|
 | u1 | **NEW** — Simulate-button guard needs `game.status`, but the calendar API model omits it | `TeamSeasonGame` (`src/api/models.ts`) and `getSchedule` (`src/db/domain/team.ts`) do not surface `Game.status`. #25 must either extend the endpoint/model to return `status`, or the guard degrades to a result-null proxy. Result-null cannot tell `SCHEDULED` from `IN_PROGRESS`, so SIMUI-021 is **unsatisfiable** without `status`. Recommended: extend the endpoint (one-line addition to the mapper + interface). Backend dependency for #25. | SIMUI-019/020/021 |
 | u2 | **NEW** — `TeamCalendar` already has a local `refreshToken` (used only by the Retry button) | Today `refreshToken` is local `useState`, incremented by the error-state "Retry" button and read in the fetch `useEffect` dep array. The context token serves the same mechanical role (re-fetch trigger) but is driven externally by `invalidate()`. Migration must remove the local counter and source `refreshToken` from `useGameWorldContext()`; the calendar's own Retry button should call `invalidate()` (re-fetches `gw` too — harmless) or keep a *separately-named* local retry counter. Name collision is a real footgun if both coexist. | SIMUI-027 |
-| u3 | **NEW** — `GameWorld` page `startNewSeason()` mutates local `setGw(updatedGw)` | Under SIMUI-004 the page reads `gw` from context. The existing "Start Season" success path calls local `setGw(updatedGw)`; migrated, it must call `invalidate()` (so context `gw` updates for `AppHeader` too) instead of setting a divergent local copy. Otherwise the page's `gw` and the header's chip/batch guard drift apart after a season start. | SIMUI-004 |
-| u4 | Provider fetch fails → `gw = null` | Consumers must null-guard every `gw.*` read. `AppHeader`'s guard already short-circuits on `gw == null` (no button) but the chip path (`gw.currentDate`) and any unguarded page consumer would crash; `useGameWorldContext` should also decide a fallback for components rendered outside the provider (throw vs. return a default). The proposal says only "children handle gracefully" — make the contract explicit. | SIMUI-005 |
+| u3 | **NEW** — `GameWorld` page `startNewSeason()` mutates local `setGw(updatedGw)` | Under SIMUI-004 the page reads `gw` from context. The existing "Start Season" success path calls local `setGw(updatedGw)`; migrated, it must call `invalidate()` (so context `gw` updates for `AppHeader` too) instead of setting a divergent local copy. Otherwise the page's `gw` and the header's batch guard drift apart after a season start. | SIMUI-004 |
+| u4 | Provider fetch fails → `gw = null` | Consumers must null-guard every `gw.*` read. `AppHeader`'s guard already short-circuits on `gw == null` (no button) but any unguarded page consumer would crash; `useGameWorldContext` should also decide a fallback for components rendered outside the provider (throw vs. return a default). The proposal says only "children handle gracefully" — make the contract explicit. | SIMUI-005 |
 | u5 | **NEW** — `refreshToken` race: rapid double `invalidate()` while a fetch is in flight | No request id / `AbortController` is specified. A slow in-flight fetch from an earlier `invalidate()` can resolve *after* a newer one and overwrite the fresh `gw`. Low-risk for single-player simulation but should be noted; if it bites, key the response against the latest `refreshToken` or abort the prior request. | SIMUI-002/003 |
 | u6 | `success-skipped` warning "blocks the future Advance Date action" | That blocking is the **out-of-scope** `@future` scenario (`test/ui/features/simulate-game-ui.feature`, untagged). On this branch the warning simply persists with no consumer — forward-compatible but inert until the Advance Date use case lands. | SIMUI-014 |
 | u7 | **NEW** — batch-button guard reads `gw.config.inProgress` and `gw.currentDate` from context | Both come from the same context `gw`. If `gw` is `null` (fetch failed), the guard must short-circuit *before* dereferencing `.config`, or `AppHeader` throws. Express the guard as `gw && gw.config?.inProgress && gw.currentDate`, not `gw.config.inProgress && gw.currentDate`. | SIMUI-005/009 |
@@ -216,6 +213,6 @@ surface something the proposal does not address.
 - **u1 / #25** — calendar endpoint must surface `game.status` (or SIMUI-021 cannot be satisfied).
 - **u8 / #23** — `routes.tsx` restructuring (flat siblings → nested provider subtree) is part of
   the provider ticket, not a no-op.
-- **chip placement** — left to the [#21](https://github.com/wulke/premier-league-baseball/issues/21)
-  prototype; this LLD specifies the chip's data source (`gw.currentDate`) and null state, not its
-  pixel position.
+- **`currentDate` chip** — retired per [#21](https://github.com/wulke/premier-league-baseball/issues/21)/[#44](https://github.com/wulke/premier-league-baseball/issues/44);
+  `AppHeader` does not display `currentDate`. Deferred to a future left-pane nav (out of scope
+  for this branch — see map [#13](https://github.com/wulke/premier-league-baseball/issues/13)).
