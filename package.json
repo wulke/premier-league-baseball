@@ -8,11 +8,11 @@
     }
   },
   "scripts": {
-    "build": "tsc && npx parcel build src/ui/index.html --no-cache",
+    "build": "npx parcel build src/ui/index.html --no-cache && tsc",
     "build:clean": "npm run clean && npm run build",
     "build:docker": "docker build -t premier-league-baseball .",
     "clean": "rm -rf dist",
-    "start": "node dist/index.js",
+    "start": "node dist/src/index.js",
     "start:docker": "docker run -p 8080:3000 premier-league-baseball",
     "test": "DOTENV_CONFIG_PATH=.env.test DOTENV_CONFIG_OVERRIDE=true node -r dotenv/config ./node_modules/jest/bin/jest.js",
     "test:coverage": "DOTENV_CONFIG_PATH=.env.test DOTENV_CONFIG_OVERRIDE=true node -r dotenv/config ./node_modules/jest/bin/jest.js --coverage",
