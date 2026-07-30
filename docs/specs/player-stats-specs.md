@@ -4,7 +4,7 @@ Backend requirements for the `PlayerGameStats` model and season/career aggregati
 
 | ID | Requirement | Status |
 |---|---|---|
-| PSTAT-001 | WHEN a Player both bats and pitches in the same Game THE system SHALL store both batting and pitching columns on a single `PlayerGameStats` row for that `(playerId, gameId)` pair, not split across rows | [ ] |
+| PSTAT-001 | WHEN a Player both bats and pitches in the same Game THE system SHALL store both batting and pitching columns on a single `PlayerGameStats` row for that `(playerId, gameId)` pair, not split across rows; pitching counters that would otherwise collide with batting names SHALL use distinct pitching-prefixed columns | [ ] |
 | PSTAT-002 | WHEN season or career games-played (`G`) is requested THE system SHALL derive it as `COUNT(*)` over the player's `PlayerGameStats` rows rather than reading a stored column | [ ] |
 | PSTAT-003 | WHEN a rate stat (`AVG`, `OBP`, `SLG`, `ERA`, `WHIP`) is requested at any grain (game/season/career) THE system SHALL compute it at read-time from counting-stat aggregates rather than reading a stored value | [ ] |
 | PSTAT-004 | WHEN Player stats are scoped to Core batting and Core pitching per v1 THE system SHALL exclude fielding stats (`E`/`A`/`PO`/`FLD%`), Common-tier stats, and `W`/`L` from the schema | [D] |
