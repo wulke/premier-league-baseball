@@ -1,3 +1,4 @@
+// @spec PCON-001,PCON-004,PCON-007
 import db from '../../../src/db/client';
 import { TeamFactory } from '../../../src/db/domain';
 
@@ -84,7 +85,7 @@ describe('TeamFactory', () => {
     expect(schedule.games.map((game) => game.roundLabel)).toEqual(
       roundDefinitions.map(({ expectedLabel }) => expectedLabel)
     );
-  });
+  }, 10000);
 
   // @spec CUP-011
   it('@spec CUP-011 renders knockout rounds with tournament-convention labels for an 8-team bracket', async () => {
@@ -154,5 +155,58 @@ describe('TeamFactory', () => {
     expect(schedule.games.map((game) => game.roundLabel)).toEqual(
       roundDefinitions.map(({ expectedLabel }) => expectedLabel)
     );
+  }, 10000);
+
+  // @spec PCON-001,PCON-004,PCON-007
+  it('@spec PCON-001 @spec PCON-004 @spec PCON-007 creates an initial roster with matching contracts after the team row exists', async () => {
+    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+    const gw = await db.models.GameWorld.create({ config: {}, year: 2054 }).then((m) => m.dataValues);
+
+    try {
+      const team = await TeamFactory().create(gw.id, { name: 'Milwaukee Makers' });
+      const hydratedTeam = await db.models.Team.findByPk(team.id, {
+        include: [db.models.Player, db.models.Contract],
+      });
+
+      expect(hydratedTeam?.dataValues.Players).toHaveLength(20);
+      expect(hydratedTeam?.dataValues.Contracts).toHaveLength(20);
+      hydratedTeam?.dataValues.Players.forEach((player: any) => {
+        expect(player.dataValues.teamId).toBe(team.id);
+      });
+      hydratedTeam?.dataValues.Contracts.forEach((contract: any) => {
+        expect(contract.dataValues.teamId).toBe(team.id);
+        expect(contract.dataValues.startYear).toBe(gw.year);
+        expect(contract.dataValues.endYear).toBe(gw.year);
+      });
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
+
+  // @spec PCON-004,PCON-007
+  it('@spec PCON-004 @spec PCON-007 rolls back the team row when roster contract issuance fails', async () => {
+    const gw = await db.models.GameWorld.create({ config: {}, year: 2055 }).then((m) => m.dataValues);
+    const originalBulkCreate = db.models.Contract.bulkCreate;
+    const contractCountBefore = await db.models.Contract.count();
+
+    db.models.Contract.bulkCreate = jest.fn().mockRejectedValueOnce(new Error('forced contract failure')) as typeof originalBulkCreate;
+
+    try {
+      await expect(TeamFactory().create(gw.id, { name: 'Rollback Club' })).rejects.toThrow('forced contract failure');
+
+      const teams = await db.models.Team.findAll({
+        where: { gameWorldId: gw.id },
+      });
+      const players = await db.models.Player.findAll({
+        where: { gameWorldId: gw.id },
+      });
+      const contractCountAfter = await db.models.Contract.count();
+
+      expect(teams).toHaveLength(0);
+      expect(players).toHaveLength(0);
+      expect(contractCountAfter).toBe(contractCountBefore);
+    } finally {
+      db.models.Contract.bulkCreate = originalBulkCreate;
+    }
   });
 });

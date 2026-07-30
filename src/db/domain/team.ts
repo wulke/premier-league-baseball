@@ -2,21 +2,50 @@ import { Op } from 'sequelize';
 import { TeamConfig, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
 import db from '../client';
 import { getKnockoutRoundLabel } from './knockout';
+import { PlayerFactory } from './player';
 
 interface ITeam {
   create: (gwId: number, config: TeamConfig) => any;
   getSchedule: (gwId: number, leagueId?: number) => Promise<TeamSeasonCalendar>;
 };
 
+let teamCreateQueue = Promise.resolve();
+
+const enqueueTeamCreate = async <T>(work: () => Promise<T>): Promise<T> => {
+  const result = teamCreateQueue.then(work, work);
+  teamCreateQueue = result.then(() => undefined, () => undefined);
+  return result;
+};
+
 const TeamFactory = (id?: number): ITeam => {
   return {
-    create: async (gwId: number, config: TeamConfig) => {
-      const team = await db.models.Team.create({
-        config,
-        gameWorldId: gwId
-      }).then(({ dataValues }) => dataValues);
-      return team;
-    },
+    // @spec PCON-001,PCON-004,PCON-007
+    create: async (gwId: number, config: TeamConfig) => enqueueTeamCreate(async () => {
+      const transaction = await db.transaction();
+
+      try {
+        const gameWorld = await db.models.GameWorld.findByPk(gwId, { transaction }).then((gw) => {
+          if (!gw) throw Error(`GameWorld '${gwId}' not found`);
+          return gw.dataValues;
+        });
+
+        const team = await db.models.Team.create({
+          config,
+          gameWorldId: gwId
+        }, { transaction }).then(({ dataValues }) => dataValues);
+
+        await PlayerFactory().generateRoster(team.id, gwId, {
+          gameWorldYear: gameWorld.year,
+          transaction,
+        });
+
+        await transaction.commit();
+        return team;
+      } catch (error) {
+        await transaction.rollback();
+        throw error;
+      }
+    }),
 
     getSchedule: async (gwId: number, leagueId?: number): Promise<TeamSeasonCalendar> => {
       // 1. Resolve year from game world
