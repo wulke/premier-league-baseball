@@ -1,3 +1,4 @@
+export * from './contract';
 export * from './division';
 export * from './errors';
 export * from './game';

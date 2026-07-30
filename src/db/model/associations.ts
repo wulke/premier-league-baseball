@@ -3,6 +3,7 @@ const applyAssociations = (sequelize) => {
     Division,
     DivisionSeason,
     DivisionSeasonGame,
+    Contract,
     Game,
     GameWorld,
     League,
@@ -22,12 +23,20 @@ const applyAssociations = (sequelize) => {
   // Player
   Player.belongsTo(GameWorld, { foreignKey: 'gameWorldId' });
   Player.belongsTo(Team, { foreignKey: 'teamId' });
+  // @spec PCON-009
+  Player.hasMany(Contract, { foreignKey: 'playerId' });
   // @spec PSTAT-001,PSTAT-004
   Player.hasMany(PlayerGameStats, { foreignKey: 'playerId' });
+  // @spec PCON-009
+  Contract.belongsTo(Player, { foreignKey: 'playerId' });
+  // @spec PCON-009
+  Contract.belongsTo(Team, { foreignKey: 'teamId' });
   PlayerGameStats.belongsTo(Player, { foreignKey: 'playerId' });
   // Team
   Team.belongsTo(GameWorld, { foreignKey: 'gameWorldId' });
   Team.hasMany(Player, { foreignKey: 'teamId' });
+  // @spec PCON-009
+  Team.hasMany(Contract, { foreignKey: 'teamId' });
   Team.belongsToMany(Division, { foreignKey: 'teamId', through: 'DivisionSeason' });
   // Division
   Division.belongsTo(League, { foreignKey: 'leagueId' });

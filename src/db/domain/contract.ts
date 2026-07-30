@@ -1,0 +1,7 @@
+// @spec PCON-010
+const MIN_ROSTER_SIZE = 20;
+
+// @spec PCON-010
+const MAX_ROSTER_SIZE = 30;
+
+export { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE };
