@@ -33,16 +33,16 @@ const shuffleTeams = (teamIds: number[]): number[] => {
 const getKnockoutRoundTeamCount = (initialTeamCount: number, round: number): number => {
   if (round < 1) throw new Error(`Invalid knockout round '${round}'`);
 
-  const reducedPower = nextLowerPowerOfTwo(initialTeamCount);
+  const roundOneFieldSize = largestPowerOfTwoAtMost(initialTeamCount);
   const hasPlayInRound = !isPowerOfTwo(initialTeamCount);
 
   if (round === 1) return initialTeamCount;
 
   if (hasPlayInRound) {
-    return reducedPower / (2 ** (round - 2));
+    return roundOneFieldSize / (2 ** (round - 2));
   }
 
-  return reducedPower / (2 ** (round - 1));
+  return roundOneFieldSize / (2 ** (round - 1));
 };
 
 // @spec CUP-011
