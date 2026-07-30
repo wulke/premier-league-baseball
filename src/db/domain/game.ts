@@ -64,10 +64,13 @@ const GameFactory = (id?: number) => {
       const homeTeamResult = Math.floor(Math.random() * 10);
       const awayTeamResult = Math.floor(Math.random() * 10);
 
-      await db.models.Game.update(
+      const [affectedCount] = await db.models.Game.update(
         { homeTeamResult, awayTeamResult, status: 'COMPLETED' },
-        { where: { id } }
+        { where: { id, status: { [Op.ne]: 'COMPLETED' } } }
       );
+      if (affectedCount === 0) {
+        throw new DomainError('the game has already been completed', 422);
+      }
 
       const updated = await db.models.Game.findByPk(id);
       // @spec CUP-001,LCH-002 round-robin / knockout completion hooks (single-game path)

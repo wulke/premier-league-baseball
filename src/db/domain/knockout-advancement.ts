@@ -1,5 +1,6 @@
 import { CompetitionFormat } from '../../api/models';
 import db from '../client';
+import { DomainError } from './errors';
 import { shuffleTeams } from './knockout';
 import { recordSeasonChampionIfMissing } from './season-result';
 
@@ -245,6 +246,15 @@ const generateNextRound = async (
   const ordered = format.structure === 'KNOCKOUT' && format.seeding === 'REDRAW'
     ? shuffleTeams(winners)
     : [...winners];
+
+  if (ordered.length % 2 !== 0) {
+    // Bracket should always halve to an even winners count each round; an odd count means an
+    // upstream seeding/tiebreak bug would otherwise silently drop the straggler team.
+    throw new DomainError(
+      `generateNextRound received an odd number of winners (${ordered.length}) for round ${currentRound}`,
+      422,
+    );
+  }
 
   const pairings: [number, number][] = [];
   for (let i = 0; i < ordered.length - 1; i += 2) {

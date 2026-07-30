@@ -74,7 +74,8 @@ const AppHeader = ({ backLink, backLabel }: AppHeaderProps) => {
         setBatchStatus(skipped.length === 0 ? 'success-clean' : 'success-skipped');
         invalidate(); // SIMUI-015 — invalidate on any 200 success (NOT on error: SIMUI-018).
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error(err);
         setBatchStatus('error'); // SIMUI-016 — error region + Retry; no invalidate (SIMUI-018).
       });
   };
