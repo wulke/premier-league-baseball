@@ -47,7 +47,46 @@ row-to-shape reshaping.
 ```
 
 `BracketRound` / `BracketTie` / `BracketGame` are the render-shape `docs/llds/full-season-ui.md`
-defines (#39) — this endpoint targets that shape, it does not redefine it.
+defines (#39). This endpoint materializes that shape directly:
+
+```ts
+type BracketRound = {
+  round: number;
+  label: string;                           // tournament-convention label, e.g. Final
+  status: 'COMPLETE' | 'IN_PROGRESS' | 'PENDING';
+  ties: BracketTie[];
+};
+
+type BracketTie =
+  | {
+      kind: 'BYE';
+      teamA: { teamId: number; teamName: string };
+      teamB: null;
+      winnerTeamId: number;
+      games: BracketGame[];                // single bye row
+    }
+  | {
+      kind: 'SERIES';
+      teamA: { teamId: number | null; teamName: string | null };
+      teamB: { teamId: number | null; teamName: string | null };
+      winnerTeamId?: number;               // absent until the tie is actually decided
+      games: BracketGame[];                // one leg, two legs, or empty for a pending placeholder
+    };
+
+type BracketGame = {
+  gameId: number;
+  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED';
+  homeTeamId: number;
+  homeTeamName: string;
+  awayTeamId: number | null;
+  awayTeamName: string | null;
+  homeTeamResult: number | null;
+  awayTeamResult: number | null;
+};
+```
+
+Mid-redraw `PENDING` rounds use `SERIES` ties with `games: []` and both teams null because the
+next round's participants are not yet written to `Game` rows.
 
 ### Domain — `LeagueFactory(leagueId).getBracket()`
 
