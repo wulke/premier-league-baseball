@@ -4,6 +4,10 @@ import { useDefaultGameWorld } from '../../../src/api/models';
 import { Op } from 'sequelize';
 
 describe('GameWorldFactory', () => {
+  beforeAll(async () => {
+    await db.sync({ force: true });
+  });
+
   it('Creates a new game world', async () => {
     const config = useDefaultGameWorld();
     const gw = await GameWorldFactory().create(config);
@@ -37,5 +41,19 @@ describe('GameWorldFactory', () => {
     const teams = await db.models.Team.findAll({ where: { gameWorldId: { [Op.eq]: gw.id }}});
     const leagues = await db.models.League.findAll({ where: { gameWorldId: { [Op.eq]: gw.id }}});
     // todo write the tests...
+  });
+
+  // @spec GWS-001
+  it('newSeason: rethrows errors from failed rollover work', async () => {
+    const gw = await GameWorldFactory().create(useDefaultGameWorld());
+    const originalIncrement = db.models.GameWorld.increment;
+    const rolloverError = new Error('forced season rollover failure');
+
+    db.models.GameWorld.increment = jest.fn().mockRejectedValueOnce(rolloverError) as typeof originalIncrement;
+    try {
+      await expect(GameWorldFactory(gw.id).newSeason()).rejects.toThrow(rolloverError.message);
+    } finally {
+      db.models.GameWorld.increment = originalIncrement;
+    }
   });
 });

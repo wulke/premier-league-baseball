@@ -1,3 +1,4 @@
+coverage
 dist
 node_modules
 .parcel-cache
@@ -5,3 +6,4 @@ node_modules
 *.sqlite
 .env
 .envrc
+.claude

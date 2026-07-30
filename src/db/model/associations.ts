@@ -6,6 +6,7 @@ const applyAssociations = (sequelize) => {
     Game,
     GameWorld,
     League,
+    SeasonResult,
     Team
   } = sequelize.models;
 
@@ -22,17 +23,22 @@ const applyAssociations = (sequelize) => {
   Division.belongsTo(League, { foreignKey: 'leagueId' });
   Division.belongsToMany(Team, { foreignKey: 'divisionId', through: 'DivisionSeason' });
   // DivisionSeason
-  DivisionSeason.belongsTo(Team, { foreignKey: 'temaId' });
+  DivisionSeason.belongsTo(Team, { foreignKey: 'teamId' });
   DivisionSeason.belongsTo(Division, { foreignKey: 'divisionId' });
   Team.hasMany(DivisionSeason, { foreignKey: 'teamId' });
   Division.hasMany(DivisionSeason, { foreignKey: 'divisionId' });
   // Game
   Game.belongsToMany(DivisionSeason, { foreignKey: 'gameId', through: DivisionSeasonGame });
-  DivisionSeason.belongsToMany(Game, { through: DivisionSeasonGame });
+  DivisionSeason.belongsToMany(Game, { foreignKey: 'divisionSeasonId', through: DivisionSeasonGame });
   DivisionSeasonGame.belongsTo(Game, { foreignKey: 'gameId' });
-  DivisionSeasonGame.belongsTo(DivisionSeason);
+  DivisionSeasonGame.belongsTo(DivisionSeason, { foreignKey: 'divisionSeasonId' });
   Game.hasMany(DivisionSeasonGame, { foreignKey: 'gameId' });
-  DivisionSeason.hasMany(DivisionSeasonGame);
+  DivisionSeason.hasMany(DivisionSeasonGame, { foreignKey: 'divisionSeasonId' });
+  // SeasonResult
+  SeasonResult.belongsTo(Division, { foreignKey: 'divisionId' });
+  SeasonResult.belongsTo(Team, { foreignKey: 'championTeamId' });
+  Division.hasMany(SeasonResult, { foreignKey: 'divisionId' });
+  Team.hasMany(SeasonResult, { foreignKey: 'championTeamId' });
 };
 
 export { applyAssociations };

@@ -2,16 +2,135 @@ enum GameWorldType {
   PremierLeague = 'Premier League',
 };
 
+interface StandingsConfig {
+  mode: 'table' | 'elimination';
+  points: {
+    win: number;
+    loss: number;
+    draw?: number;
+  };
+}
+
+const DefaultStandingsConfig: StandingsConfig = {
+  mode: 'table',
+  points: { win: 3, draw: 1, loss: 0 }
+};
+
+interface TeamStanding {
+  teamId: number;
+  teamName: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  runsFor: number;
+  runsAgainst: number;
+  runDifference: number;
+  points: number;
+}
+
+interface TeamSeasonGame {
+  gameId: number;
+  scheduledDate: string | null;
+  homeTeamId: number;
+  homeTeamName: string;
+  awayTeamId: number | null;
+  awayTeamName: string;
+  divisionId: number;
+  divisionName: string;
+  roundLabel?: string | null;
+  homeTeamResult: number | null;
+  awayTeamResult: number | null;
+  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED';
+}
+
+interface TeamSeasonSchedule {
+  teamId: number;
+  teamName: string;
+  year: number;
+  games: TeamSeasonGame[];
+}
+
+type TeamSeasonCalendar = TeamSeasonSchedule;
+
+interface DivisionStandings {
+  divisionId: number;
+  divisionName: string;
+  standings: TeamStanding[];
+}
+
+interface BracketTeam {
+  teamId: number | null;
+  teamName: string | null;
+}
+
+interface BracketGame {
+  gameId: number;
+  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED';
+  homeTeamId: number;
+  homeTeamName: string;
+  awayTeamId: number | null;
+  awayTeamName: string | null;
+  homeTeamResult: number | null;
+  awayTeamResult: number | null;
+}
+
+type BracketTie =
+  | {
+      kind: 'BYE';
+      teamA: BracketTeam;
+      teamB: null;
+      winnerTeamId: number;
+      games: BracketGame[];
+    }
+  | {
+      kind: 'SERIES';
+      teamA: BracketTeam;
+      teamB: BracketTeam;
+      winnerTeamId?: number;
+      games: BracketGame[];
+    };
+
+interface BracketRound {
+  round: number;
+  label: string;
+  status: 'COMPLETE' | 'IN_PROGRESS' | 'PENDING';
+  ties: BracketTie[];
+}
+
+interface DivisionBracket {
+  divisionId: number;
+  year: number;
+  champion?: { teamId: number };
+  rounds: BracketRound[];
+}
+
+interface LeagueDivisionBracket {
+  divisionId: number;
+  divisionName: string;
+  structure: 'ROUND_ROBIN' | 'KNOCKOUT';
+  champion?: { teamId: number };
+  rounds: BracketRound[];
+}
+
 interface LeagueConfig {
   name: string;
   type: LeagueType;
   divisions: DivisionConfig[];
-  gameFormula?: GameFormula[];
+  format?: CompetitionFormat;
+  standingsConfig?: StandingsConfig;
 };
+interface SchedulingConfig {
+  startDate: string;
+  intervalDays: number;
+}
+
 interface DivisionConfig {
   name: string;
   defaultTeams: any[];
-  gameFormula?: GameFormula[];
+  format?: CompetitionFormat;
+  isTopTier?: boolean;
+  schedulingConfig?: SchedulingConfig;
 };
 interface TeamConfig {
   name: string;
@@ -22,40 +141,63 @@ enum LeagueType {
   LeagueCup = 'League Cup'
 };
 
-enum GameFormula {
-  ONE_LEG = '1_LEG',
-  TWO_LEG = '2_LEG',
-  Bo1 = 'Bo1',
-  Bo3 = 'Bo3',
-  Bo5 = 'Bo5',
-  ROUND_ROBIN = 'ROUND_ROBIN',
-  AGGREGATE = 'AGGREGATE',
-  KNOCKOUT = 'KNOCKOUT',
-  REDRAW = 'REDRAW'
+type CompetitionLegs = 'ONE_LEG' | 'TWO_LEG';
+type CompetitionSeriesLength = 'Bo1' | 'Bo3' | 'Bo5';
+type CompetitionTiebreak = 'AGGREGATE_SCORE' | 'OVERTIME' | 'ANOTHER_GAME_W_OVERTIME';
+type CompetitionSeeding = 'FIXED' | 'REDRAW';
+
+type CompetitionFormat = {
+  legs: CompetitionLegs;
+  seriesLength: CompetitionSeriesLength;
+  tiebreak?: CompetitionTiebreak;
+} & (
+  | { structure: 'ROUND_ROBIN' }
+  | { structure: 'KNOCKOUT'; seeding: CompetitionSeeding }
+);
+
+const STANDARD_LEAGUE_FORMAT: CompetitionFormat = {
+  structure: 'ROUND_ROBIN',
+  legs: 'TWO_LEG',
+  seriesLength: 'Bo1',
+  tiebreak: 'AGGREGATE_SCORE',
 };
+
+const STANDARD_CUP_FORMAT: CompetitionFormat = {
+  structure: 'KNOCKOUT',
+  legs: 'ONE_LEG',
+  seriesLength: 'Bo3',
+  seeding: 'REDRAW',
+};
+
+// @spec CFG-001
+const resolveCompetitionFormat = (
+  divisionConfig: DivisionConfig,
+  leagueConfig: LeagueConfig
+): CompetitionFormat | undefined => divisionConfig.format ?? leagueConfig.format;
 
 const DefaultLeagues = {
   [GameWorldType.PremierLeague]: [
     {
       name: GameWorldType.PremierLeague,
       type: LeagueType.League,
+      format: STANDARD_LEAGUE_FORMAT,
       divisions: [
         {
           name: GameWorldType.PremierLeague,
           defaultTeams: [...Array(44).keys()].slice(0,20),
-          gameFormula: [GameFormula.TWO_LEG, GameFormula.Bo1, GameFormula.ROUND_ROBIN, GameFormula.AGGREGATE]
+          isTopTier: true,
         },
         {
           name: 'Championship',
           defaultTeams: [...Array(44).keys()].slice(20,44),
-          gameFormula: [GameFormula.TWO_LEG, GameFormula.Bo1, GameFormula.ROUND_ROBIN, GameFormula.AGGREGATE]
+          isTopTier: false,
         },
       ]
     },
     {
       name: 'League Cup',
       type: LeagueType.LeagueCup,
-      gameFormula: [GameFormula.ONE_LEG, GameFormula.Bo3, GameFormula.KNOCKOUT, GameFormula.REDRAW],
+      format: STANDARD_CUP_FORMAT,
       divisions: [
         {
           name: '1st Round',
@@ -133,11 +275,28 @@ const useDefaultGameWorld = (gwType: GameWorldType = GameWorldType.PremierLeague
 
 export {
   GameWorldType,
-  GameFormula,
+  CompetitionFormat,
   NewGameWorld,
   TeamConfig,
   LeagueConfig,
   LeagueType,
   DivisionConfig,
+  SchedulingConfig,
+  StandingsConfig,
+  DefaultStandingsConfig,
+  TeamStanding,
+  TeamSeasonGame,
+  TeamSeasonSchedule,
+  TeamSeasonCalendar,
+  DivisionStandings,
+  BracketTeam,
+  BracketGame,
+  BracketTie,
+  BracketRound,
+  DivisionBracket,
+  LeagueDivisionBracket,
+  STANDARD_CUP_FORMAT,
+  STANDARD_LEAGUE_FORMAT,
+  resolveCompetitionFormat,
   useDefaultGameWorld
 };

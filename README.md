@@ -20,10 +20,19 @@
 
 ## Dependencies
 * [dotenv](https://github.com/motdotla/dotenv)
-* [preact](https://preactjs.com/guide/v10/refs)
-* [preact-router](https://github.com/preactjs/preact-router)
+* [heroicons](https://github.com/tailwindlabs/heroicons)
+* ~~[preact](https://preactjs.com/guide/v10/refs)~~
+* ~~[preact-router](https://github.com/preactjs/preact-router)~~
 * [parcel](https://parceljs.org/getting-started/webapp/)
 * [radix-ui](https://www.radix-ui.com/primitives/docs/overview/introduction)
 * [react-hook-form](https://react-hook-form.com/get-started#integratingwithUIlibraries)
+* [react-router](https://reactrouter.com/start/library/)
 * [sequelize](https://sequelize.org/docs/v6/getting-started/)
 * [stithces](https://stitches.dev/docs/styling)
+* [nodemon](https://github.com/remy/nodemon#nodemon)
+
+## Backlog
+- Breakdown of GameWeeks for a GameWorld.year, and then cascade to each League (which in turn cascades to each Division)
+- Update game creation to set a `game.scheduledDate` as a date in the GameWeek (from above)
+- GameWorld.date (current day of the game world)
+  - Needed for determinging upcoming games

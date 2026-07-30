@@ -8,6 +8,9 @@ module.exports = (sequelize: any) => {
       primaryKey: true,
     },
     gameId: {
+      type: DataTypes.INTEGER,
+    },
+    divisionSeasonId: {
       type: DataTypes.INTEGER
     }
   });

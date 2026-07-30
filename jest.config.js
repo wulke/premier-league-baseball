@@ -1,27 +1,41 @@
 // https://jestjs.io/docs/en/configuration.html
 
-module.exports = {
+const commonConfig = {
   clearMocks: true,
   collectCoverage: false,
   collectCoverageFrom: ['src/**/*.{ts,tsx}'],
   coverageDirectory: 'coverage',
   coveragePathIgnorePatterns: [ '/node_modules/', '/src/ui/' ],
   coverageReporters: ['json', 'text', 'lcov', 'clover', 'html' ],
-  globalSetup: './test/setup.ts',
-  globalTeardown: './test/teardown.ts',
-  moduleNameMapper: {
-    '^react$': 'preact/compat',
-    '^react-dom/test-utils$': 'preact/test-utils',
-    '^react-dom$': 'preact/compat',
-    '^react/jsx-runtime$': 'preact/jsx-runtime'
-  },
-  testEnvironment: 'node',
-  testMatch: [
-    '**/test/**/*.test.[jt]s?(x)',
-    '**/?(*.)+(spec|test).[tj]s?(x)'
-  ],
-  testPathIgnorePatterns: ['/node_modules/'],
   transform: {
-    '^.+\\.ts?$': 'ts-jest'
+    '^.+\\.(ts|tsx)$': ['ts-jest', { tsconfig: 'tsconfig.json' }]
   }
-}
+};
+
+module.exports = {
+  projects: [
+    {
+      ...commonConfig,
+      displayName: 'backend',
+      testEnvironment: 'node',
+      testMatch: [
+        '**/test/db/**/*.test.ts',
+        '**/test/api/**/*.test.ts',
+        '**/test/bdd/**/*.test.ts'
+      ],
+    },
+    {
+      ...commonConfig,
+      displayName: 'ui',
+      testEnvironment: 'jsdom',
+      testMatch: [
+        '**/test/ui/**/*.test.tsx',
+        '**/test/ui/**/*.test.ts'
+      ],
+      setupFilesAfterEnv: ['<rootDir>/test/ui/setup.ts'],
+      moduleNameMapper: {
+        '^react-router$': '<rootDir>/node_modules/react-router/dist/development/index.js'
+      }
+    }
+  ]
+};

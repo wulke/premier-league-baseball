@@ -14,6 +14,10 @@ module.exports = (sequelize: any) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: new Date().getFullYear() - 1
+    },
+    currentDate: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
     }
   });
 };

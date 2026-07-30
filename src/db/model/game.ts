@@ -15,12 +15,27 @@ module.exports = (sequelize: any) => {
       type: DataTypes.INTEGER,
       // fk reference to Team.id
     },
+    round: {
+      type: DataTypes.INTEGER,
+    },
     scheduledDate: {
       type: DataTypes.DATE,
     },
-    /**
-     * result: {
-     * }
-     */
+    status: {
+      type: DataTypes.ENUM('SCHEDULED', 'IN_PROGRESS', 'COMPLETED'),
+      allowNull: false,
+      defaultValue: 'SCHEDULED',
+    },
+    /* ! todo ! re-evaluate how results and game logs should be stored */
+    homeTeamResult: {
+      type: DataTypes.INTEGER
+    },
+    awayTeamResult: {
+      type: DataTypes.INTEGER
+    }
+  }, {
+    indexes: [
+      { fields: ['scheduledDate'] }
+    ]
   });
 };

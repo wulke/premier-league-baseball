@@ -13,7 +13,7 @@ const GameWorldFactory = (id?: number): IGameWorld => {
     create: async (config: NewGameWorld) => {
       // create game world
       const gw = await db.models.GameWorld.create({
-        config,
+        config: { ...config, inProgress: false },
       }).then(({ dataValues }) => dataValues);
       // create teams
       const teams = await Promise.all(config.teams?.map(async (teamConfig) => 
@@ -26,8 +26,9 @@ const GameWorldFactory = (id?: number): IGameWorld => {
       return { ...gw, leagues, teams };
     },
     find: async () => 
-      id ? await db.models.GameWorld.findByPk(id)
+      id ? await db.models.GameWorld.findByPk(id, { include: [db.models.League, db.models.Team]})
          : await db.models.GameWorld.findAll(),
+    // @spec GWS-001
     newSeason: async () => {
       if (!id) throw Error('no game world to start new season');
       return await db.models.GameWorld.findByPk(id, { include: db.models.League })
@@ -36,25 +37,20 @@ const GameWorldFactory = (id?: number): IGameWorld => {
           return gw.dataValues;
         })
         .then(async (gw) => {
-          // transaction: https://sequelize.org/docs/v6/other-topics/transactions
-          const transaction = await db.transaction();
+          const currentYear = gw.year;
           try {
-            const currentYear = gw.year;
             // (1) increment year <= do we want to move this?
             await db.models.GameWorld.increment({ year: 1 }, { where: { id: gw.id }});
+            await db.models.GameWorld.update({ config: { ...gw.config, inProgress: true }}, { where: { id: gw.id }});
             // (2) for each League.newSeason()
-            await Promise.all(
-              gw.Leagues
-                .map(({ dataValues }) => dataValues.id)
-                .map((id) => LeagueFactory(id).newSeason(currentYear))
-            );
-            // (3) commit transaction
-            await transaction.commit();
+            for (const { dataValues } of gw.Leagues) {
+              await LeagueFactory(dataValues.id).newSeason(currentYear);
+            }
           } catch (error) {
             console.error(error);
-            await transaction.rollback();
+            throw error;
           }
-          return;
+          return GameWorldFactory(id).find();
         });
     }
   }

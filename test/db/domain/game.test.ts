@@ -2,6 +2,10 @@ import db from '../../../src/db/client';
 import { GameFactory } from '../../../src/db/domain';
 
 describe('GameFactory', () => {
+  beforeAll(async () => {
+    await db.sync({ force: true });
+  });
+
   it('creates an unscheduled game', async () => {
     const game = await GameFactory().create(1,2);
     const actual = await db.models.Game.findByPk(game.id)
