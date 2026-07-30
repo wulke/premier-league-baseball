@@ -30,11 +30,12 @@ interface PlayerGameStats {
   SO: number;  // strikeouts
 
   // Pitching — Core only (per #61), adjusted for game-grain
-  GS: boolean; // did this player start this game (replaces season-grain "games started" count)
-  IP: number;  // innings pitched
-  // pitching H/BB/SO/ER — same column names as batting H/BB/SO where types don't collide;
-  // ER is pitching-only:
-  ER: number;  // earned runs allowed
+  GS: boolean;        // did this player start this game (replaces season-grain "games started" count)
+  IP: number;         // innings pitched
+  pitchingH: number;  // hits allowed
+  pitchingBB: number; // walks allowed
+  pitchingSO: number; // strikeouts recorded
+  ER: number;         // earned runs allowed
 }
 ```
 
@@ -47,6 +48,7 @@ interface PlayerGameStats {
 | Field | Notes |
 |---|---|
 | `G` (games played) | **Not a stored column.** Derived as `COUNT(*)` of a player's `PlayerGameStats` rows for the relevant season/career window. |
+| `pitchingH` / `pitchingBB` / `pitchingSO` | **Pitching-prefixed on purpose.** Batting keeps the canonical `H` / `BB` / `SO` names, so the pitching counters need distinct column names for a two-way player's single row to remain unambiguous. |
 | `W` / `L` (wins/losses) | **Dropped from v1 entirely.** Real attribution requires decision logic (starter IP thresholds, bullpen credit rules, etc.) the random `SimulationEngine` cannot produce. An always-null column was judged worse than omitting the field. |
 | Rate stats (`AVG`, `OBP`, `SLG`, `ERA`, `WHIP`) | **Never stored.** Computed at read-time from counting-stat aggregates, at whatever grain (game/season/career) is queried — avoids drift against the counting stats they're derived from. |
 | Fielding (`E`/`A`/`PO`/`FLD%`) and "Common" tiers (`2B`/`3B`/`SB`/`CS`/`HBP`/`OPS`/`SV`/`HLD`/`K9`/`BB9`) | **Deferred**, not modeled by this schema. Add real-world flavor but aren't required for a believable v1 stat line or for `SimulationEngine`. |
@@ -60,7 +62,7 @@ AVG(rows)  = SUM(rows.H)  / SUM(rows.AB)
 OBP(rows)  = (SUM(rows.H) + SUM(rows.BB)) / (SUM(rows.AB) + SUM(rows.BB))
 SLG(rows)  = totalBases(rows) / SUM(rows.AB)     // totalBases needs 2B/3B/HR detail beyond Core v1 — SLG is descoped alongside those columns until they land
 ERA(rows)  = 9 * SUM(rows.ER) / SUM(rows.IP)
-WHIP(rows) = (SUM(rows.BB) + SUM(rows.H)) / SUM(rows.IP)
+WHIP(rows) = (SUM(rows.pitchingBB) + SUM(rows.pitchingH)) / SUM(rows.IP)
 G(rows)    = COUNT(rows)
 ```
 
@@ -92,5 +94,5 @@ Game completes with real per-player events (future SimulationEngine capability)
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-players-attributes-stats--contracts) |
 | **This LLD** | `docs/llds/player-stats.md` |
 | EARS | `docs/specs/player-stats-specs.md` — `PSTAT-001`.. |
-| Code | *(not yet implemented — this map is planning-only)* `src/db/model/` (`PlayerGameStats`) |
+| Code | `src/db/model/player-game-stats.ts`, `src/db/model/associations.ts` |
 | Decision record | [#61](https://github.com/wulke/premier-league-baseball/issues/61), [#62](https://github.com/wulke/premier-league-baseball/issues/62) |
