@@ -9,9 +9,10 @@ const Home = () => {
   const [gameWorlds, setGameWorlds] = useState<any[]>([]);
   const [showNewForm, setShowNewForm] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const defaultGameWorld = useDefaultGameWorld();
 
   const { register, handleSubmit } = useForm<NewGameWorld>({
-    defaultValues: useDefaultGameWorld()
+    defaultValues: defaultGameWorld
   });
 
   useEffect(() => {
@@ -26,11 +27,16 @@ const Home = () => {
 
   const submit: SubmitHandler<NewGameWorld> = async (data) => {
     setIsCreating(true);
+    const payload: NewGameWorld = {
+      ...defaultGameWorld,
+      ...data,
+      name: data.name,
+    };
     await fetch(Endpoints.NewGameWorld, {
       method: 'POST',
       mode: 'cors',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(payload)
     }).then((r) => r.json())
       .then((gw) => navigate(`/${gw.id}`))
       .catch(console.error)
