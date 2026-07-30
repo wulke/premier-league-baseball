@@ -149,7 +149,8 @@ const GameRow = ({
 };
 
 const TeamCalendar = () => {
-  const { gwId, leagueId, teamId } = useParams();
+  // @spec UI-004
+  const { gwId, teamId } = useParams();
   const [calendar, setCalendar] = useState<TeamSeasonCalendar | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -171,7 +172,6 @@ const TeamCalendar = () => {
 
     const qs = new URLSearchParams();
     if (gwId) qs.append('gwId', gwId);
-    if (leagueId) qs.append('leagueId', leagueId);
 
     fetch(`${Endpoints.GetTeamSchedule.replace(':teamId', teamId)}?${qs.toString()}`, {
       method: 'GET',
@@ -194,7 +194,7 @@ const TeamCalendar = () => {
     });
 
     return () => { isMounted = false; };
-  }, [gwId, leagueId, retryToken, contextRefreshToken, teamId]);
+  }, [gwId, retryToken, contextRefreshToken, teamId]);
 
   const handleSimulate = (gameId: number) => {
     setSimulateState((prev) => new Map(prev).set(gameId, 'loading'));
@@ -262,7 +262,7 @@ const TeamCalendar = () => {
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
 
       {/* Shared header (Flow B). */}
-      <AppHeader backLink={`/${gwId}/${leagueId}`} backLabel="League" />
+      <AppHeader backLink={`/${gwId}`} backLabel="Game World" />
 
       {/* Team identity */}
       <div style={{ marginBottom: '28px' }}>

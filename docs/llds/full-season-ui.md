@@ -49,6 +49,10 @@ navigation (`onTeamClick`, currently building the old nested path) updates to th
 change** — `leagueId` is already optional and omitting it already returns all `DivisionSeason`s for
 the team/year across leagues; the UI simply stops passing it.
 
+`TeamCalendar` also stops reading `leagueId` from `useParams()`: only `gwId` and `teamId` are
+consumed for the page fetch and breadcrumb, so a direct visit to `/:gwId/team/:teamId/calendar`
+renders the combined season schedule with no missing-param fallback path.
+
 ### `BracketView` (new component, `src/ui/pages/league.tsx` or extracted `src/ui/components/bracket-view.tsx`)
 
 Consumes the per-division entry from `GetLeagueBracket` (`docs/llds/bracket-api.md`):

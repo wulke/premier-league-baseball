@@ -192,7 +192,8 @@ const League = () => {
 
   if (!league) return <></>;
 
-  const openTeamCalendar = (teamId: number) => navigate(`/${gwId}/${leagueId}/team/${teamId}/calendar`);
+  // @spec UI-004
+  const openTeamCalendar = (teamId: number) => navigate(`/${gwId}/team/${teamId}/calendar`);
   const hasAnyStandings = standings.some((s) => s.standings.length > 0);
 
   return (

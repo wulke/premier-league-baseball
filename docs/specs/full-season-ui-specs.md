@@ -10,7 +10,7 @@ and season-lifecycle display (`src/ui/pages/league.tsx`, `src/ui/pages/game-worl
 | UI-001 | WHEN a division has a `SeasonResult` row for the current year THE League page SHALL show a champion banner on the League identity block in place of the in-progress subtitle | [ ] |
 | UI-002 | WHEN both Leagues in a GameWorld are decided THE GameWorld hub SHALL show a computed "Season Complete" block naming both champions; WHILE only one is decided THE hub SHALL show that champion and "In progress" for the other | [ ] |
 | UI-003 | WHEN a division `isSeasonComplete` THE UI SHALL disable simulate controls scoped to that division while leaving team-click navigation and bracket expand-on-click interactive | [ ] |
-| UI-004 | WHEN a user navigates to a team's calendar THE system SHALL show that team's games across all leagues in the GameWorld at route `/:gwId/team/:teamId/calendar`, with no `leagueId` scoping | [ ] |
+| UI-004 | WHEN a user navigates to a team's calendar THE system SHALL show that team's games across all leagues in the GameWorld at route `/:gwId/team/:teamId/calendar`, with no `leagueId` scoping | [x] |
 | UI-005 | WHEN a Division's `structure` is `KNOCKOUT` THE Division card SHALL render `BracketView` grouped by round instead of `StandingsTable` | [ ] |
 | UI-006 | WHEN a round contains byes THE `BracketView` SHALL group them under a "Byes (N)" subheading listing team names inline | [ ] |
 | UI-007 | WHEN a tie has more than one leg THE `BracketView` SHALL render one row per series with per-game scores, expandable on click to one row per game | [ ] |
