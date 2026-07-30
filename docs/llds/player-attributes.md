@@ -52,7 +52,7 @@ type PlayerAttributes = {
 
 | Field | Notes |
 |---|---|
-| `teamId` | Nullable FK — `null` represents a free agent. Not enforced non-null at the schema level. |
+| `teamId` | Nullable FK — `null` represents a free agent. Not enforced non-null at the schema level. **Denormalized "current team" pointer**, not the authoritative record of the Player/Team relationship — `Contract` (`docs/llds/player-contracts-roster.md`) is. Kept alongside `Contract` for query ergonomics: "who is currently on Team X's roster" is the most common Player query and reading a plain FK is simpler than filtering `Contract` rows to the one covering the current `GameWorld.year`. See `docs/llds/player-contracts-roster.md`'s Edge Case Probe for the sync-responsibility trade-off this introduces. |
 | `gameWorldId` | Required FK — a `Player` belongs to exactly one `GameWorld`, never shared/global across worlds. |
 | scalar ratings | One shared pool (`contact`/`power`/`armStrength`/`accuracy`/`reaction`/`vision`/`discipline`) usable in multiple contexts (e.g. `armStrength` grades both a fielder's throw and a pitcher's fastball). Expected to grow. |
 | `positions` | Dense affinity map — every player has a rating at every one of the 9 positions, not just a "primary" one. No stored `position` column; primary position for display is **derived at read-time** as the highest-rated `positions` entry. |

@@ -92,6 +92,15 @@ generateRoster(teamId, gwId):
   Contracts expire after the first season, forcing early exercise of Contract lifecycle/free-agency
   mechanics (deferred fog, not this map's concern) rather than letting rosters sit static for years
   before that gap is ever exercised.
+- **`Player.teamId` and `Contract` both encode team membership, deliberately.** `Contract` is the
+  authoritative, historical record (one row per team-tenure, with a term); `Player.teamId` is a
+  denormalized "current team" pointer kept for query ergonomics — see
+  `docs/llds/player-attributes.md`'s field semantics. This generation flow writes both in the same
+  call, so they can't drift *here*. The two fields staying in sync going forward is **not yet
+  someone's job** — no code path exists yet that changes a `Player`'s team after initial generation
+  (transfers/trades are deferred fog per the HLD). Whichever future map introduces team changes must
+  update `Player.teamId` and `Contract` together as one unit of work; this LLD does not solve that,
+  it only flags that the obligation exists.
 
 ## Edge Case Probe
 
@@ -102,6 +111,7 @@ generateRoster(teamId, gwId):
 | e3 | A `Contract`'s `endYear` is reached (`GameWorld.year` advances past it) | **Not handled.** `endYear` is descriptive data only — no free-agency flip, no auto-renewal, and `newSeason()` does not check or react to expiring Contracts. Deferred to a future map. | PCON-003 |
 | e4 | Position allocation proportional split doesn't divide evenly across headcount/ratio | Implementation detail (rounding strategy) left open by this LLD — any reasonable rounding that keeps `pitcherCount + fielderCount = headcount` satisfies the "proportional, not hardcoded" constraint. | — |
 | e5 | `Player.teamId` at generation time | Always set (never a free agent) — every `Player` produced by `generateRoster` is immediately assigned to the `teamId` it was generated for. Free-agent (`teamId: null`) `Player` rows are a valid state per `docs/llds/player-attributes.md` but not produced by this flow. | — |
+| e6 | `Player.teamId` diverges from the `teamId` on a Player's current `Contract` (e.g. a future map changes one without the other) | **Not guarded by this LLD.** No runtime check cross-validates the two. This map's generation flow can't produce the divergence (both written together), but nothing prevents a future writer from doing so — flagged as an obligation for whichever map next mutates team assignment, not solved here. | PCON-007 |
 
 ## Traceability
 

@@ -11,6 +11,11 @@ creation (`src/db/model/`, `src/db/domain/player.ts`, `src/db/domain/team.ts`).
 | PCON-004 | WHEN a Player is generated as part of initial roster generation THE system SHALL auto-issue one Contract with `startYear = GameWorld.year` and `endYear = startYear` | [ ] |
 | PCON-005 | WHEN a Team's roster headcount falls outside [20, 30] THE system SHALL NOT block Team creation or `newSeason()` — enforcement is deferred | [D] |
 | PCON-006 | WHEN a Contract's `endYear` is reached THE system SHALL NOT auto-trigger free-agency or renewal — `endYear` is descriptive only in v1 | [D] |
+| PCON-007 | WHEN a Player's team assignment changes after initial generation THE system SHALL update `Player.teamId` and issue/close the corresponding `Contract` as one unit of work, keeping both in sync | [D] |
+
+`PCON-007` is Deferred, not Active — no code path changes a Player's team after initial generation in
+this map (transfers/trades are out of scope); it records the sync obligation for whichever future map
+introduces one, per `docs/llds/player-contracts-roster.md`'s Edge Case Probe (e6).
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
