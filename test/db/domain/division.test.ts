@@ -16,6 +16,20 @@ const TWO_LEG_ROUND_ROBIN_FORMAT = {
   tiebreak: 'AGGREGATE_SCORE' as const,
 };
 
+const ONE_LEG_KNOCKOUT_FIXED_FORMAT = {
+  structure: 'KNOCKOUT' as const,
+  legs: 'ONE_LEG' as const,
+  seriesLength: 'Bo1' as const,
+  seeding: 'FIXED' as const,
+};
+
+const ONE_LEG_KNOCKOUT_REDRAW_FORMAT = {
+  structure: 'KNOCKOUT' as const,
+  legs: 'ONE_LEG' as const,
+  seriesLength: 'Bo1' as const,
+  seeding: 'REDRAW' as const,
+};
+
 describe('DivisionFactory', () => {
   let gw;
   const teamConfigs: TeamConfig[] = [...Array(10).keys()]
@@ -266,6 +280,131 @@ describe('DivisionFactory', () => {
         }
         for (const count of awayCounts.values()) {
           expect(count).toBe(N - 1);
+        }
+      });
+    });
+
+    describe('ONE_LEG KNOCKOUT', () => {
+      const createKnockoutSeason = async ({
+        teamCount,
+        format,
+      }: {
+        teamCount: number;
+        format: typeof ONE_LEG_KNOCKOUT_FIXED_FORMAT | typeof ONE_LEG_KNOCKOUT_REDRAW_FORMAT;
+      }) => {
+        const knockoutGw = await db.models.GameWorld.create({ config: {} }).then((m) => m.dataValues);
+        const knockoutTeams = await Promise.all(
+          [...Array(teamCount).keys()].map((i) => TeamFactory().create(knockoutGw.id, { name: `KO Team ${i}` }))
+        );
+        const knockoutLeague = await LeagueFactory().create(knockoutGw.id, {
+          name: `${format.seeding} Knockout League`,
+          type: LeagueType.LeagueCup,
+          divisions: [{
+            name: '1st Round',
+            defaultTeams: [...Array(teamCount).keys()],
+            format,
+          }]
+        }, knockoutTeams.map(({ id }) => id));
+        const knockoutDivId = await db.models.League.findByPk(knockoutLeague.id, { include: db.models.Division })
+          .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
+        const currentYear = knockoutGw.year;
+
+        await DivisionFactory(knockoutDivId).newSeason(currentYear);
+
+        const year = currentYear + 1;
+        const games = await getScheduledGames(knockoutDivId, year);
+        const divisionSeasons = await db.models.DivisionSeason.findAll({
+          where: { divisionId: knockoutDivId, year },
+          order: [['bracketSlot', 'ASC']]
+        }).then((rows) => rows.map(({ dataValues }) => dataValues));
+
+        return { games, divisionSeasons, teams: knockoutTeams, leagueId: knockoutLeague.id, gwId: knockoutGw.id, year };
+      };
+
+      // @spec CUP-009,CUP-010
+      it('@spec CUP-009 @spec CUP-010 creates 12 round-1 ties and 20 completed byes for a 44-team fixed bracket', async () => {
+        const { games, divisionSeasons } = await createKnockoutSeason({
+          teamCount: 44,
+          format: ONE_LEG_KNOCKOUT_FIXED_FORMAT,
+        });
+
+        const roundOneGames = games.filter((game) => game.round === 1);
+        const byes = roundOneGames.filter((game) => game.awayTeam === null);
+        const ties = roundOneGames.filter((game) => game.awayTeam !== null);
+
+        expect(roundOneGames).toHaveLength(32);
+        expect(ties).toHaveLength(12);
+        expect(byes).toHaveLength(20);
+        expect(byes.every((game) =>
+          game.status === 'COMPLETED' &&
+          game.homeTeamResult !== null &&
+          game.awayTeamResult === null
+        )).toBe(true);
+
+        const topSeeds = divisionSeasons.slice(0, 20).map((season) => season.teamId);
+        expect(byes.map((game) => game.homeTeam)).toEqual(topSeeds);
+      });
+
+      // @spec CUP-009
+      it.each([
+        { teamCount: 3, expectedTies: 1, expectedByes: 1 },
+        { teamCount: 5, expectedTies: 1, expectedByes: 3 },
+        { teamCount: 11, expectedTies: 3, expectedByes: 5 },
+      ])('@spec CUP-009 reduces a $teamCount-team field without dropping any team', async ({
+        teamCount,
+        expectedTies,
+        expectedByes,
+      }) => {
+        const { games, teams } = await createKnockoutSeason({
+          teamCount,
+          format: ONE_LEG_KNOCKOUT_FIXED_FORMAT,
+        });
+
+        const roundOneGames = games.filter((game) => game.round === 1);
+        const byes = roundOneGames.filter((game) => game.awayTeam === null);
+        const ties = roundOneGames.filter((game) => game.awayTeam !== null);
+        const participatingTeams = roundOneGames.flatMap((game) => [game.homeTeam, game.awayTeam]).filter((teamId) => teamId !== null);
+
+        expect(ties).toHaveLength(expectedTies);
+        expect(byes).toHaveLength(expectedByes);
+        expect(participatingTeams).toHaveLength(teamCount);
+        expect(new Set(participatingTeams)).toEqual(new Set(teams.map(({ id }) => id)));
+      });
+
+      // @spec CUP-010
+      it('@spec CUP-010 gives fixed-bracket byes to the top seeds only', async () => {
+        const { games, divisionSeasons } = await createKnockoutSeason({
+          teamCount: 11,
+          format: ONE_LEG_KNOCKOUT_FIXED_FORMAT,
+        });
+
+        const roundOneByes = games
+          .filter((game) => game.round === 1 && game.awayTeam === null)
+          .map((game) => game.homeTeam);
+
+        expect(roundOneByes).toEqual(divisionSeasons.slice(0, 5).map((season) => season.teamId));
+      });
+
+      // @spec CUP-009
+      it('@spec CUP-009 assigns round-1 byes and pairings from the redraw shuffle instead of bracket-slot order', async () => {
+        const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+
+        try {
+          const { games, divisionSeasons } = await createKnockoutSeason({
+            teamCount: 5,
+            format: ONE_LEG_KNOCKOUT_REDRAW_FORMAT,
+          });
+
+          const roundOneGames = games.filter((game) => game.round === 1);
+          const roundOneByes = roundOneGames
+            .filter((game) => game.awayTeam === null)
+            .map((game) => game.homeTeam);
+          const topSeeds = divisionSeasons.slice(0, 3).map((season) => season.teamId);
+
+          expect(roundOneByes).not.toEqual(topSeeds);
+          expect(roundOneGames.some((game) => game.awayTeam === divisionSeasons[0].teamId)).toBe(true);
+        } finally {
+          randomSpy.mockRestore();
         }
       });
     });
