@@ -2,6 +2,7 @@ import { Op } from 'sequelize';
 import db from '../client';
 import { DomainError } from './errors';
 import { resolveKnockoutGameCompletion } from './knockout-advancement';
+import { resolveRoundRobinGameCompletion } from './season-result';
 
 const toDateStr = (d: any): string => new Date(d).toISOString().slice(0, 10);
 
@@ -69,8 +70,9 @@ const GameFactory = (id?: number) => {
       );
 
       const updated = await db.models.Game.findByPk(id);
-      // @spec CUP-001 round-advancement hook (single-game completion path)
+      // @spec CUP-001,LCH-002 round-robin / knockout completion hooks (single-game path)
       await resolveKnockoutGameCompletion(id!);
+      await resolveRoundRobinGameCompletion(id!);
       return updated!.dataValues;
     },
 
@@ -155,7 +157,7 @@ const GameFactory = (id?: number) => {
         throw error;
       }
 
-      // @spec CUP-001 round-advancement hook (batch completion path).
+      // @spec CUP-001,LCH-002 round-robin / knockout completion hooks (batch path).
       // Runs AFTER the transaction commits (edge case e4) so the "last unresolved game in
       // round" check sees the full batch. Idempotent, so deduping by gameId is sufficient.
       const advanced = new Set<number>();
@@ -163,6 +165,7 @@ const GameFactory = (id?: number) => {
         if (advanced.has(sim.id)) continue;
         advanced.add(sim.id);
         await resolveKnockoutGameCompletion(sim.id);
+        await resolveRoundRobinGameCompletion(sim.id);
       }
 
       return { simulated, skipped };

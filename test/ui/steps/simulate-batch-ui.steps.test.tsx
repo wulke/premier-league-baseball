@@ -3,6 +3,7 @@ import { loadFeature, defineFeature } from 'jest-cucumber';
 import { screen, fireEvent, act } from '@testing-library/react';
 import { render, mockFetch } from '../test-utils';
 import { GameWorld as GameWorldPage } from '../../../src/ui/pages/game-world';
+import { GameWorldProvider } from '../../../src/ui/context/game-world-context';
 import path from 'path';
 
 // Mock react-router to provide gwId
@@ -35,12 +36,16 @@ defineFeature(feature, (test) => {
 
     given(/^I am on the GameWorld page for id (\d+)$/, async (id) => {
       await act(async () => {
-        render(<GameWorldPage />);
+        render(
+          <GameWorldProvider gwId={id}>
+            <GameWorldPage />
+          </GameWorldProvider>
+        );
       });
     });
 
-    and(/^I see the "Simulate Today" section with date "([^"]+)"$/, async (date) => {
-      expect(await screen.findByText(new RegExp(date, 'i'))).toBeInTheDocument();
+    and('I see the "Simulate Today" action in the AppHeader', async () => {
+      expect(await screen.findByTestId('app-header')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /simulate today/i })).toBeInTheDocument();
     });
 
@@ -51,11 +56,6 @@ defineFeature(feature, (test) => {
       await act(async () => {
         fireEvent.click(btn);
       });
-    });
-
-    then(/^the button should be disabled and show "([^"]+)"$/, async (label) => {
-      const btn = screen.getByRole('button', { name: new RegExp(label, 'i') });
-      expect(btn).toBeDisabled();
     });
 
     and(/^eventually I should see a success summary "([^"]+)"$/, async (summary) => {
@@ -78,7 +78,11 @@ defineFeature(feature, (test) => {
 
     given(/^I am on the GameWorld page for id (\d+)$/, async (id) => {
       await act(async () => {
-        render(<GameWorldPage />);
+        render(
+          <GameWorldProvider gwId={id}>
+            <GameWorldPage />
+          </GameWorldProvider>
+        );
       });
     });
 

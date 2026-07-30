@@ -1,6 +1,7 @@
 import { CompetitionFormat } from '../../api/models';
 import db from '../client';
 import { shuffleTeams } from './knockout';
+import { recordSeasonChampionIfMissing } from './season-result';
 
 // @spec CUP-001,CUP-002,CUP-003,CUP-004,CUP-005,CUP-006,CUP-007,CUP-008
 //
@@ -125,7 +126,7 @@ export const advanceKnockoutRound = async (
 
   if (winners.length === 1) {
     // @spec CUP-002
-    await recordChampion(divisionId, year, winners[0]);
+    await recordSeasonChampionIfMissing(divisionId, year, winners[0]);
   } else if (winners.length > 1) {
     // @spec CUP-007,CUP-008
     await generateNextRound(winners, format, config.schedulingConfig, divisionSeasons, round);
@@ -228,23 +229,6 @@ const applyTiebreakerGame = async (
   await db.models.DivisionSeasonGame.bulkCreate(links);
 
   return winner;
-};
-
-/** Write (without overwriting) the champion SeasonResult row for (divisionId, year). */
-// @spec CUP-002
-const recordChampion = async (
-  divisionId: number,
-  year: number,
-  championTeamId: number,
-): Promise<void> => {
-  const existing = await db.models.SeasonResult.findOne({ where: { divisionId, year } });
-  if (existing) {
-    if (existing.dataValues.championTeamId == null) {
-      await existing.update({ championTeamId });
-    }
-    return; // never overwrite a decided champion
-  }
-  await db.models.SeasonResult.create({ divisionId, year, championTeamId });
 };
 
 /** Generate the next round's pairings from this round's winners. */
