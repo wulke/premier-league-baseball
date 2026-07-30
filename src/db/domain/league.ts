@@ -89,12 +89,9 @@ const LeagueFactory = (id?: number): ILeague => {
       // (1) check all season is complete
       if (!(await isSeasonComplete(currentYear))) throw Error(`Seasonis not complete for id='${id}' and year='${currentYear}'`);
       // (2) each division starts a new season
-      // ## todo ## update for knockout tournaments
-      await Promise.all(
-        league.Divisions
-          .map(({ dataValues }) => dataValues.id)
-          .map((id) => DivisionFactory(id).newSeason(currentYear))
-      );
+      for (const { dataValues } of league.Divisions) {
+        await DivisionFactory(dataValues.id).newSeason(currentYear);
+      }
       return;
     }
   }
