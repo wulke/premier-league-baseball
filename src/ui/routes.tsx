@@ -20,7 +20,8 @@ const R = () => (
     <Route path=":gwId" element={<GameWorldLayout />}>
       <Route index element={<GameWorld />} />
       <Route path=":leagueId" element={<League />} />
-      <Route path=":leagueId/team/:teamId/calendar" element={<TeamCalendar />} />
+      {/* @spec UI-004 */}
+      <Route path="team/:teamId/calendar" element={<TeamCalendar />} />
     </Route>
   </Routes>
 );

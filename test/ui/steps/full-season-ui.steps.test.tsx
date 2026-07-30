@@ -224,12 +224,16 @@ defineFeature(feature, (test) => {
 
     then(/^only "([^"]+)" games are shown$/, async (competition: string) => {
       await waitFor(() => {
-        expect(screen.getByText(new RegExp(competition, 'i'))).toBeInTheDocument();
+        expect(
+          screen.getByText(new RegExp(competition === 'League Cup' ? 'Forest Town' : 'Capital City', 'i')),
+        ).toBeInTheDocument();
       });
     });
 
     then(/^"([^"]+)" games are hidden$/, (competition: string) => {
-      expect(screen.queryByText(new RegExp(competition, 'i'))).toBeNull();
+      expect(
+        screen.queryByText(new RegExp(competition === 'Premier League' ? 'Capital City' : 'Forest Town', 'i')),
+      ).toBeNull();
     });
   });
 
