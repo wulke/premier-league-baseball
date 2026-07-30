@@ -1,5 +1,6 @@
 import { CompetitionFormat, SchedulingConfig, StandingsConfig, TeamStanding } from '../../api/models';
 import { GameFactory } from './game';
+import { nextLowerPowerOfTwo, shuffleTeams } from './knockout';
 import db from '../client';
 
 interface IDivision {
@@ -106,6 +107,35 @@ const DivisionFactory = (id?: number): IDivision => {
     );
   };
 
+  const createByeGames = async (
+    teamsWithByes: number[],
+    round: number,
+    scheduledDate: Date | undefined,
+    divTeams: any[]
+  ): Promise<void> => {
+    if (teamsWithByes.length === 0) return;
+
+    const games = await db.models.Game.bulkCreate(
+      teamsWithByes.map((homeTeam) => ({
+        homeTeam,
+        awayTeam: null,
+        round,
+        status: 'COMPLETED',
+        homeTeamResult: 1,
+        awayTeamResult: null,
+        ...(scheduledDate ? { scheduledDate } : {}),
+      }))
+    ).then((results) => results.map(({ dataValues }) => dataValues));
+
+    await db.models.DivisionSeasonGame.bulkCreate(
+      games.reduce((prev: any[], curr: any) => {
+        const homeDs = divTeams.find((t) => t.teamId === curr.homeTeam);
+        if (homeDs) prev.push({ gameId: curr.id, divisionSeasonId: homeDs.id });
+        return prev;
+      }, [])
+    );
+  };
+
   /** compute scheduledDate for a round offset from the division's schedulingConfig */
   const scheduleDate = (schedulingConfig: SchedulingConfig | undefined, roundOffset: number): Date | undefined => {
     if (!schedulingConfig) return undefined;
@@ -169,6 +199,7 @@ const DivisionFactory = (id?: number): IDivision => {
   return {
     isSeasonComplete,
     getStandings,
+    // @spec CUP-009,CUP-010
     newSeason: async (currentYear: number) => {
       // (0) fetch division config
       const div = await db.models.Division.findByPk(id)
@@ -201,21 +232,27 @@ const DivisionFactory = (id?: number): IDivision => {
         //   REDRAW: random shuffle before pairing
         //   fixed bracket: pair by slot order (slot 0 vs 1, slot 2 vs 3, ...)
         const ordered = format.seeding === 'REDRAW'
-          ? [...teams].sort(() => Math.random() - 0.5)
+          ? shuffleTeams(teams)
           : [...teams];
 
+        const reducedPower = nextLowerPowerOfTwo(ordered.length);
+        const roundOneByes = (2 * reducedPower) - ordered.length;
+        const pairedTeams = ordered.slice(roundOneByes);
+        const teamsWithByes = ordered.slice(0, roundOneByes);
+
         const round1Pairings: [number, number][] = [];
-        for (let i = 0; i < ordered.length - 1; i += 2) {
-          round1Pairings.push([ordered[i], ordered[i + 1]]);
+        for (let i = 0; i < pairedTeams.length - 1; i += 2) {
+          round1Pairings.push([pairedTeams[i], pairedTeams[i + 1]]);
         }
 
         // (5) create round 1 games
         await createRoundGames(round1Pairings, 1, scheduleDate(schedulingConfig, 0), divTeams);
+        await createByeGames(teamsWithByes, 1, scheduleDate(schedulingConfig, 0), divTeams);
 
-        // (6) TWO_LEG: also create round 2 return legs immediately (home/away swapped)
+        // (6) TWO_LEG: also create round 1 return legs immediately (home/away swapped)
         if (format.legs === 'TWO_LEG') {
           const returnLeg: [number, number][] = round1Pairings.map(([h, a]) => [a, h]);
-          await createRoundGames(returnLeg, 2, scheduleDate(schedulingConfig, 1), divTeams);
+          await createRoundGames(returnLeg, 1, scheduleDate(schedulingConfig, 1), divTeams);
         }
 
         return divTeams;

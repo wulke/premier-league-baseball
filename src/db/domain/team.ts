@@ -1,6 +1,7 @@
 import { Op } from 'sequelize';
 import { TeamConfig, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
 import db from '../client';
+import { getKnockoutRoundLabel } from './knockout';
 
 interface ITeam {
   create: (gwId: number, config: TeamConfig) => any;
@@ -50,6 +51,20 @@ const TeamFactory = (id?: number): ITeam => {
           })
         : divisionSeasons;
 
+      const divisionIds = Array.from(new Set(filtered.map((ds) => ds.dataValues.divisionId)));
+      const divisionSeasonCounts = divisionIds.length === 0
+        ? new Map<number, number>()
+        : await db.models.DivisionSeason.findAll({
+            where: {
+              year: gameWorld.year,
+              divisionId: { [Op.in]: divisionIds },
+            },
+          }).then((rows) => rows.reduce((counts, row) => {
+            const { divisionId } = row.dataValues;
+            counts.set(divisionId, (counts.get(divisionId) ?? 0) + 1);
+            return counts;
+          }, new Map<number, number>()));
+
       // 5. Flatten games and collect all referenced team IDs for name lookup
       const teamIdSet = new Set<number>();
       const rawGames: Array<{ game: any; divisionId: number; divisionName: string }> = [];
@@ -78,15 +93,27 @@ const TeamFactory = (id?: number): ITeam => {
 
       // 7. Build structured response
       const games: TeamSeasonGame[] = rawGames.map(({ game, divisionId, divisionName }) => ({
+        // @spec CUP-011
         gameId: game.id,
         scheduledDate: game.scheduledDate ? new Date(game.scheduledDate).toISOString() : null,
         homeTeamId: game.homeTeam,
         homeTeamName: teamMap.get(game.homeTeam) ?? `Team ${game.homeTeam}`,
         awayTeamId: game.awayTeam,
-        awayTeamName: teamMap.get(game.awayTeam) ?? `Team ${game.awayTeam}`,
+        awayTeamName: game.awayTeam == null ? 'Bye' : (teamMap.get(game.awayTeam) ?? `Team ${game.awayTeam}`),
         divisionId,
         divisionName,
-        roundLabel: game.round != null ? `Round ${game.round}` : null,
+        roundLabel: (() => {
+          if (game.round == null) return null;
+
+          const divisionSeason = filtered.find((ds) => ds.dataValues.divisionId === divisionId);
+          const format = divisionSeason?.dataValues?.Division?.dataValues?.config?.format
+            ?? divisionSeason?.dataValues?.Division?.config?.format;
+          if (format?.structure === 'KNOCKOUT') {
+            return getKnockoutRoundLabel(divisionSeasonCounts.get(divisionId) ?? 0, game.round);
+          }
+
+          return `Round ${game.round}`;
+        })(),
         homeTeamResult: game.homeTeamResult,
         awayTeamResult: game.awayTeamResult,
         status: game.status,

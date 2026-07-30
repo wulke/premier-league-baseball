@@ -9,7 +9,7 @@ type CalendarFilter = 'all' | 'scheduled' | 'played';
 type SimulateRowStatus = 'idle' | 'loading' | 'error';
 
 const isPlayed = (game: TeamSeasonGame) =>
-  game.homeTeamResult !== null && game.awayTeamResult !== null;
+  game.status === 'COMPLETED';
 
 const gameSort = (a: TeamSeasonGame, b: TeamSeasonGame): number => {
   if (!a.scheduledDate && !b.scheduledDate) return a.gameId - b.gameId;
@@ -40,13 +40,22 @@ const GameRow = ({
   onSimulate: () => void;
 }) => {
   const isHome = game.homeTeamId === Number(teamId);
-  const opponent = isHome ? game.awayTeamName : game.homeTeamName;
+  const isBye = game.awayTeamId === null;
+  const opponent = isBye ? 'Bye' : (isHome ? game.awayTeamName : game.homeTeamName);
 
   // Flow A (SIMUI-019..026): the result cell branches on `game.status` first (COMPLETED /
   // IN_PROGRESS render their own indicator), then on the per-row `simulateStatus` for a
   // still-SCHEDULED game (idle button / loading spinner / persistent error icon — no retry).
   const renderResultCell = () => {
     if (game.status === 'COMPLETED') {
+      if (isBye) {
+        return (
+          <span data-testid={`bye-${game.gameId}`} style={{ fontWeight: 700, fontSize: '0.9rem' }}>
+            Bye
+          </span>
+        );
+      }
+
       return (
         <span data-testid={`score-${game.gameId}`} style={{ fontWeight: 700, fontSize: '0.9rem' }}>
           {isHome
@@ -133,7 +142,7 @@ const GameRow = ({
       {/* Opponent + competition */}
       <div>
         <span style={{ fontWeight: 600 }}>
-          {isHome ? 'vs' : '@'} {opponent}
+          {isBye || isHome ? 'vs' : '@'} {opponent}
         </span>
         <span style={{ marginLeft: '8px', fontSize: '0.78rem', color: '#999' }}>
           {game.divisionName}{game.roundLabel ? ` · ${game.roundLabel}` : ''}

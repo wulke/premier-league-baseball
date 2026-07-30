@@ -14,9 +14,10 @@ hook shared with `src/db/domain/game.ts`).
 | CUP-006 | WHEN a `TWO_LEG` tie is level on aggregate runs AND `tiebreak` is `ANOTHER_GAME_W_OVERTIME` THE system SHALL create a new tiebreaker `Game` row sharing the tied legs' `round` number, resolved to a decisive, non-draw score | [ ] |
 | CUP-007 | WHEN `seeding` is `REDRAW` THE system SHALL re-shuffle pairings before every round (not only round 1) without changing round sizes | [ ] |
 | CUP-008 | WHEN `seeding` is `FIXED` THE system SHALL pair winners in bracket order every round with no shuffle | [ ] |
-| CUP-009 | WHEN generating a KNOCKOUT division's round 1 for N teams THE system SHALL reduce to the next-lower power of 2 (P), creating `N − P` play-in ties and `2P − N` byes | [ ] |
-| CUP-010 | WHEN `seeding` is `FIXED` THE system SHALL allocate round-1 byes to the top `2P − N` seeds by `bracketSlot` order | [ ] |
-| CUP-011 | WHEN labeling a KNOCKOUT round THE system SHALL use tournament-convention labels (1st Round / Round of 32 / Round of 16 / Quarterfinals / Semifinals / Final) derived from the round's team count | [ ] |
+| CUP-009 | WHEN generating a KNOCKOUT division's round 1 for N teams THE system SHALL reduce to the next-lower power of 2 (P), creating `N − P` play-in ties and `2P − N` byes | [x] → #52 |
+| CUP-010 | WHEN `seeding` is `FIXED` THE system SHALL allocate round-1 byes to the top `2P − N` seeds by `bracketSlot` order | [x] → #52 |
+| CUP-011 | WHEN labeling a KNOCKOUT round THE system SHALL use tournament-convention labels (1st Round / Round of 32 / Round of 16 / Quarterfinals / Semifinals / Final) derived from the round's team count | [x] → #52 |
+| CUP-012 | WHEN generating a `TWO_LEG` KNOCKOUT tie in round 1 THE system SHALL create both legs with `round = 1` so the tie resolves within a single knockout round | [x] → #52 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 

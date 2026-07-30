@@ -52,6 +52,20 @@ const teamSchedule: MockGame[] = [
     status: 'SCHEDULED',
   },
   {
+    gameId: 151,
+    divisionId: 22,
+    divisionName: 'League Cup',
+    roundLabel: '1st Round',
+    homeTeamId: 7,
+    homeTeamName: 'River City',
+    awayTeamId: null as unknown as number,
+    awayTeamName: 'Team null',
+    homeTeamResult: 1,
+    awayTeamResult: null,
+    scheduledDate: '2025-04-12',
+    status: 'COMPLETED',
+  },
+  {
     gameId: 202,
     divisionId: 22,
     divisionName: 'League Cup',
@@ -209,7 +223,9 @@ defineFeature(feature, (test) => {
     });
 
     and('the team schedule includes games from the League and League Cup', () => {
-      expect(teamSchedule).toHaveLength(2);
+      expect(teamSchedule.map((game) => game.divisionName)).toEqual(
+        expect.arrayContaining(['Premier League', 'League Cup']),
+      );
     });
 
     when('the TeamCalendar page loads', async () => {
@@ -253,6 +269,50 @@ defineFeature(feature, (test) => {
 
     then(/^the app navigates to "([^"]+)"$/, (target: string) => {
       expect(mockNavigate).toHaveBeenCalledWith(target);
+    });
+  });
+
+  test('Team calendar renders knockout byes as played rows', ({ given, and, when, then }) => {
+    given(/^a GameWorld with id (\d+) exists for the full-season UI$/, () => {
+      /* fetch mock provides the fixture */
+    });
+
+    given(/^the player opens the TeamCalendar route "([^"]+)"$/, (_route: string) => {
+      mockParams = { gwId: '1', teamId: '7' };
+    });
+
+    and('the team schedule includes a completed knockout bye', () => {
+      expect(teamSchedule.some((game) => game.gameId === 151 && game.status === 'COMPLETED')).toBe(true);
+    });
+
+    when('the TeamCalendar page loads', async () => {
+      await renderCalendar();
+    });
+
+    then(/^the calendar shows opponent "([^"]+)"$/, async (label: string) => {
+      await waitFor(() => {
+        expect(screen.getByText(new RegExp(`vs ${label}`, 'i'))).toBeInTheDocument();
+      });
+    });
+
+    then('the bye row does not show a scoreline', () => {
+      expect(screen.queryByTestId('score-151')).toBeNull();
+    });
+
+    then(/^the season summary shows "([^"]+)"$/, (summary: string) => {
+      expect(screen.getByText(new RegExp(summary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))).toBeInTheDocument();
+    });
+
+    when('the player filters the calendar to played games', () => {
+      fireEvent.change(screen.getByRole('combobox', { name: /status/i }), {
+        target: { value: 'played' },
+      });
+    });
+
+    then('the knockout bye remains visible', async () => {
+      await waitFor(() => {
+        expect(screen.getByText(/vs Bye/i)).toBeInTheDocument();
+      });
     });
   });
 });
