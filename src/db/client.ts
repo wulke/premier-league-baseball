@@ -18,6 +18,7 @@ const modelDefinitions = [
   require('./model/game-world'),
   require('./model/league'),
   require('./model/team'),
+  require('./model/player'),
   require('./model/division'),
   require('./model/division-season'),
   require('./model/game'),

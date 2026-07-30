@@ -53,6 +53,45 @@ interface TeamSeasonSchedule {
 
 type TeamSeasonCalendar = TeamSeasonSchedule;
 
+type PlayerPosition =
+  | 'Pitcher'
+  | 'Catcher'
+  | 'FirstBase'
+  | 'SecondBase'
+  | 'ThirdBase'
+  | 'Shortstop'
+  | 'LeftField'
+  | 'CenterField'
+  | 'RightField';
+
+type PlayerPitchType = 'Fastball' | 'Curveball' | 'Slider' | 'Changeup';
+
+interface PlayerPitch {
+  type: PlayerPitchType;
+  velocity: number;
+  control: number;
+  spin: number;
+}
+
+interface PlayerAttributes {
+  contact: number;
+  power: number;
+  armStrength: number;
+  accuracy: number;
+  reaction: number;
+  vision: number;
+  discipline: number;
+  positions: Record<PlayerPosition, number>;
+  pitches: PlayerPitch[];
+}
+
+interface PlayerRecord {
+  id?: number;
+  teamId: number | null;
+  gameWorldId: number;
+  attributes: PlayerAttributes;
+}
+
 interface DivisionStandings {
   divisionId: number;
   divisionName: string;
@@ -288,6 +327,11 @@ export {
   TeamSeasonGame,
   TeamSeasonSchedule,
   TeamSeasonCalendar,
+  PlayerPosition,
+  PlayerPitchType,
+  PlayerPitch,
+  PlayerAttributes,
+  PlayerRecord,
   DivisionStandings,
   BracketTeam,
   BracketGame,
