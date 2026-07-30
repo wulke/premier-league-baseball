@@ -1,0 +1,96 @@
+# LLD: Player Stats Schema (`PlayerGameStats`)
+
+> Upstream: [HLD: Players, Attributes, Stats & Contracts](../high-level-design.md#hld-players-attributes-stats--contracts) ·
+> EARS: `docs/specs/player-stats-specs.md` (`PSTAT-001`..) ·
+> Decision record: [#61 Research standard baseball stat categories](https://github.com/wulke/premier-league-baseball/issues/61), [#62 Design season/career Player stats schema + write-timing plan](https://github.com/wulke/premier-league-baseball/issues/62)
+
+## Scope
+
+Defines the storage grain and column set for Player stats. Covers schema shape only — **no write path
+exists yet**; writes are deferred until a future map wires real per-player game events into
+`SimulationEngine` (which stays random, unchanged by this map).
+
+## Interface / Data Model
+
+```ts
+// src/db/model/ — new PlayerGameStats model
+interface PlayerGameStats {
+  id: number;
+  playerId: number;  // FK to Player.id
+  gameId: number;     // FK to Game.id
+  // one row per (playerId, gameId)
+
+  // Batting — Core only (per #61 research)
+  AB: number;  // at-bats
+  H: number;   // hits
+  R: number;   // runs scored
+  RBI: number; // runs batted in
+  HR: number;  // home runs
+  BB: number;  // walks
+  SO: number;  // strikeouts
+
+  // Pitching — Core only (per #61), adjusted for game-grain
+  GS: boolean; // did this player start this game (replaces season-grain "games started" count)
+  IP: number;  // innings pitched
+  // pitching H/BB/SO/ER — same column names as batting H/BB/SO where types don't collide;
+  // ER is pitching-only:
+  ER: number;  // earned runs allowed
+}
+```
+
+**No `PlayerSeasonStats` or `PlayerCareerStats` tables.** Season and career stats are pure
+`SUM`/`COUNT` aggregate queries over `PlayerGameStats`, filtered by year (via `Game.scheduledDate` /
+`GameWorld.year`) or unfiltered (career), respectively.
+
+### Field semantics
+
+| Field | Notes |
+|---|---|
+| `G` (games played) | **Not a stored column.** Derived as `COUNT(*)` of a player's `PlayerGameStats` rows for the relevant season/career window. |
+| `W` / `L` (wins/losses) | **Dropped from v1 entirely.** Real attribution requires decision logic (starter IP thresholds, bullpen credit rules, etc.) the random `SimulationEngine` cannot produce. An always-null column was judged worse than omitting the field. |
+| Rate stats (`AVG`, `OBP`, `SLG`, `ERA`, `WHIP`) | **Never stored.** Computed at read-time from counting-stat aggregates, at whatever grain (game/season/career) is queried — avoids drift against the counting stats they're derived from. |
+| Fielding (`E`/`A`/`PO`/`FLD%`) and "Common" tiers (`2B`/`3B`/`SB`/`CS`/`HBP`/`OPS`/`SV`/`HLD`/`K9`/`BB9`) | **Deferred**, not modeled by this schema. Add real-world flavor but aren't required for a believable v1 stat line or for `SimulationEngine`. |
+
+## Logic Flow
+
+### Computing rate stats (read-time, any grain)
+
+```
+AVG(rows)  = SUM(rows.H)  / SUM(rows.AB)
+OBP(rows)  = (SUM(rows.H) + SUM(rows.BB)) / (SUM(rows.AB) + SUM(rows.BB))
+SLG(rows)  = totalBases(rows) / SUM(rows.AB)     // totalBases needs 2B/3B/HR detail beyond Core v1 — SLG is descoped alongside those columns until they land
+ERA(rows)  = 9 * SUM(rows.ER) / SUM(rows.IP)
+WHIP(rows) = (SUM(rows.BB) + SUM(rows.H)) / SUM(rows.IP)
+G(rows)    = COUNT(rows)
+```
+
+`rows` is the `PlayerGameStats` set for the requested window: all rows for career, rows joined to
+`Game`s within the target `year` for season.
+
+### Write-timing (deferred)
+
+No write path exists in this map. The intended future flow (not implemented here):
+
+```
+Game completes with real per-player events (future SimulationEngine capability)
+  → for each participating Player: upsert PlayerGameStats{ playerId, gameId, ...counting stats }
+```
+
+## Edge Case Probe
+
+| # | Condition | Handling | Spec |
+|---|---|---|---|
+| e1 | Rate stat requested where denominator is 0 (e.g. `AVG` with `AB = 0`) | Not resolved by this LLD — no writer exists yet to produce real denominators; the read-time computation's zero-division handling is left to whichever future map implements the aggregation queries. | — |
+| e2 | A player who both bats and pitches in the same game | Single-table, non-role-conditioned shape (matching `Player.attributes`' flat precedent) — one `PlayerGameStats` row can carry both batting and pitching columns for the same `(playerId, gameId)`, no split needed. | PSTAT-001 |
+| e3 | `SLG`/`OPS` requested under the Core-only v1 column set | Not computable — `SLG` needs `2B`/`3B`/`HR` detail beyond Core batting; `OPS` needs `SLG`. Both are Common-tier per #61 and explicitly deferred; not a bug, a scope boundary. | — |
+| e4 | Season/career query before any `PlayerGameStats` rows exist (current state — no writer yet) | Aggregate queries over an empty set — `COUNT` returns 0, `SUM` returns `NULL`/0 depending on driver. Not guarded by this LLD since no query implementation exists yet either. | — |
+
+## Traceability
+
+| Layer | Artifact |
+|---|---|
+| HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-players-attributes-stats--contracts) |
+| **This LLD** | `docs/llds/player-stats.md` |
+| EARS | `docs/specs/player-stats-specs.md` — `PSTAT-001`.. |
+| Code | *(not yet implemented — this map is planning-only)* `src/db/model/` (`PlayerGameStats`) |
+| Decision record | [#61](https://github.com/wulke/premier-league-baseball/issues/61), [#62](https://github.com/wulke/premier-league-baseball/issues/62) |
