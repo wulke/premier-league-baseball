@@ -75,6 +75,7 @@ interface DivisionConfig {
   name: string;
   defaultTeams: any[];
   format?: CompetitionFormat;
+  isTopTier?: boolean;
   schedulingConfig?: SchedulingConfig;
 };
 interface TeamConfig {
@@ -130,10 +131,12 @@ const DefaultLeagues = {
         {
           name: GameWorldType.PremierLeague,
           defaultTeams: [...Array(44).keys()].slice(0,20),
+          isTopTier: true,
         },
         {
           name: 'Championship',
           defaultTeams: [...Array(44).keys()].slice(20,44),
+          isTopTier: false,
         },
       ]
     },

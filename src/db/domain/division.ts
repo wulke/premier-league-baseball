@@ -1,5 +1,4 @@
 import { CompetitionFormat, SchedulingConfig, StandingsConfig, TeamStanding } from '../../api/models';
-import { GameFactory } from './game';
 import { nextLowerPowerOfTwo, shuffleTeams } from './knockout';
 import db from '../client';
 

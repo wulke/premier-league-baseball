@@ -43,6 +43,7 @@ interface DivisionConfig {
   name: string;
   defaultTeams: any[];
   format?: CompetitionFormat;  // overrides LeagueConfig.format
+  isTopTier?: boolean;         // marks the League champion-producing division
   schedulingConfig?: SchedulingConfig;
 }
 ```
@@ -58,6 +59,7 @@ Dropped entirely: the `GameFormula` enum and its bare `AGGREGATE` flag (supersed
 | `seriesLength` | `Bo1` \| `Bo3` \| `Bo5` | Shared, required. Not yet implemented in domain logic (best-of-N series is future work) but kept as a real field so its place doesn't need bolting on later. |
 | `tiebreak` | optional, 3 values | Only meaningful for `TWO_LEG` ties; mechanics resolved in `docs/llds/knockout-bracket.md`. |
 | `seeding` | `FIXED` \| `REDRAW`, `KNOCKOUT`-only | Type-level restricted to the `KNOCKOUT` branch — a `ROUND_ROBIN` config cannot set it. Replaces the old bare `REDRAW` flag. |
+| `isTopTier` | optional boolean | Only meaningful for round-robin Leagues with multiple divisions. `true` marks the division whose decided winner is the League champion and should be written to `SeasonResult`; lower divisions omit it / leave it false. |
 
 `LeagueType` (`League` \| `LeagueCup`) is kept and **not** collapsed into `structure` — they correlate
 1:1 today but represent different concerns (identity/display vs. mechanics); see HLD trade-offs.
@@ -86,7 +88,8 @@ division to referencing the two named constants:
 ```
 
 Both divisions under the League inherit the league-level format (no per-division override needed
-today); the League Cup's single division does the same.
+today); the top-flight League division additionally sets `isTopTier: true`. The League Cup's
+single division does the same for format inheritance, but ignores `isTopTier`.
 
 ## Edge Case Probe
 
@@ -95,6 +98,7 @@ today); the League Cup's single division does the same.
 | e1 | Neither `divisionConfig.format` nor `leagueConfig.format` set | `resolveFormat` returns `undefined` — callers (round-advancement, batch simulate) must treat an unresolved format as a domain error, not silently default to round-robin. Not itself guarded by this LLD; flagged for the domain layer that consumes it. | CFG-001 |
 | e2 | `ROUND_ROBIN` config attempting to set `seeding` | Prevented at the type level (discriminated union) — not a runtime guard. A malformed JSON `config` blob (bypassing TypeScript, e.g. hand-edited DB row) could still smuggle it in; the domain layer should ignore `seeding` when `structure !== 'KNOCKOUT'`. | CFG-002 |
 | e3 | `seriesLength` set to `Bo3`/`Bo5` today | Accepted and stored, but no domain logic yet generates or scores a multi-game series from it — `legs`/round-advancement logic (`knockout-bracket.md`) currently treats each round's ties as generating exactly the leg count from `legs`, independent of `seriesLength`. Series-length-driven game generation is future work. | — |
+| e4 | A League has multiple round-robin divisions and none / many claim `isTopTier` | Out of scope for config-shape validation here; the season-result writer treats only `isTopTier === true` as champion-producing and ignores all others. Default configs should set exactly one top-tier division per round-robin League. | LCH-001 |
 
 ## Traceability
 
