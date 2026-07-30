@@ -257,7 +257,7 @@ const Division = ({
 }) => {
   const [isOpen, setIsOpen] = useState(true);
   const hasStandings = Boolean(divisionStandings && divisionStandings.standings.length > 0);
-  const structure = divisionBracket?.structure ?? 'ROUND_ROBIN';
+  const structure = divisionBracket?.structure ?? division.config?.format?.structure ?? 'ROUND_ROBIN';
 
   return (
     <div

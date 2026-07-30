@@ -243,6 +243,58 @@ const leagueResponses: Record<string, MockLeagueResponse> = {
       },
     ],
   },
+  '5': {
+    league: {
+      id: 5,
+      gameWorldId: 1,
+      config: { name: 'FIXED Cup', type: 'League Cup' },
+      Divisions: [
+        {
+          id: 44,
+          config: {
+            name: 'Knockout',
+            format: { structure: 'KNOCKOUT' },
+          },
+          Teams: [
+            { id: 401, config: { name: 'KO Team 0' } },
+            { id: 402, config: { name: 'KO Team 1' } },
+          ],
+        },
+      ],
+    },
+    standings: [
+      {
+        divisionId: 44,
+        standings: [
+          {
+            teamId: 401,
+            teamName: 'KO Team 0',
+            played: 1,
+            won: 1,
+            drawn: 0,
+            lost: 0,
+            runsFor: 5,
+            runsAgainst: 0,
+            runDifference: 5,
+            points: 3,
+          },
+          {
+            teamId: 402,
+            teamName: 'KO Team 1',
+            played: 1,
+            won: 0,
+            drawn: 0,
+            lost: 1,
+            runsFor: 0,
+            runsAgainst: 5,
+            runDifference: -5,
+            points: 0,
+          },
+        ],
+      },
+    ],
+    bracket: [],
+  },
 };
 
 const gameWorldPayload = {
@@ -497,6 +549,28 @@ defineFeature(feature, (test) => {
 
     and(/^the "([^"]+)" card shows "([^"]+)"$/, (divisionName: string, text: string) => {
       expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).getByText(text)).toBeInTheDocument();
+    });
+  });
+
+  test('Knockout divisions still render the bracket path when bracket data is temporarily unavailable', ({ given, when, then, and }) => {
+    given(/^a GameWorld with id (\d+) exists for the full-season UI$/, () => {
+      /* fetch mock provides the fixture */
+    });
+
+    given(/^the League page loads for league "([^"]+)"$/, (leagueId: string) => {
+      mockParams = { gwId: '1', leagueId };
+    });
+
+    when('the League page renders', async () => {
+      await renderLeague(mockParams.leagueId!);
+    });
+
+    then(/^the "([^"]+)" card shows "([^"]+)"$/, (divisionName: string, text: string) => {
+      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).getByText(text)).toBeInTheDocument();
+    });
+
+    and(/^the "([^"]+)" card does not show the standings table$/, (divisionName: string) => {
+      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).queryByRole('columnheader', { name: 'Pos' })).toBeNull();
     });
   });
 

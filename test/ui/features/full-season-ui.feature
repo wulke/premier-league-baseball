@@ -51,6 +51,13 @@ Feature: Full-Season UI
     And the "League Cup" card lists bye teams "Chelsea"
     And the "League Cup" card shows "Next: Semifinals — games pending"
 
+  @spec:UI-005
+  Scenario: Knockout divisions still render the bracket path when bracket data is temporarily unavailable
+    Given the League page loads for league "5"
+    When the League page renders
+    Then the "Knockout" card shows "No bracket yet — season not started."
+    And the "Knockout" card does not show the standings table
+
   @spec:UI-007
   Scenario: Multi-leg knockout ties expand from series rows to game rows
     Given the League page loads for league "3"
