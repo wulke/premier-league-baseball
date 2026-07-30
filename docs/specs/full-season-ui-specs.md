@@ -14,7 +14,7 @@ and season-lifecycle display (`src/ui/pages/league.tsx`, `src/ui/pages/game-worl
 | UI-005 | WHEN a Division's `structure` is `KNOCKOUT` THE Division card SHALL render `BracketView` grouped by round instead of `StandingsTable` | [ ] |
 | UI-006 | WHEN a round contains byes THE `BracketView` SHALL group them under a "Byes (N)" subheading listing team names inline | [ ] |
 | UI-007 | WHEN a tie has more than one leg THE `BracketView` SHALL render one row per series with per-game scores, expandable on click to one row per game | [ ] |
-| UI-008 | WHEN a KNOCKOUT division has no games yet THE `BracketView` SHALL show the existing "No bracket yet — season not started." empty state with the `TeamRoster` grid | [ ] |
+| UI-008 | WHEN a KNOCKOUT division has no games yet THE `BracketView` SHALL show the existing "No bracket yet — season not started." empty state with the `TeamRoster` grid; WHEN resolved rounds exist but the next round has not been generated yet THE `BracketView` SHALL show a `Next: <label> — games pending` placeholder row after the resolved rounds | [ ] |
 | UI-009 | WHEN "Simulate Today" is triggered from `AppHeader` THE system SHALL advance games across both the League and the League Cup in the same batch, with no competition-specific change required | [ ] |
 | UI-010 | WHEN a team's calendar includes a knockout bye row THE UI SHALL render the opponent as `Bye`, omit the scoreline, and count that row as played rather than scheduled | [x] → #52 |
 

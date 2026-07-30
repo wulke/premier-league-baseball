@@ -137,6 +137,7 @@ FOR each round:
      collapsed: "TeamA  [2–1, 2–0]  TeamB  ✓ TeamA (2–0)"
      expanded (click): one row per game in the series
 IF a round has no games yet generated (mid-redraw): render "Next: <label> — games pending" placeholder
+AND stop the bracket after that placeholder so the Final remains the last row shown for this MVP
 IF a division has no games at all: render existing "No bracket yet — season not started." + TeamRoster grid
 ```
 
