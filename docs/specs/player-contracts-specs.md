@@ -12,6 +12,9 @@ creation (`src/db/model/`, `src/db/domain/player.ts`, `src/db/domain/team.ts`).
 | PCON-005 | WHEN a Team's roster headcount falls outside [20, 30] THE system SHALL NOT block Team creation or `newSeason()` — enforcement is deferred | [D] |
 | PCON-006 | WHEN a Contract's `endYear` is reached THE system SHALL NOT auto-trigger free-agency or renewal — `endYear` is descriptive only in v1 | [D] |
 | PCON-007 | WHEN a Player's team assignment changes after initial generation THE system SHALL update `Player.teamId` and issue/close the corresponding `Contract` as one unit of work, keeping both in sync | [D] |
+| PCON-008 | WHEN the database models initialize THE system SHALL define a `Contract` model with `playerId`, `teamId`, `startYear`, and `endYear`, and SHALL NOT define a salary or `value` field in v1 | [ ] → #73 |
+| PCON-009 | WHEN model associations are applied THE system SHALL expose `Player.hasMany(Contract)` and `Team.hasMany(Contract)` | [ ] → #73 |
+| PCON-010 | WHEN roster generation needs headcount bounds THE system SHALL export `MIN_ROSTER_SIZE = 20` and `MAX_ROSTER_SIZE = 30` as named constants | [ ] → #73 |
 
 `PCON-007` is Deferred, not Active — no code path changes a Player's team after initial generation in
 this map (transfers/trades are out of scope); it records the sync obligation for whichever future map
@@ -23,4 +26,4 @@ introduces one, per `docs/llds/player-contracts-roster.md`'s Edge Case Probe (e6
 
 - LLD: `docs/llds/player-contracts-roster.md`
 - Decision record: [#63](https://github.com/wulke/premier-league-baseball/issues/63), [#64](https://github.com/wulke/premier-league-baseball/issues/64)
-- Code: *(not yet implemented — this map is planning-only)* `src/db/model/` (`Contract`), `src/db/domain/player.ts` (`PlayerFactory`), `src/db/domain/team.ts` (`TeamFactory.create`)
+- Code: `src/db/model/contract.ts`, `src/db/model/associations.ts`, `src/db/domain/contract.ts`; roster-generation wiring remains future work in `src/db/domain/player.ts` and `src/db/domain/team.ts`
