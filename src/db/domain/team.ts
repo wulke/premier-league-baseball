@@ -99,7 +99,7 @@ const TeamFactory = (id?: number): ITeam => {
         homeTeamId: game.homeTeam,
         homeTeamName: teamMap.get(game.homeTeam) ?? `Team ${game.homeTeam}`,
         awayTeamId: game.awayTeam,
-        awayTeamName: teamMap.get(game.awayTeam) ?? `Team ${game.awayTeam}`,
+        awayTeamName: game.awayTeam == null ? 'Bye' : (teamMap.get(game.awayTeam) ?? `Team ${game.awayTeam}`),
         divisionId,
         divisionName,
         roundLabel: (() => {

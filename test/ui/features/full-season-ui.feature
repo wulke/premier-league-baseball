@@ -29,3 +29,14 @@ Feature: Full-Season UI
     Given the League page has a team named "River City"
     When the player clicks team "River City" from the League page
     Then the app navigates to "/1/team/7/calendar"
+
+  @spec:UI-010
+  Scenario: Team calendar renders knockout byes as played rows
+    Given the player opens the TeamCalendar route "/1/team/7/calendar"
+    And the team schedule includes a completed knockout bye
+    When the TeamCalendar page loads
+    Then the calendar shows opponent "Bye"
+    And the bye row does not show a scoreline
+    And the season summary shows "1 of 3 games played"
+    When the player filters the calendar to played games
+    Then the knockout bye remains visible

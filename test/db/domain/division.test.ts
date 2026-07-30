@@ -30,6 +30,14 @@ const ONE_LEG_KNOCKOUT_REDRAW_FORMAT = {
   seeding: 'REDRAW' as const,
 };
 
+const TWO_LEG_KNOCKOUT_FIXED_FORMAT = {
+  structure: 'KNOCKOUT' as const,
+  legs: 'TWO_LEG' as const,
+  seriesLength: 'Bo1' as const,
+  seeding: 'FIXED' as const,
+  tiebreak: 'AGGREGATE_SCORE' as const,
+};
+
 describe('DivisionFactory', () => {
   let gw;
   const teamConfigs: TeamConfig[] = [...Array(10).keys()]
@@ -290,7 +298,10 @@ describe('DivisionFactory', () => {
         format,
       }: {
         teamCount: number;
-        format: typeof ONE_LEG_KNOCKOUT_FIXED_FORMAT | typeof ONE_LEG_KNOCKOUT_REDRAW_FORMAT;
+        format:
+          | typeof ONE_LEG_KNOCKOUT_FIXED_FORMAT
+          | typeof ONE_LEG_KNOCKOUT_REDRAW_FORMAT
+          | typeof TWO_LEG_KNOCKOUT_FIXED_FORMAT;
       }) => {
         const knockoutGw = await db.models.GameWorld.create({ config: {} }).then((m) => m.dataValues);
         const knockoutTeams = await Promise.all(
@@ -406,6 +417,25 @@ describe('DivisionFactory', () => {
         } finally {
           randomSpy.mockRestore();
         }
+      });
+
+      // @spec CUP-012
+      it('@spec CUP-012 creates both legs of a two-leg knockout tie in round 1', async () => {
+        const { games } = await createKnockoutSeason({
+          teamCount: 4,
+          format: TWO_LEG_KNOCKOUT_FIXED_FORMAT,
+        });
+
+        expect(games).toHaveLength(4);
+        expect(games.every((game) => game.round === 1)).toBe(true);
+
+        const legCounts = new Map<string, number>();
+        for (const game of games) {
+          const key = [game.homeTeam, game.awayTeam].sort().join('-');
+          legCounts.set(key, (legCounts.get(key) ?? 0) + 1);
+        }
+
+        expect(Array.from(legCounts.values())).toEqual([2, 2]);
       });
     });
   });

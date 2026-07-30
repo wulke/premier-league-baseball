@@ -34,7 +34,7 @@ interface TeamSeasonGame {
   scheduledDate: string | null;
   homeTeamId: number;
   homeTeamName: string;
-  awayTeamId: number;
+  awayTeamId: number | null;
   awayTeamName: string;
   divisionId: number;
   divisionName: string;

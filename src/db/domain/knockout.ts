@@ -9,6 +9,16 @@ const largestPowerOfTwoAtMost = (teamCount: number): number => {
   return power;
 };
 
+const isPowerOfTwo = (teamCount: number): boolean =>
+  teamCount > 0 && (teamCount & (teamCount - 1)) === 0;
+
+const nextLowerPowerOfTwo = (teamCount: number): number => {
+  if (teamCount <= 1) return 1;
+  return isPowerOfTwo(teamCount)
+    ? largestPowerOfTwoAtMost(teamCount / 2)
+    : largestPowerOfTwoAtMost(teamCount);
+};
+
 const shuffleTeams = (teamIds: number[]): number[] => {
   const shuffled = [...teamIds];
 
@@ -23,8 +33,8 @@ const shuffleTeams = (teamIds: number[]): number[] => {
 const getKnockoutRoundTeamCount = (initialTeamCount: number, round: number): number => {
   if (round < 1) throw new Error(`Invalid knockout round '${round}'`);
 
-  const reducedPower = largestPowerOfTwoAtMost(initialTeamCount);
-  const hasPlayInRound = initialTeamCount !== reducedPower;
+  const reducedPower = nextLowerPowerOfTwo(initialTeamCount);
+  const hasPlayInRound = !isPowerOfTwo(initialTeamCount);
 
   if (round === 1) return initialTeamCount;
 
@@ -39,7 +49,7 @@ const getKnockoutRoundTeamCount = (initialTeamCount: number, round: number): num
 const getKnockoutRoundLabel = (initialTeamCount: number, round: number): string => {
   const teamsInRound = getKnockoutRoundTeamCount(initialTeamCount, round);
 
-  if (round === 1 && initialTeamCount !== largestPowerOfTwoAtMost(initialTeamCount)) {
+  if (round === 1 && !isPowerOfTwo(initialTeamCount)) {
     return '1st Round';
   }
   if (teamsInRound === 2) return 'Final';
@@ -51,6 +61,8 @@ const getKnockoutRoundLabel = (initialTeamCount: number, round: number): string 
 
 export {
   getKnockoutRoundLabel,
+  isPowerOfTwo,
   largestPowerOfTwoAtMost,
+  nextLowerPowerOfTwo,
   shuffleTeams,
 };

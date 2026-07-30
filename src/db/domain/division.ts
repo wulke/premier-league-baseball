@@ -1,6 +1,6 @@
 import { CompetitionFormat, SchedulingConfig, StandingsConfig, TeamStanding } from '../../api/models';
 import { GameFactory } from './game';
-import { largestPowerOfTwoAtMost, shuffleTeams } from './knockout';
+import { nextLowerPowerOfTwo, shuffleTeams } from './knockout';
 import db from '../client';
 
 interface IDivision {
@@ -235,7 +235,7 @@ const DivisionFactory = (id?: number): IDivision => {
           ? shuffleTeams(teams)
           : [...teams];
 
-        const reducedPower = largestPowerOfTwoAtMost(ordered.length);
+        const reducedPower = nextLowerPowerOfTwo(ordered.length);
         const roundOneByes = (2 * reducedPower) - ordered.length;
         const pairedTeams = ordered.slice(roundOneByes);
         const teamsWithByes = ordered.slice(0, roundOneByes);
@@ -249,7 +249,7 @@ const DivisionFactory = (id?: number): IDivision => {
         await createRoundGames(round1Pairings, 1, scheduleDate(schedulingConfig, 0), divTeams);
         await createByeGames(teamsWithByes, 1, scheduleDate(schedulingConfig, 0), divTeams);
 
-        // (6) TWO_LEG: also create round 2 return legs immediately (home/away swapped)
+        // (6) TWO_LEG: also create round 1 return legs immediately (home/away swapped)
         if (format.legs === 'TWO_LEG') {
           const returnLeg: [number, number][] = round1Pairings.map(([h, a]) => [a, h]);
           await createRoundGames(returnLeg, 1, scheduleDate(schedulingConfig, 1), divTeams);
