@@ -30,6 +30,12 @@ router.get(Endpoints.GetLeagueStandings, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
+router.get(Endpoints.GetLeagueBracket, async (req: any, res: any) => {
+  await handlers.getLeagueBracket(Number(req.params.leagueId))
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
 router.get(Endpoints.GetLeague, async (req: any, res: any) => {
   await handlers.getLeague(Number(req.params.leagueId))
     .then((response) => {

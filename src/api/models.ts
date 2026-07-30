@@ -59,6 +59,60 @@ interface DivisionStandings {
   standings: TeamStanding[];
 }
 
+interface BracketTeam {
+  teamId: number | null;
+  teamName: string | null;
+}
+
+interface BracketGame {
+  gameId: number;
+  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED';
+  homeTeamId: number;
+  homeTeamName: string;
+  awayTeamId: number | null;
+  awayTeamName: string | null;
+  homeTeamResult: number | null;
+  awayTeamResult: number | null;
+}
+
+type BracketTie =
+  | {
+      kind: 'BYE';
+      teamA: BracketTeam;
+      teamB: null;
+      winnerTeamId: number;
+      games: BracketGame[];
+    }
+  | {
+      kind: 'SERIES';
+      teamA: BracketTeam;
+      teamB: BracketTeam;
+      winnerTeamId?: number;
+      games: BracketGame[];
+    };
+
+interface BracketRound {
+  round: number;
+  label: string;
+  status: 'COMPLETE' | 'IN_PROGRESS' | 'PENDING';
+  ties: BracketTie[];
+}
+
+interface DivisionBracket {
+  divisionId: number;
+  year: number;
+  champion?: { teamId: number };
+  rounds: BracketRound[];
+}
+
+interface LeagueDivisionBracket {
+  divisionId: number;
+  divisionName: string;
+  structure: 'ROUND_ROBIN' | 'KNOCKOUT';
+  champion?: { teamId: number };
+  rounds: BracketRound[];
+}
+
 interface LeagueConfig {
   name: string;
   type: LeagueType;
@@ -235,6 +289,12 @@ export {
   TeamSeasonSchedule,
   TeamSeasonCalendar,
   DivisionStandings,
+  BracketTeam,
+  BracketGame,
+  BracketTie,
+  BracketRound,
+  DivisionBracket,
+  LeagueDivisionBracket,
   STANDARD_CUP_FORMAT,
   STANDARD_LEAGUE_FORMAT,
   resolveCompetitionFormat,
