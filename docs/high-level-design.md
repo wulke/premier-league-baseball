@@ -105,3 +105,77 @@ Game completes (single or batch simulate)
 - **`tiebreak: AGGREGATE_SCORE` has no further fallback**: an aggregate-level tie under this mode is an accepted unresolved edge case for competitions that don't need a guaranteed decisive outcome; `OVERTIME`/`ANOTHER_GAME_W_OVERTIME` exist for competitions that do.
 - **One champion per League, not per Division**: only the top-tier division's winner is a champion (lower-division leaders are promotion/relegation fodder, out of scope for this MVP) — so the champion banner is League-scoped, not rendered per Division card.
 - **Out of scope**: promotion/relegation between League/Championship divisions; looping `newSeason()` into a second season; a multi-season "new season transition" UX (parked for a future map).
+
+---
+
+# HLD: Players, Attributes, Stats & Contracts
+
+> Backed by [Map: Players, Attributes, Stats & Contracts](https://github.com/wulke/premier-league-baseball/issues/59) — a wayfinder planning map whose five resolved tickets (#60, #61, #62, #63, #64) are the source decisions for this HLD. This is a **schema/shape map**: it does not change `SimulationEngine` (stays random) or wire any UI — those are future maps once this schema exists.
+
+## Goal
+
+Introduce **Players** as a first-class concept — real players belonging to Teams, with attributes/ratings, per-game stats, and Contracts — replacing the current state where `Team` is a bare `id`/`config`/`gameWorldId` row with no roster at all. This HLD defines the data shape and epic-level requirements only; no simulation or UI logic is implemented.
+
+## Strategy
+
+- **Options (Player storage shape)**:
+  - Option A: Embed players as a JSON array inside `Team.config`, matching the existing ad hoc blob pattern.
+  - Option B (chosen): New first-class `Player` Sequelize table, FK `teamId` (nullable = free agent), scoped per-`GameWorld` (mirrors `Team.gameWorldId`).
+  - **Decision**: Option B. `Team.config`-as-blob is exactly the pattern already replaced once before (`CompetitionFormat` superseding the ad hoc `GameFormula[]`) — see [[project_league_config_pattern]]. A queryable roster (stats joins, contract joins, cross-team free-agent pool) needs a real table, not an opaque JSON array on the owning Team.
+
+- **Options (Player attribute shape)**:
+  - Option A: Role-conditioned discriminated union (separate batting/pitching/fielding attribute sets per position), mirroring the `CompetitionFormat` pattern.
+  - Option B (chosen): Flat JSON shape — one shared pool of scalar ratings, a dense per-position affinity map (every player rated at every position), and a per-pitch repertoire array on every player (weak defaults for non-pitchers).
+  - **Decision**: Option B. Attributes are meaningful across roles by design (e.g. `armStrength` grades a shortstop's throw *and* a pitcher's fastball) — a role-conditioned union would force artificial namespacing (`batting.vision` vs `fielding.vision`) for what is really one scalar. No stored `position` column: "primary position" is derived at read-time as the highest-rated `positions` entry, keeping a player's best-fit position self-consistent with their ratings instead of a separately-maintained field that could drift from them.
+
+- **Options (Player stats storage grain)**:
+  - Option A: Separate `PlayerSeasonStats` and `PlayerCareerStats` tables, incrementally updated.
+  - Option B (chosen): Single game-grain `PlayerGameStats` table (one row per `(playerId, gameId)`); season and career are pure `SUM`/`COUNT` aggregate queries over it.
+  - **Decision**: Option B. Separate season/career tables create a dual-write consistency problem (every game-stat write must also correctly update two derived rollups). A single game-grain fact table has one write path and season/career are always correct by construction, at the cost of aggregation being a query-time concern rather than a stored value — an acceptable trade for a table with no writers yet.
+
+- **Options (stat category scope for v1)**:
+  - Option A: Full stat set including fielding (`E`/`A`/`PO`/`FLD%`) and "Common" tiers (`2B`/`3B`/`SB`/`CS`/`SV`/`HLD`/rate-per-9 stats).
+  - Option B (chosen): Core batting (`AB/H/R/RBI/HR/BB/SO`) + Core pitching (`GS/IP/H/BB/SO/ER`) only; rate stats (`AVG`/`OBP`/`SLG`/`ERA`/`WHIP`) computed at read-time, never stored; `W`/`L` dropped entirely.
+  - **Decision**: Option B, per research findings ([#61](https://github.com/wulke/premier-league-baseball/issues/61)). Fielding/Common tiers add real-world flavor but nothing the simulation needs yet. `W`/`L` specifically requires decision logic (starter IP thresholds, etc.) the random `SimulationEngine` can't produce — an always-null column was judged worse than omitting it. Storing rate stats would create the same drift risk avoided in the storage-grain decision above.
+
+- **Options (Contract shape & roster constraints)**:
+  - Option A: Contract carries a `value`/salary field; roster size enforced with per-position minimums (e.g. required pitcher count) validated at write-time.
+  - Option B (chosen): `Contract` is `playerId`/`teamId` FK + `startYear`/`endYear` only, no `value` field; roster size is a flat headcount range (min 20 / max 30) with no per-position minimums, unenforced in v1.
+  - **Decision**: Option B. Nothing in the sim consumes salary/cap data yet, so `value` would be dead weight — revisit if a future map introduces a budget mechanic. Per-position roster minimums are left to the generation algorithm to satisfy *by construction* rather than a schema-level validation rule, since there's no failure mode yet (Team creation is the only roster-mutating path) that a runtime guard would actually catch.
+
+- **Options (initial roster generation)**:
+  - Option A: Fixed headcount and hardcoded positional template (e.g. always exactly 25 players, 12 Pitchers/2 Catchers/6 Infield/5 Outfield).
+  - Option B (chosen): Randomized headcount within [20, 30]; positional split via proportional ratios (~40% Pitchers, remainder across the 8 fielding positions); all attribute/position/pitch values uniform-random with no position-appropriate skew; starting Contracts auto-issued with a flat 1-year term.
+  - **Decision**: Option B, resolved in [#64](https://github.com/wulke/premier-league-baseball/issues/64). Randomization over a fixed template adds team-to-team variety at negligible cost. Uniform random (no skew toward a player's assigned position) is a deliberate v1 simplification — low-level player-type/skew tuning is explicitly deferred to a later refinement pass, not treated as unfinished work. The 1-year Contract term is a deliberate forcing function: it makes Contract-expiry/free-agency handling (out of scope for *this* map) come up almost immediately once the schema lands, rather than being a distant concern nobody revisits.
+
+## Architecture
+
+### Components
+
+- **`Player`** (new Sequelize model): `id`, `teamId` (FK, nullable), `gameWorldId` (FK), `attributes` (JSON — scalar ratings + `positions` affinity map + `pitches` repertoire, see `docs/llds/player-attributes.md`).
+- **`PlayerGameStats`** (new Sequelize model): `id`, `playerId` (FK), `gameId` (FK), Core batting + Core pitching columns, see `docs/llds/player-stats.md`. No writers in this map — schema only.
+- **`Contract`** (new Sequelize model): `id`, `playerId` (FK), `teamId` (FK), `startYear`, `endYear`, see `docs/llds/player-contracts-roster.md`.
+- **`PlayerFactory`** (new, `src/db/domain/player.ts` — domain layer only, not built by this planning map): generates a randomized roster + starting Contracts, called by `TeamFactory.create()` (`src/db/domain/team.ts`).
+
+### Flow
+
+```
+Team creation (TeamFactory.create())
+  → PlayerFactory generates roster:
+       roll headcount ∈ [20, 30]
+       allocate positions proportionally (~40% Pitchers, remainder across 8 fielding positions)
+       for each Player: roll attributes/positions-map/pitches uniform-random (no position skew)
+       persist Player rows (teamId, gameWorldId, attributes)
+  → auto-issue Contract per Player: startYear = GameWorld.year, endYear = startYear (1-year term)
+  → (future map) SimulationEngine produces per-game events
+       → PlayerGameStats rows written (schema exists now, no writer yet)
+       → season/career stats computed as aggregate queries over PlayerGameStats
+```
+
+### Key Trade-offs
+
+- **No role-conditioned attribute union**: a flat shared-ratings shape means every player technically has pitching ratings and a `pitches` repertoire even if they never pitch — accepted because it keeps the schema uniform (no branching by position at generation or read time) and lets a position-flexible player's off-position ratings mean something (e.g. a backup catcher who *could* pitch in a blowout).
+- **Aggregation over storage for season/career stats**: query-time `SUM`/`COUNT` over `PlayerGameStats` instead of maintained rollup tables — simpler write path today, at the cost of aggregation queries the domain layer doesn't have yet (deferred with the rest of the write-timing plan).
+- **Roster/position balance enforced by construction, not validation**: the generation algorithm is expected to produce a valid, well-balanced roster every time; there is deliberately no runtime guard rejecting an out-of-range or lopsided roster in v1.
+- **1-year starting Contracts**: a deliberately short default term to force early exercise of Contract lifecycle/free-agency mechanics, rather than a "realistic" multi-year default that would let the free-agency gap sit unnoticed for longer.
+- **Out of scope**: `SimulationEngine` actually using `Player.attributes`/`PlayerGameStats` to influence outcomes (stays random); Player transfer/trade mechanics; Contract-expiry enforcement/free-agency; draft/scouting or ongoing roster generation across multiple seasons; Roster/Player UI. All parked for future maps once this schema lands.
