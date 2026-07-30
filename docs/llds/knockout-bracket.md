@@ -127,6 +127,60 @@ ON game completion (any Game row reaching status COMPLETED):
 | `FIXED` | Byes go to the top-P seeds by `bracketSlot`; remaining lowest seeds play the play-in ties. | Winners paired in bracket order — no shuffle, ever. |
 | `REDRAW` | Byes/pairings randomly assigned among the initial field. | Winners re-shuffled before pairing, **every round** (not just round 1) — round *sizes* stay fixed by the power-of-2 reduction; only *who* is paired changes. |
 
+## Implementation notes (#53)
+
+Refines the pseudocode above with the concrete decisions made when implementing round-advancement
+(`src/db/domain/knockout-advancement.ts`).
+
+### Completion hook entry point
+
+Round-advancement lives in a dedicated `knockout-advancement` module (keeps `game.ts` thin and
+avoids a circular import with `division.ts`, which already imports `GameFactory`). The shared
+completion hook is a single function called from **both** `GameFactory.simulate()` (single) and
+`simulateBatch()` (batch):
+
+```
+resolveKnockoutGameCompletion(gameId)  → advanceKnockoutRound(divisionId, year, round)
+```
+
+- **Single path** (`simulate`): called once after the triggering game is persisted.
+- **Batch path** (`simulateBatch`): called once per simulated `gameId` **after the transaction
+  commits** (edge case e4 — never mid-transaction). `advanceKnockoutRound` is idempotent, so
+  repeat calls for other games in the same round no-op.
+
+### Idempotency guards (defensive re-trigger safety)
+
+`advanceKnockoutRound` returns early when:
+- the division's `format.structure !== 'KNOCKOUT'` (round-robin is unaffected),
+- a `SeasonResult` for `(divisionId, year)` already has a non-null `championTeamId` (e6 — never
+  overwrite a decided champion),
+- a game for `round + 1` already exists (this round already advanced),
+- the round is not yet complete (some game is not `COMPLETED` with a home result).
+
+### `FIXED` bracket order
+
+"Bracket order" for later rounds = winners collected in ascending `bracketSlot` order of the
+winning team (ties and byes are grouped/sorted by the minimum `bracketSlot` among their teams),
+then paired adjacent (`[0,1],[2,3],…`). Round-1 generation already pairs adjacent slots, so this
+reproduces a consistent bracket with no shuffle. `REDRAW` instead feeds the winner list through
+`shuffleTeams` before the same adjacent pairing — round *sizes* are unchanged, only pairings move.
+
+### `ANOTHER_GAME_W_OVERTIME` resolution timing
+
+The tiebreaker `Game` is created **already `COMPLETED` with a decisive, non-draw score** (a random
+winner wins by a strict margin) within the same advancement pass, so the round resolves in one
+pass. Reusing the tied legs' `round` number means that — were a tiebreaker ever left pending —
+round-completeness would correctly wait for it (the e2 rationale); in this implementation it is
+resolved immediately, so no re-entry is required. Decisiveness is guaranteed by construction
+(winner runs > loser runs), avoiding any best-of/infinite-loop risk and any schema change to mark
+a game as "must be decisive".
+
+### `OVERTIME`
+
+The last leg (highest `id` among the tie's legs) is overwritten in place so the randomly chosen
+overtime winner leads that leg's score by ≥ 1 — making both the leg (non-draw) and the aggregate
+(winner now leads by 1) decisive.
+
 ## Edge Case Probe
 
 | # | Condition | Handling | Spec |
@@ -146,5 +200,5 @@ ON game completion (any Game row reaching status COMPLETED):
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-full-season-simulation-league--league-cup) |
 | **This LLD** | `docs/llds/knockout-bracket.md` |
 | EARS | `docs/specs/league-cup-specs.md` — `CUP-001`.. |
-| Code | `src/db/domain/division.ts` (`DivisionFactory` — `newSeason`, `KNOCKOUT` branch), `src/db/domain/game.ts` (completion hook), new `SeasonResult` model |
+| Code | `src/db/domain/division.ts` (`DivisionFactory` — `newSeason`, `KNOCKOUT` branch), `src/db/domain/game.ts` (completion hook), `src/db/domain/knockout-advancement.ts` (round-advancement + tiebreak orchestration), new `SeasonResult` model |
 | Decision records | [#33](https://github.com/wulke/premier-league-baseball/issues/33), [#43](https://github.com/wulke/premier-league-baseball/issues/43) |
