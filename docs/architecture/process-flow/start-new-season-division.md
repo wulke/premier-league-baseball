@@ -6,10 +6,10 @@ flowchart TD
   div --> complete{Division.isSeasonComplete?}
   complete -->|no| err[Throw error]
   complete -->|yes| seed[Get seed team ids]
-  seed --> formula{gameFormula includes KNOCKOUT?}
+  seed --> formula{format.structure = KNOCKOUT?}
 
   formula -->|yes — elimination| ds_elim[BulkCreate DivisionSeason entries with bracketSlot]
-  ds_elim --> pair{gameFormula includes REDRAW?}
+  ds_elim --> pair{format.seeding = REDRAW?}
   pair -->|yes| shuffle[Shuffle teams randomly]
   pair -->|no| slot[Pair by bracketSlot order]
   shuffle --> r1[BulkCreate round-1 Games + DivisionSeasonGame links]
