@@ -86,5 +86,6 @@ No write path persists a "primary position" — every consumer that needs one de
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-players-attributes-stats--contracts) |
 | **This LLD** | `docs/llds/player-attributes.md` |
 | EARS | `docs/specs/player-attributes-specs.md` — `PATTR-001`.. |
-| Code | *(not yet implemented — this map is planning-only)* `src/db/model/` (`Player`), `src/api/models.ts` (`PlayerAttributes`) |
+| Tests | `test/db/domain/player.test.ts` |
+| Code | `src/db/model/player.ts`, `src/db/model/associations.ts`, `src/api/models.ts`, `src/db/domain/player.ts` |
 | Decision record | [#60](https://github.com/wulke/premier-league-baseball/issues/60) |
