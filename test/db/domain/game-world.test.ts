@@ -162,6 +162,10 @@ describe('GameWorldFactory', () => {
       divisionSeasonId: gw2.divisionSeasons[0].id,
       gameId: gw1.game.id,
     });
+    await db.models.PlayerGameStats.bulkCreate(gw2.players.map((player) => ({
+      playerId: player.id,
+      gameId: gw1.game.id,
+    })));
 
     await expect((GameWorldFactory(gw1.gameWorld.id) as any).delete()).resolves.toEqual({ id: gw1.gameWorld.id });
 
@@ -172,11 +176,12 @@ describe('GameWorldFactory', () => {
     await expect(db.models.Division.count({ where: { leagueId: gw1.league.id } })).resolves.toBe(0);
     await expect(db.models.DivisionSeason.count({ where: { divisionId: gw1.division.id } })).resolves.toBe(0);
     await expect(db.models.Contract.count({ where: { playerId: gw1.players.map(({ id }) => id) } })).resolves.toBe(0);
-    await expect(db.models.PlayerGameStats.count({ where: { gameId: gw1.game.id } })).resolves.toBe(0);
+    await expect(db.models.PlayerGameStats.count({ where: { playerId: gw1.players.map(({ id }) => id) } })).resolves.toBe(0);
     await expect(db.models.SeasonResult.count({ where: { divisionId: gw1.division.id } })).resolves.toBe(0);
 
     const sharedGame = await db.models.Game.findByPk(gw1.game.id);
     expect(sharedGame).not.toBeNull();
+    await expect(db.models.PlayerGameStats.count({ where: { playerId: gw2.players.map(({ id }) => id), gameId: gw1.game.id } })).resolves.toBe(2);
     await expect(db.models.DivisionSeasonGame.count({
       where: { divisionSeasonId: gw2.divisionSeasons[0].id, gameId: gw1.game.id },
     })).resolves.toBe(1);

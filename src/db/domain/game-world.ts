@@ -11,6 +11,11 @@ interface IGameWorld {
 };
 
 const mapIds = (rows: any[]): number[] => rows.map(({ dataValues }) => dataValues.id);
+const notFoundError = (id: number) => {
+  const error: Error & { statusCode?: number } = Error(`No gameworld exists with id='${id}'`);
+  error.statusCode = 404;
+  return error;
+};
 
 const GameWorldFactory = (id?: number): IGameWorld => {
   return {
@@ -59,32 +64,29 @@ const GameWorldFactory = (id?: number): IGameWorld => {
     },
     // @spec GWD-001,GWD-002,GWD-003,GWD-004
     delete: async () => {
-      if (!id) throw Error('no game world to delete');
+      const gameWorldId = typeof id === 'number' && Number.isFinite(id) ? id : undefined;
+      if (gameWorldId === undefined) throw notFoundError(Number(id));
 
-      const gameWorld = await db.models.GameWorld.findByPk(id);
-      if (!gameWorld) {
-        const error: Error & { statusCode?: number } = Error(`No gameworld exists with id='${id}'`);
-        error.statusCode = 404;
-        throw error;
-      }
+      const gameWorld = await db.models.GameWorld.findByPk(gameWorldId);
+      if (!gameWorld) throw notFoundError(gameWorldId);
 
       const transaction = await db.transaction();
 
       try {
         const leagues = await db.models.League.findAll({
-          where: { gameWorldId: id },
+          where: { gameWorldId },
           transaction,
         });
         const leagueIds = mapIds(leagues);
 
         const teams = await db.models.Team.findAll({
-          where: { gameWorldId: id },
+          where: { gameWorldId },
           transaction,
         });
         const teamIds = mapIds(teams);
 
         const players = await db.models.Player.findAll({
-          where: { gameWorldId: id },
+          where: { gameWorldId },
           transaction,
         });
         const playerIds = mapIds(players);
@@ -107,13 +109,9 @@ const GameWorldFactory = (id?: number): IGameWorld => {
         });
         const gameIds = Array.from(new Set(divisionSeasonGames.map(({ dataValues }) => dataValues.gameId)));
 
-        const playerGameStatsWhere = [
-          ...(playerIds.length > 0 ? [{ playerId: { [Op.in]: playerIds } }] : []),
-          ...(gameIds.length > 0 ? [{ gameId: { [Op.in]: gameIds } }] : []),
-        ];
-        if (playerGameStatsWhere.length > 0) {
+        if (playerIds.length > 0) {
           await db.models.PlayerGameStats.destroy({
-            where: { [Op.or]: playerGameStatsWhere },
+            where: { playerId: { [Op.in]: playerIds } },
             transaction,
           });
         }
@@ -174,24 +172,24 @@ const GameWorldFactory = (id?: number): IGameWorld => {
         }
 
         await db.models.Player.destroy({
-          where: { gameWorldId: id },
+          where: { gameWorldId },
           transaction,
         });
         await db.models.Team.destroy({
-          where: { gameWorldId: id },
+          where: { gameWorldId },
           transaction,
         });
         await db.models.League.destroy({
-          where: { gameWorldId: id },
+          where: { gameWorldId },
           transaction,
         });
         await db.models.GameWorld.destroy({
-          where: { id },
+          where: { id: gameWorldId },
           transaction,
         });
 
         await transaction.commit();
-        return { id };
+        return { id: gameWorldId };
       } catch (error) {
         await transaction.rollback();
         throw error;

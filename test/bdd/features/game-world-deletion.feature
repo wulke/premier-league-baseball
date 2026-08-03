@@ -30,9 +30,11 @@ Feature: GameWorld Deletion
   Scenario: Deleting a GameWorld does not affect a Game shared with another GameWorld's DivisionSeason
     Given a second GameWorld exists with id 2 and its own League, Division, and DivisionSeason
     And GameWorld 1's Game is also linked to GameWorld 2's DivisionSeason
+    And GameWorld 2's Players also have PlayerGameStats on GameWorld 1's Game
     When the player deletes GameWorld 1
     Then GameWorld 1 no longer exists
     And GameWorld 1's Game still exists
+    And GameWorld 2's PlayerGameStats on GameWorld 1's Game still exist
     And GameWorld 2's DivisionSeason is still linked to that Game
 
   # ─── In-Progress Restriction ────────────────────────────────────────────────

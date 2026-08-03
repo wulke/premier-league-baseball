@@ -209,6 +209,13 @@ const registerSteps = ({ given, when, then, and }: any) => {
     });
   });
 
+  given(/^GameWorld 2's Players also have PlayerGameStats on GameWorld 1's Game$/, async () => {
+    await db.models.PlayerGameStats.bulkCreate(scenarioWorld.gw2.players.map((player: any) => ({
+      playerId: player.id,
+      gameId: scenarioWorld.gw1.game.id,
+    })));
+  });
+
   given(/^GameWorld 1's config.inProgress is true$/, async () => {
     await db.models.GameWorld.update(
       { config: { inProgress: true } },
@@ -251,7 +258,7 @@ const registerSteps = ({ given, when, then, and }: any) => {
 
   then(/^GameWorld (\d+)'s Contracts and PlayerGameStats no longer exist$/, async () => {
     await expect(db.models.Contract.count({ where: { playerId: scenarioWorld.gw1.players.map(({ id }) => id) } })).resolves.toBe(0);
-    await expect(db.models.PlayerGameStats.count({ where: { gameId: scenarioWorld.gw1.game.id } })).resolves.toBe(0);
+    await expect(db.models.PlayerGameStats.count({ where: { playerId: scenarioWorld.gw1.players.map(({ id }) => id) } })).resolves.toBe(0);
   });
 
   then(/^GameWorld (\d+)'s SeasonResult no longer exists$/, async () => {
@@ -273,6 +280,15 @@ const registerSteps = ({ given, when, then, and }: any) => {
         gameId: scenarioWorld.gw1.game.id,
       },
     })).resolves.toBe(1);
+  });
+
+  then(/^GameWorld 2's PlayerGameStats on GameWorld 1's Game still exist$/, async () => {
+    await expect(db.models.PlayerGameStats.count({
+      where: {
+        playerId: scenarioWorld.gw2.players.map(({ id }: any) => id),
+        gameId: scenarioWorld.gw1.game.id,
+      },
+    })).resolves.toBe(2);
   });
 
   then(/^the response is a 404 error$/, () => {
