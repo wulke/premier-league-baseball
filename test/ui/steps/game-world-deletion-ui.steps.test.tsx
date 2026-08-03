@@ -2,7 +2,7 @@
 import React from 'react';
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
-import { act } from 'react-dom/test-utils';
+import { act } from 'react';
 import { fireEvent, screen, waitFor, within, cleanup } from '@testing-library/react';
 import { render } from '../test-utils';
 import { Home } from '../../../src/ui/pages';
