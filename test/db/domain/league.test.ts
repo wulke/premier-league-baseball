@@ -240,6 +240,7 @@ describe('LeagueFactory.cutover', () => {
   let gameWorld: any;
   let league: any;
   let division: any;
+  let teams: any[];
 
   beforeEach(async () => {
     await db.sync({ force: true });
@@ -252,6 +253,9 @@ describe('LeagueFactory.cutover', () => {
     }, []);
     division = await db.models.Division.findOne({ where: { leagueId: league.id } })
       .then((row) => row!.dataValues);
+    teams = await Promise.all(['Home', 'Away'].map((name) => db.models.Team.create({
+      gameWorldId: gameWorld.id, config: { name },
+    }).then(({ dataValues }) => dataValues)));
   });
 
   // @spec SCL-002
@@ -268,9 +272,9 @@ describe('LeagueFactory.cutover', () => {
   // @spec SCL-002
   it('rejects with 422 and preserves the League when its current season is incomplete', async () => {
     await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: league.id } });
-    const season = await db.models.DivisionSeason.create({ divisionId: division.id, teamId: 1, year: 2027 })
+    const season = await db.models.DivisionSeason.create({ divisionId: division.id, teamId: teams[0].id, year: 2027 })
       .then(({ dataValues }) => dataValues);
-    const game = await db.models.Game.create({ homeTeam: 1, awayTeam: 2, status: 'SCHEDULED' })
+    const game = await db.models.Game.create({ homeTeam: teams[0].id, awayTeam: teams[1].id, status: 'SCHEDULED' })
       .then(({ dataValues }) => dataValues);
     await db.models.DivisionSeasonGame.create({ divisionSeasonId: season.id, gameId: game.id });
 
@@ -286,9 +290,9 @@ describe('LeagueFactory.cutover', () => {
   // @spec SCL-002
   it('increments the year and moves a complete IN_SEASON League to CUTOVER', async () => {
     await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: league.id } });
-    const season = await db.models.DivisionSeason.create({ divisionId: division.id, teamId: 1, year: 2027 })
+    const season = await db.models.DivisionSeason.create({ divisionId: division.id, teamId: teams[0].id, year: 2027 })
       .then(({ dataValues }) => dataValues);
-    const game = await db.models.Game.create({ homeTeam: 1, awayTeam: 2, status: 'COMPLETED', homeTeamResult: 1, awayTeamResult: 0 })
+    const game = await db.models.Game.create({ homeTeam: teams[0].id, awayTeam: teams[1].id, status: 'COMPLETED', homeTeamResult: 1, awayTeamResult: 0 })
       .then(({ dataValues }) => dataValues);
     await db.models.DivisionSeasonGame.create({ divisionSeasonId: season.id, gameId: game.id });
 

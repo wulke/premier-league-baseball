@@ -9,6 +9,7 @@ interface ILeague {
   create: (gwId: number, config: any, teamIdRefs: number[]) => any;
   get: () => any;
   isSeasonComplete: (year: number) => any;
+  cutover: () => Promise<{ id: number; year: number; status: 'CUTOVER' }>;
   newSeason: (year: number) => any;
   getBracket: () => Promise<LeagueDivisionBracket[]>;
   getStandings: () => Promise<DivisionStandings[]>;
@@ -158,6 +159,21 @@ const LeagueFactory = (id?: number): ILeague => {
     }).sort((a, b) => (a.scheduledDate ?? '').localeCompare(b.scheduledDate ?? ''));
   };
 
+  // @spec SCL-002
+  const cutover = async (): Promise<{ id: number; year: number; status: 'CUTOVER' }> => {
+    const league = await getLeague();
+    if (league.status !== 'IN_SEASON') {
+      throw new DomainError('league is not in season', 422);
+    }
+    if (!(await isSeasonComplete(league.year))) {
+      throw new DomainError('season is not complete', 422);
+    }
+
+    const year = league.year + 1;
+    await db.models.League.update({ year, status: 'CUTOVER' }, { where: { id: league.id } });
+    return { id: league.id, year, status: 'CUTOVER' };
+  };
+
   // @spec API-001,API-002,API-003,API-004
   const getBracket = async (): Promise<LeagueDivisionBracket[]> => {
     const league = await db.models.League.findByPk(id, {
@@ -188,6 +204,7 @@ const LeagueFactory = (id?: number): ILeague => {
     getBracket,
     getStandings,
     getToday,
+    cutover,
     create: async (gwId: number, config: LeagueConfig, teamIdRefs: number[]) => {
       // @spec CFG-001,SCL-001
       const gameWorld = await db.models.GameWorld.findByPk(gwId);
