@@ -67,14 +67,14 @@ describe('DivisionFactory', () => {
     const divisionIds = await db.models.League.findByPk(league.id, { include: db.models.Division })
       .then((league) => { if (!league) throw Error(); return league.dataValues })
       .then(({ Divisions }) => Divisions.map(({ id }) => id));
-    expect(divisionIds.length).toStrictEqual(leagueConfig.divisions.length);
+    expect(divisionIds.length).toStrictEqual(leagueConfig.divisions!.length);
 
     let id = divisionIds[0];
     await DivisionFactory(id).newSeason(gw.year);
     let d = await db.models.Division.findByPk(id, { include: db.models.DivisionSeason })
       .then((division) => { if (!division) throw Error(); return division.dataValues });
     // console.debug(d);
-    expect(d.DivisionSeasons.length).toStrictEqual(leagueConfig.divisions[0].defaultTeams.length);
+    expect(d.DivisionSeasons.length).toStrictEqual(leagueConfig.divisions![0].defaultTeams.length);
     
     let divisionSeasons = d.DivisionSeasons.map(({ dataValues }) => dataValues);
     expect(divisionSeasons.every(({ divisionId, year, teamId}) =>

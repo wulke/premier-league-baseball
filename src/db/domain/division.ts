@@ -69,7 +69,8 @@ const DivisionFactory = (id?: number): IDivision => {
     rounds.sort(() => Math.random() - 0.5);
     rounds.forEach((r, i) => { r.round = i + 1; });
 
-    if (format.legs === 'TWO_LEG') {
+    // #85: SWISS (config-surface only, no scheduler) carries no `legs`; RR/KO unchanged.
+    if (format.structure !== 'SWISS' && format.legs === 'TWO_LEG') {
       const firstLegCount = rounds.length;
       const secondLeg = [...rounds].sort(() => Math.random() - 0.5);
       secondLeg.forEach((r, i) => {

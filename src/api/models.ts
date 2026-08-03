@@ -152,47 +152,30 @@ interface LeagueDivisionBracket {
   rounds: BracketRound[];
 }
 
-interface LeagueConfig {
-  name: string;
-  type: LeagueType;
-  divisions: DivisionConfig[];
-  format?: CompetitionFormat;
-  standingsConfig?: StandingsConfig;
-};
-interface SchedulingConfig {
-  startDate: string;
-  intervalDays: number;
-}
-
-interface DivisionConfig {
-  name: string;
-  defaultTeams: any[];
-  format?: CompetitionFormat;
-  isTopTier?: boolean;
-  schedulingConfig?: SchedulingConfig;
-};
-interface TeamConfig {
-  name: string;
-};
-
-enum LeagueType {
-  League = 'League',
-  LeagueCup = 'League Cup'
-};
-
+// --- Competition format ------------------------------------------------------
+//
+// #83: `seriesLength` is the per-division series length (Bo1/Bo3/Bo5/Bo7). It is
+//      renamed to `winsToAdvance` in #87; until then the field keeps this name so
+//      the migration of ~20 domain fixtures rides with #87's run-path work.
+// #82: `SWISS` is a third structure arm — league-phase only, no legs/winsToAdvance
+//      (no consumer reads them); carries `gamesPerTeam` + `qualificationTiers`.
 type CompetitionLegs = 'ONE_LEG' | 'TWO_LEG';
-type CompetitionSeriesLength = 'Bo1' | 'Bo3' | 'Bo5';
+type CompetitionSeriesLength = 'Bo1' | 'Bo3' | 'Bo5' | 'Bo7';
 type CompetitionTiebreak = 'AGGREGATE_SCORE' | 'OVERTIME' | 'ANOTHER_GAME_W_OVERTIME';
 type CompetitionSeeding = 'FIXED' | 'REDRAW';
 
-type CompetitionFormat = {
-  legs: CompetitionLegs;
-  seriesLength: CompetitionSeriesLength;
-  tiebreak?: CompetitionTiebreak;
-} & (
-  | { structure: 'ROUND_ROBIN' }
-  | { structure: 'KNOCKOUT'; seeding: CompetitionSeeding }
-);
+// @spec CFG-002,CFG-003,CFG-006
+type CompetitionFormat =
+  | { structure: 'ROUND_ROBIN'; legs: CompetitionLegs; seriesLength: CompetitionSeriesLength; tiebreak?: CompetitionTiebreak }
+  | { structure: 'KNOCKOUT'; legs: CompetitionLegs; seriesLength: CompetitionSeriesLength; tiebreak?: CompetitionTiebreak; seeding: CompetitionSeeding }
+  | { structure: 'SWISS'; gamesPerTeam: number; qualificationTiers: SwissTier[] };
+
+// #82 — a tier is an id + an absolute rank range; tiers partition the field
+// (1..defaultTeams.length). An `eliminated` tier has no downstream consumer.
+interface SwissTier {
+  id: string;
+  rankRange: [number, number];
+}
 
 const STANDARD_LEAGUE_FORMAT: CompetitionFormat = {
   structure: 'ROUND_ROBIN',
@@ -214,41 +197,280 @@ const resolveCompetitionFormat = (
   leagueConfig: LeagueConfig
 ): CompetitionFormat | undefined => divisionConfig.format ?? leagueConfig.format;
 
-const DefaultLeagues = {
-  [GameWorldType.PremierLeague]: [
-    {
-      name: GameWorldType.PremierLeague,
-      type: LeagueType.League,
-      format: STANDARD_LEAGUE_FORMAT,
-      divisions: [
-        {
-          name: GameWorldType.PremierLeague,
-          defaultTeams: [...Array(44).keys()].slice(0,20),
-          isTopTier: true,
-        },
-        {
-          name: 'Championship',
-          defaultTeams: [...Array(44).keys()].slice(20,44),
-          isTopTier: false,
-        },
-      ]
-    },
-    {
-      name: 'League Cup',
-      type: LeagueType.LeagueCup,
-      format: STANDARD_CUP_FORMAT,
-      divisions: [
-        {
-          name: '1st Round',
-          defaultTeams: [...Array(44).keys()]
-        }
-      ]
-    }
-  ]
+interface SchedulingConfig {
+  startDate: string;
+  intervalDays: number;
+}
+
+// #80,#84,#95 — `seedingSelection` lives on the *consuming* division and points,
+// by id only, at its source stage (and, for TIERED_RANK, the source tier). No
+// selector carries rank ranges or overrides — the producer is the single source
+// of truth (#95).
+// @spec CFG-007
+type SeedingSelection =
+  | { kind: 'TOP_N_PER_DIVISION'; fromStage: string; topN: number }
+  | { kind: 'BEST_OF_REST'; fromStage: string; count: number; excluding: 'DIVISION_WINNERS'; conference?: string }
+  | { kind: 'TIERED_RANK'; fromStage: string; tierId: string };
+
+interface DivisionConfig {
+  name: string;
+  defaultTeams: any[];            // pool-allocation indices; [] on a cross-stage-seeded division
+  format?: CompetitionFormat;     // per-division (#83)
+  isTopTier?: boolean;            // this division's winner is the League champion (#81)
+  seedingSelection?: SeedingSelection;
+  conference?: string;            // #84 producer label (AL/NL) — not a node or Stage
+  schedulingConfig?: SchedulingConfig;
 };
 
-const DefaultTeams = {
-  [GameWorldType.PremierLeague]: [
+// #79 — a Stage is a config-only grouping layer above Division; array order on
+// League.stages[] is the phase sequence. `LeagueConfig.divisions` remains (PL/Cup
+// stay on it) until #87 migrates the live configs + create path to `stages`.
+// @spec CFG-005
+interface Stage {
+  id: string;
+  name: string;
+  divisions: DivisionConfig[];
+}
+
+interface LeagueConfig {
+  name: string;
+  type: LeagueType;
+  divisions?: DivisionConfig[];   // legacy single-stage shape; #87 migrates to stages
+  stages?: Stage[];               // multi-stage shape (#79); array order = phase sequence
+  format?: CompetitionFormat;     // league-level fallback; #87 drops this + resolveCompetitionFormat
+  standingsConfig?: StandingsConfig;
+};
+interface TeamConfig {
+  name: string;
+};
+
+enum LeagueType {
+  League = 'League',
+  LeagueCup = 'League Cup'
+};
+
+// --- Named competition-config templates (#85) --------------------------------
+//
+// Decision (#85): competition configs live in a named registry decoupled from
+// `GameWorldType`. This is the seam the future "game-world builder" map needs —
+// teams and league configs become independently composable.
+//
+// - `premier-league` / `league-cup` are the live configs, RELOCATED here from
+//   the old `DefaultLeagues`. They keep their single-stage `divisions` shape;
+//   #87 migrates them to single-stage `stages`.
+// - `champions-league` (old CL) / `champions-league-swiss` (new CL) / `mlb` are
+//   the **pressure-test configs** this map exists to validate. They are authored
+//   in the generalized `stages` shape; only old-CL ever runs (its run path is
+//   #87). new-CL + MLB are config-surface only (no Swiss scheduler, no best-of-N
+//   engine, no MLB fixture matrix — all out of scope per map #78).
+
+// Format constants for the pressure-test configs (CFG-004 philosophy: named, not
+// hand-authored inline). #83: winner-rule is exactly one — aggregate (TWO_LEG +
+// Bo1) XOR best-of-wins (BoN + ONE_LEG); the TWO_LEG+BoN combination is rejected
+// by #86's validation.
+const OLD_CL_GROUP_FORMAT: CompetitionFormat = {
+  structure: 'ROUND_ROBIN', legs: 'TWO_LEG', seriesLength: 'Bo1', tiebreak: 'AGGREGATE_SCORE',
+};
+const OLD_CL_KNOCKOUT_FORMAT: CompetitionFormat = {
+  structure: 'KNOCKOUT', legs: 'TWO_LEG', seriesLength: 'Bo1', tiebreak: 'AGGREGATE_SCORE', seeding: 'REDRAW',
+};
+const NEW_CL_SWISS_FORMAT: CompetitionFormat = {
+  structure: 'SWISS', gamesPerTeam: 8, qualificationTiers: [
+    { id: 'direct', rankRange: [1, 8] },
+    { id: 'playoff', rankRange: [9, 24] },
+    { id: 'eliminated', rankRange: [25, 36] },
+  ],
+};
+const NEW_CL_KNOCKOUT_FORMAT: CompetitionFormat = {
+  structure: 'KNOCKOUT', legs: 'TWO_LEG', seriesLength: 'Bo1', tiebreak: 'AGGREGATE_SCORE', seeding: 'REDRAW',
+};
+const MLB_REGULAR_FORMAT: CompetitionFormat = {
+  structure: 'ROUND_ROBIN', legs: 'ONE_LEG', seriesLength: 'Bo1',
+};
+const MLB_WILDCARD_FORMAT: CompetitionFormat = {
+  structure: 'KNOCKOUT', legs: 'ONE_LEG', seriesLength: 'Bo3', seeding: 'FIXED',
+};
+const MLB_LCS_FORMAT: CompetitionFormat = {
+  structure: 'KNOCKOUT', legs: 'ONE_LEG', seriesLength: 'Bo7', seeding: 'FIXED',
+};
+const MLB_WORLD_SERIES_FORMAT: CompetitionFormat = {
+  structure: 'KNOCKOUT', legs: 'ONE_LEG', seriesLength: 'Bo7', seeding: 'FIXED',
+};
+
+const LeagueTemplates: Record<string, LeagueConfig> = {
+  // --- live configs (relocated; divisions-shape until #87) ---
+  'premier-league': {
+    name: GameWorldType.PremierLeague,
+    type: LeagueType.League,
+    format: STANDARD_LEAGUE_FORMAT,
+    divisions: [
+      {
+        name: GameWorldType.PremierLeague,
+        defaultTeams: [...Array(44).keys()].slice(0, 20),
+        isTopTier: true,
+      },
+      {
+        name: 'Championship',
+        defaultTeams: [...Array(44).keys()].slice(20, 44),
+        isTopTier: false,
+      },
+    ],
+  },
+  'league-cup': {
+    name: 'League Cup',
+    type: LeagueType.LeagueCup,
+    format: STANDARD_CUP_FORMAT,
+    divisions: [
+      {
+        name: '1st Round',
+        defaultTeams: [...Array(44).keys()],
+      },
+    ],
+  },
+
+  // --- pressure-test config: old Champions League (group stage → two-leg KO) ---
+  // 32 teams → 8 groups of 4 (round-robin home & away) → top 2 per group (16) →
+  // two-leg knockout (Ro16/QF/SF) → single-leg Final. The knockout division owns
+  // no pool — its 16 teams arrive via TOP_N_PER_DIVISION from the group stage
+  // (#80). `seeding: 'REDRAW'` (constrained winners-vs-runners-up draw is fog).
+  // @spec CFG-005,CFG-007
+  'champions-league': {
+    name: 'Champions League',
+    type: LeagueType.LeagueCup,
+    stages: [
+      {
+        id: 'group-stage',
+        name: 'Group Stage',
+        divisions: Array.from({ length: 8 }, (_, i): DivisionConfig => ({
+          name: `Group ${String.fromCharCode(65 + i)}`,
+          defaultTeams: [i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 3],
+          format: OLD_CL_GROUP_FORMAT,
+        })),
+      },
+      {
+        id: 'knockout',
+        name: 'Knockout',
+        divisions: [{
+          name: 'Knockout',
+          defaultTeams: [],
+          format: OLD_CL_KNOCKOUT_FORMAT,
+          seedingSelection: { kind: 'TOP_N_PER_DIVISION', fromStage: 'group-stage', topN: 2 },
+          isTopTier: true,
+        }],
+      },
+    ],
+  },
+
+  // --- pressure-test config: new Champions League (Swiss) ---
+  // 36 teams, single Swiss league phase (8 games/team, 4H/4A). Tiers partition
+  // the field: 1-8 direct to Ro16, 9-24 two-leg playoff, 25-36 eliminated. The
+  // knockout division is seeded via TIERED_RANK on the `playoff` tier (#95). The
+  // Swiss draw/pots + H/A balance are scheduler-internal (out of scope).
+  // @spec CFG-006,CFG-007
+  'champions-league-swiss': {
+    name: 'Champions League (Swiss)',
+    type: LeagueType.LeagueCup,
+    stages: [
+      {
+        id: 'league-phase',
+        name: 'League Phase',
+        divisions: [{
+          name: 'Swiss League',
+          defaultTeams: [...Array(36).keys()],
+          format: NEW_CL_SWISS_FORMAT,
+        }],
+      },
+      {
+        id: 'knockout',
+        name: 'Knockout',
+        divisions: [{
+          name: 'Knockout',
+          defaultTeams: [],
+          format: NEW_CL_KNOCKOUT_FORMAT,
+          seedingSelection: { kind: 'TIERED_RANK', fromStage: 'league-phase', tierId: 'playoff' },
+          isTopTier: true,
+        }],
+      },
+    ],
+  },
+
+  // --- pressure-test config: MLB (conferences + best-of-N postseason) ---
+  // 30 teams, 2 conferences (AL/NL) × 3 divisions × 5. Regular season = one
+  // stage × 6 round-robin divisions, each carrying a `conference` producer label
+  // (#84). Postseason declares its seeding selections (division winners via
+  // TOP_N_PER_DIVISION; wild cards via BEST_OF_REST scoped by conference) and
+  // best-of-N lengths (Bo3 WC, Bo7 LCS/WS — #83/#85). NOTE: composing division
+  // winners + wild cards into one bracket seed order, and the AL-vs-NL World
+  // Series merge, are bracket-placement concerns no selector expresses today
+  // (fog, per map #78) — declared here, not resolved. The ~162-game
+  // inter-division fixture matrix is scheduler-internal (out of scope).
+  // @spec CFG-007,CFG-008,CFG-009
+  'mlb': {
+    name: 'Major League Baseball',
+    type: LeagueType.League,
+    stages: [
+      {
+        id: 'regular-season',
+        name: 'Regular Season',
+        divisions: [
+          { name: 'AL East',    conference: 'AL', defaultTeams: [0, 1, 2, 3, 4],       format: MLB_REGULAR_FORMAT },
+          { name: 'AL Central', conference: 'AL', defaultTeams: [5, 6, 7, 8, 9],       format: MLB_REGULAR_FORMAT },
+          { name: 'AL West',    conference: 'AL', defaultTeams: [10, 11, 12, 13, 14],  format: MLB_REGULAR_FORMAT },
+          { name: 'NL East',    conference: 'NL', defaultTeams: [15, 16, 17, 18, 19],  format: MLB_REGULAR_FORMAT },
+          { name: 'NL Central', conference: 'NL', defaultTeams: [20, 21, 22, 23, 24],  format: MLB_REGULAR_FORMAT },
+          { name: 'NL West',    conference: 'NL', defaultTeams: [25, 26, 27, 28, 29],  format: MLB_REGULAR_FORMAT },
+        ],
+      },
+      {
+        id: 'postseason',
+        name: 'Postseason',
+        divisions: [
+          {
+            name: 'AL Bracket',
+            conference: 'AL',
+            defaultTeams: [],
+            format: MLB_LCS_FORMAT,
+            seedingSelection: { kind: 'TOP_N_PER_DIVISION', fromStage: 'regular-season', topN: 1 },
+          },
+          {
+            name: 'AL Wild Card',
+            conference: 'AL',
+            defaultTeams: [],
+            format: MLB_WILDCARD_FORMAT,
+            seedingSelection: { kind: 'BEST_OF_REST', fromStage: 'regular-season', count: 3, excluding: 'DIVISION_WINNERS', conference: 'AL' },
+          },
+          {
+            name: 'NL Bracket',
+            conference: 'NL',
+            defaultTeams: [],
+            format: MLB_LCS_FORMAT,
+            seedingSelection: { kind: 'TOP_N_PER_DIVISION', fromStage: 'regular-season', topN: 1 },
+          },
+          {
+            name: 'NL Wild Card',
+            conference: 'NL',
+            defaultTeams: [],
+            format: MLB_WILDCARD_FORMAT,
+            seedingSelection: { kind: 'BEST_OF_REST', fromStage: 'regular-season', count: 3, excluding: 'DIVISION_WINNERS', conference: 'NL' },
+          },
+          {
+            name: 'World Series',
+            defaultTeams: [],
+            format: MLB_WORLD_SERIES_FORMAT,
+            isTopTier: true,
+          },
+        ],
+      },
+    ],
+  },
+};
+
+// --- Named team pools (#85) --------------------------------------------------
+// Decoupled from `GameWorldType`, symmetric with LeagueTemplates. `england-44` is
+// the only pool referenced by a runnable DefaultWorld today; `europe-32` /
+// `mlb-30` populate when their worlds run (#87 / the builder map).
+const TeamPools: Record<string, TeamConfig[]> = {
+  'england-44': [
     'Manchester City',
     'Liverpool',
     'Brighton Hove & Albion',
@@ -292,8 +514,18 @@ const DefaultTeams = {
     'Swansea City',
     'Middlesbrough',
     'Rotherham United',
-    'Sheffield Wednesday'
-  ].map((name): TeamConfig => ({ name }))
+    'Sheffield Wednesday',
+  ].map((name): TeamConfig => ({ name })),
+};
+
+// --- Runnable bundles (#85) --------------------------------------------------
+// The layer that opts a team pool + a set of league templates into a pickable,
+// runnable world. `GameWorldType` stays the *runnable* identity (only worlds that
+// actually simulate get one); new-CL + MLB are registry-only and so have no entry
+// here. The future builder map makes both fields user-selectable.
+// @spec CFG-010
+const DefaultWorlds: Record<GameWorldType, { teamPool: string; leagues: string[] }> = {
+  [GameWorldType.PremierLeague]: { teamPool: 'england-44', leagues: ['premier-league', 'league-cup'] },
 };
 
 interface NewGameWorld {
@@ -304,11 +536,12 @@ interface NewGameWorld {
 };
 
 const useDefaultGameWorld = (gwType: GameWorldType = GameWorldType.PremierLeague): NewGameWorld => {
+  const world = DefaultWorlds[gwType];
   return {
     name: gwType,
-    leagues: DefaultLeagues[gwType],
-    teams: DefaultTeams[gwType],
-    year: new Date().getFullYear() - 1
+    leagues: world.leagues.map((id) => LeagueTemplates[id]),
+    teams: TeamPools[world.teamPool],
+    year: new Date().getFullYear() - 1,
   };
 };
 
@@ -320,6 +553,9 @@ export {
   LeagueConfig,
   LeagueType,
   DivisionConfig,
+  Stage,
+  SeedingSelection,
+  SwissTier,
   SchedulingConfig,
   StandingsConfig,
   DefaultStandingsConfig,
@@ -339,8 +575,12 @@ export {
   BracketRound,
   DivisionBracket,
   LeagueDivisionBracket,
+  CompetitionSeriesLength,
   STANDARD_CUP_FORMAT,
   STANDARD_LEAGUE_FORMAT,
+  LeagueTemplates,
+  TeamPools,
+  DefaultWorlds,
   resolveCompetitionFormat,
-  useDefaultGameWorld
+  useDefaultGameWorld,
 };

@@ -98,7 +98,9 @@ const LeagueFactory = (id?: number): ILeague => {
         config,
         gameWorldId: gwId
       }).then(({ dataValues }) => dataValues);
-      await Promise.all(config.divisions.map(async (divisionConfig) => 
+      // #85: `divisions` is optional (additive `stages` surface); PL/Cup still use it.
+      // Migrating the create path to read `stages` is #87's run-path work.
+      await Promise.all((config.divisions ?? []).map(async (divisionConfig) => 
         await db.models.Division.create({
           config: Object.assign({}, {
             ...divisionConfig,
