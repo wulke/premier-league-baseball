@@ -83,6 +83,15 @@ erDiagram
 | `League.status: ENUM('CUTOVER','IN_SEASON')`, default `'CUTOVER'` | Per-League lifecycle phase — replaces the GameWorld-wide `config.inProgress` as the *real* signal; `config.inProgress` becomes a derived convenience field (see SCL-008). |
 | `GameWorld.year`, `GameWorld.config.inProgress` | Unchanged column definitions. `year`'s meaning is left alone (contract/roster epoch, `team.ts`/`player.ts`). `config.inProgress`'s *value* becomes derived (see below) but its shape/consumers (`AppHeader.canBatch`) don't change. |
 
+### Schema rollout
+
+The idempotent League schema migration adds `year` and `status` to an existing
+`Leagues` table, then backfills every League's `year` from its parent
+`GameWorld.year`. It derives `status` from history rather than assuming a clean
+slate: a League is `IN_SEASON` when any `DivisionSeason` belongs to one of its
+Divisions (regardless of that row's year), and is otherwise `CUTOVER`. New
+tables receive the model defaults directly.
+
 ## Interface
 
 ```ts
