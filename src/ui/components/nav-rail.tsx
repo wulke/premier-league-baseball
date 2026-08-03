@@ -10,27 +10,51 @@ const NavRail = () => {
   const { gwId, leagueId } = useParams();
   const worldActive = Boolean(gwId && pathname === `/${gwId}`);
   const leagues = Array.isArray(gw?.Leagues) ? gw.Leagues : [];
-  const linkStyle = (active: boolean): React.CSSProperties => ({ color: active ? '#000' : '#666', fontWeight: active ? 700 : 500, textDecoration: 'none', display: 'block', padding: '6px 0' });
+  const linkStyle = (active: boolean): React.CSSProperties => ({
+    color: active ? '#000' : '#666',
+    fontWeight: active ? 700 : 500,
+    textDecoration: 'none',
+    display: 'block',
+    padding: '6px 0',
+  });
 
-  return <aside data-testid="nav-rail" style={{ width: 220, padding: 20, borderRight: '1px solid #ddd' }}>
-    <div data-testid="nav-mark" style={{ fontWeight: 800, marginBottom: 20 }}>Premier League Baseball</div>
-    <Link data-testid="nav-home" data-active={pathname === '/' ? 'true' : 'false'} to="/" style={linkStyle(pathname === '/')}>HOME</Link>
-    {gw && <section data-testid="nav-world" style={{ marginTop: 22 }}>
-      <div style={{ fontSize: '0.75rem', color: '#888' }}>WORLD</div>
-      <Link data-testid="nav-world-link" data-active={worldActive ? 'true' : 'false'} to={`/${gwId}`} style={linkStyle(worldActive)}>{gw.config?.name ?? `Game World ${gwId}`}</Link>
-      <BatchSimulateControl />
-    </section>}
-    {gw && leagues.length > 0 && <section data-testid="nav-competitions" style={{ marginTop: 22 }}>
-      <div style={{ fontSize: '0.75rem', color: '#888' }}>COMPETITIONS</div>
-      {leagues.map((league: any) => {
-        const active = String(league.id) === leagueId;
-        return <Link key={league.id} data-testid={`nav-league-${league.id}`} data-active={active ? 'true' : 'false'} to={`/${gwId}/${league.id}`} style={linkStyle(active)}>{league.config?.name ?? `League ${league.id}`}</Link>;
-      })}
-    </section>}
-    <section style={{ marginTop: 30, color: '#aaa' }} aria-disabled="true">
-      <div data-testid="nav-fog-club">My Club</div><div data-testid="nav-fog-roster">Roster</div><div data-testid="nav-fog-transfers">Transfers</div>
-    </section>
-  </aside>;
+  return (
+    <aside data-testid="nav-rail" style={{ width: 220, padding: 20, borderRight: '1px solid #ddd' }}>
+      <div data-testid="nav-mark" style={{ fontWeight: 800, marginBottom: 20 }}>
+        Premier League Baseball
+      </div>
+      <Link data-testid="nav-home" data-active={pathname === '/' ? 'true' : 'false'} to="/" style={linkStyle(pathname === '/')}>
+        HOME
+      </Link>
+      {gw && (
+        <section data-testid="nav-world" style={{ marginTop: 22 }}>
+          <div style={{ fontSize: '0.75rem', color: '#888' }}>WORLD</div>
+          <Link data-testid="nav-world-link" data-active={worldActive ? 'true' : 'false'} to={`/${gwId}`} style={linkStyle(worldActive)}>
+            {gw.config?.name ?? `Game World ${gwId}`}
+          </Link>
+          <BatchSimulateControl />
+        </section>
+      )}
+      {gw && leagues.length > 0 && (
+        <section data-testid="nav-competitions" style={{ marginTop: 22 }}>
+          <div style={{ fontSize: '0.75rem', color: '#888' }}>COMPETITIONS</div>
+          {leagues.map((league: any) => {
+            const active = String(league.id) === leagueId;
+            return (
+              <Link key={league.id} data-testid={`nav-league-${league.id}`} data-active={active ? 'true' : 'false'} to={`/${gwId}/${league.id}`} style={linkStyle(active)}>
+                {league.config?.name ?? `League ${league.id}`}
+              </Link>
+            );
+          })}
+        </section>
+      )}
+      <section style={{ marginTop: 30, color: '#aaa' }} aria-disabled="true">
+        <div data-testid="nav-fog-club">My Club</div>
+        <div data-testid="nav-fog-roster">Roster</div>
+        <div data-testid="nav-fog-transfers">Transfers</div>
+      </section>
+    </aside>
+  );
 };
 
 export { NavRail };

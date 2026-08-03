@@ -22,7 +22,11 @@ const BatchSimulateControl = () => {
   const runBatch = () => {
     if (!gw) return;
     setBatchStatus('submitting');
-    fetch(Endpoints.BatchSimulateGames.replace(':gwId', String(gw.id)), { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' } })
+    fetch(Endpoints.BatchSimulateGames.replace(':gwId', String(gw.id)), {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+    })
       .then((response) => (response.ok ? response.json() : Promise.reject(response)))
       .then((result: BatchResult) => {
         const simulated = result?.simulated ?? [];
@@ -31,17 +35,31 @@ const BatchSimulateControl = () => {
         setBatchStatus(skipped.length === 0 ? 'success-clean' : 'success-skipped');
         invalidate();
       })
-      .catch((err) => { console.error(err); setBatchStatus('error'); });
+      .catch((err) => {
+        console.error(err);
+        setBatchStatus('error');
+      });
   };
 
   if (!canBatch && batchStatus === 'idle') return null;
-  if (batchStatus === 'submitting') return <button data-testid="batch-simulate" disabled>Simulating…</button>;
-  if (batchStatus === 'success-clean') return <span>{batchResult?.simulated.length ?? 0} simulated · {batchResult?.skipped.length ?? 0} skipped</span>;
+  if (batchStatus === 'submitting') {
+    return <button data-testid="batch-simulate" disabled>Simulating…</button>;
+  }
+  if (batchStatus === 'success-clean') {
+    return <span>{batchResult?.simulated.length ?? 0} simulated · {batchResult?.skipped.length ?? 0} skipped</span>;
+  }
   if (batchStatus === 'success-skipped') {
     const count = batchResult?.skipped.length ?? 0;
     return <span role="alert">{count} game{count === 1 ? '' : 's'} could not be simulated</span>;
   }
-  if (batchStatus === 'error') return <div><span role="alert">Batch simulation failed.</span><button onClick={runBatch}>Retry</button></div>;
+  if (batchStatus === 'error') {
+    return (
+      <div>
+        <span role="alert">Batch simulation failed.</span>
+        <button onClick={runBatch}>Retry</button>
+      </div>
+    );
+  }
   return <button data-testid="batch-simulate" onClick={runBatch}>Simulate Today</button>;
 };
 

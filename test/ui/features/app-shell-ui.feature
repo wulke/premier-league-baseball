@@ -22,6 +22,13 @@ Feature: App Shell left nav rail
     And the rail shows a competition link to "/1/7"
     And the competition link is active
 
+  @spec:SHELL-007
+  Scenario: A world without leagues renders no competition links
+    Given GameWorld 1 has no leagues
+    When the player opens the GameWorld route for GameWorld 1
+    Then the rail shows WORLD linked to "/1"
+    And the rail has no COMPETITIONS section
+
   @spec:SHELL-008
   Scenario: Active league highlighting survives a GameWorld refresh
     Given GameWorld 1 is named "Test World" with league 7 named "Premier"
