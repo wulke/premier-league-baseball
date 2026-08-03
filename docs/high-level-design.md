@@ -179,3 +179,126 @@ Team creation (TeamFactory.create())
 - **Roster/position balance enforced by construction, not validation**: the generation algorithm is expected to produce a valid, well-balanced roster every time; there is deliberately no runtime guard rejecting an out-of-range or lopsided roster in v1.
 - **1-year starting Contracts**: a deliberately short default term to force early exercise of Contract lifecycle/free-agency mechanics, rather than a "realistic" multi-year default that would let the free-agency gap sit unnoticed for longer.
 - **Out of scope**: `SimulationEngine` actually using `Player.attributes`/`PlayerGameStats` to influence outcomes (stays random); Player transfer/trade mechanics; Contract-expiry enforcement/free-agency; draft/scouting or ongoing roster generation across multiple seasons; Roster/Player UI. All parked for future maps once this schema lands.
+
+---
+
+# HLD: App Shell — Left Nav Rail
+
+> Backed by [Map: UI Direction](https://github.com/wulke/premier-league-baseball/issues/2)
+> (CLOSED) — specifically ticket [#10 (Page-by-page layout plan)](https://github.com/wulke/premier-league-baseball/issues/10),
+> whose **Shell decision** ("left nav rail + per-page identity strip; fixed FM-style sections,
+> game-state-gated; living HOME/WORLD/COMPETITIONS + dimmed fog My Club/Roster/Transfers") is the
+> source decision for this HLD. The map declared the rebuild out-of-map as normal LID feature
+> work; this is the **first such feature** — the shell that every subsequent page rebuild hangs
+> off. This HLD supersedes the breadcrumb pattern in `AppHeader` (`src/ui/components/app-header.tsx`)
+> and lands the `currentDate` chip deferred to "a future left-pane nav" (LLD
+> [`simulate-game-ui.md`](./llds/simulate-game-ui.md), "retired per #21/#44").
+
+## Goal
+
+Introduce a persistent **left nav rail** as the app shell — the single home for navigation
+(Home, the active World, its Competitions) plus world-level actions (batch Simulate Today,
+current date) — replacing the per-page hand-rolled headers and the breadcrumb-style `AppHeader`
+> so navigation is no longer scattered and duplicated across every page. This feature delivers
+> the shell and retires the old header pattern; the individual **page-content** rebuilds
+> (home launcher, game-world newspaper feed, league competition hub, team overview + month-grid
+> calendar) are separate follow-on LID features that render inside this shell.
+
+## Strategy
+
+- **Options (rail persistence vs provider scope)**:
+  - Option A: Keep `GameWorldProvider` scoped to the `:gwId` subtree (as today); render the rail
+    inside that subtree, with separate minimal chrome on Home.
+  - Option B (chosen): Hoist `GameWorldProvider` to wrap the whole app — it reads `gwId` from
+    `useParams()` (null on Home) and only fetches when present — so a single persistent
+    `AppShell` rail can always consume the context, null-guarding `gw` to light
+    WORLD/COMPETITIONS only on an active world.
+  - **Decision**: Option B. The rail is meant to be *persistent* (one navigation surface across
+    Home and every world page); Option A either duplicates chrome on Home or remounts the rail on
+    route change, breaking persistence. Hoisting the provider is a small, contained change (fetch
+    guarded on `gwId != null`) that lets the rail be one always-mounted consumer. Home simply sees
+    `gw === null` → HOME-only rail, exactly the intended "game-state-gated" behaviour from #10.
+
+- **Options (batch Simulate + currentDate placement)**:
+  - Option A: Leave batch Simulate in a header bar; only back-links move to the rail.
+  - Option B (chosen): Move the world-level batch "Simulate Today" state machine and the current-date
+    display *into* the WORLD section of the rail, and retire `AppHeader` entirely.
+  - **Decision**: Option B. #10 consolidates world/league context, the app mark, and actions into
+    the rail; a surviving header bar would duplicate the very chrome #10 set out to collapse. The
+    batch action is `gwId`-scoped (not page-scoped) — the same reasoning the simulate-game HLD used
+    to place it in `AppHeader` — and the rail's WORLD section is its natural, always-visible home.
+    `AppHeader` (and its breadcrumb/back-link props) is retired; pages keep only their per-page
+    identity strip.
+
+- **Options (active-state highlighting)**:
+  - Option A: Track "current section" in component state.
+  - Option B (chosen): Derive active highlighting purely from the router (`useLocation` +
+    `useParams`) — Home when path is `/`, World when `gwId` matches and no deeper route, the
+    matching League when `leagueId` matches.
+  - **Decision**: Option B. Navigation state already lives in the URL; mirroring it in component
+    state would be a second source of truth that can drift. Deriving from the router keeps
+    highlighting correct after every navigation and needs no extra state.
+
+- **Options (scope of this feature)**:
+  - Option A: Shell + rail + full rebuild of all four pages in one feature.
+  - Option B (chosen): Shell + rail + retire `AppHeader`; pages keep their current content and
+    simply render inside the shell (dropping their page-local headers). Page-content rebuilds are
+    separate LID features.
+  - **Decision**: Option B. The shell is the spine every page rebuild depends on; shipping it alone
+    is a coherent tracer bullet (persistent nav + consolidated actions land immediately) and keeps
+    each subsequent page rebuild an independently reviewable LID cycle (HLD→LLD→EARS→Tests→Code),
+    matching how #10 framed the rebuild as "per page/feature."
+
+## Architecture
+
+### Components
+
+- **`GameWorldProvider`** (MODIFIED, `src/ui/context/game-world-context.tsx`): hoisted from the
+  `:gwId` subtree to wrap the whole app; reads `gwId` from `useParams()` and fetches only when
+  present (null on Home → `gw` stays null). The `useGameWorldContext` contract is unchanged for
+  consumers rendered inside the app.
+- **`AppShell`** (NEW, `src/ui/components/app-shell.tsx`): the persistent layout — left nav rail +
+  `<Outlet />`. Renders the fixed sections (HOME / WORLD / COMPETITIONS / dimmed trio), the app
+  mark, and world-level actions (batch Simulate Today + current date), all gated on context `gw`.
+- **Batch Simulate control** (RELOCATED from `AppHeader`): the existing state machine
+  (idle/submitting/success-clean/success-skipped/error + `invalidate()`), now rendered in the
+  rail's WORLD section rather than a header.
+- **Routing** (`src/ui/routes.tsx`, MODIFIED): a top-level `AppShell` layout route wrapping Home
+  + the `:gwId` subtree; `GameWorldLayout`'s provider duty is absorbed by the hoisted provider.
+- **Pages** (MODIFIED, content unchanged): `Home`, `GameWorld`, `League`, `TeamCalendar` drop
+  their page-local `<header>` / `<AppHeader>` usage and render their content + identity strip
+  inside the shell. `AppHeader` is deleted.
+
+### Flow
+
+```
+AppShell mounts once (top-level layout route) and wraps the whole app.
+GameWorldProvider (hoisted) reads gwId from useParams():
+  - Home (/)       → gwId null → no fetch → gw stays null
+  - :gwId subtree  → gwId present → GET /api/gameWorld/:gwId → gw set
+Rail renders from context gw:
+  - always:   HOME link + app mark + dimmed fog trio (My Club / Roster / Transfers)
+  - gw!=null: WORLD section lights (world name → /:gwId, current date, batch Simulate Today);
+              COMPETITIONS lights if gw.Leagues non-empty (one link → /:gwId/:leagueId each)
+Active highlighting derived from useLocation / useParams.
+Batch Simulate (WORLD section) → POST /api/gameWorld/:gwId/simulate → invalidate()
+  → rail + every page consumer re-renders.
+Pages render content + identity strip inside <Outlet/> — no per-page header.
+```
+
+### Key Trade-offs
+
+- **Hoisting the provider** (vs keeping it scoped) trades a slightly broader context boundary for
+  a genuinely persistent single rail — the whole point of #10's "consolidated chrome." The fetch
+  stays `:gwId`-scoped (guarded on the param), so Home incurs no extra request.
+- **Retiring `AppHeader`** removes a tested component; its batch-simulate behaviour
+  (SIMUI-008…018) is **relocated**, not lost, and its Gherkin scenarios are re-homed to the rail.
+  Back-link breadcrumbs are deliberately dropped — the rail makes them redundant, and #10
+  explicitly consolidates navigation.
+- **No page-content rebuild in this feature**: pages look largely as before, just headerless
+  inside the shell. This defers the big visual wins (newspaper feed, competition hub, month-grid
+  calendar) to their own LID cycles, accepting a transitional look in exchange for a small,
+  reviewable, dependency-unlocking slice now.
+- **Active league highlighting** uses the `leagueId` param match; deeper sub-routes
+  (`team/:teamId/calendar`) keep their nearest lit section (World) rather than introducing a Team
+  section that #10 reserves for the later Team-overview rebuild.
