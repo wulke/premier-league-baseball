@@ -4,6 +4,7 @@ const enum Endpoints {
   GetGameWorlds = '/api/gameWorld',
   GetLeagueBracket = '/api/league/:leagueId/bracket',
   GetLeagueStandings = '/api/league/:leagueId/standings',
+  GetLeagueToday = '/api/league/:leagueId/today',
   GetLeague = '/api/league/:leagueId',
   GetTeamSchedule = '/api/team/:teamId/calendar',
   NewGameWorld = '/api/gameWorld/new',

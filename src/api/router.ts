@@ -38,6 +38,13 @@ router.get(Endpoints.GetLeagueStandings, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
+router.get(Endpoints.GetLeagueToday, async (req: any, res: any) => {
+  // @spec TODAY-001,TODAY-002,TODAY-003,TODAY-004,TODAY-005,TODAY-006,TODAY-007
+  await handlers.getLeagueToday(Number(req.params.leagueId))
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
 router.get(Endpoints.GetLeagueBracket, async (req: any, res: any) => {
   await handlers.getLeagueBracket(Number(req.params.leagueId))
     .then((response) => res.send(response))

@@ -1,7 +1,9 @@
-import { DefaultStandingsConfig, DivisionStandings, LeagueConfig, LeagueDivisionBracket, StandingsConfig, resolveCompetitionFormat } from "../../api/models";
+import { DefaultStandingsConfig, DivisionStandings, LeagueConfig, LeagueDivisionBracket, StandingsConfig, TeamSeasonGame, resolveCompetitionFormat } from "../../api/models";
 import { DivisionFactory } from './division';
 import db from '../client';
 import { Op } from 'sequelize';
+import { DomainError } from './errors';
+import { getKnockoutRoundLabel } from './knockout';
 
 interface ILeague {
   create: (gwId: number, config: any, teamIdRefs: number[]) => any;
@@ -10,6 +12,7 @@ interface ILeague {
   newSeason: (year: number) => any;
   getBracket: () => Promise<LeagueDivisionBracket[]>;
   getStandings: () => Promise<DivisionStandings[]>;
+  getToday: () => Promise<TeamSeasonGame[]>;
 };
 
 const LeagueFactory = (id?: number): ILeague => {
@@ -63,6 +66,98 @@ const LeagueFactory = (id?: number): ILeague => {
     );
   };
 
+  // @spec TODAY-001,TODAY-002,TODAY-003,TODAY-004,TODAY-005,TODAY-006,TODAY-007
+  const getToday = async (): Promise<TeamSeasonGame[]> => {
+    const league = await db.models.League.findByPk(id, {
+      include: [db.models.GameWorld, db.models.Division]
+    }).then((l) => {
+      if (!l) throw Error(`Invalid League '${id}'`);
+      return l.dataValues;
+    });
+
+    const { year, currentDate } = league.GameWorld;
+    if (currentDate == null) {
+      throw new DomainError('the GameWorld has no current date configured', 422);
+    }
+
+    const divisionIds = league.Divisions.map((division: any) => division.dataValues.id);
+    if (divisionIds.length === 0) return [];
+
+    const divisionSeasons = await db.models.DivisionSeason.findAll({
+      where: { divisionId: { [Op.in]: divisionIds }, year },
+      include: [db.models.Division],
+    });
+    if (divisionSeasons.length === 0) return [];
+
+    const divisionSeasonIds = divisionSeasons.map((season: any) => season.dataValues.id);
+    const divisionSeasonGames = await db.models.DivisionSeasonGame.findAll({
+      where: { divisionSeasonId: { [Op.in]: divisionSeasonIds } },
+    });
+    const gameIds = [...new Set<number>(divisionSeasonGames.map((link: any) => link.dataValues.gameId))];
+    if (gameIds.length === 0) return [];
+
+    const current = new Date(`${currentDate}T00:00:00.000Z`);
+    const windowStart = new Date(current);
+    windowStart.setUTCDate(windowStart.getUTCDate() - 3);
+    const windowEnd = new Date(current);
+    windowEnd.setUTCDate(windowEnd.getUTCDate() + 3);
+    const games = await db.models.Game.findAll({
+      where: {
+        id: { [Op.in]: gameIds },
+        [Op.or]: [
+          { status: { [Op.in]: ['SCHEDULED', 'IN_PROGRESS'] }, scheduledDate: { [Op.lte]: windowEnd } },
+          { status: 'COMPLETED', scheduledDate: { [Op.between]: [windowStart, current] } },
+        ],
+      },
+    });
+
+    const divisionSeasonById = new Map<number, any>(divisionSeasons.map((season: any) => [season.dataValues.id, season.dataValues]));
+    const gameContext = new Map<number, any>();
+    for (const link of divisionSeasonGames) {
+      const { gameId, divisionSeasonId } = (link as any).dataValues;
+      if (!gameContext.has(gameId)) gameContext.set(gameId, divisionSeasonById.get(divisionSeasonId));
+    }
+
+    const divisionSeasonCounts = divisionSeasons.reduce((counts: Map<number, number>, season: any) => {
+      const divisionId = season.dataValues.divisionId;
+      counts.set(divisionId, (counts.get(divisionId) ?? 0) + 1);
+      return counts;
+    }, new Map<number, number>());
+    const teamIds = new Set<number>();
+    games.forEach((game: any) => {
+      teamIds.add(game.dataValues.homeTeam);
+      if (game.dataValues.awayTeam != null) teamIds.add(game.dataValues.awayTeam);
+    });
+    const teamMap = new Map<number, string>();
+    if (teamIds.size > 0) {
+      const teams = await db.models.Team.findAll({ where: { id: { [Op.in]: [...teamIds] } } });
+      teams.forEach((team: any) => teamMap.set(team.dataValues.id, team.dataValues.config?.name ?? `Team ${team.dataValues.id}`));
+    }
+
+    return games.map((row: any) => {
+      const game = row.dataValues;
+      const divisionSeason = gameContext.get(game.id);
+      const division = divisionSeason.Division?.dataValues ?? divisionSeason.Division;
+      const format = division?.config?.format;
+      return {
+        gameId: game.id,
+        scheduledDate: game.scheduledDate ? new Date(game.scheduledDate).toISOString() : null,
+        homeTeamId: game.homeTeam,
+        homeTeamName: teamMap.get(game.homeTeam) ?? `Team ${game.homeTeam}`,
+        awayTeamId: game.awayTeam,
+        awayTeamName: game.awayTeam == null ? 'Bye' : (teamMap.get(game.awayTeam) ?? `Team ${game.awayTeam}`),
+        divisionId: divisionSeason.divisionId,
+        divisionName: division?.config?.name ?? `Division ${divisionSeason.divisionId}`,
+        roundLabel: game.round == null ? null : format?.structure === 'KNOCKOUT'
+          ? getKnockoutRoundLabel(divisionSeasonCounts.get(divisionSeason.divisionId) ?? 0, game.round)
+          : `Round ${game.round}`,
+        homeTeamResult: game.homeTeamResult,
+        awayTeamResult: game.awayTeamResult,
+        status: game.status,
+      } as TeamSeasonGame;
+    }).sort((a, b) => (a.scheduledDate ?? '').localeCompare(b.scheduledDate ?? ''));
+  };
+
   // @spec API-001,API-002,API-003,API-004
   const getBracket = async (): Promise<LeagueDivisionBracket[]> => {
     const league = await db.models.League.findByPk(id, {
@@ -92,6 +187,7 @@ const LeagueFactory = (id?: number): ILeague => {
     isSeasonComplete,
     getBracket,
     getStandings,
+    getToday,
     create: async (gwId: number, config: LeagueConfig, teamIdRefs: number[]) => {
       // @spec CFG-001
       const league = await db.models.League.create({
