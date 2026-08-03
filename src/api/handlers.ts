@@ -33,6 +33,11 @@ const getLeagueStandings = async (leagueId: number) => {
   return await LeagueFactory(leagueId).getStandings();
 };
 
+// @spec TODAY-001,TODAY-002,TODAY-003,TODAY-004,TODAY-005,TODAY-006,TODAY-007
+const getLeagueToday = async (leagueId: number) => {
+  return await LeagueFactory(leagueId).getToday();
+};
+
 // @spec API-001,API-002,API-003,API-004
 const getLeagueBracket = async (leagueId: number) => {
   return await LeagueFactory(leagueId).getBracket();
@@ -85,6 +90,7 @@ export {
   getLeagueBracket,
   getLeague,
   getLeagueStandings,
+  getLeagueToday,
   getTeamSchedule,
   newGameWorld,
   newSeason,
