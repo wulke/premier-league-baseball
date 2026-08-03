@@ -1,10 +1,42 @@
 import { Op } from 'sequelize';
 import db from '../client';
 import { DomainError } from './errors';
+import { GameWorldFactory } from './game-world';
 import { resolveKnockoutGameCompletion } from './knockout-advancement';
 import { resolveRoundRobinGameCompletion } from './season-result';
 
 const toDateStr = (d: any): string => new Date(d).toISOString().slice(0, 10);
+
+// Same League -> Division -> DivisionSeason -> DivisionSeasonGame -> Game reachability
+// walk that simulateBatch performs; returns the raw Game dataValues reachable from
+// gwId. Shared by rapidSimulateSeason so the "next scheduled date" query reuses the
+// exact candidate game set rather than introducing a new join.
+const loadReachableGames = async (gwId: number): Promise<any[]> => {
+  const leagues = await db.models.League.findAll({ where: { gameWorldId: gwId } });
+  const leagueIds = leagues.map((l: any) => l.dataValues.id);
+  if (leagueIds.length === 0) return [];
+
+  const divisions = await db.models.Division.findAll({
+    where: { leagueId: { [Op.in]: leagueIds } }
+  });
+  const divisionIds = divisions.map((d: any) => d.dataValues.id);
+  if (divisionIds.length === 0) return [];
+
+  const divisionSeasons = await db.models.DivisionSeason.findAll({
+    where: { divisionId: { [Op.in]: divisionIds } }
+  });
+  const divisionSeasonIds = divisionSeasons.map((ds: any) => ds.dataValues.id);
+  if (divisionSeasonIds.length === 0) return [];
+
+  const dsGames = await db.models.DivisionSeasonGame.findAll({
+    where: { divisionSeasonId: { [Op.in]: divisionSeasonIds } }
+  });
+  const gameIds = [...new Set<number>(dsGames.map((dsg: any) => dsg.dataValues.gameId))];
+  if (gameIds.length === 0) return [];
+
+  const games = await db.models.Game.findAll({ where: { id: { [Op.in]: gameIds } } });
+  return games.map((g: any) => g.dataValues);
+};
 
 const GameFactory = (id?: number) => {
   return {
@@ -172,6 +204,77 @@ const GameFactory = (id?: number) => {
       }
 
       return { simulated, skipped };
+    },
+
+    // @spec RSS-001,RSS-002,RSS-003,RSS-004,RSS-005,RSS-006 rapidSimulateSeason:
+    // fast-forward an entire GameWorld's remaining season by repeatedly simulating the
+    // current date's batch and advancing currentDate to the next distinct scheduledDate
+    // among remaining non-COMPLETED games, until none remain. Built entirely on
+    // simulateBatch (unchanged) + GameWorldFactory.advanceCurrentDate; never calls
+    // newSeason. See docs/llds/rapid-simulate-season.md.
+    rapidSimulateSeason: async (gwId: number) => {
+      // RSS-001: load the GameWorld; reject 404 before simulating anything.
+      const gameWorld = await db.models.GameWorld.findByPk(gwId);
+      if (!gameWorld) {
+        throw new DomainError(`No gameworld exists with id='${gwId}'`, 404);
+      }
+
+      const { config, currentDate } = gameWorld.dataValues;
+      // RSS-002: require an active season with a currentDate; simulate nothing otherwise.
+      if (!config?.inProgress || currentDate == null) {
+        throw new DomainError('the GameWorld has no active season to simulate', 422);
+      }
+
+      let daysAdvanced = 0;
+      const simulated: any[] = [];
+      const skipped: any[] = [];
+      let targetDate: string = currentDate;
+
+      // Loop: simulate the current date, then advance to the next distinct future
+      // scheduledDate, until no non-COMPLETED scheduled game remains (RSS-003/RSS-006).
+      while (true) {
+        const result = await GameFactory().simulateBatch(gwId);
+        simulated.push(...result.simulated);
+        skipped.push(...result.skipped);
+
+        // MIN(scheduledDate) among reachable non-COMPLETED games strictly after
+        // targetDate (same reachability walk as simulateBatch).
+        const reachableGames = await loadReachableGames(gwId);
+        const futureDates = reachableGames
+          .filter((g: any) => g.status !== 'COMPLETED'
+            && g.scheduledDate != null
+            && toDateStr(g.scheduledDate) > targetDate)
+          .map((g: any) => toDateStr(g.scheduledDate))
+          .sort();
+        const remaining = futureDates.length > 0 ? futureDates[0] : null;
+
+        if (remaining == null) break;
+
+        // RSS-005: if this iteration resolved zero games while a non-COMPLETED game at
+        // or before targetDate is stuck (skipped as 'game in progress'), abort with the
+        // blocking date. Prior iterations stay committed — each simulateBatch commits
+        // its own transaction independently.
+        if (result.simulated.length === 0) {
+          const stuck = result.skipped.find((s: any) =>
+            s.reason === 'game in progress'
+            && s.game?.scheduledDate != null
+            && toDateStr(s.game.scheduledDate) <= targetDate);
+          if (stuck) {
+            throw new DomainError(
+              `rapid simulation made no progress at date ${targetDate} — a non-completed game is blocking advancement`,
+              422
+            );
+          }
+        }
+
+        // RSS-003: advance currentDate to the next scheduled date and continue.
+        await GameWorldFactory(gwId).advanceCurrentDate(remaining);
+        targetDate = remaining;
+        daysAdvanced += 1;
+      }
+
+      // RSS-004: newSeason() is never called here — season rollover is a separate action.
+      return { daysAdvanced, simulated, skipped };
     },
   };
 };

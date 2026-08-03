@@ -1,12 +1,14 @@
 import { Op } from 'sequelize';
 import { NewGameWorld } from "../../api/models";
 import db from '../client';
+import { DomainError } from './errors';
 import { LeagueFactory, TeamFactory } from ".";
 
 interface IGameWorld {
   create: (NewGameWorld) => any;
   find: () => any | any[];
   newSeason: () => any;
+  advanceCurrentDate: (date: string) => Promise<{ id: number; currentDate: string }>;
   delete: () => Promise<{ id: number }>;
 };
 
@@ -61,6 +63,20 @@ const GameWorldFactory = (id?: number): IGameWorld => {
           }
           return GameWorldFactory(id).find();
         });
+    },
+    // @spec RSS-008 advanceCurrentDate: a strictly-forward currentDate mutator used by
+    // rapidSimulateSeason. Rejects non-forward dates (422) and missing GameWorlds (404);
+    // mirrors newSeason's `if (!id) throw` guard when invoked without an id.
+    advanceCurrentDate: async (date: string) => {
+      if (!id) throw Error('no game world to advance');
+      const gameWorld = await db.models.GameWorld.findByPk(id);
+      if (!gameWorld) throw notFoundError(Number(id));
+      const current = gameWorld.dataValues.currentDate;
+      if (current != null && date <= current) {
+        throw new DomainError("date must be strictly after the GameWorld's current currentDate", 422);
+      }
+      await db.models.GameWorld.update({ currentDate: date }, { where: { id } });
+      return { id, currentDate: date };
     },
     // @spec GWD-001,GWD-002,GWD-003,GWD-004
     delete: async () => {

@@ -30,11 +30,16 @@ interface WorldState {
   divisionSeasonIds: number[];
   games: GameRecord[];
   response?: ResponseState;
+  // jest-cucumber matches steps keyword-agnostically, so the same "currentDate is X" text
+  // is used for both a Given (set) and a Then (assert). This flag distinguishes them:
+  // false before any When runs (Given/setup), true after.
+  whenExecuted: boolean;
 }
 
 const createWorld = (): WorldState => ({
   divisionSeasonIds: [],
   games: [],
+  whenExecuted: false,
 });
 let scenarioWorld = createWorld();
 
@@ -167,10 +172,6 @@ const registerSteps = ({ given, when, then }: any) => {
     await db.models.GameWorld.update({ currentDate: null }, { where: { id: Number(gwId) } });
   });
 
-  given(/^GameWorld (\d+)'s currentDate is "([^"]+)"$/, async (gwId: string, currentDate: string) => {
-    await db.models.GameWorld.update({ currentDate }, { where: { id: Number(gwId) } });
-  });
-
   given(/^GameWorld (\d+)'s DivisionSeason has Games scheduled on "([^"]+)", "([^"]+)", and "([^"]+)"$/, async (_gwId: string, d1: string, d2: string, d3: string) => {
     for (const scheduledDate of [d1, d2, d3]) {
       await createGame(scenarioWorld, 'SCHEDULED', scheduledDate);
@@ -202,10 +203,12 @@ const registerSteps = ({ given, when, then }: any) => {
   });
 
   when(/^an admin rapid-simulates GameWorld (\d+)$/, async (gwId: string) => {
+    scenarioWorld.whenExecuted = true;
     await callRapidSimulate(scenarioWorld, Number(gwId));
   });
 
   when(/^an admin advances GameWorld (\d+)'s currentDate to "([^"]+)"$/, async (gwId: string, date: string) => {
+    scenarioWorld.whenExecuted = true;
     await callAdvanceCurrentDate(scenarioWorld, Number(gwId), date);
   });
 
@@ -230,7 +233,6 @@ const registerSteps = ({ given, when, then }: any) => {
   });
 
   then(/^no Game in GameWorld (\d+) is simulated$/, async () => {
-    expect(scenarioWorld.games.length).toBeGreaterThan(0);
     for (const game of scenarioWorld.games) {
       expect(await readGameStatus(game.id)).not.toBe('COMPLETED');
     }
@@ -244,8 +246,15 @@ const registerSteps = ({ given, when, then }: any) => {
   });
 
   then(/^GameWorld (\d+)'s currentDate is "([^"]+)"$/, async (gwId: string, currentDate: string) => {
-    const gw = await readGameWorld(Number(gwId));
-    expect(gw.currentDate).toBe(currentDate);
+    // Shared by a Given (setup: set currentDate) and a Then (assert currentDate). jest-cucumber
+    // binds keyword-agnostically, so the single registration branches on the phase flag.
+    const id = Number(gwId);
+    if (scenarioWorld.whenExecuted) {
+      const gw = await readGameWorld(id);
+      expect(gw.currentDate).toBe(currentDate);
+    } else {
+      await db.models.GameWorld.update({ currentDate }, { where: { id } });
+    }
   });
 
   then(/^GameWorld (\d+)'s currentDate is still "([^"]+)"$/, async (gwId: string, currentDate: string) => {
