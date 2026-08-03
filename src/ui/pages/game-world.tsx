@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router';
 import { useGameWorldContext } from '../context/game-world-context';
 import { AppHeader } from '../components/app-header';
 import { getChampionDivisionId, getChampionTeamName } from '../champion';
+import { TeamSeasonGame } from '../../api/models';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
 type LeagueSeasonSummary = {
@@ -11,25 +12,33 @@ type LeagueSeasonSummary = {
   leagueName: string;
   championName: string | null;
 };
+type LeagueTodaySummary = {
+  leagueId: number;
+  leagueName: string;
+  games: TeamSeasonGame[];
+};
 
-// @spec UI-002,LIFE-001
+// @spec UI-002,LIFE-001,TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005
 const GameWorld = () => {
   const { gwId } = useParams();
   const { gw, invalidate } = useGameWorldContext();
   const [startSeasonStatus, setStartSeasonStatus] = useState<StartSeasonStatus>('idle');
   const [startSeasonError, setStartSeasonError] = useState<string | null>(null);
   const [leagueSeasonSummary, setLeagueSeasonSummary] = useState<LeagueSeasonSummary[]>([]);
+  const [leagueTodaySummary, setLeagueTodaySummary] = useState<LeagueTodaySummary[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!gwId || !gw?.config?.inProgress) {
       setLeagueSeasonSummary([]);
+      setLeagueTodaySummary([]);
       return;
     }
 
     const leagues: any[] = gw.Leagues ?? [];
     if (leagues.length === 0) {
       setLeagueSeasonSummary([]);
+      setLeagueTodaySummary([]);
       return;
     }
 
@@ -37,7 +46,8 @@ const GameWorld = () => {
 
     Promise.all(
       leagues.map(async (leagueRow) => {
-        const [leagueResponse, bracketResponse] = await Promise.all([
+        // @spec TODAYUI-001,TODAYUI-002
+        const [leagueResponse, bracketResponse, games] = await Promise.all([
           fetch(Endpoints.GetLeague.replace(':leagueId', String(leagueRow.id)), {
             method: 'GET',
             mode: 'cors',
@@ -48,6 +58,13 @@ const GameWorld = () => {
             mode: 'cors',
             headers: { 'Content-Type': 'application/json' },
           }).then((response) => (response.ok ? response.json() : [])),
+          fetch(Endpoints.GetLeagueToday.replace(':leagueId', String(leagueRow.id)), {
+            method: 'GET',
+            mode: 'cors',
+            headers: { 'Content-Type': 'application/json' },
+          })
+            .then((response) => (response.ok ? response.json() : []))
+            .catch(() => []),
         ]);
 
         const championDivisionId = getChampionDivisionId(leagueResponse);
@@ -55,19 +72,33 @@ const GameWorld = () => {
           ? bracketResponse.find((entry: any) => entry.divisionId === championDivisionId)
           : null;
 
+        const leagueName = leagueRow.config?.name ?? `League ${leagueRow.id}`;
         return {
-          leagueId: leagueRow.id,
-          leagueName: leagueRow.config?.name ?? `League ${leagueRow.id}`,
-          championName: getChampionTeamName(leagueResponse, championDivision ? [championDivision] : []),
+          season: {
+            leagueId: leagueRow.id,
+            leagueName,
+            championName: getChampionTeamName(leagueResponse, championDivision ? [championDivision] : []),
+          },
+          today: {
+            leagueId: leagueRow.id,
+            leagueName,
+            games: Array.isArray(games) ? games : [],
+          },
         };
       }),
     )
       .then((summary) => {
-        if (!cancelled) setLeagueSeasonSummary(summary);
+        if (!cancelled) {
+          setLeagueSeasonSummary(summary.map(({ season }) => season));
+          setLeagueTodaySummary(summary.map(({ today }) => today));
+        }
       })
       .catch((error) => {
         console.error(error);
-        if (!cancelled) setLeagueSeasonSummary([]);
+        if (!cancelled) {
+          setLeagueSeasonSummary([]);
+          setLeagueTodaySummary([]);
+        }
       });
 
     return () => {
@@ -111,6 +142,8 @@ const GameWorld = () => {
   const seasonSummaryText = leagueSeasonSummary.map((league) =>
     league.championName ? `🏆 ${league.leagueName}: ${league.championName}` : `${league.leagueName}: In progress`,
   ).join(' · ');
+  // @spec TODAYUI-003,TODAYUI-004,TODAYUI-005
+  const leaguesWithTodayGames = leagueTodaySummary.filter((league) => league.games.length > 0);
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
@@ -253,6 +286,52 @@ const GameWorld = () => {
           )}
         </div>
       </section>
+
+      {/* @spec TODAYUI-003,TODAYUI-004,TODAYUI-005 */}
+      {leaguesWithTodayGames.length > 0 && (
+        <section data-testid="today-section" style={{ marginBottom: '40px' }}>
+          <h2 style={{
+            margin: '0 0 12px',
+            fontSize: '0.75rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.07em',
+            color: '#888',
+            fontWeight: 600,
+          }}>
+            Today
+          </h2>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {leaguesWithTodayGames.map((league) => (
+              <div key={league.leagueId} data-testid={`today-league-${league.leagueId}`}>
+                <h3 style={{ margin: '0 0 8px', fontSize: '0.95rem', fontWeight: 700 }}>
+                  {league.leagueName}
+                </h3>
+                <div style={{ border: '1px solid #ccc', borderRadius: '6px' }}>
+                  {league.games.map((game) => (
+                    <div
+                      key={game.gameId}
+                      data-testid={`today-game-${game.gameId}`}
+                      style={{ padding: '12px 14px', borderBottom: '1px solid #eee' }}
+                    >
+                      <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '3px' }}>
+                        {game.scheduledDate ?? 'TBD'} · {game.divisionName}{game.roundLabel ? ` · ${game.roundLabel}` : ''}
+                      </div>
+                      <div style={{ fontWeight: 600 }}>
+                        {game.homeTeamName} vs {game.awayTeamName}
+                        {game.status === 'COMPLETED' && ` · ${game.homeTeamResult}–${game.awayTeamResult}`}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '3px' }}>
+                        {game.status}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Leagues Section */}
       <section>
