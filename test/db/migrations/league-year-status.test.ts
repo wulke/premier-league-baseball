@@ -7,32 +7,42 @@ describe('League year/status migration', () => {
     await db.sync({ force: true });
   });
 
+  const createLegacyLeague = async (gameWorldId: number): Promise<number> => {
+    await db.query(
+      "INSERT INTO Leagues (config, gameWorldId, createdAt, updatedAt) VALUES ('{}', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+      { replacements: [gameWorldId] },
+    );
+    const [rows] = await db.query('SELECT id FROM Leagues WHERE gameWorldId = ?', { replacements: [gameWorldId] });
+    return (rows as Array<{ id: number }>)[0].id;
+  };
+
   // @spec SCL-012
   it('backfills an existing League with DivisionSeason history as IN_SEASON', async () => {
     const gameWorld = await db.models.GameWorld.create({ year: 2030, config: {} }).then(({ dataValues }) => dataValues);
-    const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
-    const division = await db.models.Division.create({ leagueId: league.id, config: {} }).then(({ dataValues }) => dataValues);
-    const team = await db.models.Team.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
-    await db.models.DivisionSeason.create({ divisionId: division.id, teamId: team.id, year: 1999 });
     await db.getQueryInterface().removeColumn('Leagues', 'status');
     await db.getQueryInterface().removeColumn('Leagues', 'year');
+    const leagueId = await createLegacyLeague(gameWorld.id);
+    const division = await db.models.Division.create({ config: {} }).then(({ dataValues }) => dataValues);
+    await db.query('UPDATE Divisions SET leagueId = ? WHERE id = ?', { replacements: [leagueId, division.id] });
+    const team = await db.models.Team.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
+    await db.models.DivisionSeason.create({ divisionId: division.id, teamId: team.id, year: 1999 });
 
     await migrateLeagueYearAndStatus(db);
 
-    const [rows] = await db.query('SELECT year, status FROM Leagues WHERE id = ?', { replacements: [league.id] });
+    const [rows] = await db.query('SELECT year, status FROM Leagues WHERE id = ?', { replacements: [leagueId] });
     expect(rows).toEqual([{ year: 2030, status: 'IN_SEASON' }]);
   });
 
   // @spec SCL-012
   it('backfills an existing League without DivisionSeason history as CUTOVER', async () => {
     const gameWorld = await db.models.GameWorld.create({ year: 2032, config: {} }).then(({ dataValues }) => dataValues);
-    const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
     await db.getQueryInterface().removeColumn('Leagues', 'status');
     await db.getQueryInterface().removeColumn('Leagues', 'year');
+    const leagueId = await createLegacyLeague(gameWorld.id);
 
     await migrateLeagueYearAndStatus(db);
 
-    const [rows] = await db.query('SELECT year, status FROM Leagues WHERE id = ?', { replacements: [league.id] });
+    const [rows] = await db.query('SELECT year, status FROM Leagues WHERE id = ?', { replacements: [leagueId] });
     expect(rows).toEqual([{ year: 2032, status: 'CUTOVER' }]);
   });
 });

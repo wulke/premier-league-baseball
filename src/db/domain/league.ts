@@ -189,10 +189,14 @@ const LeagueFactory = (id?: number): ILeague => {
     getStandings,
     getToday,
     create: async (gwId: number, config: LeagueConfig, teamIdRefs: number[]) => {
-      // @spec CFG-001
+      // @spec CFG-001,SCL-001
+      const gameWorld = await db.models.GameWorld.findByPk(gwId);
+      if (!gameWorld) throw Error(`Invalid GameWorld '${gwId}'`);
       const league = await db.models.League.create({
         config,
-        gameWorldId: gwId
+        gameWorldId: gwId,
+        year: gameWorld.dataValues.year,
+        status: 'CUTOVER',
       }).then(({ dataValues }) => dataValues);
       // #85: `divisions` is optional (additive `stages` surface); PL/Cup still use it.
       // Migrating the create path to read `stages` is #87's run-path work.
