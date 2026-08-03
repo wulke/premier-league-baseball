@@ -2,6 +2,7 @@ import { GameWorldFactory, LeagueFactory } from '../../../src/db/domain';
 import { LeagueConfig, LeagueType, useDefaultGameWorld } from '../../../src/api/models';
 import db from '../../../src/db/client';
 import { Op } from 'sequelize';
+import { DomainError } from '../../../src/db/domain/errors';
 
 jest.setTimeout(30000);
 
@@ -232,5 +233,73 @@ describe('LeagueFactory (initial Season)', () => {
     expect(standings[0].standings[0].points).toBe(1);
     expect(standings[0].standings[1].teamName).toBe('Team B');
     expect(standings[0].standings[1].points).toBe(0);
+  });
+});
+
+describe('LeagueFactory.cutover', () => {
+  let gameWorld: any;
+  let league: any;
+  let division: any;
+
+  beforeEach(async () => {
+    await db.sync({ force: true });
+    gameWorld = await db.models.GameWorld.create({ year: 2027, config: {} })
+      .then(({ dataValues }) => dataValues);
+    league = await LeagueFactory().create(gameWorld.id, {
+      name: 'Cutover League', type: LeagueType.League, divisions: [{
+        name: 'Division A', defaultTeams: [], format: ROUND_ROBIN_FORMAT,
+      }],
+    }, []);
+    division = await db.models.Division.findOne({ where: { leagueId: league.id } })
+      .then((row) => row!.dataValues);
+  });
+
+  // @spec SCL-002
+  it('rejects with 422 and preserves the League when it is not IN_SEASON', async () => {
+    await expect(LeagueFactory(league.id).cutover()).rejects.toMatchObject({
+      statusCode: 422,
+      message: 'league is not in season',
+    } satisfies Partial<DomainError>);
+
+    const unchanged = await LeagueFactory(league.id).get();
+    expect(unchanged).toMatchObject({ year: 2027, status: 'CUTOVER' });
+  });
+
+  // @spec SCL-002
+  it('rejects with 422 and preserves the League when its current season is incomplete', async () => {
+    await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: league.id } });
+    const season = await db.models.DivisionSeason.create({ divisionId: division.id, teamId: 1, year: 2027 })
+      .then(({ dataValues }) => dataValues);
+    const game = await db.models.Game.create({ homeTeam: 1, awayTeam: 2, status: 'SCHEDULED' })
+      .then(({ dataValues }) => dataValues);
+    await db.models.DivisionSeasonGame.create({ divisionSeasonId: season.id, gameId: game.id });
+
+    await expect(LeagueFactory(league.id).cutover()).rejects.toMatchObject({
+      statusCode: 422,
+      message: 'season is not complete',
+    } satisfies Partial<DomainError>);
+
+    const unchanged = await LeagueFactory(league.id).get();
+    expect(unchanged).toMatchObject({ year: 2027, status: 'IN_SEASON' });
+  });
+
+  // @spec SCL-002
+  it('increments the year and moves a complete IN_SEASON League to CUTOVER', async () => {
+    await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: league.id } });
+    const season = await db.models.DivisionSeason.create({ divisionId: division.id, teamId: 1, year: 2027 })
+      .then(({ dataValues }) => dataValues);
+    const game = await db.models.Game.create({ homeTeam: 1, awayTeam: 2, status: 'COMPLETED', homeTeamResult: 1, awayTeamResult: 0 })
+      .then(({ dataValues }) => dataValues);
+    await db.models.DivisionSeasonGame.create({ divisionSeasonId: season.id, gameId: game.id });
+
+    await expect(LeagueFactory(league.id).cutover()).resolves.toEqual({ id: league.id, year: 2028, status: 'CUTOVER' });
+    await expect(LeagueFactory(league.id).get()).resolves.toMatchObject({ year: 2028, status: 'CUTOVER' });
+  });
+
+  // @spec SCL-002
+  it('allows an IN_SEASON League with zero DivisionSeason rows to cut over', async () => {
+    await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: league.id } });
+
+    await expect(LeagueFactory(league.id).cutover()).resolves.toEqual({ id: league.id, year: 2028, status: 'CUTOVER' });
   });
 });
