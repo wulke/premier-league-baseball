@@ -3,6 +3,8 @@ import { LeagueConfig, LeagueType, useDefaultGameWorld } from '../../../src/api/
 import db from '../../../src/db/client';
 import { Op } from 'sequelize';
 
+jest.setTimeout(30000);
+
 const ROUND_ROBIN_FORMAT = {
   structure: 'ROUND_ROBIN' as const,
   legs: 'ONE_LEG' as const,

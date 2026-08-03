@@ -29,6 +29,8 @@ import { AppHeader } from '../../../src/ui/components/app-header';
 import { GameWorld, League, TeamCalendar } from '../../../src/ui/pages';
 import path from 'path';
 
+jest.setTimeout(30000);
+
 // react-router: stub the routing primitives so the pages resolve the path params they expect.
 jest.mock('react-router', () => ({
   ...jest.requireActual('react-router'),

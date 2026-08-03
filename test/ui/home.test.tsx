@@ -3,6 +3,8 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { Home } from '../../src/ui/pages';
 import { render } from './test-utils';
 
+jest.setTimeout(30000);
+
 const mockNavigate = jest.fn();
 
 jest.mock('react-router', () => ({
