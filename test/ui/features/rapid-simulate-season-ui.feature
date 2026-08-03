@@ -6,14 +6,10 @@ Feature: Rapid Simulate Season UI
   player action. Submitting it fast-forwards the whole season in one request; the two
   simulate controls lock each other while either is in flight so they can never race.
 
-  Background:
-    Given the GameWorld page has loaded for GameWorld 1 with an active season and currentDate set
-
   # ─── Visibility ──────────────────────────────────────────────────────────────
 
   @spec:RSSUI-001
   Scenario: The control appears when dev tools are enabled
-    Given GameWorld 1's devToolsEnabled is true
     Then the "Rapid Simulate Season" control is visible
     And it is visually distinguished from the "Simulate Today" control
 
@@ -29,15 +25,13 @@ Feature: Rapid Simulate Season UI
 
   @spec:RSSUI-002
   Scenario: The control does not appear before a season has started
-    Given GameWorld 1's devToolsEnabled is true
-    And GameWorld 1's config.inProgress is false
+    Given GameWorld 1's config.inProgress is false
     Then the "Rapid Simulate Season" control is not visible
 
   # ─── Submitting ─────────────────────────────────────────────────────────────
 
   @spec:RSSUI-003
   Scenario: Clicking the control shows a submitting state
-    Given GameWorld 1's devToolsEnabled is true
     When the player clicks "Rapid Simulate Season"
     Then the "Rapid Simulate Season" control is disabled
     And it shows a submitting state
@@ -46,7 +40,6 @@ Feature: Rapid Simulate Season UI
 
   @spec:RSSUI-004
   Scenario: A successful rapid simulation shows a summary and refreshes the GameWorld
-    Given GameWorld 1's devToolsEnabled is true
     When the player clicks "Rapid Simulate Season"
     And POST /api/gameWorld/1/rapid-simulate returns 200 with daysAdvanced 4, 12 simulated, and 1 skipped
     Then a summary showing "4" days advanced, "12" simulated, and "1" skipped is shown
@@ -56,7 +49,6 @@ Feature: Rapid Simulate Season UI
 
   @spec:RSSUI-005
   Scenario: A failed rapid simulation shows a persistent error with a retry option
-    Given GameWorld 1's devToolsEnabled is true
     When the player clicks "Rapid Simulate Season"
     And POST /api/gameWorld/1/rapid-simulate returns a 422 error naming the blocking date
     Then an error region shows the blocking-date message
@@ -65,8 +57,7 @@ Feature: Rapid Simulate Season UI
 
   @spec:RSSUI-005
   Scenario: Retrying a failed rapid simulation succeeds
-    Given GameWorld 1's devToolsEnabled is true
-    And the "Rapid Simulate Season" control shows an error after a failed attempt
+    Given the "Rapid Simulate Season" control shows an error after a failed attempt
     When the player clicks "Retry"
     And POST /api/gameWorld/1/rapid-simulate returns 200 with daysAdvanced 1, 3 simulated, and 0 skipped
     Then a summary showing "1" days advanced, "3" simulated, and "0" skipped is shown
@@ -75,14 +66,12 @@ Feature: Rapid Simulate Season UI
 
   @spec:RSSUI-006
   Scenario: Simulate Today is disabled while a rapid simulation is in flight
-    Given GameWorld 1's devToolsEnabled is true
     When the player clicks "Rapid Simulate Season"
     And the rapid-simulate request has not yet resolved
     Then the "Simulate Today" control is disabled
 
   @spec:RSSUI-006
   Scenario: Rapid Simulate Season is disabled while a Simulate Today batch is in flight
-    Given GameWorld 1's devToolsEnabled is true
     When the player clicks "Simulate Today"
     And the batch-simulate request has not yet resolved
     Then the "Rapid Simulate Season" control is disabled
