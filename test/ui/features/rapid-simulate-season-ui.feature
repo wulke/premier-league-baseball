@@ -1,6 +1,6 @@
 Feature: Rapid Simulate Season UI
 
-  Inside AppHeader, a dev-only "Rapid Simulate Season" control sits alongside the
+  In the NavRail, a dev-only "Rapid Simulate Season" control sits alongside the
   player-facing "Simulate Today" control. It only appears when the server reports dev
   tools are enabled, and it is visually distinguished so it never reads as a normal
   player action. Submitting it fast-forwards the whole season in one request; the two

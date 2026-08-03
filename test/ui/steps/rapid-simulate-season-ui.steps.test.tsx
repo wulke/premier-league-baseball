@@ -1,11 +1,13 @@
 // @spec RSSUI-001,RSSUI-002,RSSUI-003,RSSUI-004,RSSUI-005,RSSUI-006
-// Acceptance bindings for the dev-only AppHeader rapid season simulation control.
-import React from 'react';
-import { act } from 'react-dom/test-utils';
+// Acceptance bindings for the dev-only RapidSimulateControl (renders in the NavRail
+// alongside the player-facing BatchSimulateControl). Both controls are mounted under
+// one GameWorldProvider with a shared busy flag so RSSUI-006 cross-locking is exercised.
+import React, { act } from 'react';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import { cleanup, fireEvent, screen } from '@testing-library/react';
 import path from 'path';
-import { AppHeader } from '../../../src/ui/components/app-header';
+import { BatchSimulateControl } from '../../../src/ui/components/batch-simulate-control';
+import { RapidSimulateControl } from '../../../src/ui/components/rapid-simulate-control';
 import { GameWorldProvider } from '../../../src/ui/context/game-world-context';
 import { render } from '../test-utils';
 
@@ -60,9 +62,21 @@ const flush = async () => {
   });
 };
 
-const mountHeader = async () => {
+// Mirrors NavRail: both simulate controls under one provider, sharing a busy flag so
+// they lock each other while either request is in flight (RSSUI-006).
+const SimulateControlsMount = () => {
+  const [busy, setBusy] = React.useState(false);
+  return (
+    <GameWorldProvider gwId="1">
+      <BatchSimulateControl disabled={busy} onBusyChange={setBusy} />
+      <RapidSimulateControl disabled={busy} onBusyChange={setBusy} />
+    </GameWorldProvider>
+  );
+};
+
+const mountControls = async () => {
   if (!world.mounted) {
-    render(<GameWorldProvider gwId="1"><AppHeader /></GameWorldProvider>);
+    render(<SimulateControlsMount />);
     world.mounted = true;
   }
   await flush();
@@ -84,11 +98,11 @@ const registerSteps = ({ given, when, then }: any) => {
   given("GameWorld 1's config.inProgress is false", () => { (world.gw.config as Record<string, unknown>).inProgress = false; });
 
   then('the "Rapid Simulate Season" control is visible', async () => {
-    await mountHeader();
+    await mountControls();
     expect(screen.getByTestId('rapid-simulate-season')).toBeVisible();
   });
   then('the "Rapid Simulate Season" control is not visible', async () => {
-    await mountHeader();
+    await mountControls();
     expect(screen.queryByTestId('rapid-simulate-season')).toBeNull();
   });
   then('it is visually distinguished from the "Simulate Today" control', () => {
@@ -97,7 +111,7 @@ const registerSteps = ({ given, when, then }: any) => {
   });
 
   const clickRapid = async () => {
-    await mountHeader();
+    await mountControls();
     fireEvent.click(screen.getByTestId('rapid-simulate-season'));
     await flush();
   };
@@ -131,7 +145,7 @@ const registerSteps = ({ given, when, then }: any) => {
   when('the rapid-simulate request has not yet resolved', () => {});
   then('the "Simulate Today" control is disabled', () => expect(screen.getByTestId('batch-simulate')).toBeDisabled());
   when('the player clicks "Simulate Today"', async () => {
-    await mountHeader();
+    await mountControls();
     fireEvent.click(screen.getByTestId('batch-simulate'));
     await flush();
   });
