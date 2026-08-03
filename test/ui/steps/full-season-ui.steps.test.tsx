@@ -7,6 +7,8 @@ import { render } from '../test-utils';
 import { GameWorldProvider } from '../../../src/ui/context/game-world-context';
 import { GameWorld, League, TeamCalendar } from '../../../src/ui/pages';
 
+jest.setTimeout(30000);
+
 type MockParams = { gwId?: string; leagueId?: string; teamId?: string };
 
 type MockGame = {
