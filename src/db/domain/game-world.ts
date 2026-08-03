@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { NewGameWorld } from "../../api/models";
 import db from '../client';
 import { LeagueFactory, TeamFactory } from ".";
@@ -6,6 +7,14 @@ interface IGameWorld {
   create: (NewGameWorld) => any;
   find: () => any | any[];
   newSeason: () => any;
+  delete: () => Promise<{ id: number }>;
+};
+
+const mapIds = (rows: any[]): number[] => rows.map(({ dataValues }) => dataValues.id);
+const notFoundError = (id: number) => {
+  const error: Error & { statusCode?: number } = Error(`No gameworld exists with id='${id}'`);
+  error.statusCode = 404;
+  return error;
 };
 
 const GameWorldFactory = (id?: number): IGameWorld => {
@@ -52,7 +61,140 @@ const GameWorldFactory = (id?: number): IGameWorld => {
           }
           return GameWorldFactory(id).find();
         });
-    }
+    },
+    // @spec GWD-001,GWD-002,GWD-003,GWD-004
+    delete: async () => {
+      const gameWorldId = typeof id === 'number' && Number.isFinite(id) ? id : undefined;
+      if (gameWorldId === undefined) throw notFoundError(Number(id));
+
+      const gameWorld = await db.models.GameWorld.findByPk(gameWorldId);
+      if (!gameWorld) throw notFoundError(gameWorldId);
+
+      const transaction = await db.transaction();
+
+      try {
+        const leagues = await db.models.League.findAll({
+          where: { gameWorldId },
+          transaction,
+        });
+        const leagueIds = mapIds(leagues);
+
+        const teams = await db.models.Team.findAll({
+          where: { gameWorldId },
+          transaction,
+        });
+        const teamIds = mapIds(teams);
+
+        const players = await db.models.Player.findAll({
+          where: { gameWorldId },
+          transaction,
+        });
+        const playerIds = mapIds(players);
+
+        const divisions = leagueIds.length === 0 ? [] : await db.models.Division.findAll({
+          where: { leagueId: { [Op.in]: leagueIds } },
+          transaction,
+        });
+        const divisionIds = mapIds(divisions);
+
+        const divisionSeasons = divisionIds.length === 0 ? [] : await db.models.DivisionSeason.findAll({
+          where: { divisionId: { [Op.in]: divisionIds } },
+          transaction,
+        });
+        const divisionSeasonIds = mapIds(divisionSeasons);
+
+        const divisionSeasonGames = divisionSeasonIds.length === 0 ? [] : await db.models.DivisionSeasonGame.findAll({
+          where: { divisionSeasonId: { [Op.in]: divisionSeasonIds } },
+          transaction,
+        });
+        const gameIds = Array.from(new Set(divisionSeasonGames.map(({ dataValues }) => dataValues.gameId)));
+
+        if (playerIds.length > 0) {
+          await db.models.PlayerGameStats.destroy({
+            where: { playerId: { [Op.in]: playerIds } },
+            transaction,
+          });
+        }
+
+        const contractWhere = [
+          ...(playerIds.length > 0 ? [{ playerId: { [Op.in]: playerIds } }] : []),
+          ...(teamIds.length > 0 ? [{ teamId: { [Op.in]: teamIds } }] : []),
+        ];
+        if (contractWhere.length > 0) {
+          await db.models.Contract.destroy({
+            where: { [Op.or]: contractWhere },
+            transaction,
+          });
+        }
+
+        if (divisionIds.length > 0) {
+          await db.models.SeasonResult.destroy({
+            where: { divisionId: { [Op.in]: divisionIds } },
+            transaction,
+          });
+        }
+
+        if (divisionSeasonIds.length > 0) {
+          await db.models.DivisionSeasonGame.destroy({
+            where: { divisionSeasonId: { [Op.in]: divisionSeasonIds } },
+            transaction,
+          });
+        }
+
+        if (gameIds.length > 0) {
+          const remainingGameLinks = await db.models.DivisionSeasonGame.findAll({
+            where: { gameId: { [Op.in]: gameIds } },
+            transaction,
+          });
+          const remainingGameIds = new Set(remainingGameLinks.map(({ dataValues }) => dataValues.gameId));
+          const orphanGameIds = gameIds.filter((gameId) => !remainingGameIds.has(gameId));
+
+          if (orphanGameIds.length > 0) {
+            await db.models.Game.destroy({
+              where: { id: { [Op.in]: orphanGameIds } },
+              transaction,
+            });
+          }
+        }
+
+        if (divisionSeasonIds.length > 0) {
+          await db.models.DivisionSeason.destroy({
+            where: { id: { [Op.in]: divisionSeasonIds } },
+            transaction,
+          });
+        }
+
+        if (divisionIds.length > 0) {
+          await db.models.Division.destroy({
+            where: { id: { [Op.in]: divisionIds } },
+            transaction,
+          });
+        }
+
+        await db.models.Player.destroy({
+          where: { gameWorldId },
+          transaction,
+        });
+        await db.models.Team.destroy({
+          where: { gameWorldId },
+          transaction,
+        });
+        await db.models.League.destroy({
+          where: { gameWorldId },
+          transaction,
+        });
+        await db.models.GameWorld.destroy({
+          where: { id: gameWorldId },
+          transaction,
+        });
+
+        await transaction.commit();
+        return { id: gameWorldId };
+      } catch (error) {
+        await transaction.rollback();
+        throw error;
+      }
+    },
   }
 };
 

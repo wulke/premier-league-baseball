@@ -1,5 +1,6 @@
 const enum Endpoints {
   GetGameWorld = '/api/gameWorld/:gwId',
+  DeleteGameWorld = '/api/gameWorld/:gwId',
   GetGameWorlds = '/api/gameWorld',
   GetLeagueBracket = '/api/league/:leagueId/bracket',
   GetLeagueStandings = '/api/league/:leagueId/standings',
