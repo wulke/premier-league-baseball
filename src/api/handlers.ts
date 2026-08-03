@@ -1,12 +1,20 @@
 import { GameFactory, GameWorldFactory, LeagueFactory, TeamFactory } from '../db/domain';
+import { DomainError } from '../db/domain/errors';
 import { NewGameWorld } from './models';
 
 /* ! todo ! will we need to start splitting this by model? */
 
 const getGameWorld = async (id: number) => {
-  const gameWorld = await GameWorldFactory(id).find();
-  console.debug(gameWorld);
-  return gameWorld;
+  // @spec RSS-007 surface whether dev tools are enabled so the UI slice can gate the
+  // Rapid Simulate control; matches the same env check the rapid-simulate handler uses.
+  // find() returns a Sequelize instance — spread via get({ plain: true }) so the response
+  // serializes the GameWorld fields (id/config/Leagues/...) plus devToolsEnabled, rather
+  // than the instance's internal dataValues/_options guts.
+  const result: any = await GameWorldFactory(id).find();
+  const gameWorld = result && typeof result.get === 'function'
+    ? result.get({ plain: true })
+    : result;
+  return { ...gameWorld, devToolsEnabled: process.env.ENABLE_DEV_TOOLS === 'true' };
 };
 
 const getGameWorlds = async () => {
@@ -57,6 +65,16 @@ const simulateBatchGames = async (gwId: number, endDate?: string) => {
   return await GameFactory().simulateBatch(gwId, endDate);
 };
 
+// @spec RSS-001,RSS-002,RSS-003,RSS-004,RSS-005,RSS-006,RSS-007 dev-only rapid season
+// simulation. Gated behind ENABLE_DEV_TOOLS: when not exactly 'true', responds 404
+// indistinguishable from a nonexistent route so the feature isn't discoverable.
+const rapidSimulateSeason = async (gwId: number) => {
+  if (process.env.ENABLE_DEV_TOOLS !== 'true') {
+    throw new DomainError('Not found', 404);
+  }
+  return await GameFactory().rapidSimulateSeason(gwId);
+};
+
 const getTeamSchedule = async (teamId: number, gwId: number, leagueId?: number) => {
   return await TeamFactory(teamId).getSchedule(gwId, leagueId);
 };
@@ -72,5 +90,6 @@ export {
   newSeason,
   deleteGameWorld,
   simulateBatchGames,
+  rapidSimulateSeason,
   simulateGame,
 };

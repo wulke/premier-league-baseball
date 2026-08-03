@@ -9,6 +9,7 @@ const enum Endpoints {
   NewGameWorld = '/api/gameWorld/new',
   NewSeason = '/api/gameWorld/:gwId/season/new',
   BatchSimulateGames = '/api/gameWorld/:gwId/simulate',
+  RapidSimulateSeason = '/api/gameWorld/:gwId/rapid-simulate',
   SimulateGame = '/api/game/:gameId/simulate',
   // ViewGame = '/api/game/:gameId/view
   // PlayGame = '/api/game/:gameId/play

@@ -89,6 +89,13 @@ router.post(Endpoints.BatchSimulateGames, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
+router.post(Endpoints.RapidSimulateSeason, async (req: any, res: any) => {
+  // @spec RSS-007 route wiring for the dev-only rapid-simulate endpoint.
+  await handlers.rapidSimulateSeason(Number(req.params.gwId))
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
 router.post(Endpoints.SimulateGame, async (req: any, res: any) => {
   await handlers.simulateGame(Number(req.params.gameId))
     .then((response) => {
