@@ -109,3 +109,65 @@ single division does the same for format inheritance, but ignores `isTopTier`.
 | EARS | `docs/specs/competition-format-specs.md` — `CFG-001`.. |
 | Code | `src/api/models.ts` (`CompetitionFormat`, `STANDARD_LEAGUE_FORMAT`, `STANDARD_CUP_FORMAT`, `resolveCompetitionFormat`, `LeagueConfig`, `DivisionConfig`, `DefaultLeagues`) |
 | Decision record | [#36](https://github.com/wulke/premier-league-baseball/issues/36) |
+
+---
+
+## Generalized multi-stage extension (#79–#85)
+
+> Upstream decisions: [#78](https://github.com/wulke/premier-league-baseball/issues/78) (map) → #79 (Stage model), #80 (cross-phase seeding), #81 (champion generalization), #82 (Swiss), #83 (best-of-N), #84 (MLB/conferences), #95 (TIERED_RANK), #85 (pressure-test configs + registries). EARS: `CFG-005`..`CFG-010`.
+
+This extension is **additive** to the #36 surface above — it lands the shape that lets a single `League` express an ordered, dependent sequence of phases (group → knockout; Swiss → knockout; regular season → playoffs). Only old Champions League ever *runs* (#87); new-CL (Swiss) and MLB are **config-surface only**.
+
+### Type surface (as authored in #85)
+
+```ts
+// #79 — Stage groups divisions; League.stages[] is the phase sequence.
+interface Stage { id: string; name: string; divisions: DivisionConfig[] }
+
+interface LeagueConfig {
+  // ...
+  divisions?: DivisionConfig[];   // legacy single-stage shape (PL/Cup until #87)
+  stages?: Stage[];               // multi-stage shape; array order = phase sequence
+  format?: CompetitionFormat;     // league-level fallback — #87 drops this + resolveCompetitionFormat
+}
+
+// #82 — third structure arm; league-phase only, no legs/winsToAdvance.
+interface SwissTier { id: string; rankRange: [number, number] }   // absolute ranks partitioning the field
+type CompetitionFormat =
+  | { structure: 'ROUND_ROBIN'; legs; seriesLength; tiebreak? }
+  | { structure: 'KNOCKOUT'; legs; seriesLength; tiebreak?; seeding }
+  | { structure: 'SWISS'; gamesPerTeam; qualificationTiers: SwissTier[] };
+
+// #80,#84,#95 — on the *consuming* division; id-references only.
+type SeedingSelection =
+  | { kind: 'TOP_N_PER_DIVISION'; fromStage; topN }
+  | { kind: 'BEST_OF_REST'; fromStage; count; excluding: 'DIVISION_WINNERS'; conference? }
+  | { kind: 'TIERED_RANK'; fromStage; tierId };
+
+interface DivisionConfig {
+  // ... format?, isTopTier?, schedulingConfig? ...
+  seedingSelection?: SeedingSelection;
+  conference?: string;           // #84 producer label (AL/NL) — not a node or Stage
+}
+```
+
+### Where configs live (#85)
+
+Configs and teams are decoupled from `GameWorldType` into named registries — the seam the future game-world builder needs:
+
+- `LeagueTemplates: Record<string, LeagueConfig>` — all templates (`premier-league`, `league-cup`, `champions-league`, `champions-league-swiss`, `mlb`).
+- `TeamPools: Record<string, TeamConfig[]>` — team identity, keyed by name (`england-44`, …).
+- `DefaultWorlds: Record<GameWorldType, { teamPool; leagues: string[] }>` — the *runnable* layer that opts a pool + templates into a pickable world. new-CL + MLB are registry-only (no entry).
+
+### Pressure-test finding
+
+A cross-stage-seeded division owns **no pool allocation** (`defaultTeams: []`) — its teams arrive from another stage's output via `seedingSelection`. The config surface permits this; old-CL's knockout division is the literal proof.
+
+### Deferred to #87 (tracked on #87)
+
+The generalized surface ships **additively**; the migration that unifies on it is #87's run-path work:
+
+1. Rename `seriesLength` → `winsToAdvance` across `CompetitionSeriesLength` + ~20 domain fixtures.
+2. Drop league-level `LeagueConfig.format` + `resolveCompetitionFormat` (format becomes purely per-division, #83); update CFG-001.
+3. Migrate the live `premier-league` / `league-cup` templates from `divisions` → single-stage `stages`; migrate `LeagueFactory.create` to read `stages`; drop `LeagueConfig.divisions`.
+4. Implement the old-CL run path (stage-aware `newSeason`, `getSeedTeamIdsForDivision` for the three selector arms, champion recording from the final stage).

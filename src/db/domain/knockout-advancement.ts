@@ -265,7 +265,8 @@ const generateNextRound = async (
   const homeDate = scheduleDate(schedulingConfig, nextRound - 1);
   await createKnockoutGames(pairings, nextRound, homeDate, divisionSeasons);
 
-  if (format.legs === 'TWO_LEG') {
+  // #85: SWISS (config-surface only, no scheduler) carries no `legs`; KO unchanged.
+  if (format.structure !== 'SWISS' && format.legs === 'TWO_LEG') {
     const returnLegs = pairings.map(([h, a]) => [a, h] as [number, number]);
     const awayDate = scheduleDate(schedulingConfig, nextRound);
     await createKnockoutGames(returnLegs, nextRound, awayDate, divisionSeasons);
