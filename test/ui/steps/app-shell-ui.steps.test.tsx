@@ -1,6 +1,6 @@
 // @spec SHELL-001..SHELL-010 (AppShell + NavRail acceptance; real MemoryRouter locations).
 import React from 'react';
-import { act } from 'react-dom/test-utils';
+import { act } from 'react';
 import { MemoryRouter } from 'react-router';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import { cleanup, render, screen } from '@testing-library/react';
@@ -25,7 +25,8 @@ beforeEach(() => {
       const url = input.toString(); calls.push(url);
       if (/\/api\/gameWorld\/1$/.test(url)) return Promise.resolve(response(world));
       if (/\/api\/gameWorlds$/.test(url)) return Promise.resolve(response([]));
-      if (/\/api\/league\/7/.test(url)) return Promise.resolve(response({ id: 7, config: { name: 'Premier' } }));
+      if (/\/api\/league\/7\/(standings|bracket)/.test(url)) return Promise.resolve(response([]));
+      if (/\/api\/league\/7$/.test(url)) return Promise.resolve(response({ id: 7, config: { name: 'Premier' } }));
       return Promise.resolve(response([]));
     }) as jest.Mock;
 });
@@ -40,7 +41,7 @@ const registerSteps = ({ given, when, then }: any) => {
   when('the player opens the League route for GameWorld 1 and league 7', () => renderAt('/1/7'));
   when('the player opens the GameWorld route for GameWorld 1', () => renderAt('/1'));
   when('the GameWorld refreshes', async () => {
-    screen.getByTestId('shell-invalidate').click();
+    await act(async () => { screen.getByTestId('shell-invalidate').click(); });
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
   });
   then('the App Shell and NavRail are present', () => { expect(screen.getByTestId('app-shell')).toBeInTheDocument(); expect(screen.getByTestId('nav-rail')).toBeInTheDocument(); });

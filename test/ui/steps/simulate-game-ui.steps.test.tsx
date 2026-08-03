@@ -25,7 +25,7 @@ import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import { screen, fireEvent, cleanup } from '@testing-library/react';
 import { render } from '../test-utils';
 import { GameWorldProvider, useGameWorldContext } from '../../../src/ui/context/game-world-context';
-import { AppHeader } from '../../../src/ui/components/app-header';
+import { BatchSimulateControl } from '../../../src/ui/components/batch-simulate-control';
 import { GameWorld, League, TeamCalendar } from '../../../src/ui/pages';
 import path from 'path';
 
@@ -238,7 +238,7 @@ const ensureProbe = async () => {
 };
 
 const ensureAppHeader = async () => {
-  mountProvider(<AppHeader />, 'appheader');
+  mountProvider(<BatchSimulateControl />, 'appheader');
   await flush();
 };
 
@@ -252,7 +252,7 @@ const ensureCrossFlow = async () => {
   // mounting a second standalone <AppHeader /> alongside it would duplicate
   // [data-testid="batch-simulate"]. TeamCalendar alone gives the cross-flow scenarios both the
   // batch button and the per-row simulate UI they need.
-  mountProvider(<TeamCalendar />, 'crossflow');
+  mountProvider(<><BatchSimulateControl /><TeamCalendar /></>, 'crossflow');
   await flush();
 };
 

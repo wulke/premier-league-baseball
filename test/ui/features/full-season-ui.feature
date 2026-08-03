@@ -13,7 +13,6 @@ Feature: Full-Season UI
     And the team schedule includes games from the League and League Cup
     When the TeamCalendar page loads
     Then GET /api/team/7/calendar is requested with query "gwId=1"
-    And the back-link points to "/1"
     And the Competition filter lists "Premier League" and "League Cup"
 
   @spec:UI-004

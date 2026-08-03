@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Endpoints } from '../../api/endpoints';
 import { useParams, useNavigate } from 'react-router';
 import { useGameWorldContext } from '../context/game-world-context';
-import { AppHeader } from '../components/app-header';
 import { getChampionDivisionId, getChampionTeamName } from '../champion';
 import { TeamSeasonGame } from '../../api/models';
 
@@ -120,7 +119,7 @@ const GameWorld = () => {
       if (!response.ok) throw Error(`Failed to start new season (${response.status})`);
       return response.json();
     }).then((updatedGw) => {
-      // LLD u3 — refresh the shared context gw instead of a divergent local copy so AppHeader's
+      // LLD u3 — refresh the shared context gw instead of a divergent local copy so the rail's
       // chip/batch guard stays in sync after a season start.
       invalidate();
       setStartSeasonStatus('success');
@@ -147,10 +146,6 @@ const GameWorld = () => {
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
-
-      {/* Shared header (Flow B) — replaces the page-local nav bar so the batch Simulate Today
-          action and breadcrumb live in one place across the /:gwId subtree. */}
-      <AppHeader backLink="/" backLabel="Game Worlds" />
 
       {/* Game World Identity */}
       <div style={{ marginBottom: '36px' }}>

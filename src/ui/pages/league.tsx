@@ -3,7 +3,6 @@ import { Endpoints } from '../../api/endpoints';
 import { BracketRound, BracketTie, DivisionStandings, LeagueDivisionBracket, TeamStanding } from '../../api/models';
 import { useNavigate, useParams } from 'react-router';
 import { Collapsible } from 'radix-ui';
-import { AppHeader } from '../components/app-header';
 import { formatLeagueChampionBanner, getChampionBracket, getChampionTeamName } from '../champion';
 
 const StandingsTable = ({
@@ -372,9 +371,6 @@ const League = () => {
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
-
-      {/* Shared header (Flow B) */}
-      <AppHeader backLink={`/${gwId}`} backLabel="Game World" hideBatchControl={Boolean(championBanner)} />
 
       {/* League identity */}
       <div style={{ marginBottom: '32px' }}>

@@ -545,10 +545,6 @@ defineFeature(feature, (test) => {
       });
     });
 
-    then(/^the back-link points to "([^"]+)"$/, (target: string) => {
-      expect(screen.getByRole('link', { name: /game world/i })).toHaveAttribute('href', target);
-    });
-
     then(/^the Competition filter lists "([^"]+)" and "([^"]+)"$/, (first: string, second: string) => {
       const filter = screen.getByRole('combobox', { name: /competition/i });
       const options = within(filter).getAllByRole('option').map((option) => option.textContent);
