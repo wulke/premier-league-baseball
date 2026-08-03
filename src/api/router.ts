@@ -16,6 +16,14 @@ router.get(Endpoints.GetGameWorld, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
+router.delete(Endpoints.DeleteGameWorld, async (req: any, res: any) => {
+  await handlers.deleteGameWorld(Number(req.params.gwId))
+    .then((response) => {
+      res.send(response);
+    })
+    .catch((error) => sendError(res, error));
+});
+
 router.get(Endpoints.GetGameWorlds, async (req: any, res: any) => {
   await handlers.getGameWorlds()
     .then((response) => {

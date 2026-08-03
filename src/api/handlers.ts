@@ -42,6 +42,11 @@ const newSeason = async (id: number) => {
   return response;
 };
 
+// @spec GWD-001,GWD-002,GWD-003,GWD-004
+const deleteGameWorld = async (id: number) => {
+  return await GameWorldFactory(id).delete();
+};
+
 // @spec SIM-001,SIM-002,SIM-003,SIM-004,SIM-005,SIM-006,SIM-007
 const simulateGame = async (id: number) => {
   return await GameFactory(id).simulate();
@@ -65,6 +70,7 @@ export {
   getTeamSchedule,
   newGameWorld,
   newSeason,
+  deleteGameWorld,
   simulateBatchGames,
   simulateGame,
 };
