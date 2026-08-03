@@ -242,3 +242,53 @@ describe('GameWorldFactory', () => {
     await expect(db.models.GameWorld.findByPk(fixture.gameWorld.id)).resolves.toBeNull();
   });
 });
+
+describe('GameWorldFactory.advanceCurrentDate', () => {
+  beforeAll(async () => {
+    await db.sync({ force: true });
+  });
+
+  beforeEach(async () => {
+    await db.sync({ force: true });
+  });
+
+  it('throws when called without an id (mirrors the newSeason guard)', async () => {
+    await expect((GameWorldFactory() as any).advanceCurrentDate('2025-04-08'))
+      .rejects.toThrow('no game world to advance');
+  });
+
+  // @spec RSS-001
+  it('@spec RSS-001 rejects with statusCode 404 when the GameWorld does not exist', async () => {
+    await expect((GameWorldFactory(9999) as any).advanceCurrentDate('2025-04-08'))
+      .rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  // @spec RSS-008
+  it('@spec RSS-008 rejects a non-forward date with 422 and leaves currentDate unchanged', async () => {
+    const gw = await db.models.GameWorld.create({
+      year: 2025,
+      currentDate: '2025-04-08',
+      config: {},
+    }).then(({ dataValues }) => dataValues);
+
+    await expect((GameWorldFactory(gw.id) as any).advanceCurrentDate('2025-04-01'))
+      .rejects.toMatchObject({ statusCode: 422 });
+
+    const after = await db.models.GameWorld.findByPk(gw.id);
+    expect(after?.dataValues.currentDate).toBe('2025-04-08');
+  });
+
+  it('advances currentDate to a strictly-later date and returns the new value', async () => {
+    const gw = await db.models.GameWorld.create({
+      year: 2025,
+      currentDate: '2025-04-01',
+      config: {},
+    }).then(({ dataValues }) => dataValues);
+
+    await expect((GameWorldFactory(gw.id) as any).advanceCurrentDate('2025-04-08'))
+      .resolves.toEqual({ id: gw.id, currentDate: '2025-04-08' });
+
+    const after = await db.models.GameWorld.findByPk(gw.id);
+    expect(after?.dataValues.currentDate).toBe('2025-04-08');
+  });
+});
