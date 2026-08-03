@@ -44,6 +44,19 @@ describe('LeagueFactory (initial Season)', () => {
       expect(divisions.length).toStrictEqual(league.config.divisions.length);
     });
   });
+  // @spec SCL-001
+  it('create: initializes its season year from the parent GameWorld in CUTOVER', async () => {
+    const gameWorld = await db.models.GameWorld.create({ year: 2031, config: {} })
+      .then(({ dataValues }) => dataValues);
+    const league = await LeagueFactory().create(gameWorld.id, {
+      name: 'Lifecycle League',
+      type: LeagueType.League,
+      divisions: [],
+    }, []);
+
+    expect(league.year).toBe(2031);
+    expect(league.status).toBe('CUTOVER');
+  });
   it('isSeasonComplete: True when initial season', async () => {
     await gw.leagues.forEach(async ({ id }) => {
       expect(await LeagueFactory(id).isSeasonComplete(gw.year)).toBeTruthy();
