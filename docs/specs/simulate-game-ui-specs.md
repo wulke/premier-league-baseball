@@ -25,7 +25,7 @@ UI requirements for the simulate-game React frontend, covering two flows: **Flow
 ## Traceability
 
 - **Relocated/retired (Flow B):** SIMUI-006/007 (chip) and SIMUI-009…SIMUI-018 (batch) now live in [`app-shell-ui-specs.md`](./app-shell-ui-specs.md); SIMUI-008 is retired (superseded by SHELL-001). The former `src/ui/components/app-header.tsx` is deleted; its batch state machine is relocated to `src/ui/components/batch-simulate-control.tsx`.
-- **Gherkin:** `test/ui/features/simulate-game-ui.feature` — SIMUI-001…005 and 019…028 remain bound here; the batch/chip steps (006/007/009…018) are re-homed to `test/ui/features/app-shell-ui.feature` (wording + testids move; IDs stable). The `@future` "Advance Date blocked by skipped-game warning" scenario stays out of scope and carries no `@spec` tag.
+- **Gherkin:** `test/ui/features/simulate-game-ui.feature` — SIMUI-001…005 and 019…028 remain bound here; the current-date chip scenarios (SIMUI-006/007) are implemented and bound in `test/ui/features/app-shell-ui.feature`. The `@future` "Advance Date blocked by skipped-game warning" scenario stays out of scope and carries no `@spec` tag.
 - **Step definitions:** `test/ui/steps/simulate-game-ui.steps.test.tsx` — SIMUI-001…005, 019…028. The `react-router` mock becomes location-aware (App Shell LLD s5). Batch / `AppHeader` mount helpers move to the app-shell step file.
 - **Code entry points:**
   - `src/ui/context/game-world-context.tsx` (`GameWorldProvider` + `useGameWorldContext`) — SIMUI-001..SIMUI-005 (contract unchanged; the undefined-`gwId` guard is SHELL-003, owned by the app-shell spec)
