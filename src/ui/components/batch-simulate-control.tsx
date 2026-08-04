@@ -1,4 +1,4 @@
-// @spec SIMUI-009..SIMUI-018
+// @spec SIMUI-009..SIMUI-018,SCL-014
 import React, { useEffect, useState } from 'react';
 import { Endpoints } from '../../api/endpoints';
 import { useGameWorldContext } from '../context/game-world-context';
@@ -6,7 +6,7 @@ import { useGameWorldContext } from '../context/game-world-context';
 type BatchStatus = 'idle' | 'submitting' | 'success-clean' | 'success-skipped' | 'error';
 type BatchResult = { simulated: unknown[]; skipped: unknown[] };
 
-// @spec SIMUI-009..SIMUI-018
+// @spec SIMUI-009..SIMUI-018,SCL-014
 const BatchSimulateControl = () => {
   const { gw, invalidate } = useGameWorldContext();
   const [batchStatus, setBatchStatus] = useState<BatchStatus>('idle');
