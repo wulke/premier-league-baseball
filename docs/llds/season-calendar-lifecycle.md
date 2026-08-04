@@ -5,6 +5,8 @@
 > remaining scenarios follow their implementation slices)
 > Origin: issue #114, settled via `/grill-me`
 
+> Implementation: `SCL-006` and `SCL-007` are delivered by issue #119.
+
 ## Scope
 
 Fixes the root problem behind #114: `GameWorld.currentDate` is never initialized by any

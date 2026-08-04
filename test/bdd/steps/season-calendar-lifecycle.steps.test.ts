@@ -1,4 +1,4 @@
-// @spec SCL-002,SCL-003,SCL-004
+// @spec SCL-006,SCL-007
 // Season calendar lifecycle cutover/start acceptance bindings.
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
@@ -6,9 +6,17 @@ import { LeagueFactory } from '../../../src/db/domain';
 import { DomainError } from '../../../src/db/domain/errors';
 import db from '../../../src/db/client';
 
+const ROUND_ROBIN_FORMAT = {
+  structure: 'ROUND_ROBIN' as const,
+  legs: 'ONE_LEG' as const,
+  seriesLength: 'Bo1' as const,
+  tiebreak: 'AGGREGATE_SCORE' as const,
+};
+
 const feature = loadFeature(path.resolve(__dirname, '../features/season-calendar-lifecycle.feature'));
 feature.scenarios = feature.scenarios.filter((scenario) =>
-  scenario.tags.some((tag) => ['@spec:scl-002', '@spec:scl-003', '@spec:scl-004'].includes(tag))
+  scenario.tags.some((tag) => ['@spec:scl-006', '@spec:scl-007'].includes(tag))
+    && /^(The first League|A League with no scheduled Divisions|A later League)/.test(scenario.title)
 );
 
 interface WorldState {
@@ -45,13 +53,24 @@ const registerSteps = ({ given, when, then }: any) => {
   given(/^League "[^"]+" has a Division with schedulingConfig startDate "[^"]+" and intervalDays \d+$/, async () => {
     const division = await db.models.Division.create({
       leagueId: world.leagueId,
-      config: { name: 'BDD Division', schedulingConfig: { startDate: '2027-03-01', intervalDays: 7 } },
+      config: {
+        name: 'BDD Division', defaultTeams: world.teamIds, format: ROUND_ROBIN_FORMAT,
+        schedulingConfig: { startDate: '2027-03-01', intervalDays: 7 },
+      },
     }).then(({ dataValues }) => dataValues);
     world.divisionId = division.id;
   });
 
-  given(/^League "[^"]+"'s status is IN_SEASON$/, async () => {
+  given(/^League "(.*)"'s status is IN_SEASON$/, async (_name: string) => {
     await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: world.leagueId } });
+  });
+  given(/^a second League "([^"]+)" exists in GameWorld (\d+) with year (\d+) and status (CUTOVER|IN_SEASON)$/, async (
+    name: string, gameWorldId: string, year: string, status: string,
+  ) => {
+    const league = await db.models.League.create({
+      gameWorldId: Number(gameWorldId), config: { name }, year: Number(year), status,
+    }).then(({ dataValues }) => dataValues);
+    world.leagueId = league.id;
   });
 
   given(/^League "[^"]+" has an incomplete Division season for year (\d+)$/, async (year: string) => {
@@ -91,9 +110,25 @@ const registerSteps = ({ given, when, then }: any) => {
   given(/^GameWorld \d+'s currentDate is "([^"]+)"$/, async (currentDate: string) => {
     await db.models.GameWorld.update({ currentDate }, { where: { id: 1 } });
   });
+  given(/^GameWorld \d+'s currentDate is unset$/, async () => {
+    await db.models.GameWorld.update({ currentDate: null }, { where: { id: 1 } });
+  });
+  given(/^League "[^"]+"'s Division has no schedulingConfig$/, async () => {
+    const division = await db.models.Division.findByPk(world.divisionId);
+    await division!.update({ config: { ...division!.dataValues.config, schedulingConfig: undefined } });
+  });
 
   then(/^the response is a (\d+) error$/, (statusCode: string) => expect(world.response?.statusCode).toBe(Number(statusCode)));
   then('the response is 200', () => expect(world.response?.statusCode).toBe(200));
+  then(/^GameWorld \d+'s currentDate has been bootstrapped to "([^"]+)"$/, async (currentDate: string) => {
+    await expect(db.models.GameWorld.findByPk(1)).resolves.toMatchObject({ dataValues: { currentDate } });
+  });
+  then(/^GameWorld \d+'s currentDate remains "([^"]+)"$/, async (currentDate: string) => {
+    await expect(db.models.GameWorld.findByPk(1)).resolves.toMatchObject({ dataValues: { currentDate } });
+  });
+  then(/^GameWorld \d+'s currentDate remains unset$/, async () => {
+    await expect(db.models.GameWorld.findByPk(1)).resolves.toMatchObject({ dataValues: { currentDate: null } });
+  });
   then(/^League "[^"]+"'s status is still (CUTOVER|IN_SEASON)$/, async (status: string) => {
     await expect(readLeague()).resolves.toMatchObject({ status });
   });
@@ -103,7 +138,7 @@ const registerSteps = ({ given, when, then }: any) => {
   then(/^League "[^"]+"'s year is (\d+)$/, async (year: string) => {
     await expect(readLeague()).resolves.toMatchObject({ year: Number(year) });
   });
-  then(/^League "[^"]+"'s status is (CUTOVER)$/, async (status: string) => {
+  then(/^League "(.*)"'s status is (CUTOVER|IN_SEASON)$/, async (_name: string, status: string) => {
     await expect(readLeague()).resolves.toMatchObject({ status });
   });
   then('the response is a 422 error identifying the offending Division', () => {

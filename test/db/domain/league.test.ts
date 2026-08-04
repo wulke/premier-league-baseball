@@ -365,6 +365,47 @@ describe('LeagueFactory.start', () => {
     });
   });
 
+  // @spec SCL-006
+  it('bootstraps an unset GameWorld currentDate to the earliest configured Division startDate', async () => {
+    await db.models.GameWorld.update({ currentDate: null }, { where: { id: gameWorld.id } });
+    await db.models.Division.create({
+      leagueId: league.id,
+      config: {
+        name: 'Earlier Division', defaultTeams: teams.map(({ id }) => id), format: ROUND_ROBIN_FORMAT,
+        schedulingConfig: { startDate: '2027-02-22', intervalDays: 7 },
+      },
+    });
+
+    await LeagueFactory(league.id).start();
+
+    await expect(db.models.GameWorld.findByPk(gameWorld.id)).resolves.toMatchObject({
+      dataValues: { currentDate: '2027-02-22' },
+    });
+  });
+
+  // @spec SCL-006
+  it('leaves an unset GameWorld currentDate unset when no Division has schedulingConfig', async () => {
+    await db.models.GameWorld.update({ currentDate: null }, { where: { id: gameWorld.id } });
+    await db.models.Division.update({
+      config: { ...division.config, schedulingConfig: undefined },
+    }, { where: { id: division.id } });
+
+    await LeagueFactory(league.id).start();
+
+    await expect(db.models.GameWorld.findByPk(gameWorld.id)).resolves.toMatchObject({
+      dataValues: { currentDate: null },
+    });
+  });
+
+  // @spec SCL-007
+  it('leaves an existing GameWorld currentDate unchanged when a later League starts', async () => {
+    await LeagueFactory(league.id).start();
+
+    await expect(db.models.GameWorld.findByPk(gameWorld.id)).resolves.toMatchObject({
+      dataValues: { currentDate: '2027-03-01' },
+    });
+  });
+
   // @spec SCL-005,SCL-009
   it('generates the Division season using League.year rather than GameWorld.year', async () => {
     await db.models.League.update({ year: 2027 }, { where: { id: league.id } });

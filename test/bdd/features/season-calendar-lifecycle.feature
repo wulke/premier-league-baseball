@@ -69,7 +69,7 @@ Feature: Season Calendar Lifecycle
     Given GameWorld 1's currentDate is unset
     When an admin starts League "MLS"'s season
     Then the response is 200
-    And GameWorld 1's currentDate is "2027-03-01"
+    And GameWorld 1's currentDate has been bootstrapped to "2027-03-01"
 
   @spec:SCL-006
   Scenario: A League with no scheduled Divisions leaves currentDate unset if it is the only League
@@ -77,7 +77,7 @@ Feature: Season Calendar Lifecycle
     And GameWorld 1's currentDate is unset
     When an admin starts League "MLS"'s season
     Then the response is 200
-    And GameWorld 1's currentDate is still unset
+    And GameWorld 1's currentDate remains unset
 
   @spec:SCL-007
   Scenario: A later League's start() never changes an already-set currentDate
@@ -86,7 +86,7 @@ Feature: Season Calendar Lifecycle
     And League "UEFA" has a Division with schedulingConfig startDate "2027-08-01" and intervalDays 7
     When an admin starts League "UEFA"'s season
     Then the response is 200
-    And GameWorld 1's currentDate is still "2027-02-22"
+    And GameWorld 1's currentDate remains "2027-02-22"
 
   # ─── Derived GameWorld.config.inProgress ────────────────────────────────────
 
