@@ -49,10 +49,14 @@ const newGameWorld = async (config: NewGameWorld) => {
   return newGameWorld;
 };
 
-const newSeason = async (id: number) => {
-  const response = await GameWorldFactory(id).newSeason();
-  console.debug(response);
-  return response;
+// @spec SCL-015
+const cutoverLeagueSeason = async (leagueId: number) => {
+  return await LeagueFactory(leagueId).cutover();
+};
+
+// @spec SCL-016
+const startLeagueSeason = async (leagueId: number) => {
+  return await LeagueFactory(leagueId).start();
 };
 
 // @spec GWD-001,GWD-002,GWD-003,GWD-004
@@ -93,7 +97,8 @@ export {
   getLeagueToday,
   getTeamSchedule,
   newGameWorld,
-  newSeason,
+  cutoverLeagueSeason,
+  startLeagueSeason,
   deleteGameWorld,
   simulateBatchGames,
   rapidSimulateSeason,

@@ -20,8 +20,8 @@ bootstrapping, the derived `GameWorld.config.inProgress`, and the per-League fix
 | SCL-012 | WHEN the `League.year`/`League.status` migration runs against an existing League THE system SHALL backfill `year = GameWorld.year` for every League, and `status = 'IN_SEASON'` if that League has any existing `DivisionSeason` row (any year), otherwise `status = 'CUTOVER'` | [x] Implemented → #116 |
 | SCL-013 | WHEN `GameFactory().simulateBatch`/`rapidSimulateSeason` walk reachable games for a GameWorld THE system SHALL continue to consider all Leagues under that GameWorld regardless of individual `League.status`, unchanged from current behavior | [ ] Active |
 | SCL-014 | WHEN `AppHeader`'s `canBatch` guard evaluates THE system SHALL continue to require `Boolean(gw?.config?.inProgress && gw.currentDate)`, unchanged in shape (only the source of `config.inProgress` changes, per SCL-008) | [ ] Active |
-| SCL-015 | WHEN `POST /api/league/:leagueId/season/cutover` is called THE system SHALL invoke `LeagueFactory(leagueId).cutover()` and return its result, propagating its error statusCodes unchanged | [ ] Active |
-| SCL-016 | WHEN `POST /api/league/:leagueId/season/start` is called THE system SHALL invoke `LeagueFactory(leagueId).start()` and return its result, propagating its error statusCodes unchanged | [ ] Active |
+| SCL-015 | WHEN `POST /api/league/:leagueId/season/cutover` is called THE system SHALL invoke `LeagueFactory(leagueId).cutover()` and return its result, propagating its error statusCodes unchanged | [x] Implemented → #121 |
+| SCL-016 | WHEN `POST /api/league/:leagueId/season/start` is called THE system SHALL invoke `LeagueFactory(leagueId).start()` and return its result, propagating its error statusCodes unchanged | [x] Implemented → #121 |
 | SCL-017 | WHEN `PATCH /api/division/:divisionId/config` is called with a `schedulingConfig` update IF the Division's parent League's `status` is not `'CUTOVER'` THE system SHALL reject with a 422-statusCode error and leave the config unchanged | [ ] Active |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*

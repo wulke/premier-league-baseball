@@ -105,27 +105,27 @@ const GameWorld = () => {
     };
   }, [gw, gwId]);
 
+  // @spec SCL-016
   const startNewSeason = async () => {
-    if (!gwId) return;
+    if (!gwId || leagues.length === 0) return;
     setStartSeasonStatus('submitting');
     setStartSeasonError(null);
 
-    await fetch(Endpoints.NewSeason.replace(':gwId', gwId!), {
-      method: 'POST',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    }).then(async (response) => {
-      if (!response.ok) throw Error(`Failed to start new season (${response.status})`);
-      return response.json();
-    }).then((updatedGw) => {
+    await Promise.all(leagues.map((league) =>
+      fetch(Endpoints.LeagueSeasonStart.replace(':leagueId', String(league.id)), {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+      }).then(async (response) => {
+        if (!response.ok) throw Error(`Failed to start season for League ${league.id} (${response.status})`);
+        return response.json();
+      })
+    )).then(() => {
       // LLD u3 — refresh the shared context gw instead of a divergent local copy so the rail's
       // chip/batch guard stays in sync after a season start.
       invalidate();
       setStartSeasonStatus('success');
-      if (updatedGw?.Leagues?.length > 0) {
-        navigate(`/${gwId}/${updatedGw.Leagues[0].id}`);
-      }
+      navigate(`/${gwId}/${leagues[0].id}`);
     }).catch((error) => {
       console.error(error);
       setStartSeasonError('Could not start a new season. Try again.');

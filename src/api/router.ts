@@ -71,12 +71,17 @@ router.post(Endpoints.NewGameWorld, async (req: any, res: any) => {
   }).catch((error) => sendError(res, error));
 });
 
-router.post(Endpoints.NewSeason, async (req: any, res: any) => {
-  console.debug(req.body);
-  await handlers.newSeason(req.params.gwId)
-    .then((response) => {
-      res.send(response);
-    })
+router.post(Endpoints.LeagueSeasonCutover, async (req: any, res: any) => {
+  // @spec SCL-015
+  await handlers.cutoverLeagueSeason(Number(req.params.leagueId))
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
+router.post(Endpoints.LeagueSeasonStart, async (req: any, res: any) => {
+  // @spec SCL-016
+  await handlers.startLeagueSeason(Number(req.params.leagueId))
+    .then((response) => res.send(response))
     .catch((error) => sendError(res, error));
 });
 
