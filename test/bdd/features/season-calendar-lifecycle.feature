@@ -120,12 +120,14 @@ Feature: Season Calendar Lifecycle
   Scenario: schedulingConfig can be edited while the League is in CUTOVER
     When an admin updates League "MLS"'s Division schedulingConfig startDate to "2028-03-06"
     Then the response is 200
+    And League "MLS"'s Division keeps its non-scheduling config fields
 
   @spec:SCL-017
   Scenario: schedulingConfig cannot be edited while the League is IN_SEASON
     Given League "MLS"'s status is IN_SEASON
     When an admin updates League "MLS"'s Division schedulingConfig startDate to "2028-03-06"
     Then the response is a 422 error
+    And League "MLS"'s Division config is unchanged
 
   # ─── Team schedule across diverging League years ───────────────────────────
 

@@ -85,6 +85,13 @@ router.post(Endpoints.LeagueSeasonStart, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
+router.patch(Endpoints.UpdateDivisionSchedulingConfig, async (req: any, res: any) => {
+  // @spec SCL-017
+  await handlers.updateDivisionSchedulingConfig(Number(req.params.divisionId), req.body.schedulingConfig)
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
 router.get(Endpoints.GetTeamSchedule, async (req: any, res: any) => {
   const teamId = Number(req.params.teamId);
   const gwId = Number(req.query.gwId);

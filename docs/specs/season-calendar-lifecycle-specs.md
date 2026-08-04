@@ -22,7 +22,7 @@ bootstrapping, the derived `GameWorld.config.inProgress`, and the per-League fix
 | SCL-014 | WHEN `AppHeader`'s `canBatch` guard evaluates THE system SHALL continue to require `Boolean(gw?.config?.inProgress && gw.currentDate)`, unchanged in shape (only the source of `config.inProgress` changes, per SCL-008) | [ ] Active |
 | SCL-015 | WHEN `POST /api/league/:leagueId/season/cutover` is called THE system SHALL invoke `LeagueFactory(leagueId).cutover()` and return its result, propagating its error statusCodes unchanged | [x] Implemented → #121 |
 | SCL-016 | WHEN `POST /api/league/:leagueId/season/start` is called THE system SHALL invoke `LeagueFactory(leagueId).start()` and return its result, propagating its error statusCodes unchanged | [x] Implemented → #121 |
-| SCL-017 | WHEN `PATCH /api/division/:divisionId/config` is called with a `schedulingConfig` update IF the Division's parent League's `status` is not `'CUTOVER'` THE system SHALL reject with a 422-statusCode error and leave the config unchanged | [ ] Active |
+| SCL-017 | WHEN `PATCH /api/division/:divisionId/config` is called with a `schedulingConfig` update IF the Division's parent League's `status` is not `'CUTOVER'` THE system SHALL reject with a 422-statusCode error and leave the config unchanged; OTHERWISE THE system SHALL update only `schedulingConfig` and preserve every other Division config field | [x] Implemented → #122 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
@@ -30,4 +30,4 @@ bootstrapping, the derived `GameWorld.config.inProgress`, and the per-League fix
 
 - LLD: `docs/llds/season-calendar-lifecycle.md`
 - Gherkin: `test/bdd/features/season-calendar-lifecycle.feature` (new)
-- Code: `src/db/model/league.ts`, `src/db/domain/league.ts`, `src/db/domain/game-world.ts`, `src/db/domain/team.ts`, `src/api/models.ts`, `src/api/endpoints.ts`, `src/api/handlers.ts`, `src/api/router.ts`
+- Code: `src/db/model/league.ts`, `src/db/domain/league.ts`, `src/db/domain/division.ts`, `src/db/domain/game-world.ts`, `src/db/domain/team.ts`, `src/api/models.ts`, `src/api/endpoints.ts`, `src/api/handlers.ts`, `src/api/router.ts`

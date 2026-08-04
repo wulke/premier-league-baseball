@@ -1,6 +1,6 @@
-import { GameFactory, GameWorldFactory, LeagueFactory, TeamFactory } from '../db/domain';
+import { DivisionFactory, GameFactory, GameWorldFactory, LeagueFactory, TeamFactory } from '../db/domain';
 import { DomainError } from '../db/domain/errors';
-import { NewGameWorld } from './models';
+import { NewGameWorld, SchedulingConfig } from './models';
 
 /* ! todo ! will we need to start splitting this by model? */
 
@@ -59,6 +59,11 @@ const startLeagueSeason = async (leagueId: number) => {
   return await LeagueFactory(leagueId).start();
 };
 
+// @spec SCL-017
+const updateDivisionSchedulingConfig = async (divisionId: number, schedulingConfig: SchedulingConfig) => {
+  return await DivisionFactory(divisionId).updateSchedulingConfig(schedulingConfig);
+};
+
 // @spec GWD-001,GWD-002,GWD-003,GWD-004
 const deleteGameWorld = async (id: number) => {
   return await GameWorldFactory(id).delete();
@@ -99,6 +104,7 @@ export {
   newGameWorld,
   cutoverLeagueSeason,
   startLeagueSeason,
+  updateDivisionSchedulingConfig,
   deleteGameWorld,
   simulateBatchGames,
   rapidSimulateSeason,
