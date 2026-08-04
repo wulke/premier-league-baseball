@@ -14,6 +14,44 @@ describe('TeamFactory', () => {
     await db.sync({ force: true });
   });
 
+  // @spec SCL-010,SCL-011
+  it('@spec SCL-010 @spec SCL-011 returns games from each League\'s current year with a per-game year', async () => {
+    const gw = await db.models.GameWorld.create({ config: {}, year: 2026 }).then(({ dataValues }) => dataValues);
+    const [team, mlsOpponent, uefaOpponent] = await Promise.all(
+      ['Calendar Club', 'MLS Opponent', 'UEFA Opponent'].map((name) =>
+        db.models.Team.create({ gameWorldId: gw.id, config: { name } }).then(({ dataValues }) => dataValues)
+      )
+    );
+    const [mls, uefa] = await Promise.all([
+      db.models.League.create({ gameWorldId: gw.id, config: { name: 'MLS' }, year: 2028, status: 'IN_SEASON' }).then(({ dataValues }) => dataValues),
+      db.models.League.create({ gameWorldId: gw.id, config: { name: 'UEFA' }, year: 2027, status: 'IN_SEASON' }).then(({ dataValues }) => dataValues),
+    ]);
+    const [mlsDivision, uefaDivision] = await Promise.all([
+      db.models.Division.create({ leagueId: mls.id, config: { name: 'MLS Division', defaultTeams: [] } }).then(({ dataValues }) => dataValues),
+      db.models.Division.create({ leagueId: uefa.id, config: { name: 'UEFA Division', defaultTeams: [] } }).then(({ dataValues }) => dataValues),
+    ]);
+    const [mlsSeason, uefaSeason] = await Promise.all([
+      db.models.DivisionSeason.create({ divisionId: mlsDivision.id, teamId: team.id, year: mls.year }).then(({ dataValues }) => dataValues),
+      db.models.DivisionSeason.create({ divisionId: uefaDivision.id, teamId: team.id, year: uefa.year }).then(({ dataValues }) => dataValues),
+    ]);
+    const [mlsGame, uefaGame] = await Promise.all([
+      db.models.Game.create({ homeTeam: team.id, awayTeam: mlsOpponent.id, scheduledDate: '2028-04-01' }).then(({ dataValues }) => dataValues),
+      db.models.Game.create({ homeTeam: team.id, awayTeam: uefaOpponent.id, scheduledDate: '2027-09-01' }).then(({ dataValues }) => dataValues),
+    ]);
+    await db.models.DivisionSeasonGame.bulkCreate([
+      { divisionSeasonId: mlsSeason.id, gameId: mlsGame.id },
+      { divisionSeasonId: uefaSeason.id, gameId: uefaGame.id },
+    ]);
+
+    const schedule = await TeamFactory(team.id).getSchedule(gw.id);
+
+    expect(schedule).not.toHaveProperty('year');
+    expect(schedule.games).toEqual(expect.arrayContaining([
+      expect.objectContaining({ gameId: mlsGame.id, year: 2028 }),
+      expect.objectContaining({ gameId: uefaGame.id, year: 2027 }),
+    ]));
+  });
+
   // @spec CUP-011
   it('@spec CUP-011 renders knockout rounds with tournament-convention labels for a 44-team bracket', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2044 }).then((m) => m.dataValues);

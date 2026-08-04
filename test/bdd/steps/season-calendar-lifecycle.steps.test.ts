@@ -1,8 +1,8 @@
-// @spec SCL-006,SCL-007,SCL-008,SCL-017
+// @spec SCL-006,SCL-007,SCL-008,SCL-010,SCL-011,SCL-017
 // Season calendar lifecycle cutover/start acceptance bindings.
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
-import { LeagueFactory } from '../../../src/db/domain';
+import { LeagueFactory, TeamFactory } from '../../../src/db/domain';
 import { DomainError } from '../../../src/db/domain/errors';
 import db from '../../../src/db/client';
 import { Endpoints } from '../../../src/api/endpoints';
@@ -17,8 +17,8 @@ const ROUND_ROBIN_FORMAT = {
 
 const feature = loadFeature(path.resolve(__dirname, '../features/season-calendar-lifecycle.feature'));
 feature.scenarios = feature.scenarios.filter((scenario) =>
-  scenario.tags.some((tag) => ['@spec:scl-006', '@spec:scl-007', '@spec:scl-008', '@spec:scl-017'].includes(tag))
-    && /^(start\(\) is unconstrained|The first League|A League with no scheduled Divisions|A later League|GameWorld\.config\.inProgress|schedulingConfig)/.test(scenario.title)
+  scenario.tags.some((tag) => ['@spec:scl-006', '@spec:scl-007', '@spec:scl-008', '@spec:scl-010', '@spec:scl-011', '@spec:scl-017'].includes(tag))
+    && /^(start\(\) is unconstrained|The first League|A League with no scheduled Divisions|A later League|GameWorld\.config\.inProgress|schedulingConfig|A team's schedule)/.test(scenario.title)
 );
 
 interface WorldState {
@@ -27,6 +27,7 @@ interface WorldState {
   teamIds: number[];
   response?: { statusCode: number; body?: unknown; error?: unknown };
   divisionConfigBeforeUpdate?: Record<string, unknown>;
+  schedule?: any;
 }
 
 let world: WorldState;
@@ -92,6 +93,34 @@ const registerSteps = ({ given, when, then }: any) => {
     await db.models.DivisionSeasonGame.create({ divisionSeasonId: season.id, gameId: game.id });
   });
 
+  const findLeagueByName = async (name: string) => {
+    const leagues = await db.models.League.findAll({ where: { gameWorldId: 1 } });
+    const league = leagues.find((candidate) => candidate.dataValues.config?.name === name);
+    if (!league) throw new Error(`League '${name}' not found`);
+    return league;
+  };
+
+  given(/^League "([^"]+)" has year (\d+) and a Game scheduled on "([^"]+)"$/, async (
+    name: string, year: string, scheduledDate: string,
+  ) => {
+    const league = await findLeagueByName(name);
+    await league.update({ year: Number(year), status: 'IN_SEASON' });
+    const division = await db.models.Division.findOne({ where: { leagueId: league.dataValues.id } })
+      ?? await db.models.Division.create({
+        leagueId: league.dataValues.id,
+        config: { name: `${name} Division`, defaultTeams: world.teamIds, format: ROUND_ROBIN_FORMAT },
+      });
+    const season = await db.models.DivisionSeason.create({
+      divisionId: division.dataValues.id, teamId: world.teamIds[0], year: Number(year),
+    });
+    const game = await db.models.Game.create({
+      homeTeam: world.teamIds[0], awayTeam: world.teamIds[1], scheduledDate,
+    });
+    await db.models.DivisionSeasonGame.create({ divisionSeasonId: season.dataValues.id, gameId: game.dataValues.id });
+  });
+
+  given(/^the same team plays in League "[^"]+" and League "[^"]+"$/, () => undefined);
+
   when(/^an admin cuts over League "[^"]+"$/, async () => {
     try {
       const body = await LeagueFactory(world.leagueId).cutover();
@@ -108,6 +137,9 @@ const registerSteps = ({ given, when, then }: any) => {
     } catch (error) {
       world.response = { statusCode: error instanceof DomainError ? error.statusCode : 500, error };
     }
+  });
+  when("an admin requests the team's schedule", async () => {
+    world.schedule = await TeamFactory(world.teamIds[0]).getSchedule(1);
   });
   when(/^an admin updates League "[^"]+"'s Division schedulingConfig startDate to "([^"]+)"$/, async (startDate: string) => {
     const division = await db.models.Division.findByPk(world.divisionId);
@@ -187,6 +219,14 @@ const registerSteps = ({ given, when, then }: any) => {
       include: [{ model: db.models.Game, through: { attributes: [] } }],
     });
     expect(divisionSeasons.flatMap((season: any) => season.dataValues.Games)).toHaveLength(0);
+  });
+  then('the response has no top-level year field', () => {
+    expect(world.schedule).not.toHaveProperty('year');
+  });
+  then(/^the Game scheduled on "([^"]+)" reports year (\d+)$/, (scheduledDate: string, year: string) => {
+    expect(world.schedule?.games).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scheduledDate: `${scheduledDate}T00:00:00.000Z`, year: Number(year) }),
+    ]));
   });
 };
 
