@@ -431,4 +431,46 @@ describe('LeagueFactory.start', () => {
     await expect(db.models.Game.count()).resolves.toBe(0);
     await expect(LeagueFactory(league.id).get()).resolves.toMatchObject({ status: 'CUTOVER' });
   });
+
+  // @spec SCL-008
+  it('derives GameWorld.config.inProgress as true when this League starts', async () => {
+    await LeagueFactory(league.id).start();
+
+    await expect(db.models.GameWorld.findByPk(gameWorld.id)).resolves.toMatchObject({
+      dataValues: { config: { inProgress: true } },
+    });
+  });
+});
+
+describe('LeagueFactory lifecycle GameWorld inProgress derivation', () => {
+  let gameWorld: any;
+  let firstLeague: any;
+  let secondLeague: any;
+
+  beforeEach(async () => {
+    await db.sync({ force: true });
+    gameWorld = await db.models.GameWorld.create({ year: 2027, config: { name: 'Shared World', inProgress: false } })
+      .then(({ dataValues }) => dataValues);
+    firstLeague = await LeagueFactory().create(gameWorld.id, {
+      name: 'First League', type: LeagueType.League, divisions: [],
+    }, []);
+    secondLeague = await LeagueFactory().create(gameWorld.id, {
+      name: 'Second League', type: LeagueType.League, divisions: [],
+    }, []);
+  });
+
+  // @spec SCL-008
+  it('keeps inProgress true until the last IN_SEASON sibling cuts over, preserving config', async () => {
+    await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: [firstLeague.id, secondLeague.id] } });
+
+    await LeagueFactory(firstLeague.id).cutover();
+    await expect(db.models.GameWorld.findByPk(gameWorld.id)).resolves.toMatchObject({
+      dataValues: { config: { name: 'Shared World', inProgress: true } },
+    });
+
+    await LeagueFactory(secondLeague.id).cutover();
+    await expect(db.models.GameWorld.findByPk(gameWorld.id)).resolves.toMatchObject({
+      dataValues: { config: { name: 'Shared World', inProgress: false } },
+    });
+  });
 });
