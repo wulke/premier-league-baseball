@@ -1,4 +1,4 @@
-// @spec SCL-006,SCL-007,SCL-008,SCL-010,SCL-011,SCL-017
+// @spec SCL-002..SCL-013,SCL-017
 // Season calendar lifecycle cutover/start acceptance bindings.
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
@@ -16,10 +16,6 @@ const ROUND_ROBIN_FORMAT = {
 };
 
 const feature = loadFeature(path.resolve(__dirname, '../features/season-calendar-lifecycle.feature'));
-feature.scenarios = feature.scenarios.filter((scenario) =>
-  scenario.tags.some((tag) => ['@spec:scl-006', '@spec:scl-007', '@spec:scl-008', '@spec:scl-010', '@spec:scl-011', '@spec:scl-017'].includes(tag))
-    && /^(start\(\) is unconstrained|The first League|A League with no scheduled Divisions|A later League|GameWorld\.config\.inProgress|schedulingConfig|A team's schedule)/.test(scenario.title)
-);
 
 interface WorldState {
   leagueId?: number;
