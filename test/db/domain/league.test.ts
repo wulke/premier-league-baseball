@@ -374,4 +374,20 @@ describe('LeagueFactory.start', () => {
     await expect(db.models.DivisionSeason.count({ where: { divisionId: division.id, year: 2027 } })).resolves.toBe(2);
     await expect(db.models.DivisionSeason.count({ where: { divisionId: division.id, year: 2030 } })).resolves.toBe(0);
   });
+
+  // @spec SCL-005
+  it('rolls back every Division when a later Division fails to generate', async () => {
+    const invalidDivision = await db.models.Division.create({
+      leagueId: league.id,
+      config: { name: 'Invalid Division', defaultTeams: teams.map(({ id }) => id) },
+    }).then(({ dataValues }) => dataValues);
+
+    await expect(LeagueFactory(league.id).start()).rejects.toThrow();
+
+    await expect(db.models.DivisionSeason.count({
+      where: { divisionId: { [Op.in]: [division.id, invalidDivision.id] } },
+    })).resolves.toBe(0);
+    await expect(db.models.Game.count()).resolves.toBe(0);
+    await expect(LeagueFactory(league.id).get()).resolves.toMatchObject({ status: 'CUTOVER' });
+  });
 });

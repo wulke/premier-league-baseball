@@ -157,7 +157,9 @@ LeagueFactory(id).start():
 5. FOR EACH division: DivisionFactory(divisionId).newSeason(league.year) —
    reuses existing generation logic unchanged (round-robin/knockout/byes/two-leg),
    but now takes league.year directly as the season year being generated (already
-   incremented by the prior cutover()), not GameWorld.year-derived.                 # SCL-009
+   incremented by the prior cutover()), not GameWorld.year-derived. All generation
+   writes and the status transition occur in one transaction, so a generation error
+   leaves every Division and the League unchanged.                                  # SCL-005,SCL-009
 6. league.status = 'IN_SEASON'                                                      # SCL-005
 7. Recompute GameWorld.config.inProgress.                                           # SCL-008
 8. IF gameWorld.currentDate == null:
@@ -199,6 +201,7 @@ remain the same after the target year is resolved.
 | e2 | `cutover()` called while a Division's season isn't complete | Rejected 422, same precondition `LeagueFactory.newSeason` enforced today, unchanged. | SCL-002 |
 | e3 | `start()` called while League is already `IN_SEASON` | Rejected 422 — status must be `CUTOVER`. | SCL-003 |
 | e4 | `start()` called with a configured Division whose `schedulingConfig.startDate` is on/before the live `GameWorld.currentDate` | Rejected 422 identifying the Division; nothing generated, no partial state. | SCL-004 |
+| e4a | A Division fails while `start()` is generating seasons after validation succeeds | The transaction rolls back all DivisionSeason/Game rows and preserves `CUTOVER`, so retrying does not encounter partial seasons. | SCL-005 |
 | e5 | `start()` on the very first League ever started in a GameWorld (`currentDate` still `null`) | No lower-bound check (nothing to be after yet); `currentDate` gets set from this call's own MIN. | SCL-004, SCL-006 |
 | e6 | `start()` on a League whose Divisions all lack `schedulingConfig` | No validation applies, games generate with no `scheduledDate` (existing behavior), `currentDate` untouched if already set, stays `null` if this was the only/first League to start. | SCL-006 |
 | e7 | Two Leagues in one GameWorld, one `IN_SEASON` one `CUTOVER` | `GameWorld.config.inProgress` is `true` (derived: at least one `IN_SEASON`); `simulateBatch`/`rapidSimulateSeason` still walk all Leagues — the `CUTOVER` one simply has zero reachable non-completed games since its `Division.newSeason()` for the new year hasn't run. | SCL-008, SCL-013 |
