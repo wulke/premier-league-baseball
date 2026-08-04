@@ -10,6 +10,7 @@ interface ILeague {
   get: () => any;
   isSeasonComplete: (year: number) => any;
   cutover: () => Promise<{ id: number; year: number; status: 'CUTOVER' }>;
+  start: () => Promise<{ id: number; year: number; status: 'IN_SEASON' }>;
   newSeason: (year: number) => any;
   getBracket: () => Promise<LeagueDivisionBracket[]>;
   getStandings: () => Promise<DivisionStandings[]>;
@@ -174,6 +175,33 @@ const LeagueFactory = (id?: number): ILeague => {
     return { id: league.id, year, status: 'CUTOVER' };
   };
 
+  // @spec SCL-003,SCL-004,SCL-005,SCL-009
+  const start = async (): Promise<{ id: number; year: number; status: 'IN_SEASON' }> => {
+    const league = await getLeague();
+    if (league.status !== 'CUTOVER') {
+      throw new DomainError('league is not in cutover', 422);
+    }
+
+    const gameWorld = await db.models.GameWorld.findByPk(league.gameWorldId)
+      .then((world) => {
+        if (!world) throw Error(`Invalid GameWorld '${league.gameWorldId}'`);
+        return world.dataValues;
+      });
+
+    for (const { dataValues: division } of league.Divisions) {
+      const startDate = division.config.schedulingConfig?.startDate;
+      if (gameWorld.currentDate != null && startDate != null && startDate <= gameWorld.currentDate) {
+        throw new DomainError(`Division ${division.id} start date must be after the GameWorld current date`, 422);
+      }
+    }
+
+    for (const { dataValues: division } of league.Divisions) {
+      await DivisionFactory(division.id).newSeason(league.year - 1, league.year);
+    }
+    await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: league.id } });
+    return { id: league.id, year: league.year, status: 'IN_SEASON' };
+  };
+
   // @spec API-001,API-002,API-003,API-004
   const getBracket = async (): Promise<LeagueDivisionBracket[]> => {
     const league = await db.models.League.findByPk(id, {
@@ -205,6 +233,7 @@ const LeagueFactory = (id?: number): ILeague => {
     getStandings,
     getToday,
     cutover,
+    start,
     create: async (gwId: number, config: LeagueConfig, teamIdRefs: number[]) => {
       // @spec CFG-001,SCL-001
       const gameWorld = await db.models.GameWorld.findByPk(gwId);

@@ -4,7 +4,7 @@ import db from '../client';
 
 interface IDivision {
   isSeasonComplete: (year: number) => Promise<boolean>;
-  newSeason: (year: number) => any;
+  newSeason: (completedYear: number, seasonYear?: number) => any;
   getBracket: (year: number) => Promise<DivisionBracket>;
   getStandings: (year: number, standingsConfig: StandingsConfig) => Promise<TeamStanding[]>;
 };
@@ -283,21 +283,19 @@ const DivisionFactory = (id?: number): IDivision => {
     isSeasonComplete,
     getBracket,
     getStandings,
-    // @spec CUP-009,CUP-010
-    newSeason: async (currentYear: number) => {
+    // @spec CUP-009,CUP-010,SCL-005,SCL-009
+    newSeason: async (completedYear: number, seasonYear = completedYear + 1) => {
       // (0) fetch division config
       const div = await db.models.Division.findByPk(id)
         .then((result) => { if (!result) throw Error('division error'); return result; })
         .then(({ dataValues }) => dataValues);
 
       // (1) verify current season is complete before starting a new one
-      if (!(await isSeasonComplete(currentYear))) throw Error(`Season is not complete for div='${id}' and year='${currentYear}'`);
-
-      const newYear = currentYear + 1;
+      if (!(await isSeasonComplete(completedYear))) throw Error(`Season is not complete for div='${id}' and year='${completedYear}'`);
       const { format, schedulingConfig } = div.config;
 
       // (2) get team ids for the new season
-      const teams: number[] = await getSeedTeamIdsForDivision(newYear);
+      const teams: number[] = await getSeedTeamIdsForDivision(seasonYear);
 
       if (format.structure === 'KNOCKOUT') {
         // --- T7: ELIMINATION PATH ---
@@ -307,7 +305,7 @@ const DivisionFactory = (id?: number): IDivision => {
           teams.map((teamId: number, slot: number) => ({
             divisionId: id,
             teamId,
-            year: newYear,
+            year: seasonYear,
             bracketSlot: slot,
           }))
         ).then((results) => results.map(({ dataValues }) => dataValues));
@@ -345,7 +343,7 @@ const DivisionFactory = (id?: number): IDivision => {
 
         // (3) create DivisionSeason entries
         const divTeams = await db.models.DivisionSeason.bulkCreate(
-          teams.map((teamId: number) => ({ divisionId: id, teamId, year: newYear }))
+          teams.map((teamId: number) => ({ divisionId: id, teamId, year: seasonYear }))
         ).then((results) => results.map(({ dataValues }) => dataValues));
 
         // (4) generate all matchday rounds with round numbers
