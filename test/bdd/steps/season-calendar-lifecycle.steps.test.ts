@@ -1,10 +1,12 @@
-// @spec SCL-006,SCL-007,SCL-008
+// @spec SCL-006,SCL-007,SCL-008,SCL-017
 // Season calendar lifecycle cutover/start acceptance bindings.
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import { LeagueFactory } from '../../../src/db/domain';
 import { DomainError } from '../../../src/db/domain/errors';
 import db from '../../../src/db/client';
+import { Endpoints } from '../../../src/api/endpoints';
+import { router } from '../../../src/api/router';
 
 const ROUND_ROBIN_FORMAT = {
   structure: 'ROUND_ROBIN' as const,
@@ -15,8 +17,8 @@ const ROUND_ROBIN_FORMAT = {
 
 const feature = loadFeature(path.resolve(__dirname, '../features/season-calendar-lifecycle.feature'));
 feature.scenarios = feature.scenarios.filter((scenario) =>
-  scenario.tags.some((tag) => ['@spec:scl-006', '@spec:scl-007', '@spec:scl-008'].includes(tag))
-    && /^(start\(\) is unconstrained|The first League|A League with no scheduled Divisions|A later League|GameWorld\.config\.inProgress)/.test(scenario.title)
+  scenario.tags.some((tag) => ['@spec:scl-006', '@spec:scl-007', '@spec:scl-008', '@spec:scl-017'].includes(tag))
+    && /^(start\(\) is unconstrained|The first League|A League with no scheduled Divisions|A later League|GameWorld\.config\.inProgress|schedulingConfig)/.test(scenario.title)
 );
 
 interface WorldState {
@@ -24,6 +26,7 @@ interface WorldState {
   divisionId?: number;
   teamIds: number[];
   response?: { statusCode: number; body?: unknown; error?: unknown };
+  divisionConfigBeforeUpdate?: Record<string, unknown>;
 }
 
 let world: WorldState;
@@ -106,6 +109,21 @@ const registerSteps = ({ given, when, then }: any) => {
       world.response = { statusCode: error instanceof DomainError ? error.statusCode : 500, error };
     }
   });
+  when(/^an admin updates League "[^"]+"'s Division schedulingConfig startDate to "([^"]+)"$/, async (startDate: string) => {
+    const division = await db.models.Division.findByPk(world.divisionId);
+    world.divisionConfigBeforeUpdate = division!.dataValues.config;
+    const layer = router.stack.find((route: any) => route.route?.path === Endpoints.UpdateDivisionSchedulingConfig && route.route?.methods?.patch);
+    if (!layer) throw new Error('PATCH division scheduling config route is not registered');
+
+    const res: any = { send: jest.fn(), status: jest.fn().mockReturnThis() };
+    await layer.route.stack[0].handle({
+      params: { divisionId: `${world.divisionId}` },
+      body: { schedulingConfig: { ...division!.dataValues.config.schedulingConfig, startDate } },
+    }, res);
+    world.response = res.status.mock.calls.length
+      ? { statusCode: res.status.mock.calls[0][0], error: res.send.mock.calls[0]?.[0] }
+      : { statusCode: 200, body: res.send.mock.calls[0]?.[0] };
+  });
 
   given(/^GameWorld \d+'s currentDate is "([^"]+)"$/, async (currentDate: string) => {
     await db.models.GameWorld.update({ currentDate }, { where: { id: 1 } });
@@ -150,6 +168,18 @@ const registerSteps = ({ given, when, then }: any) => {
   then('the response is a 422 error identifying the offending Division', () => {
     expect(world.response?.statusCode).toBe(422);
     expect((world.response?.error as Error).message).toContain('Division');
+  });
+  then(/^League "[^"]+"'s Division keeps its non-scheduling config fields$/, async () => {
+    const division = await db.models.Division.findByPk(world.divisionId);
+    const { schedulingConfig: _updatedSchedulingConfig, ...updatedConfig } = division!.dataValues.config;
+    const { schedulingConfig: _previousSchedulingConfig, ...previousConfig } = world.divisionConfigBeforeUpdate!;
+    expect(updatedConfig).toEqual(previousConfig);
+    expect(division!.dataValues.config.schedulingConfig.startDate).toBe('2028-03-06');
+  });
+  then(/^League "[^"]+"'s Division config is unchanged$/, async () => {
+    await expect(db.models.Division.findByPk(world.divisionId)).resolves.toMatchObject({
+      dataValues: { config: world.divisionConfigBeforeUpdate },
+    });
   });
   then(/^no Game exists for League "[^"]+"'s year (\d+)$/, async (year: string) => {
     const divisionSeasons = await db.models.DivisionSeason.findAll({

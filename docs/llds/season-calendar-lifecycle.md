@@ -115,6 +115,12 @@ UpdateDivisionSchedulingConfig = '/api/division/:divisionId/config'   // NEW, PA
 // NewSeason = '/api/gameWorld/:gwId/season/new'   // REMOVED — replaced by the two above
 ```
 
+`PATCH /api/division/:divisionId/config` accepts `{ schedulingConfig: SchedulingConfig }`.
+It loads the Division with its parent League, rejects a missing Division with 404, and rejects
+an `IN_SEASON` parent League with 422. On success it replaces only
+`Division.config.schedulingConfig`; every other key in the existing config JSON remains intact.
+No general DivisionConfig editing surface is introduced.
+
 ### HTTP lifecycle actions
 
 `POST /api/league/:leagueId/season/cutover` delegates only to
@@ -187,6 +193,12 @@ Recompute GameWorld.config.inProgress (called from both cutover() and start()):
   inProgress = EXISTS a sibling League under the same GameWorld with status === 'IN_SEASON'
   GameWorld.update({ config: { ...config, inProgress } })                          # SCL-008
 
+PATCH /api/division/:divisionId/config:
+1. Load the Division with its parent League (404 if the Division is missing).
+2. IF parent League.status !== 'CUTOVER': reject 422; do not update Division.config. # SCL-017
+3. Replace only `Division.config.schedulingConfig` with request.schedulingConfig and persist
+   the resulting config JSON.                                                       # SCL-017
+
 TeamFactory(id).getSchedule(gwId, leagueId?) [MODIFIED]:
   - Drop the `gameWorld.year` lookup for query purposes.
   - For each DivisionSeason candidate (still filtered by `leagueId` when given),
@@ -222,7 +234,8 @@ remain the same after the target year is resolved.
 | e10 | Migration: existing League has `DivisionSeason` rows already (any year) | Backfills `year = GameWorld.year`, `status = 'IN_SEASON'`. | SCL-012 |
 | e11 | Migration: existing League has zero `DivisionSeason` rows | Backfills `year = GameWorld.year`, `status = 'CUTOVER'`. | SCL-012 |
 | e12 | Migration: an existing League's only season is already fully complete | Backfills to `IN_SEASON` per e10 (simplification: presence, not completion, drives the inference) — operator can immediately call `cutover()` to correct it; not silently stuck wrong. | SCL-012 |
-| e13 | `PATCH /api/division/:divisionId/config` (schedulingConfig) attempted while parent League is `IN_SEASON` | Rejected 422 — scheduling config is only editable during `CUTOVER`. | SCL-017 |
+| e13 | `PATCH /api/division/:divisionId/config` (schedulingConfig) attempted while parent League is `IN_SEASON` | Rejected 422 and retain the exact existing config — scheduling config is only editable during `CUTOVER`. | SCL-017 |
+| e14 | A CUTOVER League updates a Division config containing format, teams, or other fields | Replace only `schedulingConfig`; retain all other keys verbatim. | SCL-017 |
 
 ## Traceability
 
