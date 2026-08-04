@@ -156,6 +156,7 @@ const GameRow = ({
   );
 };
 
+// @spec SCL-011
 const TeamCalendar = () => {
   // @spec UI-004
   const { gwId, teamId } = useParams();
@@ -276,7 +277,7 @@ const TeamCalendar = () => {
         </h1>
         {calendar && (
           <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
-            {calendar.year} Season
+            Schedule
             {total > 0 && (
               <span style={{ marginLeft: '10px', color: '#aaa' }}>
                 · {played} of {total} games played
