@@ -195,10 +195,17 @@ const LeagueFactory = (id?: number): ILeague => {
       }
     }
 
-    for (const { dataValues: division } of league.Divisions) {
-      await DivisionFactory(division.id).newSeason(league.year - 1, league.year);
+    const transaction = await db.transaction();
+    try {
+      for (const { dataValues: division } of league.Divisions) {
+        await DivisionFactory(division.id).newSeason(league.year - 1, league.year, { transaction });
+      }
+      await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: league.id }, transaction });
+      await transaction.commit();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
-    await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: league.id } });
     return { id: league.id, year: league.year, status: 'IN_SEASON' };
   };
 

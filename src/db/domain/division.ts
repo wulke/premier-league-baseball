@@ -1,10 +1,15 @@
 import { BracketGame, BracketRound, BracketTie, CompetitionFormat, DivisionBracket, SchedulingConfig, StandingsConfig, TeamStanding } from '../../api/models';
 import { getKnockoutRoundLabel, nextLowerPowerOfTwo, shuffleTeams } from './knockout';
 import db from '../client';
+import { Transaction } from 'sequelize';
+
+interface NewSeasonOptions {
+  transaction?: Transaction;
+}
 
 interface IDivision {
   isSeasonComplete: (year: number) => Promise<boolean>;
-  newSeason: (completedYear: number, seasonYear?: number) => any;
+  newSeason: (completedYear: number, seasonYear?: number, options?: NewSeasonOptions) => any;
   getBracket: (year: number) => Promise<DivisionBracket>;
   getStandings: (year: number, standingsConfig: StandingsConfig) => Promise<TeamStanding[]>;
 };
@@ -86,7 +91,8 @@ const DivisionFactory = (id?: number): IDivision => {
     pairings: [number, number][],
     round: number,
     scheduledDate: Date | undefined,
-    divTeams: any[]
+    divTeams: any[],
+    transaction?: Transaction,
   ): Promise<void> => {
     const games = await db.models.Game.bulkCreate(
       pairings.map(([homeTeam, awayTeam]) => ({
@@ -95,7 +101,7 @@ const DivisionFactory = (id?: number): IDivision => {
         round,
         ...(scheduledDate ? { scheduledDate } : {}),
       }))
-    ).then((results) => results.map(({ dataValues }) => dataValues));
+    , { transaction }).then((results) => results.map(({ dataValues }) => dataValues));
 
     await db.models.DivisionSeasonGame.bulkCreate(
       games.reduce((prev: any[], curr: any) => {
@@ -105,14 +111,15 @@ const DivisionFactory = (id?: number): IDivision => {
         if (awayDs) prev.push({ gameId: curr.id, divisionSeasonId: awayDs.id });
         return prev;
       }, [])
-    );
+    , { transaction });
   };
 
   const createByeGames = async (
     teamsWithByes: number[],
     round: number,
     scheduledDate: Date | undefined,
-    divTeams: any[]
+    divTeams: any[],
+    transaction?: Transaction,
   ): Promise<void> => {
     if (teamsWithByes.length === 0) return;
 
@@ -126,7 +133,7 @@ const DivisionFactory = (id?: number): IDivision => {
         awayTeamResult: null,
         ...(scheduledDate ? { scheduledDate } : {}),
       }))
-    ).then((results) => results.map(({ dataValues }) => dataValues));
+    , { transaction }).then((results) => results.map(({ dataValues }) => dataValues));
 
     await db.models.DivisionSeasonGame.bulkCreate(
       games.reduce((prev: any[], curr: any) => {
@@ -134,7 +141,7 @@ const DivisionFactory = (id?: number): IDivision => {
         if (homeDs) prev.push({ gameId: curr.id, divisionSeasonId: homeDs.id });
         return prev;
       }, [])
-    );
+    , { transaction });
   };
 
   /** compute scheduledDate for a round offset from the division's schedulingConfig */
@@ -284,9 +291,9 @@ const DivisionFactory = (id?: number): IDivision => {
     getBracket,
     getStandings,
     // @spec CUP-009,CUP-010,SCL-005,SCL-009
-    newSeason: async (completedYear: number, seasonYear = completedYear + 1) => {
+    newSeason: async (completedYear: number, seasonYear = completedYear + 1, { transaction }: NewSeasonOptions = {}) => {
       // (0) fetch division config
-      const div = await db.models.Division.findByPk(id)
+      const div = await db.models.Division.findByPk(id, { transaction })
         .then((result) => { if (!result) throw Error('division error'); return result; })
         .then(({ dataValues }) => dataValues);
 
@@ -308,7 +315,7 @@ const DivisionFactory = (id?: number): IDivision => {
             year: seasonYear,
             bracketSlot: slot,
           }))
-        ).then((results) => results.map(({ dataValues }) => dataValues));
+        , { transaction }).then((results) => results.map(({ dataValues }) => dataValues));
 
         // (4) pair teams for round 1
         //   REDRAW: random shuffle before pairing
@@ -328,13 +335,13 @@ const DivisionFactory = (id?: number): IDivision => {
         }
 
         // (5) create round 1 games
-        await createRoundGames(round1Pairings, 1, scheduleDate(schedulingConfig, 0), divTeams);
-        await createByeGames(teamsWithByes, 1, scheduleDate(schedulingConfig, 0), divTeams);
+        await createRoundGames(round1Pairings, 1, scheduleDate(schedulingConfig, 0), divTeams, transaction);
+        await createByeGames(teamsWithByes, 1, scheduleDate(schedulingConfig, 0), divTeams, transaction);
 
         // (6) TWO_LEG: also create round 1 return legs immediately (home/away swapped)
         if (format.legs === 'TWO_LEG') {
           const returnLeg: [number, number][] = round1Pairings.map(([h, a]) => [a, h]);
-          await createRoundGames(returnLeg, 1, scheduleDate(schedulingConfig, 1), divTeams);
+          await createRoundGames(returnLeg, 1, scheduleDate(schedulingConfig, 1), divTeams, transaction);
         }
 
         return divTeams;
@@ -344,14 +351,14 @@ const DivisionFactory = (id?: number): IDivision => {
         // (3) create DivisionSeason entries
         const divTeams = await db.models.DivisionSeason.bulkCreate(
           teams.map((teamId: number) => ({ divisionId: id, teamId, year: seasonYear }))
-        ).then((results) => results.map(({ dataValues }) => dataValues));
+        , { transaction }).then((results) => results.map(({ dataValues }) => dataValues));
 
         // (4) generate all matchday rounds with round numbers
         const matchdays = generateTableGames(teams, format);
 
         // (5) create games for each matchday in sequence
         for (const { round, pairings } of matchdays) {
-          await createRoundGames(pairings, round, scheduleDate(schedulingConfig, round - 1), divTeams);
+          await createRoundGames(pairings, round, scheduleDate(schedulingConfig, round - 1), divTeams, transaction);
         }
 
         return divTeams;
