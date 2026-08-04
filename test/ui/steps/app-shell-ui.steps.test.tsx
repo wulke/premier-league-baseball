@@ -1,4 +1,4 @@
-// @spec SHELL-001..SHELL-010 (AppShell + NavRail acceptance; real MemoryRouter locations).
+// @spec SHELL-001..SHELL-010, SIMUI-006,SIMUI-007 (AppShell + NavRail acceptance; real MemoryRouter locations).
 import React from 'react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -60,6 +60,8 @@ const registerSteps = ({ given, when, then }: any) => {
     world.Leagues[0].config.name = league;
   });
   given('GameWorld 1 has no leagues', () => { world.Leagues = []; });
+  given(/^GameWorld 1 has currentDate "([^"]+)"$/, (currentDate: string) => { world.currentDate = currentDate; });
+  given('GameWorld 1 has currentDate null', () => { world.currentDate = null as any; });
   when('the player opens the League route for GameWorld 1 and league 7', () => renderAt('/1/7'));
   when('the player opens the GameWorld route for GameWorld 1', () => renderAt('/1'));
   when('the GameWorld refreshes', async () => {
@@ -80,6 +82,11 @@ const registerSteps = ({ given, when, then }: any) => {
     expect(screen.queryByTestId('nav-competitions')).toBeNull();
   });
   then('the rail has no COMPETITIONS section', () => expect(screen.queryByTestId('nav-competitions')).toBeNull());
+  then(/^the WORLD section displays the formatted date "([^"]+)"$/, (date: string) => expect(screen.getByTestId('nav-current-date')).toHaveTextContent(date));
+  then('the WORLD section displays "No date set" in a muted style', () => {
+    expect(screen.getByTestId('nav-current-date')).toHaveTextContent('No date set');
+    expect(screen.getByTestId('nav-current-date')).toHaveStyle({ color: '#888' });
+  });
   then('no GET request is made for an undefined GameWorld', () => expect(calls).not.toContain('/api/gameWorld/undefined'));
   then('the rail shows WORLD linked to "/1"', () => expect(screen.getByTestId('nav-world-link')).toHaveAttribute('href', '/1'));
   then('the rail shows a competition link to "/1/7"', () => expect(screen.getByTestId('nav-league-7')).toHaveAttribute('href', '/1/7'));

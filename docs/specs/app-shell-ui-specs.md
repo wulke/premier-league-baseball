@@ -25,8 +25,8 @@ Upstream: [HLD](../high-level-design.md#hld-app-shell--left-nav-rail) ·
 | SHELL-008 | WHEN deriving active-section highlighting THE system SHALL derive it from the router (useLocation/useParams) and SHALL NOT key it on gw identity, so highlighting survives a refreshToken re-fetch | [ ] |
 | SHELL-009 | WHEN deriving active-section highlighting THE system SHALL light HOME on pathname "/", SHALL light WORLD on /:gwId with no deeper route, SHALL light the competition link whose leagueId matches on /:gwId/:leagueId, and SHALL keep the nearest lit section on deeper sub-routes (e.g. the team calendar) | [ ] |
 | SHELL-010 | WHEN any page renders inside the shell THE system SHALL NOT render a page-local app header or back-link breadcrumb; navigation SHALL live entirely in the NavRail (Home and every /:gwId page drop their former headers) | [ ] |
-| SIMUI-006 | WHEN the NavRail WORLD section renders IF gw.currentDate is set THE system SHALL display the formatted currentDate chip | [ ] |
-| SIMUI-007 | WHEN the NavRail WORLD section renders IF gw.currentDate is null THE system SHALL display a muted "No date set" placeholder | [ ] |
+| SIMUI-006 | WHEN the NavRail WORLD section renders IF gw.currentDate is set THE system SHALL display the formatted currentDate chip | [x] → #130 |
+| SIMUI-007 | WHEN the NavRail WORLD section renders IF gw.currentDate is null THE system SHALL display a muted "No date set" placeholder | [x] → #130 |
 | SIMUI-009 | WHEN the BatchSimulateControl in the NavRail renders IF gw.config.inProgress is true and gw.currentDate is set THE system SHALL show the "Simulate Today" button visible and enabled | [ ] |
 | SIMUI-010 | WHEN the BatchSimulateControl renders IF gw.config.inProgress is false THE system SHALL NOT show the "Simulate Today" button | [ ] |
 | SIMUI-011 | WHEN the BatchSimulateControl renders IF gw.currentDate is null THE system SHALL NOT show the "Simulate Today" button | [ ] |
@@ -54,7 +54,7 @@ superseded by SHELL-001.
 - Source decision: [Map #2 (UI Direction)](https://github.com/wulke/premier-league-baseball/issues/2) / [#10 (Page-by-page layout plan)](https://github.com/wulke/premier-league-baseball/issues/10)
 - **Provider specs (unchanged, owned by the simulate spec):** SIMUI-001…SIMUI-005 remain in [`simulate-game-ui-specs.md`](./simulate-game-ui-specs.md) — the shell mounts the provider (SHELL-002/003) but the fetch / invalidate / null contract is unchanged.
 - **TeamCalendar cross-flow (unchanged, owned by the simulate spec):** SIMUI-027/028 (batch success → TeamCalendar re-fetch) — reworded "AppHeader" → "nav rail".
-- **Gherkin:** `test/ui/features/app-shell-ui.feature` (NEW — SHELL-001…010, SIMUI-006/007 graduating) + edits to `test/ui/features/simulate-game-ui.feature` (re-homed SIMUI-009…018/027 step wording; the two chip scenarios re-tagged `@spec:SIMUI-006` / `@spec:SIMUI-007`).
+- **Gherkin:** `test/ui/features/app-shell-ui.feature` (SHELL-001…010 plus the graduated SIMUI-006/007 date-chip scenarios). `test/ui/features/simulate-game-ui.feature` retains provider, game-row, and batch-to-calendar scenarios.
 - **Code entry points** (each lists the IDs it implements):
   - `src/ui/components/app-shell.tsx` (`AppShell`) — SHELL-001/002
   - `src/ui/components/nav-rail.tsx` (`NavRail`) — SHELL-004…009, SIMUI-006/007

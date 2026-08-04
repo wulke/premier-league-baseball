@@ -29,6 +29,18 @@ Feature: App Shell left nav rail
     Then the rail shows WORLD linked to "/1"
     And the rail has no COMPETITIONS section
 
+  @spec:SIMUI-006
+  Scenario: NavRail WORLD section displays the currentDate chip when currentDate is set
+    Given GameWorld 1 has currentDate "2025-04-10"
+    When the player opens the GameWorld route for GameWorld 1
+    Then the WORLD section displays the formatted date "Apr 10, 2025"
+
+  @spec:SIMUI-007
+  Scenario: NavRail WORLD section displays a muted placeholder when currentDate is null
+    Given GameWorld 1 has currentDate null
+    When the player opens the GameWorld route for GameWorld 1
+    Then the WORLD section displays "No date set" in a muted style
+
   @spec:SHELL-008
   Scenario: Active league highlighting survives a GameWorld refresh
     Given GameWorld 1 is named "Test World" with league 7 named "Premier"

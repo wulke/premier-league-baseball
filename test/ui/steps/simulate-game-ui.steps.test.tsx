@@ -1,7 +1,6 @@
 // @spec:SIMUI-001..SIMUI-005, SIMUI-009..SIMUI-028 (simulate-game UI acceptance).
-// SIMUI-006/007 (currentDate chip display) are retired this branch — re-tagged @future by #44
-// and excluded here via the `not @future` tag filter. The @future Advance-Date scenario is
-// likewise excluded. 26 in-scope scenarios bind against this file.
+// SIMUI-006/007 (currentDate chip display) are implemented in app-shell-ui.steps.test.tsx.
+// The @future Advance-Date scenario is excluded here via the `not @future` tag filter.
 //
 // LID Arrow of Intent: these step definitions are authored AHEAD of the components they drive
 // (#23 GameWorldProvider, #24 BatchSimulateControl, #25 TeamCalendar/GameRow). Until those land the suite
@@ -689,16 +688,10 @@ const registerSteps = ({ given, when, then }: any) => {
   });
 
   // ── @future — validation-only no-ops ───────────────────────────────────────
-  // These scenarios are EXCLUDED from execution by the `not @future` tag filter
-  // (SIMUI-006/007 chip display → future left-pane nav; Advance-Date → future use
-  // case). jest-cucumber's `stepsMustMatchFeatureFile` validation runs on every
+  // This scenario is EXCLUDED from execution by the `not @future` tag filter.
+  // jest-cucumber's `stepsMustMatchFeatureFile` validation runs on every
   // scenario regardless of the tag skip, so these handlers exist solely to satisfy
   // that check. They never execute. Do not implement behaviour here.
-  when(/^AppHeader renders for GameWorld (\d+) with currentDate "([^"]+)"$/, () => {});
-  when(/^AppHeader renders for GameWorld (\d+)$/, () => {});
-  then(/^the header displays the formatted date "([^"]+)"$/, () => {});
-  given('the GameWorld currentDate is null', () => {});
-  then('the header displays "No date set" in a muted style', () => {});
   given('batch simulation completed with 1 skipped game', () => {});
   given('the warning banner is active', () => {});
   when('the player attempts to advance the GameWorld date', () => {});

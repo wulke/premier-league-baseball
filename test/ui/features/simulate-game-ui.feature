@@ -46,19 +46,6 @@ Feature: Simulate Game UI
     Then the context gw is null
     And child pages render without crashing
 
-  # ─── Flow B: AppHeader — Date Chip ────────────────────────────────────────────
-
-  @future
-  Scenario: AppHeader displays the currentDate chip when currentDate is set
-    When AppHeader renders for GameWorld 1 with currentDate "2025-04-10"
-    Then the header displays the formatted date "Apr 10, 2025"
-
-  @future
-  Scenario: AppHeader displays a muted placeholder when currentDate is null
-    Given the GameWorld currentDate is null
-    When AppHeader renders for GameWorld 1
-    Then the header displays "No date set" in a muted style
-
   # ─── Flow B: AppHeader — Batch Simulate Button Guards ─────────────────────────
 
   @spec:SIMUI-009
