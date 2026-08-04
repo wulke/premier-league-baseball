@@ -115,6 +115,15 @@ UpdateDivisionSchedulingConfig = '/api/division/:divisionId/config'   // NEW, PA
 // NewSeason = '/api/gameWorld/:gwId/season/new'   // REMOVED — replaced by the two above
 ```
 
+### HTTP lifecycle actions
+
+`POST /api/league/:leagueId/season/cutover` delegates only to
+`LeagueFactory(Number(leagueId)).cutover()`. `POST /api/league/:leagueId/season/start`
+similarly delegates only to `start()`. Both routes send the returned lifecycle payload and use
+the router's standard error boundary, preserving a domain error's `statusCode` in the HTTP
+response. The prior GameWorld-scoped `/season/new` route and API handler are absent: a caller
+must choose the League and lifecycle transition explicitly.
+
 ```ts
 // src/api/models.ts — TeamSeasonGame gains `year`; TeamSeasonCalendar drops top-level `year`
 interface TeamSeasonGame {
