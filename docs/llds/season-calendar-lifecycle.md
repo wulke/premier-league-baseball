@@ -1,8 +1,9 @@
 # LLD: Season Calendar Lifecycle
 
 > EARS: `docs/specs/season-calendar-lifecycle-specs.md` (`SCL-001`…`SCL-017`) ·
-> Gherkin: `test/bdd/features/season-calendar-lifecycle.feature` (`SCL-002` bound in #117;
-> remaining scenarios follow their implementation slices)
+> Gherkin: `test/bdd/features/season-calendar-lifecycle.feature` (`SCL-002` bound in #117,
+> `SCL-006`/`SCL-007` bound in #119, `SCL-008` bound in #120; remaining scenarios follow
+> their implementation slices)
 > Origin: issue #114, settled via `/grill-me`
 
 > Implementation: `SCL-006` and `SCL-007` are delivered by issue #119.

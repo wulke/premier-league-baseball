@@ -1,4 +1,4 @@
-// @spec SCL-006,SCL-007
+// @spec SCL-006,SCL-007,SCL-008
 // Season calendar lifecycle cutover/start acceptance bindings.
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
@@ -15,8 +15,8 @@ const ROUND_ROBIN_FORMAT = {
 
 const feature = loadFeature(path.resolve(__dirname, '../features/season-calendar-lifecycle.feature'));
 feature.scenarios = feature.scenarios.filter((scenario) =>
-  scenario.tags.some((tag) => ['@spec:scl-006', '@spec:scl-007'].includes(tag))
-    && /^(start\(\) is unconstrained|The first League|A League with no scheduled Divisions|A later League)/.test(scenario.title)
+  scenario.tags.some((tag) => ['@spec:scl-006', '@spec:scl-007', '@spec:scl-008'].includes(tag))
+    && /^(start\(\) is unconstrained|The first League|A League with no scheduled Divisions|A later League|GameWorld\.config\.inProgress)/.test(scenario.title)
 );
 
 interface WorldState {
@@ -129,6 +129,11 @@ const registerSteps = ({ given, when, then }: any) => {
   });
   then(/^GameWorld \d+'s currentDate remains unset$/, async () => {
     await expect(db.models.GameWorld.findByPk(1)).resolves.toMatchObject({ dataValues: { currentDate: null } });
+  });
+  then(/^GameWorld \d+'s config\.inProgress is (true|false)$/, async (inProgress: string) => {
+    await expect(db.models.GameWorld.findByPk(1)).resolves.toMatchObject({
+      dataValues: { config: { inProgress: inProgress === 'true' } },
+    });
   });
   then(/^League "[^"]+"'s status is still (CUTOVER|IN_SEASON)$/, async (status: string) => {
     await expect(readLeague()).resolves.toMatchObject({ status });
