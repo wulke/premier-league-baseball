@@ -1,7 +1,7 @@
 import { DefaultStandingsConfig, DivisionStandings, LeagueConfig, LeagueDivisionBracket, StandingsConfig, TeamSeasonGame, resolveCompetitionFormat } from "../../api/models";
 import { DivisionFactory } from './division';
 import db from '../client';
-import { Op } from 'sequelize';
+import { Op, Transaction } from 'sequelize';
 import { DomainError } from './errors';
 import { getKnockoutRoundLabel } from './knockout';
 
@@ -19,7 +19,7 @@ interface ILeague {
 
 const LeagueFactory = (id?: number): ILeague => {
   // @spec SCL-008
-  const recomputeGameWorldInProgress = async (gameWorldId: number, transaction: any) => {
+  const recomputeGameWorldInProgress = async (gameWorldId: number, transaction: Transaction) => {
     const gameWorld = await db.models.GameWorld.findByPk(gameWorldId, { transaction });
     if (!gameWorld) throw Error(`Invalid GameWorld '${gameWorldId}'`);
 

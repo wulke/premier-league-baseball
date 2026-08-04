@@ -39,7 +39,7 @@ const GameWorldFactory = (id?: number): IGameWorld => {
     find: async () => 
       id ? await db.models.GameWorld.findByPk(id, { include: [db.models.League, db.models.Team]})
          : await db.models.GameWorld.findAll(),
-    // @spec GWS-001
+    // @spec GWS-001,SCL-008
     newSeason: async () => {
       if (!id) throw Error('no game world to start new season');
       return await db.models.GameWorld.findByPk(id, { include: db.models.League })
@@ -52,11 +52,14 @@ const GameWorldFactory = (id?: number): IGameWorld => {
           try {
             // (1) increment year <= do we want to move this?
             await db.models.GameWorld.increment({ year: 1 }, { where: { id: gw.id }});
-            await db.models.GameWorld.update({ config: { ...gw.config, inProgress: true }}, { where: { id: gw.id }});
             // (2) for each League.newSeason()
             for (const { dataValues } of gw.Leagues) {
               await LeagueFactory(dataValues.id).newSeason(currentYear);
             }
+            const inProgress = await db.models.League.count({
+              where: { gameWorldId: gw.id, status: 'IN_SEASON' },
+            }) > 0;
+            await db.models.GameWorld.update({ config: { ...gw.config, inProgress }}, { where: { id: gw.id }});
           } catch (error) {
             console.error(error);
             throw error;

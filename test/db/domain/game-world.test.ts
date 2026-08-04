@@ -139,6 +139,17 @@ describe('GameWorldFactory', () => {
     // todo write the tests...
   }, 15000);
 
+  // @spec SCL-008
+  it('newSeason: derives inProgress from League statuses instead of setting it true', async () => {
+    const gw = await GameWorldFactory().create(useDefaultGameWorld());
+
+    await GameWorldFactory(gw.id).newSeason();
+
+    await expect(db.models.GameWorld.findByPk(gw.id)).resolves.toMatchObject({
+      dataValues: { config: { inProgress: false } },
+    });
+  }, 15000);
+
   // @spec GWS-001
   it('newSeason: rethrows errors from failed rollover work', async () => {
     const gw = await GameWorldFactory().create(useDefaultGameWorld());
