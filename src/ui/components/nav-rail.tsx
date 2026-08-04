@@ -4,6 +4,17 @@ import { Link, useLocation, useParams } from 'react-router';
 import { useGameWorldContext } from '../context/game-world-context';
 import { BatchSimulateControl } from './batch-simulate-control';
 
+// @spec SIMUI-006
+const formatCurrentDate = (currentDate: string) => {
+  const [year, month, day] = currentDate.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(year, month - 1, day));
+};
+
+// @spec SHELL-004..SHELL-009, SIMUI-006,SIMUI-007
 const NavRail = () => {
   const { gw } = useGameWorldContext();
   const { pathname } = useLocation();
@@ -32,6 +43,10 @@ const NavRail = () => {
           <Link data-testid="nav-world-link" data-active={worldActive ? 'true' : 'false'} to={`/${gwId}`} style={linkStyle(worldActive)}>
             {gw.config?.name ?? `Game World ${gwId}`}
           </Link>
+          {/* @spec SIMUI-006,SIMUI-007 */}
+          <span data-testid="nav-current-date" style={{ display: 'block', color: '#888', fontSize: '0.85rem', margin: '4px 0 10px' }}>
+            {gw.currentDate ? formatCurrentDate(gw.currentDate) : 'No date set'}
+          </span>
           <BatchSimulateControl />
         </section>
       )}
