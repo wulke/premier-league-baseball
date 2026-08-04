@@ -234,7 +234,7 @@ const registerSteps = ({ given, when, then }: any) => {
   then(/^League "[^"]+"'s status is still (CUTOVER|IN_SEASON)$/, async (status: string) => {
     await expect(readLeague()).resolves.toMatchObject({ status });
   });
-  then("League \"MLS\"'s status is CUTOVER", async () => {
+  then(/^League "[^"]+"'s status is CUTOVER$/, async () => {
     await expect(readLeague()).resolves.toMatchObject({ status: 'CUTOVER' });
   });
   then(/^League "(.+)"'s year is still (\d+)$/, async (_name: string, year: string) => {
