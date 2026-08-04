@@ -18,6 +18,20 @@ interface ILeague {
 };
 
 const LeagueFactory = (id?: number): ILeague => {
+  // @spec SCL-008
+  const recomputeGameWorldInProgress = async (gameWorldId: number, transaction: any) => {
+    const gameWorld = await db.models.GameWorld.findByPk(gameWorldId, { transaction });
+    if (!gameWorld) throw Error(`Invalid GameWorld '${gameWorldId}'`);
+
+    const inProgress = await db.models.League.count({
+      where: { gameWorldId, status: 'IN_SEASON' },
+      transaction,
+    }) > 0;
+    await db.models.GameWorld.update({
+      config: { ...gameWorld.dataValues.config, inProgress },
+    }, { where: { id: gameWorldId }, transaction });
+  };
+
   const getLeague = async () => {
     /* todo: support for dynamic options */
     return await db.models.League.findByPk(id, { include: { model: db.models.Division, include: [db.models.Team] }})
@@ -160,7 +174,7 @@ const LeagueFactory = (id?: number): ILeague => {
     }).sort((a, b) => (a.scheduledDate ?? '').localeCompare(b.scheduledDate ?? ''));
   };
 
-  // @spec SCL-002
+  // @spec SCL-002,SCL-008
   const cutover = async (): Promise<{ id: number; year: number; status: 'CUTOVER' }> => {
     const league = await getLeague();
     if (league.status !== 'IN_SEASON') {
@@ -171,11 +185,19 @@ const LeagueFactory = (id?: number): ILeague => {
     }
 
     const year = league.year + 1;
-    await db.models.League.update({ year, status: 'CUTOVER' }, { where: { id: league.id } });
+    const transaction = await db.transaction();
+    try {
+      await db.models.League.update({ year, status: 'CUTOVER' }, { where: { id: league.id }, transaction });
+      await recomputeGameWorldInProgress(league.gameWorldId, transaction);
+      await transaction.commit();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
     return { id: league.id, year, status: 'CUTOVER' };
   };
 
-  // @spec SCL-003,SCL-004,SCL-005,SCL-006,SCL-007,SCL-009
+  // @spec SCL-003,SCL-004,SCL-005,SCL-006,SCL-007,SCL-008,SCL-009
   const start = async (): Promise<{ id: number; year: number; status: 'IN_SEASON' }> => {
     const league = await getLeague();
     if (league.status !== 'CUTOVER') {
@@ -201,6 +223,7 @@ const LeagueFactory = (id?: number): ILeague => {
         await DivisionFactory(division.id).newSeason(league.year - 1, league.year, { transaction });
       }
       await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: league.id }, transaction });
+      await recomputeGameWorldInProgress(league.gameWorldId, transaction);
       // @spec SCL-006,SCL-007
       if (gameWorld.currentDate == null) {
         const startDates = league.Divisions
