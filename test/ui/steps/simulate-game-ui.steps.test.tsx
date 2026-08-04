@@ -1,10 +1,10 @@
-// @spec:SIMUI-001..SIMUI-005, SIMUI-008..SIMUI-028 (simulate-game UI acceptance).
+// @spec:SIMUI-001..SIMUI-005, SIMUI-009..SIMUI-028 (simulate-game UI acceptance).
 // SIMUI-006/007 (currentDate chip display) are retired this branch — re-tagged @future by #44
 // and excluded here via the `not @future` tag filter. The @future Advance-Date scenario is
 // likewise excluded. 26 in-scope scenarios bind against this file.
 //
 // LID Arrow of Intent: these step definitions are authored AHEAD of the components they drive
-// (#23 GameWorldProvider, #24 AppHeader, #25 TeamCalendar/GameRow). Until those land the suite
+// (#23 GameWorldProvider, #24 BatchSimulateControl, #25 TeamCalendar/GameRow). Until those land the suite
 // is RED by design (the component modules do not yet exist). The shared step world, the
 // `fetch` router, and the data-testid contracts below are the blueprint the implementation
 // tickets turn green against.
@@ -12,7 +12,7 @@
 // Test contracts this file assumes (to be provided by the implementation tickets):
 //   - GameWorldProvider({ gwId, children }) exposes { gw, refreshToken, invalidate } via context
 //     (useGameWorldContext). See docs/llds/simulate-game-ui.md Flow C. [#23]
-//   - AppHeader renders root [data-testid="app-header"]; the batch "Simulate Today" button is
+//   - BatchSimulateControl renders the batch "Simulate Today" button as
 //     [data-testid="batch-simulate"] (label toggles "Simulate Today" / "Simulating…"); batch
 //     error region is [role="alert"]; Retry button by name /retry/i. [#24]
 //   - TeamCalendar GameRow: Simulate button [data-testid="simulate-<gameId>"], spinner
@@ -350,25 +350,6 @@ const registerSteps = ({ given, when, then }: any) => {
 
   then('child pages render without crashing', () => {
     expect(screen.getByTestId('context-probe')).toBeInTheDocument();
-  });
-
-  // ── Flow B: AppHeader presence + batch guards (SIMUI-008..018) ──────────────
-  then('the AppHeader is present on the GameWorld page', async () => {
-    mountProvider(<GameWorld />, 'gameworld');
-    await flush();
-    expect(screen.getByTestId('app-header')).toBeInTheDocument();
-  });
-
-  then('the AppHeader is present on the League page', async () => {
-    mountProvider(<League />, 'league');
-    await flush();
-    expect(screen.getByTestId('app-header')).toBeInTheDocument();
-  });
-
-  then('the AppHeader is present on the TeamCalendar page', async () => {
-    mountProvider(<TeamCalendar />, 'calendar');
-    await flush();
-    expect(screen.getByTestId('app-header')).toBeInTheDocument();
   });
 
   given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
