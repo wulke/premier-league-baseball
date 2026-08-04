@@ -111,6 +111,7 @@ const GameFactory = (id?: number) => {
       return updated!.dataValues;
     },
 
+    // @spec SCL-013
     simulateBatch: async (gwId: number, endDate?: string) => {
       const gameWorld = await db.models.GameWorld.findByPk(gwId);
       if (!gameWorld) throw new DomainError('the GameWorld was not found', 404);

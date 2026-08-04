@@ -1,9 +1,7 @@
 # LLD: Season Calendar Lifecycle
 
 > EARS: `docs/specs/season-calendar-lifecycle-specs.md` (`SCL-001`…`SCL-017`) ·
-> Gherkin: `test/bdd/features/season-calendar-lifecycle.feature` (`SCL-002` bound in #117,
-> `SCL-006`/`SCL-007` bound in #119, `SCL-008` bound in #120; remaining scenarios follow
-> their implementation slices)
+> Gherkin: `test/bdd/features/season-calendar-lifecycle.feature` (all scenarios bound in #124)
 > Origin: issue #114, settled via `/grill-me`
 
 > Implementation: `SCL-006` and `SCL-007` are delivered by issue #119.
@@ -244,4 +242,4 @@ remain the same after the target year is resolved.
 | **This LLD** | `docs/llds/season-calendar-lifecycle.md` |
 | EARS | `docs/specs/season-calendar-lifecycle-specs.md` — `SCL-001`…`SCL-017` |
 | Gherkin | `test/bdd/features/season-calendar-lifecycle.feature` (new) |
-| Code | `src/db/model/league.ts` (MODIFIED), `src/db/domain/league.ts` (MODIFIED — `cutover`/`start` replace `newSeason` and recompute `config.inProgress`), `src/db/domain/division.ts` (MODIFIED — CUTOVER-gated scheduling config update), `src/db/domain/team.ts` (MODIFIED — `getSchedule`), `src/api/models.ts` (MODIFIED — `TeamSeasonGame`/`TeamSeasonCalendar`), `src/api/endpoints.ts`, `src/api/handlers.ts`, `src/api/router.ts` |
+| Code | `src/db/model/league.ts` and `src/db/migrations/league-year-status.ts` (League lifecycle schema/backfill), `src/db/domain/league.ts` (`cutover`/`start` and derived `config.inProgress`), `src/db/domain/division.ts` (CUTOVER-gated scheduling config update), `src/db/domain/team.ts` (per-League `getSchedule` years), `src/db/domain/game.ts` (all-League batch reachability), `src/db/domain/game-world.ts`, `src/index.ts`, `src/api/models.ts` (`TeamSeasonGame`/`TeamSeasonCalendar`), `src/api/endpoints.ts`, `src/api/handlers.ts`, `src/api/router.ts`, and `src/ui/components/batch-simulate-control.tsx` (unchanged `canBatch` guard after the AppHeader relocation) |

@@ -1,12 +1,13 @@
-// @spec SCL-006,SCL-007,SCL-008,SCL-010,SCL-011,SCL-017
+// @spec SCL-002..SCL-013,SCL-017
 // Season calendar lifecycle cutover/start acceptance bindings.
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
-import { LeagueFactory, TeamFactory } from '../../../src/db/domain';
+import { GameFactory, LeagueFactory, TeamFactory } from '../../../src/db/domain';
 import { DomainError } from '../../../src/db/domain/errors';
 import db from '../../../src/db/client';
 import { Endpoints } from '../../../src/api/endpoints';
 import { router } from '../../../src/api/router';
+import { migrateLeagueYearAndStatus } from '../../../src/db/migrations/league-year-status';
 
 const ROUND_ROBIN_FORMAT = {
   structure: 'ROUND_ROBIN' as const,
@@ -16,10 +17,6 @@ const ROUND_ROBIN_FORMAT = {
 };
 
 const feature = loadFeature(path.resolve(__dirname, '../features/season-calendar-lifecycle.feature'));
-feature.scenarios = feature.scenarios.filter((scenario) =>
-  scenario.tags.some((tag) => ['@spec:scl-006', '@spec:scl-007', '@spec:scl-008', '@spec:scl-010', '@spec:scl-011', '@spec:scl-017'].includes(tag))
-    && /^(start\(\) is unconstrained|The first League|A League with no scheduled Divisions|A later League|GameWorld\.config\.inProgress|schedulingConfig|A team's schedule)/.test(scenario.title)
-);
 
 interface WorldState {
   leagueId?: number;
@@ -28,6 +25,7 @@ interface WorldState {
   response?: { statusCode: number; body?: unknown; error?: unknown };
   divisionConfigBeforeUpdate?: Record<string, unknown>;
   schedule?: any;
+  legacyLeagueId?: number;
 }
 
 let world: WorldState;
@@ -77,7 +75,7 @@ const registerSteps = ({ given, when, then }: any) => {
     world.leagueId = league.id;
   });
 
-  given(/^League "[^"]+" has an incomplete Division season for year (\d+)$/, async (year: string) => {
+  given(/^League "(.+)" has an incomplete Division season for year (\d+)$/, async (_name: string, year: string) => {
     const season = await db.models.DivisionSeason.create({ divisionId: world.divisionId, teamId: world.teamIds[0], year: Number(year) })
       .then(({ dataValues }) => dataValues);
     const game = await db.models.Game.create({ homeTeam: world.teamIds[0], awayTeam: world.teamIds[1], status: 'SCHEDULED' })
@@ -121,6 +119,43 @@ const registerSteps = ({ given, when, then }: any) => {
 
   given(/^the same team plays in League "[^"]+" and League "[^"]+"$/, () => undefined);
 
+  given(/^League "([^"]+)"'s status is IN_SEASON with a Game scheduled on "([^"]+)"$/, async (
+    name: string, scheduledDate: string,
+  ) => {
+    const league = await findLeagueByName(name);
+    await league.update({ status: 'IN_SEASON' });
+    const division = await db.models.Division.findOne({ where: { leagueId: league.dataValues.id } });
+    const season = await db.models.DivisionSeason.create({
+      divisionId: division!.dataValues.id, teamId: world.teamIds[0], year: league.dataValues.year,
+    });
+    const game = await db.models.Game.create({
+      homeTeam: world.teamIds[0], awayTeam: world.teamIds[1], scheduledDate,
+    });
+    await db.models.DivisionSeasonGame.create({ divisionSeasonId: season.dataValues.id, gameId: game.dataValues.id });
+  });
+
+  const createLegacyLeague = async (withDivisionSeason: boolean) => {
+    await db.getQueryInterface().removeColumn('Leagues', 'status');
+    await db.getQueryInterface().removeColumn('Leagues', 'year');
+    await db.query(
+      "INSERT INTO Leagues (config, gameWorldId, createdAt, updatedAt) VALUES ('{}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+    );
+    const [rows] = await db.query('SELECT id FROM Leagues WHERE gameWorldId = 1 ORDER BY id DESC LIMIT 1');
+    world.legacyLeagueId = (rows as Array<{ id: number }>)[0].id;
+    if (!withDivisionSeason) return;
+
+    const division = await db.models.Division.create({ config: {} }).then(({ dataValues }) => dataValues);
+    await db.query('UPDATE Divisions SET leagueId = ? WHERE id = ?', { replacements: [world.legacyLeagueId, division.id] });
+    await db.models.DivisionSeason.create({ divisionId: division.id, teamId: world.teamIds[0], year: 2027 });
+  };
+
+  given('a legacy League exists with GameWorld.year 2027 and existing DivisionSeason rows', async () => {
+    await createLegacyLeague(true);
+  });
+  given('a legacy League exists with GameWorld.year 2027 and no DivisionSeason rows', async () => {
+    await createLegacyLeague(false);
+  });
+
   when(/^an admin cuts over League "[^"]+"$/, async () => {
     try {
       const body = await LeagueFactory(world.leagueId).cutover();
@@ -140,6 +175,17 @@ const registerSteps = ({ given, when, then }: any) => {
   });
   when("an admin requests the team's schedule", async () => {
     world.schedule = await TeamFactory(world.teamIds[0]).getSchedule(1);
+  });
+  when(/^an admin batch-simulates GameWorld (\d+)$/, async (gameWorldId: string) => {
+    try {
+      const body = await GameFactory().simulateBatch(Number(gameWorldId));
+      world.response = { statusCode: 200, body };
+    } catch (error) {
+      world.response = { statusCode: error instanceof DomainError ? error.statusCode : 500, error };
+    }
+  });
+  when('the season-calendar-lifecycle migration runs', async () => {
+    await migrateLeagueYearAndStatus(db);
   });
   when(/^an admin updates League "[^"]+"'s Division schedulingConfig startDate to "([^"]+)"$/, async (startDate: string) => {
     const division = await db.models.Division.findByPk(world.divisionId);
@@ -170,7 +216,7 @@ const registerSteps = ({ given, when, then }: any) => {
   });
 
   then(/^the response is a (\d+) error$/, (statusCode: string) => expect(world.response?.statusCode).toBe(Number(statusCode)));
-  then('the response is 200', () => expect(world.response?.statusCode).toBe(200));
+  then(/^the response is (\d+)$/, (statusCode: string) => expect(world.response?.statusCode).toBe(Number(statusCode)));
   then(/^GameWorld \d+'s currentDate has been bootstrapped to "([^"]+)"$/, async (currentDate: string) => {
     await expect(db.models.GameWorld.findByPk(1)).resolves.toMatchObject({ dataValues: { currentDate } });
   });
@@ -188,7 +234,10 @@ const registerSteps = ({ given, when, then }: any) => {
   then(/^League "[^"]+"'s status is still (CUTOVER|IN_SEASON)$/, async (status: string) => {
     await expect(readLeague()).resolves.toMatchObject({ status });
   });
-  then(/^League "[^"]+"'s year is still (\d+)$/, async (year: string) => {
+  then(/^League "[^"]+"'s status is CUTOVER$/, async () => {
+    await expect(readLeague()).resolves.toMatchObject({ status: 'CUTOVER' });
+  });
+  then(/^League "(.+)"'s year is still (\d+)$/, async (_name: string, year: string) => {
     await expect(readLeague()).resolves.toMatchObject({ year: Number(year) });
   });
   then(/^League "[^"]+"'s year is (\d+)$/, async (year: string) => {
@@ -227,6 +276,28 @@ const registerSteps = ({ given, when, then }: any) => {
     expect(world.schedule?.games).toEqual(expect.arrayContaining([
       expect.objectContaining({ scheduledDate: `${scheduledDate}T00:00:00.000Z`, year: Number(year) }),
     ]));
+  });
+  then(/^League "([^"]+)"'s Game scheduled on "[^"]+" is COMPLETED$/, async (name: string) => {
+    const league = await findLeagueByName(name);
+    const divisions = await db.models.Division.findAll({ where: { leagueId: league.dataValues.id } });
+    const seasons = await db.models.DivisionSeason.findAll({ where: { divisionId: divisions.map((division) => division.dataValues.id) } });
+    const links = await db.models.DivisionSeasonGame.findAll({ where: { divisionSeasonId: seasons.map((season) => season.dataValues.id) } });
+    await expect(db.models.Game.findByPk(links[0].dataValues.gameId)).resolves.toMatchObject({ dataValues: { status: 'COMPLETED' } });
+  });
+  then(/^League "([^"]+)" has no Games$/, async (name: string) => {
+    const league = await findLeagueByName(name);
+    const divisions = await db.models.Division.findAll({ where: { leagueId: league.dataValues.id } });
+    const seasons = await db.models.DivisionSeason.findAll({ where: { divisionId: divisions.map((division) => division.dataValues.id) } });
+    const links = await db.models.DivisionSeasonGame.findAll({ where: { divisionSeasonId: seasons.map((season) => season.dataValues.id) } });
+    expect(links).toHaveLength(0);
+  });
+  then(/^the legacy League's year is (\d+)$/, async (year: string) => {
+    const [rows] = await db.query('SELECT year FROM Leagues WHERE id = ?', { replacements: [world.legacyLeagueId] });
+    expect(rows).toEqual([{ year: Number(year) }]);
+  });
+  then(/^the legacy League's status is (CUTOVER|IN_SEASON)$/, async (status: string) => {
+    const [rows] = await db.query('SELECT status FROM Leagues WHERE id = ?', { replacements: [world.legacyLeagueId] });
+    expect(rows).toEqual([{ status }]);
   });
 };
 
