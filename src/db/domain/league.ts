@@ -175,7 +175,7 @@ const LeagueFactory = (id?: number): ILeague => {
     return { id: league.id, year, status: 'CUTOVER' };
   };
 
-  // @spec SCL-003,SCL-004,SCL-005,SCL-009
+  // @spec SCL-003,SCL-004,SCL-005,SCL-006,SCL-007,SCL-009
   const start = async (): Promise<{ id: number; year: number; status: 'IN_SEASON' }> => {
     const league = await getLeague();
     if (league.status !== 'CUTOVER') {
@@ -201,6 +201,17 @@ const LeagueFactory = (id?: number): ILeague => {
         await DivisionFactory(division.id).newSeason(league.year - 1, league.year, { transaction });
       }
       await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: league.id }, transaction });
+      // @spec SCL-006,SCL-007
+      if (gameWorld.currentDate == null) {
+        const startDates = league.Divisions
+          .map(({ dataValues: division }) => division.config.schedulingConfig?.startDate)
+          .filter((startDate): startDate is string => startDate != null);
+        if (startDates.length > 0) {
+          await db.models.GameWorld.update({ currentDate: startDates.sort()[0] }, {
+            where: { id: gameWorld.id }, transaction,
+          });
+        }
+      }
       await transaction.commit();
     } catch (error) {
       await transaction.rollback();
