@@ -14,11 +14,11 @@
     "clean": "rm -rf dist",
     "start": "node dist/src/index.js",
     "start:docker": "docker run -p 8080:3000 premier-league-baseball",
-    "test": "DOTENV_CONFIG_PATH=.env.test DOTENV_CONFIG_OVERRIDE=true node -r dotenv/config ./node_modules/jest/bin/jest.js",
-    "test:coverage": "DOTENV_CONFIG_PATH=.env.test DOTENV_CONFIG_OVERRIDE=true node -r dotenv/config ./node_modules/jest/bin/jest.js --coverage",
-    "test:single": "DOTENV_CONFIG_PATH=.env.test DOTENV_CONFIG_OVERRIDE=true node -r dotenv/config ./node_modules/jest/bin/jest.js -i",
-    "test:bdd": "DOTENV_CONFIG_PATH=.env.test DOTENV_CONFIG_OVERRIDE=true node -r dotenv/config ./node_modules/jest/bin/jest.js test/bdd",
-    "test:ui": "DOTENV_CONFIG_PATH=.env.test DOTENV_CONFIG_OVERRIDE=true node -r dotenv/config ./node_modules/jest/bin/jest.js --selectProjects ui"
+    "test": "NODE_ENV=test jest",
+    "test:coverage": "NODE_ENV=test jest --coverage",
+    "test:single": "NODE_ENV=test jest -i",
+    "test:bdd": "NODE_ENV=test jest test/bdd",
+    "test:ui": "NODE_ENV=test jest --selectProjects ui"
   },
   "repository": {
     "type": "git",

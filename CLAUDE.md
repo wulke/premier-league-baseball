@@ -27,6 +27,8 @@ npm run start:docker   # Run container (port 8080 → 3000)
 
 Run a single test file: `npx jest test/db/domain/game.test.ts`
 
+> Tests always run against an isolated in-memory SQLite DB (forced under Jest by `NODE_ENV=test`/`JEST_WORKER_ID` in `src/db/client.ts`), never your file-backed `dev.sqlite` — so a direct `npx jest <file>` or an IDE Jest runner is safe.
+
 ## Architecture
 
 Full-stack TypeScript app: Express backend + React frontend, using SQLite via Sequelize.
