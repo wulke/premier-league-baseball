@@ -149,12 +149,16 @@ via Sequelize — trivial to create/tear down, so mocking buys nothing. Pure non
 logic (simulation math, scheduling math) may be unit-tested without touching the DB at
 all; that's not an exception to the rule, just code that doesn't need a DB.
 
-**Isolation: in-memory SQLite per test file.** `DATABASE_URL=':memory:'` in
-`.env.test`. Because Jest gives each test file its own module registry, a fresh
-`:memory:` Sequelize instance loads per file automatically — no shared file, no
-cross-test pollution, no need for `--runInBand` for correctness. Each test file owns
-its own `db.sync()` call (no more single global `db.sync({ force: true })` in a shared
-setup file).
+**Isolation: in-memory SQLite per test file.** `src/db/client.ts` forces
+`storage = ':memory:'` whenever it detects Jest (via `NODE_ENV='test'`, which Jest
+sets automatically, **or** `JEST_WORKER_ID`), ignoring any ambient `DATABASE_URL` —
+so the real `dev.sqlite` can never be clobbered, no matter how a test is launched
+(npm script, bare `npx jest`, IDE runner). This guarantee is locked in by
+`test/db/client.test.ts`. Because Jest gives each test file its own module
+registry, a fresh `:memory:` Sequelize instance loads per file automatically — no
+shared file, no cross-test pollution, no need for `--runInBand` for correctness.
+Each test file owns its own `db.sync()` call (no more single global
+`db.sync({ force: true })` in a shared setup file).
 
 > The Sequelize client (`src/db/client.ts`) pins its connection pool to `{ max: 1 }`.
 > SQLite is single-writer, and pooling more than one connection against a `:memory:`
