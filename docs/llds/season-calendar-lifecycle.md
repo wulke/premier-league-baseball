@@ -244,4 +244,4 @@ remain the same after the target year is resolved.
 | **This LLD** | `docs/llds/season-calendar-lifecycle.md` |
 | EARS | `docs/specs/season-calendar-lifecycle-specs.md` — `SCL-001`…`SCL-017` |
 | Gherkin | `test/bdd/features/season-calendar-lifecycle.feature` (new) |
-| Code | `src/db/model/league.ts` (MODIFIED), `src/db/domain/league.ts` (MODIFIED — `cutover`/`start` replace `newSeason` and recompute `config.inProgress`), `src/db/domain/team.ts` (MODIFIED — `getSchedule`), `src/api/models.ts` (MODIFIED — `TeamSeasonGame`/`TeamSeasonCalendar`), `src/api/endpoints.ts`, `src/api/handlers.ts`, `src/api/router.ts` |
+| Code | `src/db/model/league.ts` (MODIFIED), `src/db/domain/league.ts` (MODIFIED — `cutover`/`start` replace `newSeason` and recompute `config.inProgress`), `src/db/domain/division.ts` (MODIFIED — CUTOVER-gated scheduling config update), `src/db/domain/team.ts` (MODIFIED — `getSchedule`), `src/api/models.ts` (MODIFIED — `TeamSeasonGame`/`TeamSeasonCalendar`), `src/api/endpoints.ts`, `src/api/handlers.ts`, `src/api/router.ts` |

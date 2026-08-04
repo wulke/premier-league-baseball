@@ -8,6 +8,7 @@ const enum Endpoints {
   GetLeague = '/api/league/:leagueId',
   LeagueSeasonCutover = '/api/league/:leagueId/season/cutover',
   LeagueSeasonStart = '/api/league/:leagueId/season/start',
+  UpdateDivisionSchedulingConfig = '/api/division/:divisionId/config',
   GetTeamSchedule = '/api/team/:teamId/calendar',
   NewGameWorld = '/api/gameWorld/new',
   BatchSimulateGames = '/api/gameWorld/:gwId/simulate',

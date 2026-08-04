@@ -2,6 +2,7 @@ import { BracketGame, BracketRound, BracketTie, CompetitionFormat, DivisionBrack
 import { getKnockoutRoundLabel, nextLowerPowerOfTwo, shuffleTeams } from './knockout';
 import db from '../client';
 import { Transaction } from 'sequelize';
+import { DomainError } from './errors';
 
 interface NewSeasonOptions {
   transaction?: Transaction;
@@ -10,6 +11,7 @@ interface NewSeasonOptions {
 interface IDivision {
   isSeasonComplete: (year: number) => Promise<boolean>;
   newSeason: (completedYear: number, seasonYear?: number, options?: NewSeasonOptions) => any;
+  updateSchedulingConfig: (schedulingConfig: SchedulingConfig) => Promise<any>;
   getBracket: (year: number) => Promise<DivisionBracket>;
   getStandings: (year: number, standingsConfig: StandingsConfig) => Promise<TeamStanding[]>;
 };
@@ -210,6 +212,20 @@ const DivisionFactory = (id?: number): IDivision => {
     return championTeamId == null ? undefined : { teamId: championTeamId };
   };
 
+  // @spec SCL-017
+  const updateSchedulingConfig = async (schedulingConfig: SchedulingConfig) => {
+    const division = await db.models.Division.findByPk(id, { include: [db.models.League] });
+    if (!division) throw new DomainError(`Division '${id}' not found`, 404);
+
+    const { League: league, config } = division.dataValues;
+    if (!league || league.status !== 'CUTOVER') {
+      throw new DomainError('league is not in cutover', 422);
+    }
+
+    const updated = await division.update({ config: { ...config, schedulingConfig } });
+    return updated.dataValues;
+  };
+
   // @spec API-002,API-003,API-004
   const getBracket = async (year: number): Promise<DivisionBracket> => {
     const division = await db.models.Division.findByPk(id);
@@ -288,6 +304,7 @@ const DivisionFactory = (id?: number): IDivision => {
 
   return {
     isSeasonComplete,
+    updateSchedulingConfig,
     getBracket,
     getStandings,
     // @spec CUP-009,CUP-010,SCL-005,SCL-009
