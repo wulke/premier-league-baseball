@@ -307,3 +307,71 @@ describe('LeagueFactory.cutover', () => {
     await expect(LeagueFactory(league.id).cutover()).resolves.toEqual({ id: league.id, year: 2028, status: 'CUTOVER' });
   });
 });
+
+describe('LeagueFactory.start', () => {
+  let gameWorld: any;
+  let league: any;
+  let division: any;
+  let teams: any[];
+
+  beforeEach(async () => {
+    await db.sync({ force: true });
+    gameWorld = await db.models.GameWorld.create({ year: 2030, currentDate: '2027-03-01', config: {} })
+      .then(({ dataValues }) => dataValues);
+    teams = await Promise.all(['Home', 'Away'].map((name) => db.models.Team.create({
+      gameWorldId: gameWorld.id, config: { name },
+    }).then(({ dataValues }) => dataValues)));
+    league = await LeagueFactory().create(gameWorld.id, {
+      name: 'Start League', type: LeagueType.League, divisions: [{
+        name: 'Division A', defaultTeams: [0, 1], format: ROUND_ROBIN_FORMAT,
+        schedulingConfig: { startDate: '2027-03-08', intervalDays: 7 },
+      }],
+    }, teams.map(({ id }) => id));
+    division = await db.models.Division.findOne({ where: { leagueId: league.id } })
+      .then((row) => row!.dataValues);
+  });
+
+  // @spec SCL-003
+  it('rejects with 422 and generates nothing when the League is not in CUTOVER', async () => {
+    await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: league.id } });
+
+    await expect(LeagueFactory(league.id).start()).rejects.toMatchObject({
+      statusCode: 422,
+      message: 'league is not in cutover',
+    } satisfies Partial<DomainError>);
+    await expect(db.models.DivisionSeason.count({ where: { divisionId: division.id } })).resolves.toBe(0);
+  });
+
+  // @spec SCL-004
+  it('rejects with the offending Division and generates nothing when startDate is on the current date', async () => {
+    await db.models.Division.update({
+      config: { ...division.config, schedulingConfig: { startDate: '2027-03-01', intervalDays: 7 } },
+    }, { where: { id: division.id } });
+
+    await expect(LeagueFactory(league.id).start()).rejects.toMatchObject({
+      statusCode: 422,
+      message: `Division ${division.id} start date must be after the GameWorld current date`,
+    } satisfies Partial<DomainError>);
+    await expect(db.models.DivisionSeason.count({ where: { divisionId: division.id } })).resolves.toBe(0);
+    await expect(db.models.Game.count()).resolves.toBe(0);
+  });
+
+  // @spec SCL-004
+  it('starts without a date constraint when the GameWorld currentDate is null', async () => {
+    await db.models.GameWorld.update({ currentDate: null }, { where: { id: gameWorld.id } });
+
+    await expect(LeagueFactory(league.id).start()).resolves.toEqual({
+      id: league.id, year: 2030, status: 'IN_SEASON',
+    });
+  });
+
+  // @spec SCL-005,SCL-009
+  it('generates the Division season using League.year rather than GameWorld.year', async () => {
+    await db.models.League.update({ year: 2027 }, { where: { id: league.id } });
+
+    await LeagueFactory(league.id).start();
+
+    await expect(db.models.DivisionSeason.count({ where: { divisionId: division.id, year: 2027 } })).resolves.toBe(2);
+    await expect(db.models.DivisionSeason.count({ where: { divisionId: division.id, year: 2030 } })).resolves.toBe(0);
+  });
+});

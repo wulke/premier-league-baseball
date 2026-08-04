@@ -182,6 +182,15 @@ TeamFactory(id).getSchedule(gwId, leagueId?) [MODIFIED]:
     drop the top-level `year` field.                                               # SCL-011
 ```
 
+### #118 implementation note
+
+`DivisionFactory.newSeason()` retains its existing one-argument compatibility mode,
+where callers provide a completed year and the factory creates the following year.
+`LeagueFactory.start()` supplies an explicit target season year of `League.year` so
+the new League lifecycle does not inherit that legacy `+1` convention or read
+`GameWorld.year`. The round-robin, knockout, bye, and two-leg generation branches
+remain the same after the target year is resolved.
+
 ## Edge Case Probe
 
 | # | Condition | Handling | Spec |
