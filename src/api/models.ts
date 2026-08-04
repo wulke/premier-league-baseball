@@ -31,6 +31,7 @@ interface TeamStanding {
 
 interface TeamSeasonGame {
   gameId: number;
+  year: number;
   scheduledDate: string | null;
   homeTeamId: number;
   homeTeamName: string;
@@ -47,7 +48,6 @@ interface TeamSeasonGame {
 interface TeamSeasonSchedule {
   teamId: number;
   teamName: string;
-  year: number;
   games: TeamSeasonGame[];
 }
 
