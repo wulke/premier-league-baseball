@@ -47,13 +47,13 @@ const TeamFactory = (id?: number): ITeam => {
       }
     }),
 
+    // @spec SCL-010,SCL-011
     getSchedule: async (gwId: number, leagueId?: number): Promise<TeamSeasonCalendar> => {
-      // 1. Resolve year from game world
-      const gameWorld = await db.models.GameWorld.findByPk(gwId)
-        .then((gw) => {
-          if (!gw) throw Error(`GameWorld '${gwId}' not found`);
-          return gw.dataValues;
-        });
+      // 1. Verify the GameWorld; its year is only a legacy fallback for pre-migration League rows.
+      const gameWorld = await db.models.GameWorld.findByPk(gwId).then((gw) => {
+        if (!gw) throw Error(`GameWorld '${gwId}' not found`);
+        return gw.dataValues;
+      });
 
       // 2. Resolve team name
       const team = await db.models.Team.findByPk(id)
@@ -62,41 +62,51 @@ const TeamFactory = (id?: number): ITeam => {
           return t.dataValues;
         });
 
-      // 3. Load all DivisionSeason entries for this team and year,
-      //    with the parent Division (for name + leagueId) and linked Games
-      const divisionSeasons = await db.models.DivisionSeason.findAll({
-        where: { teamId: id, year: gameWorld.year },
-        include: [
-          { model: db.models.Division },
-          { model: db.models.Game, through: { attributes: [] } },
-        ],
+      // 3. Resolve only Divisions this team has played in, with their parent Leagues.
+      const teamDivisionIds = await db.models.DivisionSeason.findAll({
+        attributes: ['divisionId'],
+        where: { teamId: id },
+      }).then((seasons) => Array.from(new Set(seasons.map((season) => season.dataValues.divisionId))));
+      const divisions = teamDivisionIds.length === 0 ? [] : await db.models.Division.findAll({
+        where: { id: { [Op.in]: teamDivisionIds } },
+        include: [{ model: db.models.League, where: { gameWorldId: gwId } }],
+      });
+      const divisionIdsByYear = new Map<number, number[]>();
+      divisions.forEach((division) => {
+        const divisionLeagueId = division.dataValues.leagueId;
+        if (leagueId != null && divisionLeagueId !== leagueId) return;
+        const league = division.dataValues.League?.dataValues ?? division.dataValues.League;
+        const year = league.year ?? gameWorld.year;
+        divisionIdsByYear.set(year, [...(divisionIdsByYear.get(year) ?? []), division.dataValues.id]);
       });
 
-      // 4. Optionally filter to one league (Division.leagueId)
-      const filtered = leagueId
-        ? divisionSeasons.filter((ds) => {
-            const div = ds.dataValues.Division;
-            return div && (div.dataValues?.leagueId ?? div.leagueId) === leagueId;
-          })
-        : divisionSeasons;
+      // 4. Batch the season and bracket-size queries by effective League year.
+      const groupedSeasons = await Promise.all(Array.from(divisionIdsByYear.entries()).map(async ([year, divisionIds]) => {
+        return db.models.DivisionSeason.findAll({
+          where: { teamId: id, divisionId: { [Op.in]: divisionIds }, year },
+          include: [
+            { model: db.models.Division },
+            { model: db.models.Game, through: { attributes: [] } },
+          ],
+        });
+      }));
+      const filtered = groupedSeasons.flat();
 
-      const divisionIds = Array.from(new Set(filtered.map((ds) => ds.dataValues.divisionId)));
-      const divisionSeasonCounts = divisionIds.length === 0
-        ? new Map<number, number>()
-        : await db.models.DivisionSeason.findAll({
-            where: {
-              year: gameWorld.year,
-              divisionId: { [Op.in]: divisionIds },
-            },
-          }).then((rows) => rows.reduce((counts, row) => {
-            const { divisionId } = row.dataValues;
-            counts.set(divisionId, (counts.get(divisionId) ?? 0) + 1);
-            return counts;
-          }, new Map<number, number>()));
+      const divisionSeasonCounts = new Map<number, number>();
+      const countRowsByYear = await Promise.all(Array.from(divisionIdsByYear.entries()).map(async ([year, divisionIds]) => {
+        return db.models.DivisionSeason.findAll({
+          attributes: ['divisionId'],
+          where: { divisionId: { [Op.in]: divisionIds }, year },
+        });
+      }));
+      countRowsByYear.flat().forEach((season) => {
+        const divisionId = season.dataValues.divisionId;
+        divisionSeasonCounts.set(divisionId, (divisionSeasonCounts.get(divisionId) ?? 0) + 1);
+      });
 
       // 5. Flatten games and collect all referenced team IDs for name lookup
       const teamIdSet = new Set<number>();
-      const rawGames: Array<{ game: any; divisionId: number; divisionName: string }> = [];
+      const rawGames: Array<{ game: any; divisionId: number; divisionName: string; year: number }> = [];
 
       for (const ds of filtered) {
         const { dataValues: dsData } = ds;
@@ -104,7 +114,7 @@ const TeamFactory = (id?: number): ITeam => {
         const divisionName = (div?.dataValues?.config ?? div?.config)?.name ?? `Division ${dsData.divisionId}`;
 
         for (const game of (dsData.Games ?? [])) {
-          rawGames.push({ game, divisionId: dsData.divisionId, divisionName });
+          rawGames.push({ game, divisionId: dsData.divisionId, divisionName, year: dsData.year });
           teamIdSet.add(game.homeTeam);
           teamIdSet.add(game.awayTeam);
         }
@@ -121,9 +131,10 @@ const TeamFactory = (id?: number): ITeam => {
       }
 
       // 7. Build structured response
-      const games: TeamSeasonGame[] = rawGames.map(({ game, divisionId, divisionName }) => ({
+      const games: TeamSeasonGame[] = rawGames.map(({ game, divisionId, divisionName, year }) => ({
         // @spec CUP-011
         gameId: game.id,
+        year,
         scheduledDate: game.scheduledDate ? new Date(game.scheduledDate).toISOString() : null,
         homeTeamId: game.homeTeam,
         homeTeamName: teamMap.get(game.homeTeam) ?? `Team ${game.homeTeam}`,
@@ -151,7 +162,6 @@ const TeamFactory = (id?: number): ITeam => {
       return {
         teamId: id!,
         teamName: team.config?.name ?? `Team ${id}`,
-        year: gameWorld.year,
         games,
       };
     },

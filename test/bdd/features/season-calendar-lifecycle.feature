@@ -134,12 +134,14 @@ Feature: Season Calendar Lifecycle
   @spec:SCL-010
   @spec:SCL-011
   Scenario: A team's schedule reports each game's own League year, not GameWorld.year
-    Given a second League "UEFA" exists in GameWorld 1 with year 2027 and status CUTOVER
-    And League "MLS"'s status is IN_SEASON with year 2028 and a Game scheduled on "2028-04-01"
-    And a team plays in both League "MLS" and League "UEFA"
+    Given a second League "UEFA" exists in GameWorld 1 with year 2027 and status IN_SEASON
+    And League "MLS" has year 2028 and a Game scheduled on "2028-04-01"
+    And League "UEFA" has year 2027 and a Game scheduled on "2027-09-01"
+    And the same team plays in League "MLS" and League "UEFA"
     When an admin requests the team's schedule
     Then the response has no top-level year field
     And the Game scheduled on "2028-04-01" reports year 2028
+    And the Game scheduled on "2027-09-01" reports year 2027
 
   # ─── Migration / backfill ───────────────────────────────────────────────────
 
