@@ -1,27 +1,18 @@
 import React from 'react';
-import { Routes, Route, Outlet, useParams } from 'react-router';
+import { Routes, Route } from 'react-router';
 import { GameWorld, Home, League, TeamCalendar } from './pages';
-import { GameWorldProvider } from './context/game-world-context';
-
-// Layout route (LLD u8): mounts GameWorldProvider once for the whole /:gwId subtree so every
-// descendant page shares one GET /api/gameWorld/:gwId and the refreshToken invalidation counter.
-const GameWorldLayout = () => {
-  const { gwId } = useParams();
-  return (
-    <GameWorldProvider gwId={gwId!}>
-      <Outlet />
-    </GameWorldProvider>
-  );
-};
+import { AppShell } from './components/app-shell';
 
 const R = () => (
   <Routes>
-    <Route index element={<Home />} />
-    <Route path=":gwId" element={<GameWorldLayout />}>
-      <Route index element={<GameWorld />} />
-      <Route path=":leagueId" element={<League />} />
-      {/* @spec UI-004 */}
-      <Route path="team/:teamId/calendar" element={<TeamCalendar />} />
+    {/* @spec SHELL-001,SHELL-002,SHELL-010 */}
+    <Route element={<AppShell />}>
+      <Route index element={<Home />} />
+      <Route path=":gwId">
+        <Route index element={<GameWorld />} />
+        <Route path=":leagueId" element={<League />} />
+        <Route path="team/:teamId/calendar" element={<TeamCalendar />} />
+      </Route>
     </Route>
   </Routes>
 );

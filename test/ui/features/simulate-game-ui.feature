@@ -59,12 +59,6 @@ Feature: Simulate Game UI
     When AppHeader renders for GameWorld 1
     Then the header displays "No date set" in a muted style
 
-  @spec:SIMUI-008
-  Scenario: AppHeader is present on GameWorld, League, and TeamCalendar pages
-    Then the AppHeader is present on the GameWorld page
-    And the AppHeader is present on the League page
-    And the AppHeader is present on the TeamCalendar page
-
   # ─── Flow B: AppHeader — Batch Simulate Button Guards ─────────────────────────
 
   @spec:SIMUI-009

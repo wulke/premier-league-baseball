@@ -104,20 +104,6 @@ const Home = () => {
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
 
-      {/* App Header */}
-      <header style={{
-        borderBottom: '2px solid #000',
-        padding: '20px 0',
-        marginBottom: '36px',
-      }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700 }}>
-          Premier League Baseball
-        </h1>
-        <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>
-          Sports simulation and season management
-        </p>
-      </header>
-
       {/* Game Worlds Section */}
       <section>
         <div style={{

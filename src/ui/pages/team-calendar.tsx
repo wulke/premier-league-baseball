@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { TeamSeasonCalendar, TeamSeasonGame } from '../../api/models';
-import { AppHeader } from '../components/app-header';
 import { useGameWorldContext } from '../context/game-world-context';
 
 type CalendarFilter = 'all' | 'scheduled' | 'played';
@@ -168,7 +167,7 @@ const TeamCalendar = () => {
   const [retryToken, setRetryToken] = useState<number>(0);
   const [simulateState, setSimulateState] = useState<Map<number, SimulateRowStatus>>(new Map());
   // Flow A — subscribe to the shared refreshToken (LLD Flow C) so a batch simulate elsewhere
-  // (AppHeader) triggers a full re-fetch here, keeping single-row and batch simulate consistent.
+  // (NavRail) triggers a full re-fetch here, keeping single-row and batch simulate consistent.
   const { refreshToken: contextRefreshToken } = useGameWorldContext();
 
   useEffect(() => {
@@ -269,9 +268,6 @@ const TeamCalendar = () => {
 
   return (
     <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
-
-      {/* Shared header (Flow B). */}
-      <AppHeader backLink={`/${gwId}`} backLabel="Game World" />
 
       {/* Team identity */}
       <div style={{ marginBottom: '28px' }}>

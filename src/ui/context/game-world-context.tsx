@@ -2,7 +2,7 @@
 //
 // LLD: docs/llds/simulate-game-ui.md (Flow C). Owns the GameWorld (`gw`) state and a
 // `refreshToken` invalidation counter for the /:gwId subtree: one GET /api/gameWorld/:gwId
-// per session, shared across every consumer. `AppHeader` (#24) reads `gw` + calls
+// per session, shared across every consumer. The NavRail batch control reads `gw` + calls
 // `invalidate()` on batch success; `TeamCalendar` (#25) reads `refreshToken` to re-fetch;
 // the `GameWorld` page (#23) reads `gw` from here with no fetch of its own (SIMUI-004).
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -17,11 +17,16 @@ type GameWorldContextValue = {
 
 const GameWorldContext = createContext<GameWorldContextValue | undefined>(undefined);
 
-const GameWorldProvider = ({ gwId, children }: { gwId: string; children: React.ReactNode }) => {
+const GameWorldProvider = ({ gwId, children }: { gwId: string | undefined; children: React.ReactNode }) => {
   const [gw, setGw] = useState<any | null>(null);
   const [refreshToken, setRefreshToken] = useState<number>(0);
 
   useEffect(() => {
+    // @spec SHELL-003
+    if (!gwId) {
+      setGw(null);
+      return undefined;
+    }
     // LLD u5 — a response from a superseded invalidate() re-fetch must not overwrite a fresher
     // `gw`; the cleanup flag discards any response once this run is cancelled.
     let cancelled = false;
