@@ -62,36 +62,47 @@ const TeamFactory = (id?: number): ITeam => {
           return t.dataValues;
         });
 
-      // 3. Resolve each Division's parent League, then query its current year.
-      const divisions = await db.models.Division.findAll({
+      // 3. Resolve only Divisions this team has played in, with their parent Leagues.
+      const teamDivisionIds = await db.models.DivisionSeason.findAll({
+        attributes: ['divisionId'],
+        where: { teamId: id },
+      }).then((seasons) => Array.from(new Set(seasons.map((season) => season.dataValues.divisionId))));
+      const divisions = teamDivisionIds.length === 0 ? [] : await db.models.Division.findAll({
+        where: { id: { [Op.in]: teamDivisionIds } },
         include: [{ model: db.models.League, where: { gameWorldId: gwId } }],
       });
-      const selectedDivisions = divisions.filter((division) => {
+      const divisionIdsByYear = new Map<number, number[]>();
+      divisions.forEach((division) => {
         const divisionLeagueId = division.dataValues.leagueId;
-        return leagueId == null || divisionLeagueId === leagueId;
-      });
-      const divisionSeasonsByDivision = await Promise.all(selectedDivisions.map(async (division) => {
+        if (leagueId != null && divisionLeagueId !== leagueId) return;
         const league = division.dataValues.League?.dataValues ?? division.dataValues.League;
         const year = league.year ?? gameWorld.year;
+        divisionIdsByYear.set(year, [...(divisionIdsByYear.get(year) ?? []), division.dataValues.id]);
+      });
+
+      // 4. Batch the season and bracket-size queries by effective League year.
+      const groupedSeasons = await Promise.all(Array.from(divisionIdsByYear.entries()).map(async ([year, divisionIds]) => {
         return db.models.DivisionSeason.findAll({
-          where: { teamId: id, divisionId: division.dataValues.id, year },
+          where: { teamId: id, divisionId: { [Op.in]: divisionIds }, year },
           include: [
             { model: db.models.Division },
             { model: db.models.Game, through: { attributes: [] } },
           ],
         });
       }));
-      const filtered = divisionSeasonsByDivision.flat();
+      const filtered = groupedSeasons.flat();
 
       const divisionSeasonCounts = new Map<number, number>();
-      await Promise.all(selectedDivisions.map(async (division) => {
-        const league = division.dataValues.League?.dataValues ?? division.dataValues.League;
-        const year = league.year ?? gameWorld.year;
-        const count = await db.models.DivisionSeason.count({
-          where: { divisionId: division.dataValues.id, year },
+      const countRowsByYear = await Promise.all(Array.from(divisionIdsByYear.entries()).map(async ([year, divisionIds]) => {
+        return db.models.DivisionSeason.findAll({
+          attributes: ['divisionId'],
+          where: { divisionId: { [Op.in]: divisionIds }, year },
         });
-        divisionSeasonCounts.set(division.dataValues.id, count);
       }));
+      countRowsByYear.flat().forEach((season) => {
+        const divisionId = season.dataValues.divisionId;
+        divisionSeasonCounts.set(divisionId, (divisionSeasonCounts.get(divisionId) ?? 0) + 1);
+      });
 
       // 5. Flatten games and collect all referenced team IDs for name lookup
       const teamIdSet = new Set<number>();
