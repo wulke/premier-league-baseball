@@ -16,7 +16,7 @@ const ROUND_ROBIN_FORMAT = {
 const feature = loadFeature(path.resolve(__dirname, '../features/season-calendar-lifecycle.feature'));
 feature.scenarios = feature.scenarios.filter((scenario) =>
   scenario.tags.some((tag) => ['@spec:scl-006', '@spec:scl-007'].includes(tag))
-    && /^(The first League|A League with no scheduled Divisions|A later League)/.test(scenario.title)
+    && /^(start\(\) is unconstrained|The first League|A League with no scheduled Divisions|A later League)/.test(scenario.title)
 );
 
 interface WorldState {
@@ -115,7 +115,8 @@ const registerSteps = ({ given, when, then }: any) => {
   });
   given(/^League "[^"]+"'s Division has no schedulingConfig$/, async () => {
     const division = await db.models.Division.findByPk(world.divisionId);
-    await division!.update({ config: { ...division!.dataValues.config, schedulingConfig: undefined } });
+    const { schedulingConfig: _schedulingConfig, ...config } = division!.dataValues.config;
+    await division!.update({ config });
   });
 
   then(/^the response is a (\d+) error$/, (statusCode: string) => expect(world.response?.statusCode).toBe(Number(statusCode)));
@@ -138,8 +139,8 @@ const registerSteps = ({ given, when, then }: any) => {
   then(/^League "[^"]+"'s year is (\d+)$/, async (year: string) => {
     await expect(readLeague()).resolves.toMatchObject({ year: Number(year) });
   });
-  then(/^League "(.*)"'s status is (CUTOVER|IN_SEASON)$/, async (_name: string, status: string) => {
-    await expect(readLeague()).resolves.toMatchObject({ status });
+  then(/^League "MLS"'s status becomes IN_SEASON$/, async () => {
+    await expect(readLeague()).resolves.toMatchObject({ status: 'IN_SEASON' });
   });
   then('the response is a 422 error identifying the offending Division', () => {
     expect(world.response?.statusCode).toBe(422);

@@ -60,7 +60,7 @@ Feature: Season Calendar Lifecycle
     Given GameWorld 1's currentDate is unset
     When an admin starts League "MLS"'s season
     Then the response is 200
-    And League "MLS"'s status is IN_SEASON
+    And League "MLS"'s status becomes IN_SEASON
 
   # ─── currentDate bootstrap ──────────────────────────────────────────────────
 
