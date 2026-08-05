@@ -22,12 +22,15 @@ The run-path that makes a League's ordered, dependent `stages[]` actually *simul
 
 The seam is small because `DivisionFactory.newSeason` is **already seed-driven**: it calls `getSeedTeamIdsForDivision()`, today a stub returning `config.defaultTeams` (its own docstring lists cross-stage seeding as a future use case). Four coordinated changes:
 
-### 1. `DivisionConfig.stageId` — stamped at create (no new table, per #79)
+### 1. `DivisionConfig.stageId` + `stageOrder` — stamped at create (no new table, per #79)
 
 ```ts
-interface DivisionConfig { /* existing fields */ stageId?: string }
+interface DivisionConfig { /* existing fields */ stageId?: string; stageOrder?: number }
 ```
-Stamped from the enclosing `Stage.id` when the division is created. Resolves "which divisions belong to stage X" without a schema change — the source stage's divisions are found by matching `stageId` against a consuming division's `seedingSelection.fromStage`.
+Two fields stamped from the enclosing `Stage` when the division is created:
+
+- **`stageId`** — the enclosing `Stage.id`. Resolves "which divisions belong to stage X" without a schema change — the source stage's divisions are found by matching `stageId` against a consuming division's `seedingSelection.fromStage`.
+- **`stageOrder`** — the division's index within its `stage.divisions[]` array. Carries config **declaration order** into the runtime as an explicit, queryable value, so `TOP_N_PER_DIVISION` emit (§2) sorts source divisions on a real input. The existing legacy `create` fires divisions via `Promise.all`, so `Division.id` ordering is **not** a reliable proxy for declaration order — `stageOrder` makes it a designed guarantee instead (see edge case e10).
 
 ### 2. `getSeedTeamIdsForDivision(year)` — branch on `seedingSelection`
 
@@ -45,7 +48,7 @@ const getSeedTeamIdsForDivision = async (year: number): Promise<number[]> => {
   const league = await db.models.League.findByPk(division.leagueId, { include: [db.models.Division] });
   const sourceDivisions = league.Divisions
     .filter((d) => d.config.stageId === selection.fromStage)
-    .sort(byStageDivisionOrder);                                 // preserve stages[] declaration order
+    .sort(byStageDivisionOrder);                                 // by config.stageOrder (§1 declaration order)
 
   switch (selection.kind) {
     case 'TOP_N_PER_DIVISION':                                   // #80 — old CL
@@ -85,6 +88,7 @@ export const recordSeasonChampionIfMissing = async (divisionId, year, championTe
 Consequences:
 - `resolveRoundRobinGameCompletion`'s own `isTopTier` early-return becomes redundant (the gate now lives in the writer); it is removed to a single source of truth.
 - `advanceKnockoutRound`'s call to `recordSeasonChampionIfMissing` is **newly gated**: the old League Cup division will need `isTopTier: true` set (landed in Slice A's template rewrite). For old-CL, only the knockout division carries `isTopTier: true`; the eight groups carry none → they record nothing.
+- Generalizes the round-robin `isTopTier` gate already spec'd in [`league-champion-specs.md`](../specs/league-champion-specs.md) (`LCH-001`..`LCH-004`, #54) — `MSS-008` moves that single gate into the writer so the knockout path consults it too; RR-path behavior is unchanged.
 
 ### 4. Event-driven dependent-stage advance — new module `stage-advancement.ts`
 
@@ -115,12 +119,15 @@ await resolveCrossStageAdvancement(id);   // new — multi-stage dependent advan
 create(gwId, config, teamIdRefs):                       # minimal stage-aware (Slice B)
   stages = config.stages ?? [{ id:'_default', name:'_default', divisions: config.divisions ?? [] }]
   for stage in stages:
-    for div in stage.divisions:
+    for index, div in enumerate(stage.divisions):        # index → stageOrder (declaration order, §1)
       Division.create({ config: { ...div,
         stageId: stage.id,
+        stageOrder: index,
         defaultTeams: div.defaultTeams.map(idx -> teamIdRefs[idx]),
         format: resolveCompetitionFormat(div, config)   # legacy league-level fallback kept (dropped in Slice A)
       }})
+  # NB: declaration order is carried by the stamped stageOrder field, so it is robust to
+  # insertion/id ordering — create may stay parallel or become sequential without affecting emit.
 
 start():                                                 # season kickoff — FIRST stage only
   firstStage = config.stages[0]   # the legacy single-stage shape collapses to this too
@@ -149,6 +156,8 @@ advanceStageIfReady(leagueId, year):                     # idempotent
 
 `newSeason(year, year)` for a dependent division: its `isSeasonComplete(year)` precondition is vacuously true (no prior DivisionSeason row exists), then `getSeedTeamIdsForDivision(year)` reads the now-final source standings, and the existing KNOCKOUT branch builds the bracket. The existing `TWO_LEG` return-leg generation and `advanceKnockoutRound` cascade then drive the bracket to a champion with **no further changes**.
 
+**Why the two `newSeason` argument shapes differ.** `start()` calls `newSeason(year-1, year)` to cross the year boundary into a fresh season — the prior season (`year-1`) must be complete, vacuously true for a brand-new league's first kickoff. The dependent-stage advance calls `newSeason(year, year)` because the knockout is a **within-year phase transition** of the same season (the group stage just completed for `year`); passing the default `newSeason(year)` would wrongly stamp the knockout's `DivisionSeason` as `year+1`. In both cases `isSeasonComplete` is satisfied (vacuously for a division with no prior `DivisionSeason` row).
+
 ## Edge Case Probe
 
 | # | Condition | Handling | Spec |
@@ -162,6 +171,7 @@ advanceStageIfReady(leagueId, year):                     # idempotent
 | e7 | A division with `seedingSelection` but `BEST_OF_REST`/`TIERED_RANK` | `getSeedTeamIdsForDivision` throws `422` at run time — these arms are config-surface only (no scheduler this map); #86 guards their presence in real configs | MSS-seed |
 | e8 | Legacy PL/Cup after the minimal `create` change | `config.stages` is undefined → the `_default` fallback wraps `config.divisions`; `stageId='_default'`; `resolveCompetitionFormat` still applies the league-level fallback (dropped only in Slice A). No PL/Cup regression | (compat) |
 | e9 | Dependent division's `newSeason` runs before any source games were simulated | Cannot happen — `advanceStageIfReady` is only invoked from the game-completion path, which requires at least one source game to have completed | MSS-advance |
+| e10 | Two divisions in one stage declare in a fixed order but the DB inserts them out of order (legacy `create` used `Promise.all`, so `Division.id` is nondeterministic) | `stageOrder` (stamped from the `stage.divisions[]` index at create) is the sort key for `TOP_N_PER_DIVISION` emit — declaration order is a designed guarantee, not a side-effect of `Division.id` ordering | MSS-002 |
 
 ## Traceability
 

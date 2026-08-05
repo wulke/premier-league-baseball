@@ -12,6 +12,8 @@ recording that champion in `SeasonResult` through the shared game-completion pat
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
+> **Generalization (map [#78](https://github.com/wulke/premier-league-baseball/issues/78) → [#87](https://github.com/wulke/premier-league-baseball/issues/87)):** `MSS-008` in [`multi-stage-season-specs.md`](multi-stage-season-specs.md) moves the `isTopTier` gate into `recordSeasonChampionIfMissing` so the knockout completion path consults the same gate. `LCH-001`..`LCH-004` remain authoritative for the round-robin path; RR-path behavior is unchanged.
+
 ## Traceability
 
 - LLD: `docs/llds/competition-format.md`, `docs/llds/knockout-bracket.md`

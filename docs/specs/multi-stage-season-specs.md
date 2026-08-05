@@ -13,9 +13,9 @@ gate), `src/db/domain/game.ts` (completion hook).
 | ID | Requirement | Status |
 |---|---|---|
 | MSS-001 | WHEN a division has no `seedingSelection` THE system SHALL seed its new season from `DivisionConfig.defaultTeams` | [ ] → #87 |
-| MSS-002 | WHEN a division has a `TOP_N_PER_DIVISION` selection THE system SHALL emit its seeds rank-outer (rank 1..topN) then source-stage division declaration order inner, reading each source division's `getStandings` | [ ] → #87 |
+| MSS-002 | WHEN a division has a `TOP_N_PER_DIVISION` selection THE system SHALL emit its seeds rank-outer (rank 1..topN) then source-stage division declaration order inner (ordered by each source division's stamped `stageOrder`), reading each source division's `getStandings` | [ ] → #87 |
 | MSS-003 | WHEN a division has a `BEST_OF_REST` or `TIERED_RANK` selection THE system SHALL reject the season start with a domain error (config-surface only — no scheduler this map) | [ ] → #87 |
-| MSS-004 | WHEN a multi-stage League is created THE system SHALL stamp each division's config with the enclosing Stage's `stageId`, treating a legacy `divisions[]` config as a single default stage | [ ] → #87 |
+| MSS-004 | WHEN a multi-stage League is created THE system SHALL stamp each division's config with the enclosing Stage's `stageId` and its `stageOrder` index within that stage's `divisions[]`, treating a legacy `divisions[]` config as a single default stage | [ ] → #87 |
 | MSS-005 | WHEN a multi-stage League season starts THE system SHALL start only the first stage's divisions | [ ] → #87 |
 | MSS-006 | WHEN a game completes in a stage that has a dependent successor THE system SHALL advance the dependent divisions' new seasons once every source-stage division is complete | [ ] → #87 |
 | MSS-007 | WHEN cross-stage advancement is evaluated for a dependent division already started this season THE system SHALL no-op | [ ] → #87 |
@@ -24,7 +24,7 @@ gate), `src/db/domain/game.ts` (completion hook).
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
-> Decision record: [Map #78](https://github.com/wulke/premier-league-baseball/issues/78) → ticket [#87](https://github.com/wulke/premier-league-baseball/issues/87). Implements the run-path for the #79 Stage model, the #80 `TOP_N_PER_DIVISION` seeding arm, and the #81 champion-generalization (the `isTopTier` gate). `BEST_OF_REST` (#84) and `TIERED_RANK` (#95) are config-surface only and rejected at run time (MSS-003) — their schedulers are out of scope for this map. The constrained cross-pool draw fidelity gap (old-CL Ro16 winners-vs-runners-up) is accepted fog; the knockout uses `seeding: 'REDRAW'` (random).
+> Decision record: [Map #78](https://github.com/wulke/premier-league-baseball/issues/78) → ticket [#87](https://github.com/wulke/premier-league-baseball/issues/87). Implements the run-path for the #79 Stage model, the #80 `TOP_N_PER_DIVISION` seeding arm, and the #81 champion-generalization (the `isTopTier` gate). `BEST_OF_REST` (#84) and `TIERED_RANK` (#95) are config-surface only and rejected at run time (MSS-003) — their schedulers are out of scope for this map. The constrained cross-pool draw fidelity gap (old-CL Ro16 winners-vs-runners-up) is accepted fog; the knockout uses `seeding: 'REDRAW'` (random). `MSS-008` generalizes the round-robin `isTopTier` champion gate spec'd in [`league-champion-specs.md`](league-champion-specs.md) (`LCH-001`..`LCH-004`, #54) to also cover the knockout path — the single gate moves into the writer shared by both completion paths; RR-path behavior is unchanged.
 
 ## Traceability
 

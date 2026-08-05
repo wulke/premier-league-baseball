@@ -31,7 +31,7 @@ Feature: Multi-stage season run-path (dependent stages)
     Given League "Champions League"'s group stage is complete for year 2027 with known standings
     When the knockout stage is advanced for year 2027
     Then the knockout division is seeded with 4 teams
-    And the seed order is rank 1 of each group, then rank 2 of each group, in group declaration order
+    And the seed order is rank 1 of each group, then rank 2 of each group, in group declaration order (by stageOrder)
 
   @spec:MSS-003
   Scenario: A BEST_OF_REST selection is rejected at run time (config-surface only)
@@ -48,10 +48,11 @@ Feature: Multi-stage season run-path (dependent stages)
   # ─── Create: stageId stamping ──────────────────────────────────────────────
 
   @spec:MSS-004
-  Scenario: Creating a multi-stage League stamps each division with its enclosing stageId
+  Scenario: Creating a multi-stage League stamps each division with stageId and stageOrder
     When League "Champions League" is created with its stages config
     Then every division in stage "Group Stage" has config.stageId "Group Stage"
     And every division in stage "Knockout" has config.stageId "Knockout"
+    And each division's config.stageOrder is its index within its stage's divisions[]
 
   @spec:MSS-004
   Scenario: Creating a legacy divisions-only League wraps it in a single default stage
