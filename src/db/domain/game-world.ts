@@ -9,6 +9,7 @@ interface IGameWorld {
   find: () => any | any[];
   newSeason: () => any;
   advanceCurrentDate: (date: string) => Promise<{ id: number; currentDate: string }>;
+  setManagedClub: (teamId: number | null) => Promise<{ id: number; managedTeamId: number | null }>;
   delete: () => Promise<{ id: number }>;
 };
 
@@ -80,6 +81,25 @@ const GameWorldFactory = (id?: number): IGameWorld => {
       }
       await db.models.GameWorld.update({ currentDate: date }, { where: { id } });
       return { id, currentDate: date };
+    },
+    // @spec MCLB-003,MCLB-004,MCLB-005
+    setManagedClub: async (teamId: number | null) => {
+      if (!id) throw Error('no game world to set managed club');
+      const gameWorld = await db.models.GameWorld.findByPk(id);
+      if (!gameWorld) throw notFoundError(Number(id));
+
+      if (teamId !== null) {
+        if (typeof teamId !== 'number' || !Number.isInteger(teamId)) {
+          throw new DomainError('teamId must be an integer or null', 422);
+        }
+        const team = await db.models.Team.findByPk(teamId);
+        if (!team || team.dataValues.gameWorldId !== gameWorld.dataValues.id) {
+          throw new DomainError('teamId must belong to the target GameWorld', 422);
+        }
+      }
+
+      await db.models.GameWorld.update({ managedTeamId: teamId }, { where: { id } });
+      return { id, managedTeamId: teamId };
     },
     // @spec GWD-001,GWD-002,GWD-003,GWD-004
     delete: async () => {

@@ -18,6 +18,11 @@ module.exports = (sequelize: any) => {
     currentDate: {
       type: DataTypes.DATEONLY,
       allowNull: true,
+    },
+    // @spec MCLB-001
+    managedTeamId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     }
   });
 };

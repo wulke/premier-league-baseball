@@ -11,6 +11,8 @@ const enum Endpoints {
   UpdateDivisionSchedulingConfig = '/api/division/:divisionId/config',
   GetTeamSchedule = '/api/team/:teamId/calendar',
   NewGameWorld = '/api/gameWorld/new',
+  // @spec MCLB-003,MCLB-004,MCLB-005
+  SetManagedClub = '/api/gameWorld/:gwId/managed-club',
   BatchSimulateGames = '/api/gameWorld/:gwId/simulate',
   RapidSimulateSeason = '/api/gameWorld/:gwId/rapid-simulate',
   SimulateGame = '/api/game/:gameId/simulate',

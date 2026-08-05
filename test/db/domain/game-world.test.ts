@@ -303,3 +303,35 @@ describe('GameWorldFactory.advanceCurrentDate', () => {
     expect(after?.dataValues.currentDate).toBe('2025-04-08');
   });
 });
+
+describe('GameWorldFactory.setManagedClub', () => {
+  beforeEach(async () => {
+    await db.sync({ force: true });
+  });
+
+  // @spec MCLB-003,MCLB-004
+  it('@spec MCLB-003 @spec MCLB-004 sets a local Team then permits clearing it', async () => {
+    const gameWorld = await db.models.GameWorld.create({ year: 2025, config: {} }).then(({ dataValues }) => dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
+
+    await expect((GameWorldFactory(gameWorld.id) as any).setManagedClub(team.id))
+      .resolves.toEqual({ id: gameWorld.id, managedTeamId: team.id });
+    await expect((GameWorldFactory(gameWorld.id) as any).setManagedClub(null))
+      .resolves.toEqual({ id: gameWorld.id, managedTeamId: null });
+  });
+
+  // @spec MCLB-005
+  it('@spec MCLB-005 rejects missing, malformed, and foreign Teams without changing the pointer', async () => {
+    const gameWorld = await db.models.GameWorld.create({ year: 2025, config: {} }).then(({ dataValues }) => dataValues);
+    const otherWorld = await db.models.GameWorld.create({ year: 2025, config: {} }).then(({ dataValues }) => dataValues);
+    const foreignTeam = await db.models.Team.create({ gameWorldId: otherWorld.id, config: {} }).then(({ dataValues }) => dataValues);
+
+    await expect((GameWorldFactory(gameWorld.id) as any).setManagedClub(999)).rejects.toMatchObject({ statusCode: 422 });
+    await expect((GameWorldFactory(gameWorld.id) as any).setManagedClub(foreignTeam.id)).rejects.toMatchObject({ statusCode: 422 });
+    await expect((GameWorldFactory(gameWorld.id) as any).setManagedClub(undefined)).rejects.toMatchObject({ statusCode: 422 });
+    await expect((GameWorldFactory(999) as any).setManagedClub(null)).rejects.toMatchObject({ statusCode: 404 });
+    await expect(db.models.GameWorld.findByPk(gameWorld.id)).resolves.toMatchObject({
+      dataValues: { managedTeamId: null },
+    });
+  });
+});

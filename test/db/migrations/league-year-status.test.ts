@@ -1,6 +1,7 @@
 // @spec SCL-012
 import db from '../../../src/db/client';
 import { migrateLeagueYearAndStatus } from '../../../src/db/migrations/league-year-status';
+import { migrateManagedClubPointer } from '../../../src/db/migrations/managed-club-pointer';
 
 describe('League year/status migration', () => {
   beforeEach(async () => {
@@ -44,5 +45,24 @@ describe('League year/status migration', () => {
 
     const [rows] = await db.query('SELECT year, status FROM Leagues WHERE id = ?', { replacements: [leagueId] });
     expect(rows).toEqual([{ year: 2032, status: 'CUTOVER' }]);
+  });
+});
+
+describe('Managed-club pointer migration', () => {
+  beforeEach(async () => {
+    await db.sync({ force: true });
+  });
+
+  // @spec MCLB-001
+  it('@spec MCLB-001 adds the nullable pointer without backfilling an existing GameWorld', async () => {
+    const gameWorld = await db.models.GameWorld.create({ year: 2025, config: {} }).then(({ dataValues }) => dataValues);
+    await db.getQueryInterface().removeColumn('GameWorlds', 'managedTeamId');
+
+    await migrateManagedClubPointer(db);
+
+    const [rows] = await db.query('SELECT managedTeamId FROM GameWorlds WHERE id = ?', {
+      replacements: [gameWorld.id],
+    });
+    expect(rows).toEqual([{ managedTeamId: null }]);
   });
 });
