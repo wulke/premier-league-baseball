@@ -4,13 +4,16 @@
  * THROWAWAY PROTOTYPE. Run:  npx ts-node prototype/143-identity-generation/dump.ts
  * (Seeded → stable output so the committed sample-output.md is reproducible.)
  *
- * Produces two views to react to:
+ * Produces three views to react to:
  *   1. One sample team roster — does it look like real *people*?
  *   2. League-wide distribution (8 teams) — do country / handedness shares
- *      match the intended weights?
+ *      match the active composition's weights?
+ *   3. League-agnostic proof — the SAME pools/generator under KBO & NPB
+ *      compositions, proving the generator isn't MLB-locked.
  */
 
 import { COUNTRIES } from './pools';
+import { COMPOSITIONS, PREMIER_LEAGUE, LeagueComposition } from './compositions';
 import { generateIdentity, makeRng, PlayerIdentity } from './generate';
 
 const REFERENCE_YEAR = 2025;
@@ -18,7 +21,6 @@ const MIN_ROSTER = 20;
 const MAX_ROSTER = 30;
 
 const display = (p: PlayerIdentity) => `${p.givenName} ${p.familyName}`;
-const pad = (s: string, n: number) => s + ' '.repeat(Math.max(0, n - s.length));
 
 function rosterSize(rng: () => number): number {
   return MIN_ROSTER + Math.floor(rng() * (MAX_ROSTER - MIN_ROSTER + 1));
@@ -26,8 +28,12 @@ function rosterSize(rng: () => number): number {
 
 const countryByCode = new Map(COUNTRIES.map((c) => [c.code, c]));
 
-function teamRoster(rng: () => number, size: number): PlayerIdentity[] {
-  return Array.from({ length: size }, () => generateIdentity(rng, REFERENCE_YEAR));
+function teamRoster(
+  rng: () => number,
+  size: number,
+  composition: LeagueComposition
+): PlayerIdentity[] {
+  return Array.from({ length: size }, () => generateIdentity(rng, REFERENCE_YEAR, composition));
 }
 
 function printTeam(name: string, roster: PlayerIdentity[]): void {
@@ -59,7 +65,7 @@ function dist(counts: Map<string, number>, total: number, keys: string[]): strin
     .join(' · ');
 }
 
-function printSummary(players: PlayerIdentity[]): void {
+function printSummary(players: PlayerIdentity[], composition: LeagueComposition): void {
   const total = players.length;
   const cc = new Map<string, number>();
   const bats = new Map<string, number>();
@@ -70,18 +76,21 @@ function printSummary(players: PlayerIdentity[]): void {
     throws.set(p.throws, (throws.get(p.throws) ?? 0) + 1);
   }
 
-  console.log(`### League distribution  (${total} players across 8 teams)\n`);
-  console.log(`**Country shares** (intended weight → actual):\n`);
+  const intended = new Map(composition.weights.map((w) => [w.code, w.weight]));
+
+  console.log(`### League distribution — ${composition.name}  (${total} players, 8 teams)\n`);
+  console.log(`**Country shares** (composition weight → actual):\n`);
   console.log(`| Country | Intended | Actual |`);
   console.log(`|---|---|---|`);
   for (const c of COUNTRIES) {
     const n = cc.get(c.code) ?? 0;
+    const w = intended.get(c.code);
+    const intendedStr = w === undefined ? '—' : `${(w * 100).toFixed(0)}%`;
     console.log(
-      `| ${c.flag} ${c.code} ${c.display} | ${(c.weight * 100).toFixed(0)}% | ${n} (${((n / total) * 100).toFixed(1)}%) |`
+      `| ${c.flag} ${c.code} ${c.display} | ${intendedStr} | ${n} (${((n / total) * 100).toFixed(1)}%) |`
     );
   }
-  const covered = COUNTRIES.reduce((s, c) => s + (cc.get(c.code) ?? 0), 0);
-  console.log(`\n*Coverage:* ${covered}/${total} players fall in the 10 listed countries.\n`);
+  console.log(`\n*Composition:* ${composition.weights.length} countries eligible.\n`);
 
   console.log(`**Handedness** (intended → actual):\n`);
   console.log(`- Bats — ${dist(bats, total, ['R', 'L', 'S'])}  _(intended R .70 / L .25 / S .05)_`);
@@ -96,6 +105,27 @@ function printSummary(players: PlayerIdentity[]): void {
   );
 }
 
+function printCompositionComparison(rng: () => number): void {
+  console.log(`### League-agnostic proof — same pools & generator, different compositions\n`);
+  console.log(`Each row = 120 generated players under that league's composition.\n`);
+  for (const comp of COMPOSITIONS) {
+    const players = Array.from({ length: 120 }, () =>
+      generateIdentity(rng, REFERENCE_YEAR, comp)
+    );
+    const cc = new Map<string, number>();
+    for (const p of players) cc.set(p.countryCode, (cc.get(p.countryCode) ?? 0) + 1);
+    const rows = [...cc.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([code, n]) => {
+        const c = countryByCode.get(code)!;
+        return `${c.flag} ${code} ${((n / players.length) * 100).toFixed(0)}%`;
+      })
+      .join(' · ');
+    console.log(`- **${comp.name}** — ${rows}`);
+  }
+  console.log('');
+}
+
 function main(): void {
   const rng = makeRng(143);
 
@@ -103,17 +133,20 @@ function main(): void {
   console.log(
     '> THROWAWAY PROTOTYPE. Seeded RNG (`mulberry32`, seed 143) → reproducible. ' +
       `Reference year ${REFERENCE_YEAR}. Rosters sized ${MIN_ROSTER}–${MAX_ROSTER} (real PCON-010 range). ` +
-      'Realism is the thing to judge here — *people*, international flavor, Caribbean distinctness.\n'
+      'Realism is the thing to judge — *people*, international flavor, Caribbean distinctness — ' +
+      'and league-agnosticism (same pools serve any league).\n'
   );
 
-  printTeam('Sample team A', teamRoster(rng, rosterSize(rng)));
+  printTeam('Sample team A', teamRoster(rng, rosterSize(rng), PREMIER_LEAGUE));
 
-  // League: 8 teams, independent rosters.
+  // League: 8 teams, independent rosters, under the Premier League composition.
   const league: PlayerIdentity[] = [];
   for (let t = 0; t < 8; t++) {
-    league.push(...teamRoster(rng, rosterSize(rng)));
+    league.push(...teamRoster(rng, rosterSize(rng), PREMIER_LEAGUE));
   }
-  printSummary(league);
+  printSummary(league, PREMIER_LEAGUE);
+
+  printCompositionComparison(rng);
 }
 
 main();

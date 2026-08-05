@@ -1,6 +1,6 @@
 # #143 Identity generation — sample output
 
-> THROWAWAY PROTOTYPE. Seeded RNG (`mulberry32`, seed 143) → reproducible. Reference year 2025. Rosters sized 20–30 (real PCON-010 range). Realism is the thing to judge here — *people*, international flavor, Caribbean distinctness.
+> THROWAWAY PROTOTYPE. Seeded RNG (`mulberry32`, seed 143) → reproducible. Reference year 2025. Rosters sized 20–30 (real PCON-010 range). Realism is the thing to judge — *people*, international flavor, Caribbean distinctness — and league-agnosticism (same pools serve any league).
 
 ### Sample team A  (29 players)
 
@@ -36,9 +36,9 @@
 | 28 | Gleyber Lopez | 🇻🇪 VE | R | R | 23 | 2002-10-08 |
 | 29 | Eugenio Sucre | 🇻🇪 VE | S | L | 23 | 2002-12-02 |
 
-### League distribution  (188 players across 8 teams)
+### League distribution — Premier League Baseball  (188 players, 8 teams)
 
-**Country shares** (intended weight → actual):
+**Country shares** (composition weight → actual):
 
 | Country | Intended | Actual |
 |---|---|---|
@@ -53,7 +53,7 @@
 | 🇰🇷 KR Korea | 3% | 4 (2.1%) |
 | 🇹🇼 TW Taiwan | 1% | 1 (0.5%) |
 
-*Coverage:* 188/188 players fall in the 10 listed countries.
+*Composition:* 10 countries eligible.
 
 **Handedness** (intended → actual):
 
@@ -61,4 +61,12 @@
 - Throws — R: 149 (79.3%) · L: 39 (20.7%)  _(intended R .75 / L .25)_
 
 **Age** — min 18, max 38, band 18–38 _(intended 18–38)_
+
+### League-agnostic proof — same pools & generator, different compositions
+
+Each row = 120 generated players under that league's composition.
+
+- **Premier League Baseball** — 🇺🇸 US 57% · 🇩🇴 DO 8% · 🇻🇪 VE 8% · 🇲🇽 MX 7% · 🇨🇺 CU 5% · 🇰🇷 KR 4% · 🇵🇷 PR 4% · 🇯🇵 JP 3% · 🇨🇦 CA 3% · 🇹🇼 TW 1%
+- **KBO (Korea)** — 🇰🇷 KR 86% · 🇻🇪 VE 5% · 🇩🇴 DO 4% · 🇺🇸 US 4% · 🇨🇺 CU 1%
+- **NPB (Japan)** — 🇯🇵 JP 89% · 🇺🇸 US 6% · 🇩🇴 DO 3% · 🇨🇺 CU 2%
 

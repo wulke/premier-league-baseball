@@ -20,6 +20,12 @@ LID pass; "plan, don't do").
   `countryCode` **first** (weighted), then draw names from that country's pool →
   name & country consistent by construction; `bats`/`throws` **independent**
   random draws, **no** country correlation.
+- **League-composition-driven (#143, for global-league support):** nationality
+  weights are a property of the **league**, never a global constant. `pools.ts` is
+  a shared REGISTRY of countries + name pools; `compositions.ts` holds named
+  league weight-vectors (`PREMIER_LEAGUE`, `KBO`, `NPB`). The generator takes a
+  composition, so the same pools/generator serve MLB-style, KBO, NPB, or any
+  future league — only the weights change.
 
 ## Run it
 
@@ -33,7 +39,9 @@ npx ts-node --transpile-only prototype/143-identity-generation/dump.ts
 
 ## Files
 
-- `pools.ts` — `COUNTRIES` table: `{ code, display, flag, weight, given[], family[] }`.
+- `pools.ts` — `COUNTRIES` REGISTRY: `{ code, display, flag, given[], family[] }`
+  (no weights — league-agnostic name pools).
+- `compositions.ts` — named league weight-vectors (`PREMIER_LEAGUE`, `KBO`, `NPB`).
 - `generate.ts` — `makeRng` (mulberry32, injectable/seedable), `generateIdentity`.
 - `dump.ts` — the CLI dump.
 - `sample-output.md` — the captured artifact to react to.
@@ -42,10 +50,13 @@ npx ts-node --transpile-only prototype/143-identity-generation/dump.ts
 
 These are the #143 decisions still open (the *tunables*, not the structure):
 
-1. **Country weights** (`pools.ts` `weight`) — see `sample-output.md` league table.
-   Actual tracks intended closely. Are US @ 55% / Caribbean-core feel right, or
-   skewier? Long tail (~5%: BR/PA/CO/NI…) is **omitted** — fold into a generic
-   pool, or add countries?
+1. **Country weights are per-league, not global.** `pools.ts` is a shared
+   REGISTRY (countries + name pools, no weights); `compositions.ts` holds named
+   league weight-vectors (`PREMIER_LEAGUE`, `KBO`, `NPB`). The generator takes a
+   composition → league-agnostic. Tune the `PREMIER_LEAGUE` preset (US @ 55% /
+   Caribbean-core) to taste; add presets as new leagues arrive. Long tail
+   (BR/PA/CO/NI… + European for a Euro league) is **omitted** — adding countries
+   = adding registry entries + pools (no schema cost).
 2. **Pool sizes** — ~30 given + ~30 family per country. Repetition is already
    visible at team scale (e.g. 3× *Soriano* on the sample team). Grow to ~100–200
    each? (No schema cost — just data.)
@@ -58,4 +69,5 @@ These are the #143 decisions still open (the *tunables*, not the structure):
    Tune, or leave as-is?
 
 > Structure is stable — none of these change the schema (#141) or the
-> "pick country → draw name" shape (#142); only pool contents / sampler numbers.
+> "pick country → draw name" shape (#142); only pool contents, composition
+> weights, or sampler numbers.

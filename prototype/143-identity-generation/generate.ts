@@ -3,20 +3,23 @@
  *
  * THROWAWAY PROTOTYPE (branch prototype/143-identity-generation). NOT production.
  *
- * Decisions baked in here come straight from the closed tickets:
+ * Decisions baked in here come straight from the closed tickets + this ticket:
  *  - #141 field set: givenName, familyName, countryCode (ISO-a2), bats (L|R|S),
  *    throws (L|R), birthDate (DATE). displayName is derived, never stored.
  *  - #142 approach: pick country FIRST then draw from its pool; curated lists
  *    (no faker); bats/throws INDEPENDENT random, no country correlation.
+ *  - #143 structure: nationality weights are a per-league COMPOSITION (not a
+ *    global constant) → generator is league-agnostic (MLB / KBO / NPB / any).
  *
- * Open tunables (judged against sample-output.md): country weights (pools.ts),
- * bats/throws distributions, birthDate age band, gender handling.
+ * Open tunables (judged against sample-output.md): per-league weights
+ * (compositions.ts), bats/throws distributions, birthDate age band, gender handling.
  *
  * `rng` is injectable so the sample dump is reproducible (mulberry32 seed) and so
  * the real generateRoster can be unit-tested with a fixed seed later (#142 ask).
  */
 
 import { COUNTRIES, CountryPool } from './pools';
+import { LeagueComposition } from './compositions';
 
 export type BatHand = 'L' | 'R' | 'S';
 export type ThrowHand = 'L' | 'R';
@@ -30,6 +33,9 @@ export interface PlayerIdentity {
   birthDate: string; // ISO yyyy-mm-dd
   age: number; // derived from birthDate + reference year (for the dump only)
 }
+
+/** Country registry lookup (code → pool). */
+const REGISTRY = new Map(COUNTRIES.map((c) => [c.code, c]));
 
 /** Deterministic RNG (mulberry32). Seeded so the sample dump is stable. */
 export function makeRng(seed: number): () => number {
@@ -45,15 +51,19 @@ export function makeRng(seed: number): () => number {
 
 const dedupe = (xs: string[]): string[] => Array.from(new Set(xs));
 
-/** Weighted pick over the country table (weights normalized). */
-export function pickCountry(rng: () => number, pool: CountryPool[] = COUNTRIES): CountryPool {
-  const total = pool.reduce((sum, c) => sum + c.weight, 0);
+/**
+ * Weighted country pick over the league's composition. Only countries listed in
+ * the composition can be drawn — so a KBO composition never yields a US-majority
+ * roster. Resolves the chosen code to its pool via the shared registry.
+ */
+export function pickCountry(rng: () => number, composition: LeagueComposition): CountryPool {
+  const total = composition.weights.reduce((sum, w) => sum + w.weight, 0);
   let r = rng() * total;
-  for (const c of pool) {
-    r -= c.weight;
-    if (r <= 0) return c;
+  for (const w of composition.weights) {
+    r -= w.weight;
+    if (r <= 0) return REGISTRY.get(w.code)!;
   }
-  return pool[pool.length - 1];
+  return REGISTRY.get(composition.weights[composition.weights.length - 1].code)!;
 }
 
 function pick<T>(rng: () => number, xs: T[]): T {
@@ -89,12 +99,17 @@ const MIN_AGE = 18;
 const MAX_AGE = 38;
 
 /**
- * Build one identity. `referenceYear` = the GameWorld year (birthDate computed
- * so the player is MIN_AGE..MAX_AGE at that year). In production, birthDate is
- * stored and age derived at read time; here we carry age for the dump only.
+ * Build one identity for a player in the given league. `referenceYear` = the
+ * GameWorld year (birthDate computed so the player is MIN_AGE..MAX_AGE at that
+ * year). In production, birthDate is stored and age derived at read time; here we
+ * carry age for the dump only.
  */
-export function generateIdentity(rng: () => number, referenceYear: number): PlayerIdentity {
-  const country = pickCountry(rng);
+export function generateIdentity(
+  rng: () => number,
+  referenceYear: number,
+  composition: LeagueComposition
+): PlayerIdentity {
+  const country = pickCountry(rng, composition);
   const given = pick(rng, dedupe(country.given));
   const family = pick(rng, dedupe(country.family));
   const bats = weighted(rng, BATS);
@@ -117,5 +132,3 @@ export function generateIdentity(rng: () => number, referenceYear: number): Play
     age,
   };
 }
-
-export { COUNTRIES };
