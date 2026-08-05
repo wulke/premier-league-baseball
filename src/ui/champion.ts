@@ -23,11 +23,14 @@ type LeagueRecord = {
   Divisions?: DivisionRecord[];
 };
 
+// @spec MSUI-003
 const getChampionDivisionId = (league: LeagueRecord): number | null => {
   if (!league.Divisions?.length) return null;
-  if (league.config?.type === 'League Cup') return league.Divisions[0]?.id ?? null;
 
   return league.Divisions.find((division) => division.config?.isTopTier === true)?.id
+    // Legacy single-division cups predate isTopTier. Multi-stage cups use the explicit
+    // top-tier knockout division so their group stage cannot mask the champion.
+    ?? (league.config?.type === 'League Cup' ? league.Divisions[0]?.id : null)
     ?? league.Divisions[0]?.id
     ?? null;
 };
