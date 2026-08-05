@@ -1,4 +1,4 @@
-import { BracketGame, BracketRound, BracketTie, CompetitionFormat, DivisionBracket, SchedulingConfig, StandingsConfig, TeamStanding } from '../../api/models';
+import { BracketGame, BracketRound, BracketTie, CompetitionFormat, DefaultStandingsConfig, DivisionBracket, SchedulingConfig, StandingsConfig, TeamStanding } from '../../api/models';
 import { getKnockoutRoundLabel, nextLowerPowerOfTwo, shuffleTeams } from './knockout';
 import db from '../client';
 import { Transaction } from 'sequelize';
@@ -33,7 +33,7 @@ const DivisionFactory = (id?: number): IDivision => {
       .sort((a: any, b: any) => (a.config.stageOrder ?? 0) - (b.config.stageOrder ?? 0));
 
     if (selection.kind === 'TOP_N_PER_DIVISION') {
-      const standingsConfig = league.dataValues.config.standingsConfig ?? { mode: 'table', points: { win: 3, draw: 1, loss: 0 } };
+      const standingsConfig = league.dataValues.config.standingsConfig ?? DefaultStandingsConfig;
       const perSource = await Promise.all(sourceDivisions.map((source: any) =>
         DivisionFactory(source.id).getStandings(year, standingsConfig),
       ));

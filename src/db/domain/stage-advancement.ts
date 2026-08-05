@@ -10,8 +10,13 @@ export const resolveCrossStageAdvancement = async (gameId: number): Promise<void
   const seasonNode: any = link?.dataValues.DivisionSeason;
   const season = seasonNode?.dataValues ?? seasonNode;
   if (!season) return;
-  const division = await db.models.Division.findByPk(season.divisionId);
+  const division = await db.models.Division.findByPk(season.divisionId, { include: [db.models.League] });
   if (!division) return;
+  const leagueNode: any = division.dataValues.League;
+  const league = leagueNode?.dataValues ?? leagueNode;
+  // Single-stage legacy leagues have no dependent stage. Avoid the further league
+  // and division scans on every ordinary PL/Cup game completion.
+  if (!league?.config?.stages || league.config.stages.length < 2) return;
   await advanceStageIfReady(division.dataValues.leagueId, season.year);
 };
 
