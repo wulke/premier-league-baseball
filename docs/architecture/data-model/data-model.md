@@ -8,6 +8,8 @@ erDiagram
     int id PK
     json config
     int year
+    date currentDate "nullable"
+    int managedTeamId "nullable — user-managed Team pointer"
   }
 
   LEAGUE {
@@ -118,6 +120,9 @@ erDiagram
 Notes
 - `DivisionSeason` has a unique composite index on `(divisionId, teamId, year)`.
 - `League.year` is the League-scoped season year; `League.status` is its lifecycle phase and defaults to `CUTOVER`.
+- `GameWorld.managedTeamId` is a nullable, user-managed Team pointer. It is intentionally not a
+  database association or an ownership gate yet: `GameWorldFactory.setManagedClub` validates that
+  a non-null Team belongs to the same GameWorld before writing it, and `null` means unclaimed.
 - `Game.homeTeam` and `Game.awayTeam` are intended FKs to `Team.id` but are not defined as Sequelize associations yet.
 - `SeasonResult` (new, [HLD: Full Season Simulation](../../high-level-design.md#hld-full-season-simulation-league--league-cup)) is a general-purpose historical-fact table, not a live-season field — one row per `(divisionId, year)` once that division's season is decided. Populated for `KNOCKOUT` divisions when a round resolves to a single winner, and for the top-tier `ROUND_ROBIN` division when `isSeasonComplete` flips true. It is the single place the UI's champion banner reads from, regardless of competition structure. See `docs/llds/knockout-bracket.md`.
 - `Division.config` (JSON) carries a `CompetitionFormat` — a discriminated union on `structure` (`ROUND_ROBIN` | `KNOCKOUT`) that replaces the old flat `GameFormula[]` array; resolved as `divisionConfig.format ?? leagueConfig.format`. See `docs/llds/competition-format.md`. Not modeled as ERD columns since it lives inside the existing `config` JSON blob, not new typed columns.

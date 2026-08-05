@@ -71,6 +71,13 @@ router.post(Endpoints.NewGameWorld, async (req: any, res: any) => {
   }).catch((error) => sendError(res, error));
 });
 
+router.post(Endpoints.SetManagedClub, async (req: any, res: any) => {
+  // @spec MCLB-003,MCLB-004,MCLB-005
+  await handlers.setManagedClub(Number(req.params.gwId), req.body?.teamId)
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
 router.post(Endpoints.LeagueSeasonCutover, async (req: any, res: any) => {
   // @spec SCL-015
   await handlers.cutoverLeagueSeason(Number(req.params.leagueId))

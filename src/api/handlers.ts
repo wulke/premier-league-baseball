@@ -5,6 +5,7 @@ import { NewGameWorld, SchedulingConfig } from './models';
 /* ! todo ! will we need to start splitting this by model? */
 
 const getGameWorld = async (id: number) => {
+  // @spec MCLB-002
   // @spec RSS-007 surface whether dev tools are enabled so the UI slice can gate the
   // Rapid Simulate control; matches the same env check the rapid-simulate handler uses.
   // find() returns a Sequelize instance — spread via get({ plain: true }) so the response
@@ -47,6 +48,11 @@ const newGameWorld = async (config: NewGameWorld) => {
   const newGameWorld = await GameWorldFactory().create(config);
   console.debug(newGameWorld);
   return newGameWorld;
+};
+
+// @spec MCLB-003,MCLB-004,MCLB-005
+const setManagedClub = async (gwId: number, teamId: number | null) => {
+  return await GameWorldFactory(gwId).setManagedClub(teamId);
 };
 
 // @spec SCL-015
@@ -102,6 +108,7 @@ export {
   getLeagueToday,
   getTeamSchedule,
   newGameWorld,
+  setManagedClub,
   cutoverLeagueSeason,
   startLeagueSeason,
   updateDivisionSchedulingConfig,
