@@ -1,4 +1,4 @@
-import { BracketGame, BracketRound, BracketTie, CompetitionFormat, DivisionBracket, SchedulingConfig, StandingsConfig, TeamStanding } from '../../api/models';
+import { BracketGame, BracketRound, BracketTie, CompetitionFormat, DefaultStandingsConfig, DivisionBracket, SchedulingConfig, StandingsConfig, TeamStanding } from '../../api/models';
 import { getKnockoutRoundLabel, nextLowerPowerOfTwo, shuffleTeams } from './knockout';
 import db from '../client';
 import { Transaction } from 'sequelize';
@@ -18,24 +18,36 @@ interface IDivision {
 
 const DivisionFactory = (id?: number): IDivision => {
   const getSeedTeamIdsForDivision = async (year: number) => {
-    /**
-     * responsible for determining list of teams that will be in this division
-     * use cases:
-     * 1. Default list of teams for initial season
-     * 2. promotion / relegation between divisions in a standard league
-     * 3. Knockout tournament round progression
-     * .???
-     *
-     * Will need to determine logic based on DivisionConfig or parent LeagueConfig.
-     *
-     * For the time being we will just return the default list of teams
-     */
-    return await db.models.Division.findByPk(id)
-      .then((division) => {
-        if (!division) throw Error(`Failed to load Division '${id}'`);
-        return division.dataValues;
-      })
-      .then(({ config }) => config.defaultTeams);
+    // @spec MSS-001,MSS-002,MSS-003
+    const division = await db.models.Division.findByPk(id);
+    if (!division) throw Error(`Failed to load Division '${id}'`);
+    const { config, leagueId } = division.dataValues;
+    const selection = config.seedingSelection;
+    if (!selection) return config.defaultTeams;
+
+    const league = await db.models.League.findByPk(leagueId, { include: [db.models.Division] });
+    if (!league) throw Error(`Failed to load League '${leagueId}'`);
+    const sourceDivisions = ((league.dataValues.Divisions ?? []) as any[])
+      .map((node: any) => node.dataValues ?? node)
+      .filter((source: any) => source.config?.stageId === selection.fromStage)
+      .sort((a: any, b: any) => (a.config.stageOrder ?? 0) - (b.config.stageOrder ?? 0));
+
+    if (selection.kind === 'TOP_N_PER_DIVISION') {
+      const standingsConfig = league.dataValues.config.standingsConfig ?? DefaultStandingsConfig;
+      const perSource = await Promise.all(sourceDivisions.map((source: any) =>
+        DivisionFactory(source.id).getStandings(year, standingsConfig),
+      ));
+      const seeds: number[] = [];
+      for (let rank = 0; rank < selection.topN; rank += 1) {
+        for (const standings of perSource) {
+          const teamId = standings[rank]?.teamId;
+          if (teamId != null) seeds.push(teamId);
+        }
+      }
+      return seeds;
+    }
+
+    throw new DomainError(`SeedingSelection '${selection.kind}' has no scheduler (config-surface only)`, 422);
   };
 
   const isSeasonComplete = async (year: number): Promise<boolean> => {
@@ -307,7 +319,7 @@ const DivisionFactory = (id?: number): IDivision => {
     updateSchedulingConfig,
     getBracket,
     getStandings,
-    // @spec CUP-009,CUP-010,SCL-005,SCL-009
+    // @spec CUP-009,CUP-010,SCL-005,SCL-009,MSS-001,MSS-002,MSS-003
     newSeason: async (completedYear: number, seasonYear = completedYear + 1, { transaction }: NewSeasonOptions = {}) => {
       // (0) fetch division config
       const div = await db.models.Division.findByPk(id, { transaction })

@@ -3,12 +3,14 @@ import db from '../client';
 import { DivisionFactory } from './division';
 
 /** Write (without overwriting) the champion SeasonResult row for (divisionId, year). */
-// @spec CUP-002,LCH-002,LCH-004
+// @spec CUP-002,LCH-002,LCH-004,MSS-008
 export const recordSeasonChampionIfMissing = async (
   divisionId: number,
   year: number,
   championTeamId: number,
 ): Promise<void> => {
+  const division = await db.models.Division.findByPk(divisionId);
+  if (!division || division.dataValues.config?.isTopTier !== true) return;
   const existing = await db.models.SeasonResult.findOne({ where: { divisionId, year } });
   if (existing) {
     if (existing.dataValues.championTeamId == null) {
@@ -21,7 +23,7 @@ export const recordSeasonChampionIfMissing = async (
 };
 
 /** Completion-path entry point for top-tier round-robin champion recording. */
-// @spec LCH-002,LCH-003,LCH-004
+// @spec LCH-002,LCH-003,LCH-004,MSS-008
 export const resolveRoundRobinGameCompletion = async (gameId: number): Promise<void> => {
   const dsg = await db.models.DivisionSeasonGame.findOne({
     where: { gameId },
@@ -38,8 +40,6 @@ export const resolveRoundRobinGameCompletion = async (gameId: number): Promise<v
 
   const config = division.dataValues.config ?? {};
   if (config.format?.structure !== 'ROUND_ROBIN') return;
-  if (config.isTopTier !== true) return;
-
   const existing = await db.models.SeasonResult.findOne({
     where: { divisionId: ds.divisionId, year: ds.year },
   });

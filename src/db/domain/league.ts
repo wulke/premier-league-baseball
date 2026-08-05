@@ -197,7 +197,7 @@ const LeagueFactory = (id?: number): ILeague => {
     return { id: league.id, year, status: 'CUTOVER' };
   };
 
-  // @spec SCL-003,SCL-004,SCL-005,SCL-006,SCL-007,SCL-008,SCL-009
+  // @spec SCL-003,SCL-004,SCL-005,SCL-006,SCL-007,SCL-008,SCL-009,MSS-005
   const start = async (): Promise<{ id: number; year: number; status: 'IN_SEASON' }> => {
     const league = await getLeague();
     if (league.status !== 'CUTOVER') {
@@ -210,7 +210,15 @@ const LeagueFactory = (id?: number): ILeague => {
         return world.dataValues;
       });
 
-    for (const { dataValues: division } of league.Divisions) {
+    const stages = league.config.stages ?? [{ id: '_default', divisions: league.config.divisions ?? [] }];
+    const firstStageId = stages[0]?.id;
+    // Legacy rows created before stage stamping have no stageId; keep all of those
+    // divisions startable so existing PL/Cup data remains compatible.
+    const firstStageDivisions = league.config.stages
+      ? league.Divisions.filter(({ dataValues: division }) => division.config.stageId === firstStageId)
+      : league.Divisions;
+
+    for (const { dataValues: division } of firstStageDivisions) {
       const startDate = division.config.schedulingConfig?.startDate;
       if (gameWorld.currentDate != null && startDate != null && startDate <= gameWorld.currentDate) {
         throw new DomainError(`Division ${division.id} start date must be after the GameWorld current date`, 422);
@@ -219,14 +227,14 @@ const LeagueFactory = (id?: number): ILeague => {
 
     const transaction = await db.transaction();
     try {
-      for (const { dataValues: division } of league.Divisions) {
+      for (const { dataValues: division } of firstStageDivisions) {
         await DivisionFactory(division.id).newSeason(league.year - 1, league.year, { transaction });
       }
       await db.models.League.update({ status: 'IN_SEASON' }, { where: { id: league.id }, transaction });
       await recomputeGameWorldInProgress(league.gameWorldId, transaction);
       // @spec SCL-006,SCL-007
       if (gameWorld.currentDate == null) {
-        const startDates = league.Divisions
+        const startDates = firstStageDivisions
           .map(({ dataValues: division }) => division.config.schedulingConfig?.startDate)
           .filter((startDate): startDate is string => startDate != null);
         if (startDates.length > 0) {
@@ -276,7 +284,7 @@ const LeagueFactory = (id?: number): ILeague => {
     cutover,
     start,
     create: async (gwId: number, config: LeagueConfig, teamIdRefs: number[]) => {
-      // @spec CFG-001,SCL-001
+      // @spec CFG-001,SCL-001,MSS-004
       const gameWorld = await db.models.GameWorld.findByPk(gwId);
       if (!gameWorld) throw Error(`Invalid GameWorld '${gwId}'`);
       const league = await db.models.League.create({
@@ -285,18 +293,19 @@ const LeagueFactory = (id?: number): ILeague => {
         year: gameWorld.dataValues.year,
         status: 'CUTOVER',
       }).then(({ dataValues }) => dataValues);
-      // #85: `divisions` is optional (additive `stages` surface); PL/Cup still use it.
-      // Migrating the create path to read `stages` is #87's run-path work.
-      await Promise.all((config.divisions ?? []).map(async (divisionConfig) => 
-        await db.models.Division.create({
-          config: Object.assign({}, {
+      const stages = config.stages ?? [{ id: '_default', name: '_default', divisions: config.divisions ?? [] }];
+      await Promise.all(stages.flatMap((stage) => stage.divisions.map(async (divisionConfig, stageOrder) =>
+        db.models.Division.create({
+          config: {
             ...divisionConfig,
+            stageId: stage.id,
+            stageOrder,
             defaultTeams: divisionConfig.defaultTeams.map((idx) => teamIdRefs[idx]),
             format: resolveCompetitionFormat(divisionConfig, config),
-          }),
-          leagueId: league.id
-        })
-      ));
+          },
+          leagueId: league.id,
+        }),
+      )));
       return league;
     },
     get: getLeague,

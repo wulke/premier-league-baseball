@@ -215,6 +215,8 @@ type SeedingSelection =
 interface DivisionConfig {
   name: string;
   defaultTeams: any[];            // pool-allocation indices; [] on a cross-stage-seeded division
+  stageId?: string;               // stamped at League creation from its enclosing Stage (#87)
+  stageOrder?: number;            // declaration order within that Stage (#87)
   format?: CompetitionFormat;     // per-division (#83)
   isTopTier?: boolean;            // this division's winner is the League champion (#81)
   seedingSelection?: SeedingSelection;
@@ -272,8 +274,12 @@ const OLD_CL_GROUP_FORMAT: CompetitionFormat = {
   structure: 'ROUND_ROBIN', legs: 'TWO_LEG', seriesLength: 'Bo1', tiebreak: 'AGGREGATE_SCORE',
 };
 const OLD_CL_KNOCKOUT_FORMAT: CompetitionFormat = {
-  structure: 'KNOCKOUT', legs: 'TWO_LEG', seriesLength: 'Bo1', tiebreak: 'AGGREGATE_SCORE', seeding: 'REDRAW',
+  structure: 'KNOCKOUT', legs: 'TWO_LEG', seriesLength: 'Bo1', tiebreak: 'OVERTIME', seeding: 'REDRAW',
 };
+const OLD_CL_SCHEDULING = { startDate: '2027-08-01', intervalDays: 7 };
+// Group games occupy six weekly rounds; the dependent knockout begins after them
+// so day-by-day simulation never exposes a fixture dated before its source stage.
+const OLD_CL_KNOCKOUT_SCHEDULING = { startDate: '2027-09-12', intervalDays: 7 };
 const NEW_CL_SWISS_FORMAT: CompetitionFormat = {
   structure: 'SWISS', gamesPerTeam: 8, qualificationTiers: [
     { id: 'direct', rankRange: [1, 8] },
@@ -324,6 +330,7 @@ const LeagueTemplates: Record<string, LeagueConfig> = {
       {
         name: '1st Round',
         defaultTeams: [...Array(44).keys()],
+        isTopTier: true,
       },
     ],
   },
@@ -345,6 +352,7 @@ const LeagueTemplates: Record<string, LeagueConfig> = {
           name: `Group ${String.fromCharCode(65 + i)}`,
           defaultTeams: [i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 3],
           format: OLD_CL_GROUP_FORMAT,
+          schedulingConfig: OLD_CL_SCHEDULING,
         })),
       },
       {
@@ -356,6 +364,7 @@ const LeagueTemplates: Record<string, LeagueConfig> = {
           format: OLD_CL_KNOCKOUT_FORMAT,
           seedingSelection: { kind: 'TOP_N_PER_DIVISION', fromStage: 'group-stage', topN: 2 },
           isTopTier: true,
+          schedulingConfig: OLD_CL_KNOCKOUT_SCHEDULING,
         }],
       },
     ],

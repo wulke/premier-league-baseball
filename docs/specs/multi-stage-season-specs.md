@@ -12,15 +12,15 @@ gate), `src/db/domain/game.ts` (completion hook).
 
 | ID | Requirement | Status |
 |---|---|---|
-| MSS-001 | WHEN a division has no `seedingSelection` THE system SHALL seed its new season from `DivisionConfig.defaultTeams` | [ ] → #87 |
-| MSS-002 | WHEN a division has a `TOP_N_PER_DIVISION` selection THE system SHALL emit its seeds rank-outer (rank 1..topN) then source-stage division declaration order inner (ordered by each source division's stamped `stageOrder`), reading each source division's `getStandings` | [ ] → #87 |
-| MSS-003 | WHEN a division has a `BEST_OF_REST` or `TIERED_RANK` selection THE system SHALL reject the season start with a domain error (config-surface only — no scheduler this map) | [ ] → #87 |
-| MSS-004 | WHEN a multi-stage League is created THE system SHALL stamp each division's config with the enclosing Stage's `stageId` and its `stageOrder` index within that stage's `divisions[]`, treating a legacy `divisions[]` config as a single default stage | [ ] → #87 |
-| MSS-005 | WHEN a multi-stage League season starts THE system SHALL start only the first stage's divisions | [ ] → #87 |
-| MSS-006 | WHEN a game completes in a stage that has a dependent successor THE system SHALL advance the dependent divisions' new seasons once every source-stage division is complete | [ ] → #87 |
-| MSS-007 | WHEN cross-stage advancement is evaluated for a dependent division already started this season THE system SHALL no-op | [ ] → #87 |
-| MSS-008 | WHEN recording a season champion THE system SHALL write it only if the division's `isTopTier === true`, consulted from both the round-robin and knockout completion paths | [ ] → #87 |
-| MSS-009 | WHEN the old Champions League runs end-to-end THE system SHALL progress the group stage to a cross-phase-seeded two-leg knockout decided by a single champion | [ ] → #87 |
+| MSS-001 | WHEN a division has no `seedingSelection` THE system SHALL seed its new season from `DivisionConfig.defaultTeams` | [x] → #87 |
+| MSS-002 | WHEN a division has a `TOP_N_PER_DIVISION` selection THE system SHALL emit its seeds rank-outer (rank 1..topN) then source-stage division declaration order inner (ordered by each source division's stamped `stageOrder`), reading each source division's `getStandings` | [x] → #87 |
+| MSS-003 | WHEN a division has a `BEST_OF_REST` or `TIERED_RANK` selection THE system SHALL reject the season start with a domain error (config-surface only — no scheduler this map) | [x] → #87 |
+| MSS-004 | WHEN a multi-stage League is created THE system SHALL stamp each division's config with the enclosing Stage's `stageId` and its `stageOrder` index within that stage's `divisions[]`, treating a legacy `divisions[]` config as a single default stage | [x] → #87 |
+| MSS-005 | WHEN a multi-stage League season starts THE system SHALL start only the first stage's divisions | [x] → #87 |
+| MSS-006 | WHEN a game completes in a stage that has a dependent successor THE system SHALL advance the dependent divisions' new seasons once every source-stage division is complete | [x] → #87 |
+| MSS-007 | WHEN cross-stage advancement is evaluated for a dependent division already started this season THE system SHALL no-op | [x] → #87 |
+| MSS-008 | WHEN recording a season champion THE system SHALL write it only if the division's `isTopTier === true`, consulted from both the round-robin and knockout completion paths | [x] → #87 |
+| MSS-009 | WHEN the old Champions League runs end-to-end THE system SHALL progress the group stage to a cross-phase-seeded two-leg knockout decided by a single champion | [x] → #87 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
