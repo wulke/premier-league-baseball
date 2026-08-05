@@ -1,12 +1,12 @@
 // @spec MSS-001,MSS-002,MSS-003,MSS-004,MSS-005,MSS-006,MSS-007,MSS-008,MSS-009
 import db from '../../../src/db/client';
-import { GameWorldFactory, LeagueFactory, TeamFactory } from '../../../src/db/domain';
+import { DivisionFactory, LeagueFactory, TeamFactory } from '../../../src/db/domain';
 import { GameFactory } from '../../../src/db/domain/game';
 import { advanceStageIfReady } from '../../../src/db/domain/stage-advancement';
 import { LeagueType } from '../../../src/api/models';
 
 const ROUND_ROBIN = { structure: 'ROUND_ROBIN' as const, legs: 'ONE_LEG' as const, seriesLength: 'Bo1' as const };
-const KNOCKOUT = { structure: 'KNOCKOUT' as const, legs: 'ONE_LEG' as const, seriesLength: 'Bo1' as const, seeding: 'FIXED' as const };
+const KNOCKOUT = { structure: 'KNOCKOUT' as const, legs: 'ONE_LEG' as const, seriesLength: 'Bo1' as const, seeding: 'FIXED' as const, tiebreak: 'OVERTIME' as const };
 
 describe('multi-stage season run-path', () => {
   let gameWorld: any;
@@ -14,7 +14,7 @@ describe('multi-stage season run-path', () => {
 
   beforeEach(async () => {
     await db.sync({ force: true });
-    gameWorld = await GameWorldFactory().create({ year: 2027, config: {} });
+    gameWorld = await db.models.GameWorld.create({ year: 2027, config: {} }).then((row: any) => row.dataValues);
     teams = await Promise.all([...Array(8).keys()].map((i) => TeamFactory().create(gameWorld.id, { name: `Team ${i}` })));
   });
 
@@ -22,11 +22,11 @@ describe('multi-stage season run-path', () => {
     name: 'Multi-stage Cup', type: LeagueType.LeagueCup,
     stages: [
       { id: 'groups', name: 'Groups', divisions: [
-        { name: 'Group A', defaultTeams: [0, 1, 2, 3], format: ROUND_ROBIN },
-        { name: 'Group B', defaultTeams: [4, 5, 6, 7], format: ROUND_ROBIN },
+        { name: 'Group A', defaultTeams: [0, 1, 2, 3], format: ROUND_ROBIN, schedulingConfig: { startDate: '2027-01-01', intervalDays: 1 } },
+        { name: 'Group B', defaultTeams: [4, 5, 6, 7], format: ROUND_ROBIN, schedulingConfig: { startDate: '2027-01-01', intervalDays: 1 } },
       ] },
       { id: 'knockout', name: 'Knockout', divisions: [
-        { name: 'Knockout', defaultTeams: [], format: KNOCKOUT, seedingSelection: selection, isTopTier: true },
+        { name: 'Knockout', defaultTeams: [], format: KNOCKOUT, seedingSelection: selection, isTopTier: true, schedulingConfig: { startDate: '2027-01-01', intervalDays: 1 } },
       ] },
     ],
   });
@@ -72,7 +72,8 @@ describe('multi-stage season run-path', () => {
 
     await advanceStageIfReady(league.id, 2027);
     const seeded = await db.models.DivisionSeason.findAll({ where: { divisionId: divisions[2].id, year: 2027 }, order: [['bracketSlot', 'ASC']] });
-    expect(seeded.map((s: any) => s.dataValues.teamId)).toEqual([teams[0].id, teams[4].id, teams[1].id, teams[5].id]);
+    const [groupA, groupB] = await Promise.all(divisions.slice(0, 2).map((division) => DivisionFactory(division.id).getStandings(2027, { mode: 'table', points: { win: 3, draw: 1, loss: 0 } })));
+    expect(seeded.map((s: any) => s.dataValues.teamId)).toEqual([groupA[0].teamId, groupB[0].teamId, groupA[1].teamId, groupB[1].teamId]);
     await advanceStageIfReady(league.id, 2027);
     expect(await db.models.DivisionSeason.count({ where: { divisionId: divisions[2].id, year: 2027 } })).toBe(4);
   });
@@ -91,7 +92,7 @@ describe('multi-stage season run-path', () => {
         await db.models.Game.update({ status: 'COMPLETED', homeTeamResult: 1, awayTeamResult: 0 }, { where: { id: game.id } });
       }
     }
-    await expect(advanceStageIfReady(league.id, 2027)).rejects.toMatchObject({ status: 422 });
+    await expect(advanceStageIfReady(league.id, 2027)).rejects.toMatchObject({ statusCode: 422 });
   });
 
   // @spec MSS-008,MSS-009

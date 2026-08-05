@@ -4,6 +4,7 @@ import { DomainError } from './errors';
 import { GameWorldFactory } from './game-world';
 import { resolveKnockoutGameCompletion } from './knockout-advancement';
 import { resolveRoundRobinGameCompletion } from './season-result';
+import { resolveCrossStageAdvancement } from './stage-advancement';
 
 const toDateStr = (d: any): string => new Date(d).toISOString().slice(0, 10);
 
@@ -105,9 +106,10 @@ const GameFactory = (id?: number) => {
       }
 
       const updated = await db.models.Game.findByPk(id);
-      // @spec CUP-001,LCH-002 round-robin / knockout completion hooks (single-game path)
+      // @spec CUP-001,LCH-002,MSS-006,MSS-007 round-robin / knockout / stage completion hooks (single-game path)
       await resolveKnockoutGameCompletion(id!);
       await resolveRoundRobinGameCompletion(id!);
+      await resolveCrossStageAdvancement(id!);
       return updated!.dataValues;
     },
 
@@ -193,7 +195,7 @@ const GameFactory = (id?: number) => {
         throw error;
       }
 
-      // @spec CUP-001,LCH-002 round-robin / knockout completion hooks (batch path).
+      // @spec CUP-001,LCH-002,MSS-006,MSS-007 round-robin / knockout / stage completion hooks (batch path).
       // Runs AFTER the transaction commits (edge case e4) so the "last unresolved game in
       // round" check sees the full batch. Idempotent, so deduping by gameId is sufficient.
       const advanced = new Set<number>();
@@ -202,12 +204,13 @@ const GameFactory = (id?: number) => {
         advanced.add(sim.id);
         await resolveKnockoutGameCompletion(sim.id);
         await resolveRoundRobinGameCompletion(sim.id);
+        await resolveCrossStageAdvancement(sim.id);
       }
 
       return { simulated, skipped };
     },
 
-    // @spec RSS-001,RSS-002,RSS-003,RSS-004,RSS-005,RSS-006 rapidSimulateSeason:
+    // @spec RSS-001,RSS-002,RSS-003,RSS-004,RSS-005,RSS-006,MSS-009 rapidSimulateSeason:
     // fast-forward an entire GameWorld's remaining season by repeatedly simulating the
     // current date's batch and advancing currentDate to the next distinct scheduledDate
     // among remaining non-COMPLETED games, until none remain. Built entirely on
@@ -241,6 +244,15 @@ const GameFactory = (id?: number) => {
         // MIN(scheduledDate) among reachable non-COMPLETED games strictly after
         // targetDate (same reachability walk as simulateBatch).
         const reachableGames = await loadReachableGames(gwId);
+        // @spec MSS-009 — a completed source stage can create a dependent stage whose
+        // first games are dated at or before the current simulation date. Re-run this
+        // date before seeking a future date so those newly reachable games are played.
+        const newlyReachableAtCurrentDate = reachableGames.some((g: any) =>
+          g.status === 'SCHEDULED'
+          && g.scheduledDate != null
+          && toDateStr(g.scheduledDate) <= targetDate,
+        );
+        if (newlyReachableAtCurrentDate) continue;
         const futureDates = reachableGames
           .filter((g: any) => g.status !== 'COMPLETED'
             && g.scheduledDate != null

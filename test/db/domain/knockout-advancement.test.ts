@@ -33,7 +33,7 @@ const setupBracket = async (teamCount: number, format: any): Promise<Bracket> =>
   const league = await LeagueFactory().create(gw.id, {
     name: `${format.seeding ?? 'FIXED'} Cup`,
     type: LeagueType.LeagueCup,
-    divisions: [{ name: 'Knockout', defaultTeams: [...Array(teamCount).keys()], format }],
+    divisions: [{ name: 'Knockout', defaultTeams: [...Array(teamCount).keys()], format, isTopTier: true }],
   }, teams.map(({ id }) => id));
   const divId = await db.models.League.findByPk(league.id, { include: db.models.Division })
     .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
