@@ -42,7 +42,7 @@ describe('LeagueFactory (initial Season)', () => {
           }
         }
       })).map(({ dataValues }) => dataValues);
-      expect(divisions.length).toStrictEqual(league.config.divisions.length);
+      expect(divisions.length).toStrictEqual(league.config.stages[0].divisions.length);
     });
   });
   // @spec SCL-001
@@ -52,7 +52,7 @@ describe('LeagueFactory (initial Season)', () => {
     const league = await LeagueFactory().create(gameWorld.id, {
       name: 'Lifecycle League',
       type: LeagueType.League,
-      divisions: [],
+      stages: [{ id: "default", name: "Default", divisions: [] }],
     }, []);
 
     expect(league.year).toBe(2031);
@@ -75,7 +75,7 @@ describe('LeagueFactory (initial Season)', () => {
     const config: LeagueConfig = {
       name: 'Year Selection League',
       type: LeagueType.League,
-      divisions: [
+      stages: [{ id: "default", name: "Default", divisions: [
         {
           name: 'Division A',
           defaultTeams: [0, 1],
@@ -86,7 +86,7 @@ describe('LeagueFactory (initial Season)', () => {
           defaultTeams: [2, 3],
           format: ROUND_ROBIN_FORMAT,
         }
-      ]
+      ] }]
     };
 
     const league = await LeagueFactory().create(sgw.id, config, teams.map(({ id }) => id));
@@ -150,11 +150,11 @@ describe('LeagueFactory (initial Season)', () => {
       name: 'Custom Points League',
       type: LeagueType.League,
       standingsConfig: { mode: 'table', points: { win: 5, draw: 2, loss: 0 } },
-      divisions: [{
+      stages: [{ id: "default", name: "Default", divisions: [{
         name: 'Single Division',
-        defaultTeams: [0, 1],
+        defaultTeams: [0, 1], isTopTier: true,
         format: ROUND_ROBIN_FORMAT,
-      }]
+      }] }]
     };
 
     const league = await LeagueFactory().create(sgw.id, config, teams.map(({ id }) => id));
@@ -198,11 +198,11 @@ describe('LeagueFactory (initial Season)', () => {
       name: 'Knockout League',
       type: LeagueType.LeagueCup,
       standingsConfig: { mode: 'elimination', points: { win: 1, loss: 0 } },
-      divisions: [{
+      stages: [{ id: "default", name: "Default", divisions: [{
         name: 'Round 1',
-        defaultTeams: [0, 1],
+        defaultTeams: [0, 1], isTopTier: true,
         format: KNOCKOUT_FORMAT,
-      }]
+      }] }]
     };
 
     const league = await LeagueFactory().create(sgw.id, config, teams.map(({ id }) => id));
@@ -247,9 +247,9 @@ describe('LeagueFactory.cutover', () => {
     gameWorld = await db.models.GameWorld.create({ year: 2027, config: {} })
       .then(({ dataValues }) => dataValues);
     league = await LeagueFactory().create(gameWorld.id, {
-      name: 'Cutover League', type: LeagueType.League, divisions: [{
-        name: 'Division A', defaultTeams: [], format: ROUND_ROBIN_FORMAT,
-      }],
+      name: 'Cutover League', type: LeagueType.League, stages: [{ id: "default", name: "Default", divisions: [{
+        name: 'Division A', defaultTeams: [], isTopTier: true, format: ROUND_ROBIN_FORMAT,
+      }] }],
     }, []);
     division = await db.models.Division.findOne({ where: { leagueId: league.id } })
       .then((row) => row!.dataValues);
@@ -322,10 +322,10 @@ describe('LeagueFactory.start', () => {
       gameWorldId: gameWorld.id, config: { name },
     }).then(({ dataValues }) => dataValues)));
     league = await LeagueFactory().create(gameWorld.id, {
-      name: 'Start League', type: LeagueType.League, divisions: [{
-        name: 'Division A', defaultTeams: [0, 1], format: ROUND_ROBIN_FORMAT,
+      name: 'Start League', type: LeagueType.League, stages: [{ id: "default", name: "Default", divisions: [{
+        name: 'Division A', defaultTeams: [0, 1], isTopTier: true, format: ROUND_ROBIN_FORMAT,
         schedulingConfig: { startDate: '2027-03-08', intervalDays: 7 },
-      }],
+      }] }],
     }, teams.map(({ id }) => id));
     division = await db.models.Division.findOne({ where: { leagueId: league.id } })
       .then((row) => row!.dataValues);
@@ -452,10 +452,10 @@ describe('LeagueFactory lifecycle GameWorld inProgress derivation', () => {
     gameWorld = await db.models.GameWorld.create({ year: 2027, config: { name: 'Shared World', inProgress: false } })
       .then(({ dataValues }) => dataValues);
     firstLeague = await LeagueFactory().create(gameWorld.id, {
-      name: 'First League', type: LeagueType.League, divisions: [],
+      name: 'First League', type: LeagueType.League, stages: [{ id: "default", name: "Default", divisions: [] }],
     }, []);
     secondLeague = await LeagueFactory().create(gameWorld.id, {
-      name: 'Second League', type: LeagueType.League, divisions: [],
+      name: 'Second League', type: LeagueType.League, stages: [{ id: "default", name: "Default", divisions: [] }],
     }, []);
   });
 

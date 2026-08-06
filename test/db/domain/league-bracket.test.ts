@@ -82,7 +82,7 @@ describe('Division bracket shaping', () => {
     const leagueConfig: LeagueConfig = {
       name: 'Mixed Structure League',
       type: LeagueType.League,
-      divisions: [
+      stages: [{ id: "default", name: "Default", divisions: [
         {
           name: 'Premier Division',
           defaultTeams: [0, 1],
@@ -94,7 +94,7 @@ describe('Division bracket shaping', () => {
           defaultTeams: [2, 3, 4],
           format: KNOCKOUT_FORMAT,
         },
-      ],
+      ] }],
     };
 
     const league = await LeagueFactory().create(gw.id, leagueConfig, teams.map(({ id }) => id));
@@ -150,12 +150,12 @@ describe('Division bracket shaping', () => {
     const leagueConfig: LeagueConfig = {
       name: 'Round Robin League',
       type: LeagueType.League,
-      divisions: [{
+      stages: [{ id: "default", name: "Default", divisions: [{
         name: 'Top Flight',
         defaultTeams: [0, 1],
         format: ROUND_ROBIN_FORMAT,
         isTopTier: true,
-      }],
+      }] }],
     };
 
     const league = await LeagueFactory().create(gw.id, leagueConfig, teams.map(({ id }) => id));
@@ -178,11 +178,11 @@ describe('Division bracket shaping', () => {
     const leagueConfig: LeagueConfig = {
       name: 'Cup League',
       type: LeagueType.LeagueCup,
-      divisions: [{
+      stages: [{ id: "default", name: "Default", divisions: [{
         name: 'Cup',
-        defaultTeams: [0, 1, 2, 3],
+        defaultTeams: [0, 1, 2, 3], isTopTier: true,
         format: KNOCKOUT_FORMAT,
-      }],
+      }] }],
     };
 
     const league = await LeagueFactory().create(gw.id, leagueConfig, teams.map(({ id }) => id));

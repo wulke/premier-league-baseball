@@ -16,7 +16,7 @@ The run-path that makes a League's ordered, dependent `stages[]` actually *simul
 - Event-driven dependent-stage advance, hooked into the shared game-completion path alongside the existing knockout/round-robin resolvers.
 - `isTopTier` champion gate moved into `recordSeasonChampionIfMissing` so both paths consult it (group stage records nothing; the final knockout division records the champion).
 
-**Out of scope (other slices / map):** the config-surface *migration* (rename `winsToAdvance`→`winsToAdvance`, drop league-level `format`+`resolveCompetitionFormat`, drop `LeagueConfig.divisions`, rewrite PL/Cup templates) — **Slice A**. Minimal UI (surface that the bracket is seeded from groups) — **Slice C**. Swiss scheduler, best-of-N engine, MLB fixture matrix, cross-League qualification — out of scope for map #78.
+**Out of scope (other slices / map):** config-surface migration is complete in #163. Minimal UI (surface that the bracket is seeded from groups) — **Slice C**. Swiss scheduler, best-of-N engine, MLB fixture matrix, cross-League qualification — out of scope for map #78.
 
 ## Interface / Data Model
 
@@ -117,14 +117,14 @@ await resolveCrossStageAdvancement(id);   // new — multi-stage dependent advan
 
 ```
 create(gwId, config, teamIdRefs):                       # minimal stage-aware (Slice B)
-  stages = config.stages ?? [{ id:'_default', name:'_default', divisions: config.divisions ?? [] }]
+  stages = config.stages
   for stage in stages:
     for index, div in enumerate(stage.divisions):        # index → stageOrder (declaration order, §1)
       Division.create({ config: { ...div,
         stageId: stage.id,
         stageOrder: index,
         defaultTeams: div.defaultTeams.map(idx -> teamIdRefs[idx]),
-        format: resolveCompetitionFormat(div, config)   # legacy league-level fallback kept (dropped in Slice A)
+        format: div.format
       }})
   # NB: declaration order is carried by the stamped stageOrder field, so it is robust to
   # insertion/id ordering — create may stay parallel or become sequential without affecting emit.
@@ -169,7 +169,7 @@ advanceStageIfReady(leagueId, year):                     # idempotent
 | e5 | `isSeasonComplete` / `cutover` across stages | `every(division)` across flattened stages already correct — false until the final knockout is decided; gates `cutover` unchanged | (existing) |
 | e6 | Parallel divisions in one stage (old-CL: 8 groups) | All start at `stages[0]`; stage "complete" only when all 8 are done (the `every` in e1) | MSS-advance |
 | e7 | A division with `seedingSelection` but `BEST_OF_REST`/`TIERED_RANK` | `getSeedTeamIdsForDivision` throws `422` at run time — these arms are config-surface only (no scheduler this map); #86 guards their presence in real configs | MSS-seed |
-| e8 | Legacy PL/Cup after the minimal `create` change | `config.stages` is undefined → the `_default` fallback wraps `config.divisions`; `stageId='_default'`; `resolveCompetitionFormat` still applies the league-level fallback (dropped only in Slice A). No PL/Cup regression | (compat) |
+| e8 | Live PL/Cup config migration | Both templates carry a single explicit stage and per-division format; creation stamps that stage normally. | CFG-001, CFG-005 |
 | e9 | Dependent division's `newSeason` runs before any source games were simulated | Cannot happen — `advanceStageIfReady` is only invoked from the game-completion path, which requires at least one source game to have completed | MSS-advance |
 | e10 | Two divisions in one stage declare in a fixed order but the DB inserts them out of order (legacy `create` used `Promise.all`, so `Division.id` is nondeterministic) | `stageOrder` (stamped from the `stage.divisions[]` index at create) is the sort key for `TOP_N_PER_DIVISION` emit — declaration order is a designed guarantee, not a side-effect of `Division.id` ordering | MSS-002 |
 

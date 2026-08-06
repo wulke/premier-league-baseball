@@ -1,4 +1,4 @@
-import { DefaultStandingsConfig, DivisionStandings, LeagueConfig, LeagueDivisionBracket, StandingsConfig, TeamSeasonGame, resolveCompetitionFormat } from "../../api/models";
+import { DefaultStandingsConfig, DivisionStandings, LeagueConfig, LeagueDivisionBracket, StandingsConfig, TeamSeasonGame, validateLeagueConfig } from "../../api/models";
 import { DivisionFactory } from './division';
 import db from '../client';
 import { Op, Transaction } from 'sequelize';
@@ -210,13 +210,8 @@ const LeagueFactory = (id?: number): ILeague => {
         return world.dataValues;
       });
 
-    const stages = league.config.stages ?? [{ id: '_default', divisions: league.config.divisions ?? [] }];
-    const firstStageId = stages[0]?.id;
-    // Legacy rows created before stage stamping have no stageId; keep all of those
-    // divisions startable so existing PL/Cup data remains compatible.
-    const firstStageDivisions = league.config.stages
-      ? league.Divisions.filter(({ dataValues: division }) => division.config.stageId === firstStageId)
-      : league.Divisions;
+    const firstStageId = league.config.stages[0].id;
+    const firstStageDivisions = league.Divisions.filter(({ dataValues: division }) => division.config.stageId === firstStageId);
 
     for (const { dataValues: division } of firstStageDivisions) {
       const startDate = division.config.schedulingConfig?.startDate;
@@ -284,7 +279,8 @@ const LeagueFactory = (id?: number): ILeague => {
     cutover,
     start,
     create: async (gwId: number, config: LeagueConfig, teamIdRefs: number[]) => {
-      // @spec CFG-001,SCL-001,MSS-004
+      // @spec CFG-011,CFG-012,CFG-013,CFG-014,CFG-015,CFG-016,CFG-017,SCL-001,MSS-004
+      validateLeagueConfig(config);
       const gameWorld = await db.models.GameWorld.findByPk(gwId);
       if (!gameWorld) throw Error(`Invalid GameWorld '${gwId}'`);
       const league = await db.models.League.create({
@@ -293,15 +289,14 @@ const LeagueFactory = (id?: number): ILeague => {
         year: gameWorld.dataValues.year,
         status: 'CUTOVER',
       }).then(({ dataValues }) => dataValues);
-      const stages = config.stages ?? [{ id: '_default', name: '_default', divisions: config.divisions ?? [] }];
-      await Promise.all(stages.flatMap((stage) => stage.divisions.map(async (divisionConfig, stageOrder) =>
+      await Promise.all(config.stages.flatMap((stage) => stage.divisions.map(async (divisionConfig, stageOrder) =>
         db.models.Division.create({
           config: {
             ...divisionConfig,
             stageId: stage.id,
             stageOrder,
             defaultTeams: divisionConfig.defaultTeams.map((idx) => teamIdRefs[idx]),
-            format: resolveCompetitionFormat(divisionConfig, config),
+            format: divisionConfig.format,
           },
           leagueId: league.id,
         }),

@@ -281,8 +281,9 @@ describe('pressure-test configs (#85)', () => {
     };
     assertKoSeries('AL Wild Card', 'Bo3');
     assertKoSeries('AL Bracket', 'Bo7');   // LCS
-    assertKoSeries('World Series', 'Bo7');
-    expect(byName['World Series'].isTopTier).toBe(true);
+    const worldSeries = mlb.stages![2].divisions[0];
+    expect(worldSeries.format.structure === 'KNOCKOUT' && worldSeries.format.winsToAdvance).toBe('Bo7');
+    expect(worldSeries.isTopTier).toBe(true);
   });
 
   it('CFG-007 declares cross-stage seeding — MLB wild cards are best-of-rest per conference (BEST_OF_REST)', () => {
@@ -322,7 +323,6 @@ describe('pressure-test configs (#85)', () => {
     const world = useDefaultGameWorld();
     expect(world.leagues.map((l) => l.name)).toEqual(['Premier League', 'League Cup']);
     expect(world.teams.length).toBe(44);
-    // the relocated premier-league template still carries its divisions + league-level format
-    expect(world.leagues[0].divisions!.map((d) => d.name)).toEqual(['Premier League', 'Championship']);
+    expect(world.leagues[0].stages[0].divisions.map((d) => d.name)).toEqual(['Premier League', 'Championship']);
   });
 });

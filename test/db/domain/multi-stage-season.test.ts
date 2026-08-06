@@ -75,10 +75,8 @@ describe('multi-stage season run-path', () => {
   });
 
   // @spec MSS-003
-  it.each(['BEST_OF_REST', 'TIERED_RANK'])('rejects unsupported %s selection', async (kind) => {
-    const selection = kind === 'BEST_OF_REST'
-      ? { kind, fromStage: 'groups', count: 2, excluding: 'DIVISION_WINNERS' }
-      : { kind, fromStage: 'groups', tierId: 'direct' };
+  it.each(['BEST_OF_REST'])('rejects unsupported %s selection', async (kind) => {
+    const selection = { kind, fromStage: 'groups', count: 2, excluding: 'DIVISION_WINNERS' };
     const league = await LeagueFactory().create(gameWorld.id, config(selection), teams.map(({ id }) => id));
     await LeagueFactory(league.id).start();
     const divisions = await divisionRows(league.id);

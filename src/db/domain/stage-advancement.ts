@@ -25,7 +25,7 @@ export const resolveCrossStageAdvancement = async (gameId: number): Promise<void
 export const advanceStageIfReady = async (leagueId: number, year: number): Promise<void> => {
   const league = await db.models.League.findByPk(leagueId, { include: [db.models.Division] });
   if (!league) return;
-  const stages = league.dataValues.config.stages ?? [{ id: '_default', divisions: league.dataValues.config.divisions ?? [] }];
+  const stages = league.dataValues.config.stages;
   const divisions = ((league.dataValues.Divisions ?? []) as any[]).map((node: any) => node.dataValues ?? node);
 
   for (let index = 0; index < stages.length - 1; index += 1) {

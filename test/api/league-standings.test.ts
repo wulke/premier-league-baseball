@@ -26,11 +26,12 @@ describe('League standings API', () => {
     const leagueConfig: LeagueConfig = {
       name: 'API Standings League',
       type: LeagueType.League,
-      divisions: [{
+      stages: [{ id: "default", name: "Default", divisions: [{
         name: 'API Division',
         defaultTeams: [0, 1],
+        isTopTier: true,
         format: STANDARD_TEST_FORMAT,
-      }]
+      }] }]
     };
     const league = await LeagueFactory().create(gw.id, leagueConfig, teams.map(({ id }) => id));
 

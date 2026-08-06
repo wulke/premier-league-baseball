@@ -45,13 +45,14 @@ describe('DivisionFactory', () => {
   const leagueConfig: LeagueConfig = {
     name: 'Test League',
     type: LeagueType.League,
-    divisions: [
+    stages: [{ id: "default", name: "Default", divisions: [
       {
         name: 'Test Division',
         defaultTeams: [...Array(teamConfigs.length).keys()],
+            isTopTier: true,
         format: TWO_LEG_ROUND_ROBIN_FORMAT,
       }
-    ]
+    ] }]
   };
 
   beforeAll(async () => {
@@ -67,14 +68,14 @@ describe('DivisionFactory', () => {
     const divisionIds = await db.models.League.findByPk(league.id, { include: db.models.Division })
       .then((league) => { if (!league) throw Error(); return league.dataValues })
       .then(({ Divisions }) => Divisions.map(({ id }) => id));
-    expect(divisionIds.length).toStrictEqual(leagueConfig.divisions!.length);
+    expect(divisionIds.length).toStrictEqual(leagueConfig.stages[0].divisions.length);
 
     let id = divisionIds[0];
     await DivisionFactory(id).newSeason(gw.year);
     let d = await db.models.Division.findByPk(id, { include: db.models.DivisionSeason })
       .then((division) => { if (!division) throw Error(); return division.dataValues });
     // console.debug(d);
-    expect(d.DivisionSeasons.length).toStrictEqual(leagueConfig.divisions![0].defaultTeams.length);
+    expect(d.DivisionSeasons.length).toStrictEqual(leagueConfig.stages[0].divisions[0].defaultTeams.length);
     
     let divisionSeasons = d.DivisionSeasons.map(({ dataValues }) => dataValues);
     expect(divisionSeasons.every(({ divisionId, year, teamId}) =>
@@ -96,11 +97,12 @@ describe('DivisionFactory', () => {
     const sgLeagueConfig: LeagueConfig = {
       name: 'Standings Test League',
       type: LeagueType.League,
-      divisions: [{
+      stages: [{ id: "default", name: "Default", divisions: [{
         name: 'Standings Division',
         defaultTeams: [...Array(sgwTeams.length).keys()],
+            isTopTier: true,
         format: ONE_LEG_ROUND_ROBIN_FORMAT,
-      }]
+      }] }]
     };
     const sgLeague = await LeagueFactory().create(sgw.id, sgLeagueConfig, sgwTeams.map(({ id }) => id));
     const sgDivisionIds = await db.models.League.findByPk(sgLeague.id, { include: db.models.Division })
@@ -183,11 +185,12 @@ describe('DivisionFactory', () => {
         const sgLeague = await LeagueFactory().create(sgGw.id, {
           name: 'ONE_LEG Schedule League',
           type: LeagueType.League,
-          divisions: [{
+          stages: [{ id: "default", name: "Default", divisions: [{
             name: 'ONE_LEG Division',
             defaultTeams: [...Array(N).keys()],
+            isTopTier: true,
             format: ONE_LEG_ROUND_ROBIN_FORMAT,
-          }]
+          }] }]
         }, sgTeams.map(({ id }) => id));
         sgDivId = await db.models.League.findByPk(sgLeague.id, { include: db.models.Division })
           .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
@@ -245,11 +248,12 @@ describe('DivisionFactory', () => {
         const tlLeague = await LeagueFactory().create(tlGw.id, {
           name: 'TWO_LEG Schedule League',
           type: LeagueType.League,
-          divisions: [{
+          stages: [{ id: "default", name: "Default", divisions: [{
             name: 'TWO_LEG Division',
             defaultTeams: [...Array(N).keys()],
+            isTopTier: true,
             format: TWO_LEG_ROUND_ROBIN_FORMAT,
-          }]
+          }] }]
         }, tlTeams.map(({ id }) => id));
         tlDivId = await db.models.League.findByPk(tlLeague.id, { include: db.models.Division })
           .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
@@ -310,11 +314,12 @@ describe('DivisionFactory', () => {
         const knockoutLeague = await LeagueFactory().create(knockoutGw.id, {
           name: `${format.seeding} Knockout League`,
           type: LeagueType.LeagueCup,
-          divisions: [{
+          stages: [{ id: "default", name: "Default", divisions: [{
             name: '1st Round',
             defaultTeams: [...Array(teamCount).keys()],
+            isTopTier: true,
             format,
-          }]
+          }] }]
         }, knockoutTeams.map(({ id }) => id));
         const knockoutDivId = await db.models.League.findByPk(knockoutLeague.id, { include: db.models.Division })
           .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
@@ -450,7 +455,7 @@ describe('DivisionFactory', () => {
       );
       const league = await LeagueFactory().create(iscGw.id, {
         name: 'ISC League', type: LeagueType.League,
-        divisions: [{ name: 'ISC Division', defaultTeams: [0, 1], format: ONE_LEG_ROUND_ROBIN_FORMAT }]
+        stages: [{ id: "default", name: "Default", divisions: [{ name: 'ISC Division', defaultTeams: [0, 1], isTopTier: true, format: ONE_LEG_ROUND_ROBIN_FORMAT }] }]
       }, teams.map(({ id }) => id));
       iscDivId = await db.models.League.findByPk(league.id, { include: db.models.Division })
         .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
