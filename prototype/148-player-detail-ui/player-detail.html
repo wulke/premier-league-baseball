@@ -3,28 +3,32 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Player detail — prototype (#148)</title>
+<title>Player detail — prototype (#148, tabbed)</title>
 <!--
   Prototype for wayfinder map #135, ticket #148 — Player detail UI.
   Throwaway. Not wired into the app. Open directly in a browser (no build).
 
-  Embodies a recommended layout for the player-detail view and lets you REACT to
-  the open decisions live. The two viz-worthy cores called out by #148 are:
-    1. The dense 9-position affinity map (attributes.positions)
-    2. The 4-pitch repertoire (attributes.pitches)
-  This prototype makes both concrete — the position affinity as a baseball-field
-  diagram (the headline idea), the pitches as per-pitch cards — with simpler
-  alternatives to flip between.
+  RESOLVED STRUCTURE (this build reflects the decided shape):
+    Page-level FM-style tab bar (consistent with the team-hub pattern #149):
+      - Overview   (default): identity masthead + field-diagram hero + flat-7 ratings + contract block
+      - Positions            : view-switcher (field / bar grid / coverage pills) — depth study
+      - Pitch repertoire     : 4-pitch cards (VEL/CTL/SPN) — PITCHERS ONLY (tab hidden for fielders)
+    The identity masthead is persistent across tabs (FM-style).
+    The field diagram is the Overview hero (at-a-glance); all three position viz live on the
+    Positions tab (depth study) — so "I like all three" is resolved by placement, not by choosing one.
+    Contract shows team + term as a block on Overview; no history tab yet (#140, the roster-mutating
+    writes that fill contract history, is out of scope and unwritten — consistent with the stats-UI
+    #139 deferral: detail never renders a near-empty section). Contract HISTORY graduates into its own
+    tab when #140 lands.
 
-  Data is a hand-authored fixture matching the #146 PlayerDetail response shape:
-    { id, givenName, familyName, countryCode, bats, throws, birthDate, age,
-      primaryPosition, contact, power, armStrength, accuracy, reaction, vision,
-      discipline, positions: { 9 keys }, pitches: [ {type,velocity,control,spin} x4 ],
+  Data is hand-authored fixtures matching the #146 PlayerDetail response shape:
+    { id, givenName, familyName, countryCode, bats, throws, birthDate, age, primaryPosition,
+      contact, power, armStrength, accuracy, reaction, vision, discipline,
+      positions: { 9 keys }, pitches: [ {type,velocity,control,spin} x4 ],
       contract: { team:{id,name}, startDate, endDate } | null }
-  No OVR is stored/computed (additive constraint, per #145/#146). A "Display OVR"
-  toggle computes a display-only mean so you can feel the alternative.
-  Route confirmed by #149: top-level /:gwId/player/:playerId.
-  Aesthetic = #147's shipping-app inline-style look (light, dense data-table).
+  No stored/computed OVR (additive constraint, #145/#146). A "Display OVR" toggle is display-only.
+  Route confirmed by #149: top-level /:gwId/player/:playerId (player page owns its own tab bar).
+  Aesthetic = #147's shipping-app inline-style look (light, dense).
 -->
 <style>
   :root { color-scheme: light; }
@@ -41,56 +45,55 @@
 
   /* ---- prototype banner (not part of the real page) ---- */
   .proto-banner {
-    margin: 0 0 20px; padding: 12px 14px; border: 1px solid #e0e0e0; border-radius: 6px;
+    margin: 0 0 16px; padding: 12px 14px; border: 1px solid #e0e0e0; border-radius: 6px;
     background: #fafafa; font-size: 0.8rem; color: #555;
   }
   .proto-banner b { color: #111; }
   .proto-banner code { background: #eee; padding: 1px 5px; border-radius: 3px; font-size: 0.78rem; }
 
-  /* ---- identity header (mirrors team-calendar.tsx identity block + #147 team header) ---- */
+  /* scaffolding: player picker (so you can switch the fixture) */
+  .scaffold { display:flex; align-items:center; gap: 10px; margin: 0 0 4px; font-size: 0.8rem; color:#666; }
+  .scaffold .label { font-weight: 600; color: #555; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .scaffold select { border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px; font-size: 0.85rem; background: #fff; font-family: inherit; }
+
+  /* ---- identity masthead (persistent across tabs — mirrors team-calendar identity block + #147 team header) ---- */
   .id-wrap {
     display: flex; align-items: flex-start; gap: 18px;
-    padding: 16px 0; border-bottom: 1px solid #eee;
+    padding: 16px 0 14px; border-bottom: 1px solid #eee;
   }
+  .id-pos { flex: 0 0 auto; margin-top: 4px; }
   .id-name { margin: 0; font-size: 1.7rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
   .id-name .fam { display: block; }
   .id-sub { margin: 6px 0 0; font-size: 0.85rem; color: #666; }
   .id-sub .dot { margin: 0 8px; color: #bbb; }
   .id-sub a { color: #111; text-decoration: none; font-weight: 600; }
   .id-sub a:hover { text-decoration: underline; }
-  .id-pos { flex: 0 0 auto; margin-top: 4px; }
   .id-meta { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 0 22px; font-size: 0.82rem; color: #444; }
   .id-meta b { color: #111; font-variant-numeric: tabular-nums; font-weight: 600; }
   .free-agent {
-    display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 3px;
+    display: inline-block; padding: 3px 10px; border-radius: 3px;
     background: #fff4e0; color: #9a6b12; border: 1px solid #ecd09a;
     font-size: 0.74rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
   }
 
-  /* position badge (mirrors #147: no design-token system in-app; subtle group hues) */
+  /* position badge (mirrors #147) */
   .pos {
     display: inline-block; min-width: 30px; text-align: center; padding: 2px 7px; border-radius: 3px;
     font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
   }
-  .pos-P  { background: #fdecec; color: #b33; border: 1px solid #f3c9c9; }   /* pitcher — red */
-  .pos-C  { background: #f4ece2; color: #9a6b32; border: 1px solid #e3cda9; } /* catcher — tan */
-  .pos-IF { background: #eaf0fb; color: #2a5db0; border: 1px solid #c7d8f3; } /* infield — blue */
-  .pos-OF { background: #ecf4ee; color: #2f7a43; border: 1px solid #c5e0cc; } /* outfield — green */
+  .pos-P  { background: #fdecec; color: #b33; border: 1px solid #f3c9c9; }
+  .pos-C  { background: #f4ece2; color: #9a6b32; border: 1px solid #e3cda9; }
+  .pos-IF { background: #eaf0fb; color: #2a5db0; border: 1px solid #c7d8f3; }
+  .pos-OF { background: #ecf4ee; color: #2f7a43; border: 1px solid #c5e0cc; }
 
-  /* ---- toolbar (mirrors calendar filter bar) ---- */
-  .toolbar {
-    display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
-    margin: 18px 0; padding: 12px 16px; background: #f8f8f8; border-radius: 6px; font-size: 0.85rem;
+  /* ---- tab bar (FM-style, inline; consistent with team-hub pattern) ---- */
+  .tabs { display:flex; gap:0; border-bottom:1px solid #ddd; margin: 6px 0 0; }
+  .tab {
+    padding:9px 18px; font-size:0.85rem; font-weight:600; color:#666; cursor:pointer;
+    border:none; background:none; border-bottom:2px solid transparent; font-family:inherit;
   }
-  .toolbar .label { font-weight: 600; color: #555; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; margin-right: 2px; }
-  .seg { display: inline-flex; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
-  .seg button {
-    border: none; background: #fff; padding: 4px 12px; font-size: 0.82rem; cursor: pointer; color: #555;
-    font-family: inherit;
-  }
-  .seg button + button { border-left: 1px solid #ddd; }
-  .seg button.on { background: #000; color: #fff; font-weight: 600; }
-  .player-pick select { border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px; font-size: 0.85rem; background: #fff; font-family: inherit; }
+  .tab.on { color:#111; border-bottom-color:#000; }
+  .tab:hover:not(.on) { color:#111; background:#fafafa; }
 
   /* ---- panels ---- */
   .panel { margin: 22px 0 0; }
@@ -101,19 +104,24 @@
   }
   .panel-h .note { font-weight: 400; color: #bbb; text-transform: none; letter-spacing: 0; font-size: 0.74rem; }
 
+  /* small inline control on a panel */
+  .ctl { display:inline-flex; align-items:center; gap:6px; font-size:0.78rem; color:#666; }
+  .mini-seg { display: inline-flex; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
+  .mini-seg button { border:none; background:#fff; padding:3px 9px; font-size:0.76rem; cursor:pointer; color:#666; font-family:inherit; }
+  .mini-seg button + button { border-left: 1px solid #ddd; }
+  .mini-seg button.on { background:#000; color:#fff; font-weight:600; }
+
   /* ---- ratings: flat-7 tinted stat cells ---- */
   .ratings { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
   .rstat { border: 1px solid #eee; border-radius: 5px; padding: 8px 6px; text-align: center; }
   .rstat .lbl { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; color: #888; font-weight: 600; }
   .rstat .val { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
-
-  /* OVR readout (display-only) */
   .ovr-readout { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 0.8rem; color: #666; }
   .ovr-pill { display: inline-block; min-width: 44px; text-align: center; padding: 4px 10px; border-radius: 5px; font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 
   /* ---- position affinity: field diagram ---- */
   .field-wrap { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
-  svg.field { width: 380px; height: 344px; }
+  svg.field { width: 380px; height: 344px; flex: 0 0 auto; }
   .field-grass { fill: #eef4ec; }
   .field-dirt { fill: #efe6d6; }
   .field-line { fill: none; stroke: #cdd6c9; stroke-width: 1.5; }
@@ -121,11 +129,11 @@
   .node text.lbl { font-size: 13px; font-weight: 700; text-anchor: middle; }
   .node text.num { font-size: 9px; font-weight: 600; text-anchor: middle; }
   .node.primary circle { stroke: #111; stroke-width: 3; }
-  .field-legend { font-size: 0.74rem; color: #888; max-width: 220px; margin: 0; }
+  .field-legend { font-size: 0.74rem; color: #888; max-width: 240px; margin: 0; }
   .field-legend b { color: #444; }
 
   /* ---- position affinity: bar grid ---- */
-  .bars { width: 100%; max-width: 460px; }
+  .bars { width: 100%; max-width: 520px; }
   .bar-row { display: grid; grid-template-columns: 38px 1fr 34px; align-items: center; gap: 8px; padding: 3px 0; font-size: 0.82rem; }
   .bar-row .b-lbl { font-weight: 700; color: #555; }
   .bar-row .b-track { height: 14px; border-radius: 7px; background: #f1f1f1; overflow: hidden; }
@@ -148,10 +156,12 @@
   .pitch-stat:first-child { border-left: none; }
   .pitch-stat .pl { font-size: 0.6rem; text-transform: uppercase; color: #999; font-weight: 600; }
   .pitch-stat .pv { font-size: 0.95rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
-  .pitches-empty { padding: 14px; font-size: 0.82rem; color: #999; border: 1px dashed #e3e3e3; border-radius: 6px; }
 
-  /* ---- contract ---- */
-  .contract { display: flex; flex-wrap: wrap; gap: 10px 28px; font-size: 0.85rem; }
+  .empty-state { padding: 18px; font-size: 0.82rem; color: #888; border: 1px dashed #e3e3e3; border-radius: 6px; }
+  .empty-state b { color: #555; }
+
+  /* ---- contract block (on Overview) ---- */
+  .contract { display: flex; flex-wrap: wrap; gap: 12px 36px; font-size: 0.85rem; }
   .contract .k { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; color: #999; font-weight: 600; display: block; margin-bottom: 2px; }
   .contract .v { color: #111; font-variant-numeric: tabular-nums; font-weight: 600; }
   .contract a { color: #111; text-decoration: none; }
@@ -165,74 +175,32 @@
 <div class="page">
 
   <div class="proto-banner">
-    <b>Prototype · #148 Player detail UI</b> — throwaway, not wired into the app. Map
+    <b>Prototype · #148 Player detail UI (tabbed)</b> — throwaway, not wired into the app. Map
     <a href="https://github.com/wulke/premier-league-baseball/issues/135">#135</a>, ticket
     <a href="https://github.com/wulke/premier-league-baseball/issues/148">#148</a>. Hand-authored fixtures
-    match the <a href="https://github.com/wulke/premier-league-baseball/issues/146">#146</a> detail response shape.
-    Use the toolbar to react to each open decision; switch the player to see a pitcher, a multi-pos
-    fielder, and a free agent. Aesthetic = <a href="https://github.com/wulke/premier-league-baseball/issues/147">#147</a> shipping-app
-    inline-style look.
+    match the <a href="https://github.com/wulke/premier-league-baseball/issues/146">#146</a> detail shape.
+    FM-style page tabs: <b>Overview</b> (field-diagram hero + ratings + contract block), <b>Positions</b>
+    (field / bars / pills), <b>Pitch repertoire</b> (pitchers only — tab hidden for fielders). Switch the
+    fixture to see a pitcher, a multi-pos fielder, and a free agent.
+  </div>
+
+  <div class="scaffold">
+    <span class="label">Fixture</span>
+    <select id="playerPick"></select>
   </div>
 
   <div id="header"></div>
-
-  <div class="toolbar">
-    <span class="label">Player</span>
-    <span class="player-pick">
-      <select id="playerPick"></select>
-    </span>
-    <span style="flex:1"></span>
-    <span class="label">Positions</span>
-    <span class="seg" id="segPos">
-      <button data-v="field" class="on">Field diagram</button>
-      <button data-v="bars">Bar grid</button>
-      <button data-v="pills">Coverage pills</button>
-    </span>
-    <span class="label">Pitches</span>
-    <span class="seg" id="segPitch">
-      <button data-v="pitcher" class="on">Pitcher-only</button>
-      <button data-v="always">Always show</button>
-    </span>
-    <span class="label">Ratings</span>
-    <span class="seg" id="segRate">
-      <button data-v="seven" class="on">7 tinted</button>
-      <button data-v="ovr">+ Display OVR</button>
-    </span>
-  </div>
-
-  <!-- Ratings -->
-  <div class="panel">
-    <div class="panel-h">Ratings <span class="note" id="ratingsNote"></span></div>
-    <div id="ratings"></div>
-    <div id="ovrReadout"></div>
-  </div>
-
-  <!-- Position affinity -->
-  <div class="panel">
-    <div class="panel-h">Position affinity <span class="note" id="posNote"></span></div>
-    <div id="positions"></div>
-  </div>
-
-  <!-- Pitch repertoire -->
-  <div class="panel">
-    <div class="panel-h">Pitch repertoire <span class="note" id="pitchNote"></span></div>
-    <div id="pitches"></div>
-  </div>
-
-  <!-- Contract -->
-  <div class="panel">
-    <div class="panel-h">Contract</div>
-    <div id="contract"></div>
-  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="tabContent"></div>
 
   <p class="footnote">
-    Decisions honored: route = top-level <code>/:gwId/player/:playerId</code> (#149, forward-proofs free agents).
-    No stored/computed OVR — additive constraint per #145/#146; "Display OVR" is a display-only mean.
-    Positions affinity and pitches come straight from <code>attributes.positions</code> /
-    <code>attributes.pitches</code> (#146 serves them verbatim). Free agents (<code>contract:null</code>) handled
-    (#146 edge). The <code>Contract</code> model carries no salary/amount field today, so the contract block shows
-    team + term only — a salary column is a future-schema concern, not this view. Aesthetic mirrors the shipping
-    app's inline-style, light, dense look (<code>team-calendar.tsx</code> / <code>league.tsx</code>), per #147.
+    Route = top-level <code>/:gwId/player/:playerId</code> (#149 — player page owns its own tab bar).
+    No stored/computed OVR — additive constraint per #145/#146; the "Display OVR" toggle is display-only.
+    Positions affinity + pitches served verbatim from <code>attributes.positions</code> / <code>attributes.pitches</code>.
+    Free agents (<code>contract:null</code>) handled (#146 edge). Contract shows team + term only — no salary/history:
+    the <code>Contract</code> model has no amount field and the roster-mutating writes that create history are
+    #140 (unwritten); a Contract-history tab graduates when #140 lands (same deferral logic as stats-UI #139).
+    Aesthetic mirrors the shipping app's inline-style, light, dense look (<code>team-calendar.tsx</code> / <code>league.tsx</code>), per #147.
   </p>
 </div>
 
@@ -246,19 +214,14 @@ function rateColor(v){
 }
 
 const POS_ABBR = { Pitcher:'P', Catcher:'C', FirstBase:'1B', SecondBase:'2B', ThirdBase:'3B', Shortstop:'SS', LeftField:'LF', CenterField:'CF', RightField:'RF' };
-const POS_GROUP = {
-  Pitcher:'P', Catcher:'C',
-  FirstBase:'IF', SecondBase:'IF', ThirdBase:'IF', Shortstop:'IF',
-  LeftField:'OF', CenterField:'OF', RightField:'OF'
-};
+const POS_GROUP = { Pitcher:'P', Catcher:'C', FirstBase:'IF', SecondBase:'IF', ThirdBase:'IF', Shortstop:'IF', LeftField:'OF', CenterField:'OF', RightField:'OF' };
 const POS_ORDER = ['Pitcher','Catcher','FirstBase','SecondBase','ThirdBase','Shortstop','LeftField','CenterField','RightField'];
 const RATINGS = ['contact','power','armStrength','accuracy','reaction','vision','discipline'];
 const SHORT = { contact:'CON', power:'POW', armStrength:'ARM', accuracy:'ACC', reaction:'REA', vision:'VIS', discipline:'DIS' };
 const PITCH_FULL = { Fastball:'Fastball', Curveball:'Curveball', Slider:'Slider', Changeup:'Changeup' };
 const PITCH_SHORT = { Fastball:'FB', Curveball:'CB', Slider:'SL', Changeup:'CH' };
-const COVERAGE_THRESHOLD = 70; // matches #147 positionCoverage rule (placeholder; calibration → engine map #136)
+const COVERAGE_THRESHOLD = 70; // #147 positionCoverage rule (placeholder; calibration → #136)
 
-// ISO-3166 regional-indicator flag emoji
 function flag(cc){
   if (!cc || cc.length !== 2) return '';
   const A = 0x1F1E6;
@@ -309,27 +272,25 @@ const PLAYERS = [
 ];
 
 // ---- state ----
-let state = { playerId: 1, posViz: 'field', pitchMode: 'pitcher', rateMode: 'seven' };
+let state = { playerId: 1, tab: 'overview', posViz: 'field', rateMode: 'seven' };
 const player = () => PLAYERS.find(p => p.id === state.playerId);
+function isPitcher(p){ return p.primaryPosition === 'Pitcher'; }
+function ovrOf(p){ return Math.round(RATINGS.reduce((s,k) => s + p[k], 0) / RATINGS.length); }
 
 function fmtDate(iso){
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 function fmtTerm(c){
-  // term in years-months between startDate and endDate (rough, for gist)
   const s = new Date(c.startDate), e = new Date(c.endDate);
   const months = Math.max(0, (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1);
   const y = Math.floor(months / 12), m = months % 12;
   return (y ? `${y}y ` : '') + (m ? `${m}m` : '') || '0m';
 }
-function isPitcherType(p){ return p.primaryPosition === 'Pitcher'; }
-function ovrOf(p){ return Math.round(RATINGS.reduce((s,k) => s + p[k], 0) / RATINGS.length); }
 
-// ---- header ----
+// ---- masthead (persistent across tabs) ----
 function renderHeader(){
   const p = player();
-  const c = rateColor(ovrOf(p));
   const group = POS_GROUP[p.primaryPosition];
   const teamLine = p.contract
     ? `<a href="#">${p.contract.team.name}</a>`
@@ -350,26 +311,18 @@ function renderHeader(){
     </div>`;
 }
 
-// ---- ratings ----
-function renderRatings(){
+// ---- tabs (pitches only for pitchers) ----
+function renderTabs(){
   const p = player();
-  document.getElementById('ratingsNote').textContent =
-    state.rateMode === 'ovr' ? 'flat-7 verbatim + display-only OVR (not stored)' : 'flat-7 verbatim, no OVR';
-  document.getElementById('ratings').innerHTML =
-    `<div class="ratings">${RATINGS.map(k => {
-        const col = rateColor(p[k]);
-        return `<div class="rstat" style="background:${col.bg};"><div class="lbl">${SHORT[k]}</div><div class="val" style="color:${col.fg}">${p[k]}</div></div>`;
-      }).join('')}</div>`;
-
-  const or = document.getElementById('ovrReadout');
-  if (state.rateMode === 'ovr'){
-    const col = rateColor(ovrOf(p));
-    or.innerHTML = `<div class="ovr-readout"><span class="ovr-pill" style="background:${col.bg};color:${col.fg}">${ovrOf(p)}</span> <span>Display OVR — mean of the 7 ratings, <b>display-only</b>. The API (#146) stays additive and carries no OVR.</span></div>`;
-  } else { or.innerHTML = ''; }
+  const tabs = [['overview','Overview'],['positions','Positions']];
+  if (isPitcher(p)) tabs.push(['pitches','Pitch repertoire']);
+  // fall back to overview if current tab vanished (fielder has no pitches tab)
+  if (!tabs.some(([k]) => k === state.tab)) state.tab = 'overview';
+  document.getElementById('tabs').innerHTML = tabs.map(([k,label]) =>
+    `<button class="tab ${k===state.tab?'on':''}" data-tab="${k}">${label}</button>`).join('');
 }
 
-// ---- position affinity ----
-// Field diagram node coordinates (viewBox 0 0 380 344); home plate at bottom.
+// ---- position affinity component (shared by Overview hero + Positions tab) ----
 const FIELD_NODES = {
   Catcher:    { x: 190, y: 312 },
   Pitcher:    { x: 190, y: 216 },
@@ -381,29 +334,9 @@ const FIELD_NODES = {
   CenterField:{ x: 190, y: 44 },
   RightField: { x: 310, y: 96 },
 };
-
-function renderPositions(){
-  const p = player();
-  const note = document.getElementById('posNote');
-  let html = '';
-  if (state.posViz === 'field'){
-    note.textContent = 'baseball-field diagram — primary ringed';
-    html = renderField(p);
-  } else if (state.posViz === 'bars'){
-    note.textContent = 'FM-style bars, sorted by affinity';
-    html = renderBars(p);
-  } else {
-    note.textContent = `coverage pills (≥ ${COVERAGE_THRESHOLD}); below-threshold dimmed`;
-    html = renderPills(p);
-  }
-  document.getElementById('positions').innerHTML = html;
-}
-
-function renderField(p){
+function fieldDiagram(p){
   const nodes = POS_ORDER.map(pos => {
-    const v = p.positions[pos];
-    const col = rateColor(v);
-    const n = FIELD_NODES[pos];
+    const v = p.positions[pos]; const col = rateColor(v); const n = FIELD_NODES[pos];
     const primary = pos === p.primaryPosition ? ' primary' : '';
     return `<g class="node${primary}" transform="translate(${n.x} ${n.y})">
       <circle r="19" fill="${col.bg}" />
@@ -411,37 +344,21 @@ function renderField(p){
       <text class="num" y="12" fill="${col.fg}">${v}</text>
     </g>`;
   }).join('');
-  // outfield arc + infield diamond
-  return `<div class="field-wrap">
-    <svg class="field" viewBox="0 0 380 344" role="img" aria-label="Position affinity field diagram">
-      <!-- outfield grass -->
+  return `<svg class="field" viewBox="0 0 380 344" role="img" aria-label="Position affinity field diagram">
       <path class="field-grass" d="M190 0 A 210 210 0 0 1 400 210 L 400 344 L 0 344 L 0 210 A 210 210 0 0 1 190 0 Z"/>
-      <!-- outfield boundary arc -->
       <path class="field-line" d="M12 210 A 178 178 0 0 1 368 210"/>
-      <!-- infield dirt diamond -->
       <polygon class="field-dirt" points="190,150 258,210 190,270 122,210"/>
       <line class="field-line" x1="190" y1="150" x2="190" y2="270"/>
       <line class="field-line" x1="122" y1="210" x2="258" y2="210"/>
-      <!-- base paths faint -->
       <line class="field-line" x1="190" y1="270" x2="190" y2="312"/>
-      <!-- affinity nodes -->
       ${nodes}
-    </svg>
-    <p class="field-legend">
-      Each position sits where it does on the field; its fill is the affinity tint (low → red, high → green,
-      same scale as the ratings). The <b>primary</b> position (argmax) is ringed in dark. This is the headline
-      recommendation: spatial & baseball-native, so the 9 scores read at a glance instead of as a wall.
-    </p>
-  </div>`;
+    </svg>`;
 }
-
-function renderBars(p){
+function barGrid(p){
   const ordered = [...POS_ORDER].sort((a,b) => p.positions[b] - p.positions[a]);
   return `<div class="bars">${ordered.map(pos => {
-    const v = p.positions[pos];
-    const col = rateColor(v);
-    const w = Math.max(2, Math.round(v));
-    const primary = pos === p.primaryPosition;
+    const v = p.positions[pos]; const col = rateColor(v);
+    const w = Math.max(2, Math.round(v)); const primary = pos === p.primaryPosition;
     return `<div class="bar-row">
       <span class="b-lbl" style="${primary ? 'color:#111;' : ''}">${POS_ABBR[pos]}${primary ? ' ●' : ''}</span>
       <span class="b-track"><span class="b-fill" style="width:${w}%;background:${col.bg};border:1px solid ${col.fg}33;"></span></span>
@@ -450,65 +367,132 @@ function renderBars(p){
   }).join('')}</div>
   <p class="cov-note">● = primary (argmax). Bars give the precise ranking; the field diagram trades a little precision for spatial readability.</p>`;
 }
-
-function renderPills(p){
-  const covered = POS_ORDER.filter(pos => p.positions[pos] >= COVERAGE_THRESHOLD)
-    .sort((a,b) => p.positions[b] - p.positions[a]);
-  const below = POS_ORDER.filter(pos => p.positions[pos] < COVERAGE_THRESHOLD)
-    .sort((a,b) => p.positions[b] - p.positions[a]);
+function coveragePills(p){
+  const covered = POS_ORDER.filter(pos => p.positions[pos] >= COVERAGE_THRESHOLD).sort((a,b) => p.positions[b] - p.positions[a]);
+  const below   = POS_ORDER.filter(pos => p.positions[pos] < COVERAGE_THRESHOLD).sort((a,b) => p.positions[b] - p.positions[a]);
   const pill = (pos, dim) => {
-    const v = p.positions[pos];
-    const col = rateColor(v);
-    const primary = pos === p.primaryPosition;
-    return `<span class="pill ${dim ? 'dim' : ''}" style="background:${col.bg};color:${col.fg};${primary ? 'outline:2px solid '+col.fg+'66;' : ''}">
-      ${POS_ABBR[pos]} <span class="pv">${v}</span></span>`;
+    const v = p.positions[pos]; const col = rateColor(v); const primary = pos === p.primaryPosition;
+    return `<span class="pill ${dim ? 'dim' : ''}" style="background:${col.bg};color:${col.fg};${primary ? 'outline:2px solid '+col.fg+'66;' : ''}">${POS_ABBR[pos]} <span class="pv">${v}</span></span>`;
   };
   return `<div class="pills">${covered.map(pos => pill(pos,false)).join('')}${below.map(pos => pill(pos,true)).join('')}</div>
-    <p class="cov-note">Solid = covers the position (≥ ${COVERAGE_THRESHOLD}); dimmed = below. Mirrors the roster's <code>positionCoverage</code> field (#147/#145) so the two views speak the same language.</p>`;
+    <p class="cov-note">Solid = covers the position (≥ ${COVERAGE_THRESHOLD}); dimmed = below. Mirrors the roster's <code>positionCoverage</code> field (#147/#145).</p>`;
 }
 
-// ---- pitches ----
-function renderPitches(){
+// ---- ratings ----
+function ratingsBlock(){
   const p = player();
-  const showPitches = state.pitchMode === 'always' || isPitcherType(p);
-  const note = document.getElementById('pitchNote');
-  if (showPitches){
-    note.textContent = isPitcherType(p) ? 'primary pitcher — repertoire shown' : 'always-show (generated for everyone; meaningless for fielders)';
-    document.getElementById('pitches').innerHTML = `<div class="pitches">${p.pitches.map(pc => {
-      const head = rateColor((pc.velocity + pc.control + pc.spin) / 3);
-      const stat = (label, val) => {
-        const col = rateColor(val);
-        return `<div class="pitch-stat"><div class="pl">${label}</div><div class="pv" style="color:${col.fg}">${val}</div></div>`;
-      };
-      return `<div class="pitch">
-        <div class="pitch-h" style="background:${head.bg};color:${head.fg}">${PITCH_SHORT[pc.type]} <span style="font-weight:500;opacity:.8">· ${PITCH_FULL[pc.type]}</span></div>
-        <div class="pitch-body">${stat('VEL', pc.velocity)}${stat('CTL', pc.control)}${stat('SPN', pc.spin)}</div>
-      </div>`;
-    }).join('')}</div>`;
-  } else {
-    note.textContent = 'hidden — fielder; toggle "Always show" to see generated-but-meaningless pitches';
-    document.getElementById('pitches').innerHTML =
-      `<div class="pitches-empty">No pitch repertoire shown — this player's primary position is <b>${POS_ABBR[p.primaryPosition]}</b> (not a pitcher). The model generates pitches for every player, but they're meaningless for fielders, so v1 hides them. <code>attributes.pitches</code> is still served by #146; switch the toggle to see them.</div>`;
-  }
+  const ratingsHtml = `<div class="ratings">${RATINGS.map(k => {
+    const col = rateColor(p[k]);
+    return `<div class="rstat" style="background:${col.bg};"><div class="lbl">${SHORT[k]}</div><div class="val" style="color:${col.fg}">${p[k]}</div></div>`;
+  }).join('')}</div>`;
+  const ovrHtml = state.rateMode === 'ovr' ? (() => {
+    const col = rateColor(ovrOf(p));
+    return `<div class="ovr-readout"><span class="ovr-pill" style="background:${col.bg};color:${col.fg}">${ovrOf(p)}</span> <span>Display OVR — mean of the 7 ratings, <b>display-only</b>. The API (#146) stays additive and carries no OVR.</span></div>`;
+  })() : '';
+  return ratingsHtml + ovrHtml;
 }
 
-// ---- contract ----
-function renderContract(){
+// ---- contract block ----
+function contractBlock(){
   const p = player();
-  const el = document.getElementById('contract');
   if (!p.contract){
-    el.innerHTML = `<div class="pitches-empty" style="display:inline-block"><b>Free Agent</b> — no current contract (<code>contract:null</code> per #146). The detail view renders identity + ratings + positions only; no team, no term. Roster/listing of free agents is future-map territory (#140).</div>`;
-    return;
+    return `<div class="empty-state" style="display:inline-block"><b>Free Agent</b> — no current contract (<code>contract:null</code> per #146). Identity + ratings + positions only; no team, no term. A roster/listing of free agents is future-map territory (#140).</div>`;
   }
   const c = p.contract;
-  el.innerHTML = `<div class="contract">
+  return `<div class="contract">
     <div><span class="k">Team</span><span class="v"><a href="#">${c.team.name}</a></span></div>
     <div><span class="k">Term</span><span class="v">${fmtDate(c.startDate)} – ${fmtDate(c.endDate)} <span style="color:#999">(${fmtTerm(c)})</span></span></div>
     <div><span class="k">Salary</span><span class="v" style="color:#aaa;font-weight:500">— none in schema</span></div>
   </div>`;
 }
 
-function renderAll(){ renderHeader(); renderRatings(); renderPositions(); renderPitches(); renderContract(); }
+// ---- pitch cards ----
+function pitchCards(){
+  const p = player();
+  return `<div class="pitches">${p.pitches.map(pc => {
+    const head = rateColor((pc.velocity + pc.control + pc.spin) / 3);
+    const stat = (label, val) => { const col = rateColor(val); return `<div class="pitch-stat"><div class="pl">${label}</div><div class="pv" style="color:${col.fg}">${val}</div></div>`; };
+    return `<div class="pitch">
+      <div class="pitch-h" style="background:${head.bg};color:${head.fg}">${PITCH_SHORT[pc.type]} <span style="font-weight:500;opacity:.8">· ${PITCH_FULL[pc.type]}</span></div>
+      <div class="pitch-body">${stat('VEL', pc.velocity)}${stat('CTL', pc.control)}${stat('SPN', pc.spin)}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ---- tab content ----
+function renderTab(){
+  const p = player();
+  const c = document.getElementById('tabContent');
+  if (state.tab === 'overview'){
+    c.innerHTML = `
+      <div class="panel">
+        <div class="panel-h">Position affinity <span class="note">field diagram — at-a-glance hero · depth study on the Positions tab</span></div>
+        <div class="field-wrap">
+          ${fieldDiagram(p)}
+          <p class="field-legend">Each position sits where it does on the field; tint is affinity (low→red, high→green). <b>Primary</b> (argmax) ringed in dark. A spatial read of the 9-key map — the depth switchers (bars/pills) live on the Positions tab.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-h">Ratings <span class="note">flat-7 verbatim, no OVR</span>
+          <span class="ctl">
+            <span class="mini-seg" id="segRate">
+              <button data-v="seven" class="${state.rateMode==='seven'?'on':''}">7 tinted</button>
+              <button data-v="ovr" class="${state.rateMode==='ovr'?'on':''}">+ Display OVR</button>
+            </span>
+          </span>
+        </div>
+        <div id="ratings">${ratingsBlock()}</div>
+      </div>
+      <div class="panel">
+        <div class="panel-h">Contract <span class="note">team + term · history graduates with #140</span></div>
+        ${contractBlock()}
+      </div>`;
+    document.getElementById('segRate').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      state.rateMode = b.dataset.v;
+      [...e.currentTarget.querySelectorAll('button')].forEach(x => x.classList.toggle('on', x === b));
+      document.getElementById('ratings').innerHTML = ratingsBlock();
+    });
+    return;
+  }
+  if (state.tab === 'positions'){
+    const isField = state.posViz === 'field';
+    const legend = `<p class="field-legend">Depth study: all three viz answer "how does this guy's position profile break down?" — flip between them here. <b>Primary</b> (argmax) ringed in dark.</p>`;
+    const content = isField
+      ? `<div class="field-wrap">${fieldDiagram(p)}${legend}</div>`
+      : (state.posViz === 'bars' ? barGrid(p) : coveragePills(p));
+    c.innerHTML = `
+      <div class="panel">
+        <div class="panel-h">Position affinity <span class="note">9-key map · primary = ${POS_ABBR[p.primaryPosition]}</span>
+          <span class="ctl">
+            <span class="mini-seg" id="segPos">
+              <button data-v="field" class="${state.posViz==='field'?'on':''}">Field diagram</button>
+              <button data-v="bars" class="${state.posViz==='bars'?'on':''}">Bar grid</button>
+              <button data-v="pills" class="${state.posViz==='pills'?'on':''}">Coverage pills</button>
+            </span>
+          </span>
+        </div>
+        ${content}
+      </div>`;
+    document.getElementById('segPos').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      state.posViz = b.dataset.v;
+      renderTab();
+    });
+    return;
+  }
+  if (state.tab === 'pitches'){
+    c.innerHTML = `
+      <div class="panel">
+        <div class="panel-h">Pitch repertoire <span class="note">${p.pitches.length}-pitch mix · VEL/CTL/SPN</span></div>
+        ${pitchCards()}
+        <p class="cov-note">Tab shown because primary position is <b>${POS_ABBR[p.primaryPosition]}</b>. The model generates pitches for every player, but they're meaningful only for pitchers — so the tab is hidden for fielders (FM hides inapplicable tabs).</p>
+      </div>`;
+    return;
+  }
+}
+
+function renderAll(){ renderHeader(); renderTabs(); renderTab(); }
 
 // ---- wire up ----
 (function init(){
@@ -519,13 +503,10 @@ function renderAll(){ renderHeader(); renderRatings(); renderPositions(); render
     sel.appendChild(o);
   });
   sel.onchange = e => { state.playerId = Number(e.target.value); renderAll(); };
-  const wire = (id, key) => document.getElementById(id).addEventListener('click', e => {
-    const b = e.target.closest('button'); if (!b) return;
-    state[key] = b.dataset.v;
-    [...e.currentTarget.querySelectorAll('button')].forEach(x => x.classList.toggle('on', x === b));
-    renderAll();
+  document.getElementById('tabs').addEventListener('click', e => {
+    const b = e.target.closest('.tab'); if (!b) return;
+    state.tab = b.dataset.tab; renderAll();
   });
-  wire('segPos', 'posViz'); wire('segPitch', 'pitchMode'); wire('segRate', 'rateMode');
   renderAll();
 })();
 </script>
