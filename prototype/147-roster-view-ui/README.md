@@ -27,9 +27,16 @@ response shape exactly:
 
 ## What it decides (the recommended layout)
 
-- **Grouping: by position group** — Pitchers / Catchers / Infielders / Outfielders,
-  each a dense table with a count. Matches how baseball rosters are read and gives
-  the page immediate shape. (Flat-table is one toggle away — react to both.)
+- **Grouping — three variants to flip between:**
+  - **By position group** (default) — Pitchers / Catchers / Infielders / Outfielders,
+    each a dense table with a count.
+  - **Flat · primary** — one flat table, single `primaryPosition` badge per row.
+  - **Flat · FM** — one flat table with a **positions-coverage cell** (Football
+    Manager style): multi-position players surface all their positions (`LF CF RF`,
+    `1B 3B`, `C 1B`), primary bolded, secondaries dimmed. Better for *roster
+    management* because baseball players are genuinely multi-positional.
+  - The FM and grouped views answer different jobs; the recommended default is **Flat · FM**
+    (matches FM; the positions cell *is* the organizer), with grouping as an optional toggle.
 - **Ratings: 7 compact columns with a percentile tint** (Baseball-Savant-style
   low→red, high→green), **no stored/computed OVR** — honours #145's additive
   constraint. A "Display OVR" toggle computes a **display-only** mean so you can
@@ -59,10 +66,20 @@ The toolbar lets you flip each decision in place:
 
 ## Open sub-questions this surfaces (for the grilling)
 
-1. **Starting-pitcher (SP/RP) split — can't be done in v1.** The data has no
+1. **⚠ Surfaced dependency on [#145](https://github.com/wulke/premier-league-baseball/issues/145) — a CLOSED ticket.**
+   FM-style (positions-coverage cell) is **not buildable on today's roster API**: #145's
+   row ships only the single derived `primaryPosition` (argmax); the full 9-key `positions`
+   map was deliberately deferred to player detail (#146). An FM roster view needs a
+   **positions-coverage field added to the row** — server-derived from the `positions` map
+   (e.g. the set of positions at/above a competence threshold), with full *scores* still on
+   #146 detail. This is additive (identity-ish, not a synthetic rating) and consistent with
+   #145's additive constraint. **Resolving #147 in favour of FM graduates a small amendment
+   back onto #145's territory** — recorded as a map consequence at resolution time.
+2. **Starting-pitcher (SP/RP) split — can't be done in v1.** The data has no
    role / depth-chart field, so SP vs RP is **not computable client-side** from
    the flat-7. v1 lists all pitchers together. A real split belongs to a future
-   lineup/depth-chart concept (→ lineup/engine map territory), not this ticket.
+   lineup/depth-chart concept (→ lineup/engine map territory, [#138](https://github.com/wulke/premier-league-baseball/issues/138)), not this ticket.
+   *(The lineup/team-sheet view itself is its own future map — #138 — correctly out of scope here.)
 2. **7 columns vs a display OVR** for the list — react to the toggle. Recommendation:
    ship the 7 (honest, additive); let a display OVR graduate only if the scan
    feels heavy in practice.

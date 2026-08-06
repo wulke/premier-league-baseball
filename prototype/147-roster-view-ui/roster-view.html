@@ -136,7 +136,8 @@
     <span class="label">Grouping</span>
     <span class="seg" id="seg-grouping">
       <button data-v="grouped" class="on">By position</button>
-      <button data-v="flat">Flat table</button>
+      <button data-v="flat">Flat · primary</button>
+      <button data-v="fm">Flat · FM (positions cell)</button>
     </span>
 
     <span class="label">Ratings</span>
@@ -240,13 +241,41 @@ function rateColor(v){
   const hue = Math.round(t * 130);
   return { bg:`hsl(${hue} 65% 90%)`, fg:`hsl(${hue} 55% 30%)` };
 }
-function posBadge(pos){
-  const ab = POS[pos];
-  const cls = GROUP_OF[pos];
-  return `<span class="pos pos-${cls}">${ab}</span>`;
-}
+function posBadgeClass(pos){ return `pos pos-${GROUP_OF[pos]}`; }
+function posBadge(pos){ return `<span class="${posBadgeClass(pos)}">${POS[pos]}</span>`; }
 
 // ---- state + render ----
+// FM-style positions coverage: the set of positions a player can cover (>= competence).
+// ⚠ NOT in the #145 RosterPlayer response today — #145 ships only the single derived
+// `primaryPosition`. An FM roster view needs a positions-coverage field added to the row
+// (server-derived from the 9-key `positions` map; full scores stay on #146 detail).
+// Authored per player here to make the FM cell tangible.
+const COVERAGE_BY_NAME = {
+  'Rutschman':['Catcher','FirstBase'],
+  'Guerrero Jr.':['FirstBase','ThirdBase'],
+  'Altuve':['SecondBase'],
+  'Machado':['ThirdBase','Shortstop'],
+  'Lindor':['Shortstop','ThirdBase','SecondBase'],
+  'Witt Jr.':['Shortstop','CenterField'],
+  'Alonso':['FirstBase'],
+  'Trout':['CenterField','RightField','LeftField'],
+  'Acuña Jr.':['RightField','CenterField'],
+  'Soto':['RightField','LeftField'],
+  'Tucker':['LeftField','RightField','CenterField'],
+  'Ohtani':['LeftField','RightField'],
+};
+function coverage(p){
+  if(state.grouping!=='fm') return [p.primaryPosition];
+  const named = COVERAGE_BY_NAME[p.familyName];
+  return named && named.length ? named : [p.primaryPosition];
+}
+function posCellHTML(p){
+  return coverage(p).map(pos=>{
+    const style = pos===p.primaryPosition ? '' : 'opacity:0.5;';
+    return `<span class="${posBadgeClass(pos)}" style="${style}margin-right:3px">${POS[pos]}</span>`;
+  }).join('');
+}
+
 const state = { grouping:'grouped', ratings:'seven', sort:'pos', filter:'all' };
 
 function sorted(list){
@@ -275,7 +304,7 @@ function ratingCells(p){
 }
 function rowHTML(p){
   return `<tr>
-    <td>${posBadge(p.primaryPosition)}</td>
+    <td>${posCellHTML(p)}</td>
     <td><a class="pname" href="#/${p.id}">${p.givenName} ${p.familyName}</a><span class="pcode">${p.countryCode}</span></td>
     <td class="bt">${p.bats}/${p.throws}</td>
     <td class="age">${p.age}</td>
@@ -298,7 +327,7 @@ function tableHTML(rows){
 function render(){
   const list = sorted(filtered(ROSTER));
   const out = document.getElementById('render');
-  if(state.grouping==='flat'){
+  if(state.grouping==='flat' || state.grouping==='fm'){
     out.innerHTML = tableHTML(list);
     return;
   }
