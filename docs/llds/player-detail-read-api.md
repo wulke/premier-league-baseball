@@ -101,7 +101,7 @@ GET /api/player/:playerId?gwId=…
 | e5 | `GameWorld.currentDate` is `null` (season not started) | `resolveCurrentContract` falls back to `year` for the containment check — so a 1-year generated Contract (covering `year`) still resolves as current. | PDET-005 |
 | e6 | Overlapping or gappy Contract rows (a write-integrity violation) | **No committed tie-break** — well-formed data self-resolves. `resolveCurrentContract` returns the (first) matching row; overlap/gap *prevention* is a write-integrity concern owned by #140, not this read. | PDET-006 |
 | e7 | Free agent (`Player.teamId: null`) | Served unchanged: identity + ratings + positions + pitches verbatim, `contract: null`. No special-case path; `teamId`/`gameWorldId` are omitted from the response regardless. | PDET-007 |
-| e8 | `primaryPosition` tie | First-listed enum order (`primaryPosition()` reduce — PATTR-001), same as roster (`ROST-005`). | — |
+| e8 | `primaryPosition` tie | First-listed enum order (`primaryPosition()` reduce — PATTR-001), same as roster (`ROST-005`). | PDET-008 |
 
 ## Traceability
 
