@@ -5,35 +5,35 @@ import { DivisionFactory, LeagueFactory, TeamFactory } from '../../../src/db/dom
 const ONE_LEG_ROUND_ROBIN_FORMAT = {
   structure: 'ROUND_ROBIN' as const,
   legs: 'ONE_LEG' as const,
-  seriesLength: 'Bo1' as const,
+  winsToAdvance: 'Bo1' as const,
   tiebreak: 'AGGREGATE_SCORE' as const,
 };
 
 const TWO_LEG_ROUND_ROBIN_FORMAT = {
   structure: 'ROUND_ROBIN' as const,
   legs: 'TWO_LEG' as const,
-  seriesLength: 'Bo1' as const,
+  winsToAdvance: 'Bo1' as const,
   tiebreak: 'AGGREGATE_SCORE' as const,
 };
 
 const ONE_LEG_KNOCKOUT_FIXED_FORMAT = {
   structure: 'KNOCKOUT' as const,
   legs: 'ONE_LEG' as const,
-  seriesLength: 'Bo1' as const,
+  winsToAdvance: 'Bo1' as const,
   seeding: 'FIXED' as const,
 };
 
 const ONE_LEG_KNOCKOUT_REDRAW_FORMAT = {
   structure: 'KNOCKOUT' as const,
   legs: 'ONE_LEG' as const,
-  seriesLength: 'Bo1' as const,
+  winsToAdvance: 'Bo1' as const,
   seeding: 'REDRAW' as const,
 };
 
 const TWO_LEG_KNOCKOUT_FIXED_FORMAT = {
   structure: 'KNOCKOUT' as const,
   legs: 'TWO_LEG' as const,
-  seriesLength: 'Bo1' as const,
+  winsToAdvance: 'Bo1' as const,
   seeding: 'FIXED' as const,
   tiebreak: 'AGGREGATE_SCORE' as const,
 };

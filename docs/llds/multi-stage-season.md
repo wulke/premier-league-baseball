@@ -16,7 +16,7 @@ The run-path that makes a League's ordered, dependent `stages[]` actually *simul
 - Event-driven dependent-stage advance, hooked into the shared game-completion path alongside the existing knockout/round-robin resolvers.
 - `isTopTier` champion gate moved into `recordSeasonChampionIfMissing` so both paths consult it (group stage records nothing; the final knockout division records the champion).
 
-**Out of scope (other slices / map):** the config-surface *migration* (rename `seriesLength`→`winsToAdvance`, drop league-level `format`+`resolveCompetitionFormat`, drop `LeagueConfig.divisions`, rewrite PL/Cup templates) — **Slice A**. Minimal UI (surface that the bracket is seeded from groups) — **Slice C**. Swiss scheduler, best-of-N engine, MLB fixture matrix, cross-League qualification — out of scope for map #78.
+**Out of scope (other slices / map):** the config-surface *migration* (rename `winsToAdvance`→`winsToAdvance`, drop league-level `format`+`resolveCompetitionFormat`, drop `LeagueConfig.divisions`, rewrite PL/Cup templates) — **Slice A**. Minimal UI (surface that the bracket is seeded from groups) — **Slice C**. Swiss scheduler, best-of-N engine, MLB fixture matrix, cross-League qualification — out of scope for map #78.
 
 ## Interface / Data Model
 

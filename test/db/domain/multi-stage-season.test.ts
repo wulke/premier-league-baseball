@@ -5,8 +5,8 @@ import { GameFactory } from '../../../src/db/domain/game';
 import { advanceStageIfReady } from '../../../src/db/domain/stage-advancement';
 import { LeagueType } from '../../../src/api/models';
 
-const ROUND_ROBIN = { structure: 'ROUND_ROBIN' as const, legs: 'ONE_LEG' as const, seriesLength: 'Bo1' as const };
-const KNOCKOUT = { structure: 'KNOCKOUT' as const, legs: 'ONE_LEG' as const, seriesLength: 'Bo1' as const, seeding: 'FIXED' as const, tiebreak: 'OVERTIME' as const };
+const ROUND_ROBIN = { structure: 'ROUND_ROBIN' as const, legs: 'ONE_LEG' as const, winsToAdvance: 'Bo1' as const };
+const KNOCKOUT = { structure: 'KNOCKOUT' as const, legs: 'ONE_LEG' as const, winsToAdvance: 'Bo1' as const, seeding: 'FIXED' as const, tiebreak: 'OVERTIME' as const };
 
 describe('multi-stage season run-path', () => {
   let gameWorld: any;
@@ -34,16 +34,12 @@ describe('multi-stage season run-path', () => {
   const divisionRows = async (leagueId: number) => (await db.models.Division.findAll({ where: { leagueId } })).map((row: any) => row.dataValues);
 
   // @spec MSS-004
-  it('stamps stage identity and declaration order, including the legacy default stage', async () => {
+  it('stamps stage identity and declaration order', async () => {
     const league = await LeagueFactory().create(gameWorld.id, config(), teams.map(({ id }) => id));
     const divisions = await divisionRows(league.id);
     expect(divisions.filter((d) => d.config.stageId === 'groups').map((d) => d.config.stageOrder)).toEqual([0, 1]);
     expect(divisions.find((d) => d.config.stageId === 'knockout').config.stageOrder).toBe(0);
 
-    const legacy = await LeagueFactory().create(gameWorld.id, {
-      name: 'Legacy', type: LeagueType.League, divisions: [{ name: 'Only', defaultTeams: [0, 1], format: ROUND_ROBIN }],
-    }, teams.map(({ id }) => id));
-    expect((await divisionRows(legacy.id))[0].config.stageId).toBe('_default');
   });
 
   // @spec MSS-001,MSS-005

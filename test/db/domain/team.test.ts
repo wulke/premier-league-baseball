@@ -5,7 +5,7 @@ import { TeamFactory } from '../../../src/db/domain';
 const ONE_LEG_KNOCKOUT_FIXED_FORMAT = {
   structure: 'KNOCKOUT' as const,
   legs: 'ONE_LEG' as const,
-  seriesLength: 'Bo1' as const,
+  winsToAdvance: 'Bo1' as const,
   seeding: 'FIXED' as const,
 };
 

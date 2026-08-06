@@ -8,7 +8,7 @@ import { resolveRoundRobinGameCompletion } from '../../../src/db/domain/season-r
 const ROUND_ROBIN_FORMAT = {
   structure: 'ROUND_ROBIN' as const,
   legs: 'ONE_LEG' as const,
-  seriesLength: 'Bo1' as const,
+  winsToAdvance: 'Bo1' as const,
   tiebreak: 'AGGREGATE_SCORE' as const,
 };
 
