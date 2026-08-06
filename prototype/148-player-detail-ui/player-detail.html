@@ -426,14 +426,7 @@ function renderTab(){
   if (state.tab === 'overview'){
     c.innerHTML = `
       <div class="panel">
-        <div class="panel-h">Position affinity <span class="note">field diagram — at-a-glance hero · depth study on the Positions tab</span></div>
-        <div class="field-wrap">
-          ${fieldDiagram(p)}
-          <p class="field-legend">Each position sits where it does on the field; tint is affinity (low→red, high→green). <b>Primary</b> (argmax) ringed in dark. A spatial read of the 9-key map — the depth switchers (bars/pills) live on the Positions tab.</p>
-        </div>
-      </div>
-      <div class="panel">
-        <div class="panel-h">Ratings <span class="note">flat-7 verbatim, no OVR</span>
+        <div class="panel-h">Current ratings <span class="note">flat-7 verbatim, no OVR</span>
           <span class="ctl">
             <span class="mini-seg" id="segRate">
               <button data-v="seven" class="${state.rateMode==='seven'?'on':''}">7 tinted</button>
@@ -446,6 +439,16 @@ function renderTab(){
       <div class="panel">
         <div class="panel-h">Contract <span class="note">team + term · history graduates with #140</span></div>
         ${contractBlock()}
+      </div>
+      <div class="panel">
+        <div class="panel-h">Career &amp; accomplishments <span class="note">deferred — no writer yet</span></div>
+        <div class="empty-state">
+          Overview owns the player's <b>story</b> — career stats, season/career totals, awards, milestones. None of that has a writer yet:
+          game/season/career stats ship with the engine map (<a href="https://github.com/wulke/premier-league-baseball/issues/139">#139</a>);
+          contract history with the transfers map (<a href="https://github.com/wulke/premier-league-baseball/issues/140">#140</a>);
+          an awards/accomplishments concept isn't scoped yet. This block graduates onto Overview as those maps land —
+          consistent with the stats-UI deferral (detail never renders an always-empty section).
+        </div>
       </div>`;
     document.getElementById('segRate').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;

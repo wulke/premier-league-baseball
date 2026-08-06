@@ -39,17 +39,27 @@ is persistent across tabs (FM-style). Tabs:
 
 | Tab | Contents | When |
 |---|---|---|
-| **Overview** (default) | Field-diagram **hero** (at-a-glance) + flat-7 tinted ratings (+ optional display-only OVR) + compact **contract block** (team + term) | always |
-| **Positions** | View-switcher: **field diagram · bar grid · coverage pills** — depth study of the 9-key map | always |
+| **Overview** (default) | The player's **current state**: flat-7 tinted ratings (+ optional display-only OVR) + compact **contract block** (team + term) + a deferred **Career & accomplishments** hook (graduates in — see below) | always |
+| **Positions** | View-switcher: **field diagram · bar grid · coverage pills** — owns *all* position-affinity content (Overview carries none of it) | always |
 | **Pitch repertoire** | 4-pitch cards (VEL/CTL/SPN) | **pitchers only** — tab hidden for fielders (FM hides inapplicable tabs) |
 
 **How "I like all three position views" got resolved — by placement, not choice.**
-The field diagram is the static hero on Overview (one glance: "where can he play?");
-all three (field / bars / pills) live on the Positions tab, where the job is
-"study how this guy's position profile breaks down" — exactly where a power-user
-toggle belongs. No one view had to be picked; the structure tells you when each
-is appropriate. (Pills mirror the roster's `positionCoverage` field from #147, so
-the two views speak the same language.)
+All three (field diagram / bar grid / coverage pills) live **only** on the
+Positions tab, where the job is "study how this guy's position profile breaks
+down" — exactly where a power-user toggle belongs. No one view had to be picked;
+the structure tells you when each is appropriate. (Overview was de-duplicated in
+the final grilling: it carried a field-diagram hero that duplicated Positions —
+removed, so each tab has genuinely distinct content. Pills mirror the roster's
+`positionCoverage` field from #147, so the two views speak the same language.)
+
+**Overview's future — the Career & accomplishments hook.** Today Overview is the
+*current-state* snapshot (ratings + contract) because player history and
+accomplishments have **no writer yet**: game/season/career stats ship with the
+engine map ([#139](https://github.com/wulke/premier-league-baseball/issues/139)),
+contract history with the transfers map ([#140](https://github.com/wulke/premier-league-baseball/issues/140)),
+and an awards/accomplishments concept isn't scoped. The hook graduates onto
+Overview as those maps land — same deferral logic as the stats-UI (#139: detail
+never renders an always-empty section).
 
 **Contract — block on Overview, no history tab yet.** Team + term only; the
 `Contract` model has no salary field and the roster-mutating writes that create
