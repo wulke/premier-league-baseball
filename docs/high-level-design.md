@@ -182,6 +182,93 @@ Team creation (TeamFactory.create())
 
 ---
 
+# HLD: Team Roster & Player Visibility
+
+> Backed by [Map: Team Roster & Player Visibility](https://github.com/wulke/premier-league-baseball/issues/135) — a wayfinder planning map whose nine resolved tickets (#141–#149) are the source decisions for this HLD. This is a **read/visibility map**: it builds the API + UI surface on top of the `Player`/`Contract` schema landed in [HLD: Players, Attributes, Stats & Contracts](#hld-players-attributes-stats--contracts) (map #59). It does **not** touch `SimulationEngine` (stays random) and introduces **no roster-mutating writes** beyond identity population at team creation.
+
+## Goal
+
+Make rosters and players **real, visible, explorable surfaces** — read/visibility-primary and **symmetric across all teams** (no "My Club"). Players gain **generated human identity** (name, country, bats/throws, birth date) so rosters show *people*, not anonymous rating-bundles. New read APIs back a **team roster view** and a **player detail view** (identity + ratings + contract). The random simulation is untouched.
+
+## Strategy
+
+- **Options (scope: visibility vs. attribute/lineup influence on outcomes)**:
+  - Option A: Visibility layer + wire attributes/lineups into the sim.
+  - Option B (chosen): Visibility only; the sim stays random and unaffected.
+  - **Decision**: Option B. There is no consumer for attribute-influenced outcomes under a random sim, so coupling roster visibility to engine changes would entangle two maps. Attribute/stats-driven simulation, lineups, and the stats writer are parked for the engine map ([#136](https://github.com/wulke/premier-league-baseball/issues/136)/[#138](https://github.com/wulke/premier-league-baseball/issues/138)/[#139](https://github.com/wulke/premier-league-baseball/issues/139)).
+
+- **Options (Player identity storage)**:
+  - Option A: Identity fields inside the `attributes` JSON blob.
+  - Option B (chosen): Six typed, queryable columns on `Player` — `givenName`, `familyName`, `countryCode`, `bats`, `throws`, `birthDate` — all `allowNull:false`; `attributes` stays ratings-only.
+  - **Decision**: Option B, resolved in [#141](https://github.com/wulke/premier-league-baseball/issues/141). Identity is player-facing and queryable (roster sort/filter by country, age bands); burying it in JSON forfeits that. `birthDate` (not a stored `age`) is the aging-immune seed — derived `age` is computed at read-time.
+
+- **Options (roster membership source-of-truth)**:
+  - Option A: Anchor roster reads on `Player.teamId`.
+  - Option B (chosen): Anchor on **active Contracts** (`Team → Contract → Player` join); `Player.teamId` is a denormalized cache.
+  - **Decision**: Option B, resolved in [#145](https://github.com/wulke/premier-league-baseball/issues/145)/[#146](https://github.com/wulke/premier-league-baseball/issues/146). `Contract` is the real membership record; `teamId` is just a cache. This forward-proofs the transfers/contract-lifecycle map ([#140](https://github.com/wulke/premier-league-baseball/issues/140)). It requires migrating `Contract` from `startYear`/`endYear` INT → `startDate`/`endDate` DATE — year-ints couldn't disambiguate a same-year trade — folded into this map per #146, and de-risks #140.
+
+- **Options (derived values: store vs. read-time)**:
+  - Option A: Store derived values (`primaryPosition`, `age`, an OVR rollup, `positionCoverage`).
+  - Option B (chosen): Derive at read-time; store only immutable seeds (`birthDate`, the flat-7 ratings, the 9-key `positions` map, the `pitches` array).
+  - **Decision**: Option B. `primaryPosition` = argmax over `positions` (read-time, consistent with #59's "no stored position"); `age` from `birthDate`; `positionCoverage` = fixed-threshold rule over the 9-key map; **no stored/computed OVR, ever**. This is the **additive-attribute constraint**: new ratings never force a formula re-tune, and the read API carries only what's stored plus trivial derivations.
+
+- **Options (identity generation source)**:
+  - Option A: `@faker-js/faker`.
+  - Option B (chosen): Curated static name arrays per ~8–10 baseball countries; a weight-less country registry + named per-league compositions; seeded mulberry32 RNG.
+  - **Decision**: Option B, resolved in [#142](https://github.com/wulke/premier-league-baseball/issues/142)/[#143](https://github.com/wulke/premier-league-baseball/issues/143). faker lumps the Caribbean (DR/PR/CU/VE) into one Spain-leaning `es` pool — inadequate for the baseball-country skew — so curated pools give authentic variety. No new dependency; seeded RNG → reproducible rosters. `bats`/`throws` are independent random (MLB-like distribution), no country correlation.
+
+- **Options (URL / routing structure)**:
+  - Option A: Player detail nested under the team hub.
+  - Option B (chosen): Team hub at `/:gwId/team/:teamId` (nested routing, Calendar + Roster tabs); player detail **top-level** at `/:gwId/player/:playerId`.
+  - **Decision**: Option B, resolved in [#149](https://github.com/wulke/premier-league-baseball/issues/149). A top-level player route forward-proofs nullable `teamId` / free agents (a nested-under-team URL breaks on a free agent). The team hub mirrors the existing `team-calendar` identity block; the nav rail stays untouched, preserving the symmetric/no-My-Club boundary (the deferred rail "TEAM" section is [#137](https://github.com/wulke/premier-league-baseball/issues/137)'s to own).
+
+## Architecture
+
+### Components
+- **`Player` model change**: six new typed identity columns (`givenName`, `familyName`, `countryCode`, `bats`, `throws`, `birthDate`), `allowNull:false`. (See `docs/llds/player-identity.md` — to be produced.)
+- **`Contract` model change**: `startYear`/`endYear` INT → `startDate`/`endDate` DATE, per #146. Adds `resolveCurrentContract(playerId, currentDate)` in the Player domain — the row whose `[startDate, endDate]` contains `GameWorld.currentDate` (→ `year` fallback); no match → `contract: null`. (See `docs/llds/player-detail-read-api.md`.)
+- **`PlayerFactory` (`src/db/domain/player.ts`)**: gains **identity generation** (extends `generateRoster` — country draw → name draw, independent bats/throws, `birthDate` in 18–38 band, seeded RNG; curated pools in a co-located module, not a Factory) and a **`getDetail(playerId, gwId?)`** read (identity + full `attributes` verbatim + current contract). Conforms to the domain-ownership boundary in `backend-standards.md` §1.
+- **`TeamFactory` (`src/db/domain/team.ts`)**: gains **`getRoster(teamId)`** read anchoring on active Contracts (`Team → Contract → Player`), returning flat rows (identity + derived `primaryPosition` + flat-7 ratings; no OVR).
+- **API**: two read endpoints — `GET /api/team/:teamId/roster` (+ optional `?gwId=`, validated in handler) and `GET /api/player/:playerId` (+ optional `?gwId=`). Raw, unwrapped success shape; `{ error }` on failure; `200` for everything (per `backend-standards.md` §3/§5). (See `docs/llds/roster-read-api.md`, `docs/llds/player-detail-read-api.md`.)
+- **Frontend**: **team hub page** (`/:gwId/team/:teamId`, Calendar + Roster tabs), **roster view** (flat table, positions-coverage cell as organizer, 7 tinted rating columns, client-side sort/filter), **player detail** (FM-style page tabs: Overview / Positions / Pitch repertoire — pitchers only). Aesthetic = the shipping app's inline-style, light, dense look. (See `docs/llds/team-roster-ui.md`, `docs/llds/player-detail-ui.md`.)
+
+### Flow
+```
+Team creation (TeamFactory.create())
+  → PlayerFactory.generateRoster() now also populates identity
+       (country draw → name from that country's curated pool; independent bats/throws;
+        birthDate in 18–38 band; seeded mulberry32 RNG)
+       → Player rows (6 identity cols + ratings JSON), teamId + gameWorldId
+  → Contract rows (startDate/endDate DATE, 1-year term)
+
+Read path:
+  GET /api/team/:teamId/roster  → TeamFactory.getRoster()
+       → Team→Contract→Player join (active contracts) → flat rows (identity + derived primaryPosition + flat-7)
+  GET /api/player/:playerId     → PlayerFactory.getDetail()
+       → identity + attributes verbatim + resolveCurrentContract(currentDate)
+  UI:
+       team hub Roster tab → roster view (row name → /:gwId/player/:playerId)
+       player detail → Overview/Positions/Pitch-repertoire tabs (pitch tab hidden for fielders)
+```
+
+### Key Trade-offs
+- **Additive attributes, no stored OVR**: every read consumer (roster + detail) gets the flat-7 verbatim plus trivial read-time derivations; a stored/computed OVR is never introduced, so adding a rating later can't silently invalidate a tuning. A *display-only* OVR may be computed client-side, never carried by the API.
+- **Read-time derivation over storage**: `primaryPosition` (argmax), `age` (from `birthDate`), `positionCoverage` (threshold) are all computed at read — consistent with #59's no-stored-position decision; nothing derived is persisted.
+- **`Contract` as membership, `teamId` as cache**: roster reads join through active Contracts, so the moment #140 introduces multi-row history the read stays correct; `Player.teamId` is never the source of truth.
+- **Top-level player route**: costs one extra route segment vs. nesting, buys correctness for free agents (nullable `teamId`) without a special-case URL.
+- **Pitches generated for every player**: `PlayerFactory` emits a 4-pitch repertoire for all players (inherited from #59's uniform schema); meaningless for fielders, so the UI hides the Pitch-repertoire tab for non-pitchers. The cleaner long-term fix — don't generate them for fielders — is engine/generation work ([#136](https://github.com/wulke/premier-league-baseball/issues/136)), out of scope here.
+- **No contract history / salary yet**: the `Contract` model carries no amount field and only one row per player exists today (no writer for transfers); the player-detail Overview shows team + term only. A contract-history view graduates when #140 lands — same deferral logic as the stats UI (#139: detail never renders an always-empty section).
+- **`positionCoverage` threshold (≥70) is a placeholder**, inherited from the roster-view decision; analytical calibration of "covers a position" over the 9-key map is generation/engine work ([#136](https://github.com/wulke/premier-league-baseball/issues/136)).
+
+### Out of scope
+- Attribute/stats-driven simulation (game engine) — [#136](https://github.com/wulke/premier-league-baseball/issues/136).
+- "My Club" concept / managed-club ownership layer — [#137](https://github.com/wulke/premier-league-baseball/issues/137) (now its own active map).
+- Lineup management (batting order, positions, starter) — [#138](https://github.com/wulke/premier-league-baseball/issues/138).
+- Player stats UI surface (game/season/career) — [#139](https://github.com/wulke/premier-league-baseball/issues/139) (gated on a `PlayerGameStats` writer).
+- Transfers / contract-lifecycle / free-agency — [#140](https://github.com/wulke/premier-league-baseball/issues/140) (the roster-mutating writes that create contract history; also the home of any salary field and `jerseyNumber`).
+
+---
+
 # HLD: App Shell — Left Nav Rail
 
 > Backed by [Map: UI Direction](https://github.com/wulke/premier-league-baseball/issues/2)
