@@ -8,7 +8,7 @@ import { resolveRoundRobinGameCompletion } from '../../../src/db/domain/season-r
 const ROUND_ROBIN_FORMAT = {
   structure: 'ROUND_ROBIN' as const,
   legs: 'ONE_LEG' as const,
-  seriesLength: 'Bo1' as const,
+  winsToAdvance: 'Bo1' as const,
   tiebreak: 'AGGREGATE_SCORE' as const,
 };
 
@@ -22,7 +22,7 @@ const setupLeague = async () => {
   const league = await LeagueFactory().create(gw.id, {
     name: 'Promotion Pyramid',
     type: LeagueType.League,
-    divisions: [
+    stages: [{ id: "default", name: "Default", divisions: [
       {
         name: 'Premier Division',
         defaultTeams: [0, 1],
@@ -35,7 +35,7 @@ const setupLeague = async () => {
         format: ROUND_ROBIN_FORMAT,
         isTopTier: false,
       },
-    ],
+    ] }],
   }, teams.map(({ id }) => id));
 
   const divisions = await db.models.League.findByPk(league.id, { include: db.models.Division })

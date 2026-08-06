@@ -74,7 +74,7 @@ describe('Home new game world form', () => {
     expect(payload.year).toBe(new Date().getFullYear() - 1);
     expect(payload.teams).toHaveLength(44);
     expect(payload.leagues).toHaveLength(2);
-    expect(payload.leagues[0].divisions).toHaveLength(2);
-    expect(payload.leagues[1].divisions).toHaveLength(1);
+    expect(payload.leagues[0].stages[0].divisions).toHaveLength(2);
+    expect(payload.leagues[1].stages[0].divisions).toHaveLength(1);
   });
 });

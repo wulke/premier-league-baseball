@@ -18,11 +18,11 @@ import { DivisionFactory, GameFactory, LeagueFactory, TeamFactory } from '../../
 import { advanceKnockoutRound } from '../../../src/db/domain/knockout-advancement';
 import * as knockout from '../../../src/db/domain/knockout';
 
-const ONE_LEG_FIXED = { structure: 'KNOCKOUT' as const, legs: 'ONE_LEG' as const, seriesLength: 'Bo1' as const, seeding: 'FIXED' as const };
-const ONE_LEG_REDRAW = { structure: 'KNOCKOUT' as const, legs: 'ONE_LEG' as const, seriesLength: 'Bo1' as const, seeding: 'REDRAW' as const };
-const TWO_LEG_AGGREGATE = { structure: 'KNOCKOUT' as const, legs: 'TWO_LEG' as const, seriesLength: 'Bo1' as const, seeding: 'FIXED' as const, tiebreak: 'AGGREGATE_SCORE' as const };
-const TWO_LEG_OVERTIME = { structure: 'KNOCKOUT' as const, legs: 'TWO_LEG' as const, seriesLength: 'Bo1' as const, seeding: 'FIXED' as const, tiebreak: 'OVERTIME' as const };
-const TWO_LEG_ANOTHER_GAME = { structure: 'KNOCKOUT' as const, legs: 'TWO_LEG' as const, seriesLength: 'Bo1' as const, seeding: 'FIXED' as const, tiebreak: 'ANOTHER_GAME_W_OVERTIME' as const };
+const ONE_LEG_FIXED = { structure: 'KNOCKOUT' as const, legs: 'ONE_LEG' as const, winsToAdvance: 'Bo1' as const, seeding: 'FIXED' as const };
+const ONE_LEG_REDRAW = { structure: 'KNOCKOUT' as const, legs: 'ONE_LEG' as const, winsToAdvance: 'Bo1' as const, seeding: 'REDRAW' as const };
+const TWO_LEG_AGGREGATE = { structure: 'KNOCKOUT' as const, legs: 'TWO_LEG' as const, winsToAdvance: 'Bo1' as const, seeding: 'FIXED' as const, tiebreak: 'AGGREGATE_SCORE' as const };
+const TWO_LEG_OVERTIME = { structure: 'KNOCKOUT' as const, legs: 'TWO_LEG' as const, winsToAdvance: 'Bo1' as const, seeding: 'FIXED' as const, tiebreak: 'OVERTIME' as const };
+const TWO_LEG_ANOTHER_GAME = { structure: 'KNOCKOUT' as const, legs: 'TWO_LEG' as const, winsToAdvance: 'Bo1' as const, seeding: 'FIXED' as const, tiebreak: 'ANOTHER_GAME_W_OVERTIME' as const };
 
 interface Bracket { gw: any; teams: any[]; divId: number; year: number; leagueId: number; }
 
@@ -33,7 +33,7 @@ const setupBracket = async (teamCount: number, format: any): Promise<Bracket> =>
   const league = await LeagueFactory().create(gw.id, {
     name: `${format.seeding ?? 'FIXED'} Cup`,
     type: LeagueType.LeagueCup,
-    divisions: [{ name: 'Knockout', defaultTeams: [...Array(teamCount).keys()], format, isTopTier: true }],
+    stages: [{ id: "default", name: "Default", divisions: [{ name: 'Knockout', defaultTeams: [...Array(teamCount).keys()], isTopTier: true, format }] }],
   }, teams.map(({ id }) => id));
   const divId = await db.models.League.findByPk(league.id, { include: db.models.Division })
     .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });

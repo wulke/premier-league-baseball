@@ -47,7 +47,7 @@ Let a player create a GameWorld and, entirely through the UI, simulate a single 
 
 - **Options (competition config shape)**:
   - Option A: Patch the existing flat `GameFormula[]` array with new enum values for whatever the bracket work needs.
-  - Option B (chosen): Replace `GameFormula[]` with a typed `CompetitionFormat` object — a discriminated union on `structure` (`ROUND_ROBIN` | `KNOCKOUT`) with shared `legs`/`seriesLength`/`tiebreak` fields and knockout-only `seeding`.
+  - Option B (chosen): Replace `GameFormula[]` with a typed `CompetitionFormat` object — a discriminated union on `structure` (`ROUND_ROBIN` | `KNOCKOUT`) with shared `legs`/`winsToAdvance`/`tiebreak` fields and knockout-only `seeding`.
   - **Decision**: Option B. The flat array conflates leg format, scoring, structure, and seeding into one undifferentiated list with no type safety (e.g. nothing stops `seeding` being set on a round-robin division). A discriminated union makes illegal states unrepresentable and gives the bracket logic a typed contract to build against, rather than bolting ad hoc enum values onto an already-overloaded array.
 
 - **Options (knockout round-advancement trigger)**:

@@ -1,4 +1,4 @@
-// @spec CFG-001,CFG-002,CFG-003,CFG-004,CFG-005,CFG-006,CFG-007,CFG-008,CFG-009,CFG-010
+// @spec CFG-001..CFG-017
 import {
   CompetitionFormat,
   CompetitionSeriesLength,
@@ -11,27 +11,25 @@ import {
   TeamPools,
   DefaultWorlds,
   GameWorldType,
-  resolveCompetitionFormat,
   useDefaultGameWorld,
+  validateLeagueConfig,
 } from '../../src/api/models';
 
 describe('competition format config', () => {
-  it('CFG-001 resolves a division format before falling back to the league format', () => {
+  it('CFG-001 makes a division format mandatory with no league-level fallback', () => {
     // @spec CFG-001
     const leagueFormat: CompetitionFormat = STANDARD_LEAGUE_FORMAT;
     const divisionFormat: CompetitionFormat = STANDARD_CUP_FORMAT;
     const config: LeagueConfig = {
       name: 'Config League',
       type: LeagueType.League,
-      format: leagueFormat,
-      divisions: [
-        { name: 'Inherited Division', defaultTeams: [0, 1] },
-        { name: 'Override Division', defaultTeams: [2, 3], format: divisionFormat },
-      ],
+      stages: [{ id: 'only', name: 'Only', divisions: [
+        { name: 'League Division', defaultTeams: [0, 1], format: leagueFormat, isTopTier: true },
+        { name: 'Cup Division', defaultTeams: [2, 3], format: divisionFormat },
+      ] }],
     };
 
-    expect(resolveCompetitionFormat(config.divisions![0], config)).toBe(leagueFormat);
-    expect(resolveCompetitionFormat(config.divisions![1], config)).toBe(divisionFormat);
+    expect(config.stages[0].divisions.map((division) => division.format)).toEqual([leagueFormat, divisionFormat]);
   });
 
   it('CFG-002 and CFG-003 model the discriminated union for round-robin and knockout formats', () => {
@@ -39,20 +37,20 @@ describe('competition format config', () => {
     const roundRobin: CompetitionFormat = {
       structure: 'ROUND_ROBIN',
       legs: 'TWO_LEG',
-      seriesLength: 'Bo1',
+      winsToAdvance: 'Bo1',
       tiebreak: 'AGGREGATE_SCORE',
     };
     const knockout: CompetitionFormat = {
       structure: 'KNOCKOUT',
       legs: 'ONE_LEG',
-      seriesLength: 'Bo3',
+      winsToAdvance: 'Bo3',
       seeding: 'REDRAW',
     };
 
     const invalidRoundRobin: CompetitionFormat = {
       structure: 'ROUND_ROBIN',
       legs: 'ONE_LEG',
-      seriesLength: 'Bo1',
+      winsToAdvance: 'Bo1',
       // @ts-expect-error CFG-002: ROUND_ROBIN cannot set seeding
       seeding: 'FIXED',
     };
@@ -70,19 +68,83 @@ describe('competition format config', () => {
     expect(STANDARD_LEAGUE_FORMAT).toEqual({
       structure: 'ROUND_ROBIN',
       legs: 'TWO_LEG',
-      seriesLength: 'Bo1',
+      winsToAdvance: 'Bo1',
       tiebreak: 'AGGREGATE_SCORE',
     });
     expect(STANDARD_CUP_FORMAT).toEqual({
       structure: 'KNOCKOUT',
       legs: 'ONE_LEG',
-      seriesLength: 'Bo3',
+      winsToAdvance: 'Bo3',
       seeding: 'REDRAW',
     });
-    expect(league.format).toBe(STANDARD_LEAGUE_FORMAT);
-    expect(cup.format).toBe(STANDARD_CUP_FORMAT);
-    expect(league.divisions!.every((division) => division.format === undefined)).toBe(true);
-    expect(cup.divisions!.every((division) => division.format === undefined)).toBe(true);
+    expect(league.stages).toHaveLength(1);
+    expect(cup.stages).toHaveLength(1);
+    expect(league.stages[0].divisions.every((division) => division.format === STANDARD_LEAGUE_FORMAT)).toBe(true);
+    expect(cup.stages[0].divisions.every((division) => division.format === STANDARD_CUP_FORMAT)).toBe(true);
+  });
+});
+
+describe('strict League config validation (#163)', () => {
+  const roundRobin = { structure: 'ROUND_ROBIN' as const, legs: 'ONE_LEG' as const, winsToAdvance: 'Bo1' as const };
+  const knockout = { structure: 'KNOCKOUT' as const, legs: 'ONE_LEG' as const, winsToAdvance: 'Bo1' as const, seeding: 'FIXED' as const };
+  const valid = (): LeagueConfig => ({
+    name: 'Validated Cup', type: LeagueType.LeagueCup,
+    stages: [
+      { id: 'groups', name: 'Groups', divisions: [{ name: 'Group', defaultTeams: [0, 1], format: roundRobin }] },
+      { id: 'final', name: 'Final', divisions: [{ name: 'Final', defaultTeams: [], seedingSelection: { kind: 'TOP_N_PER_DIVISION', fromStage: 'groups', topN: 1 }, format: knockout, isTopTier: true }] },
+    ],
+  });
+
+  // @spec CFG-011
+  it('rejects divisions with both or neither team source', () => {
+    const both = valid(); both.stages[0].divisions[0].seedingSelection = { kind: 'TOP_N_PER_DIVISION', fromStage: 'groups', topN: 1 };
+    const neither = valid(); neither.stages[0].divisions[0].defaultTeams = [];
+    expect(() => validateLeagueConfig(both)).toThrow();
+    expect(() => validateLeagueConfig(neither)).toThrow();
+  });
+
+  // @spec CFG-012
+  it('rejects empty or duplicate stage ids and non-prior seed sources', () => {
+    const empty = valid(); empty.stages[0].id = '';
+    const duplicate = valid(); duplicate.stages[1].id = 'groups';
+    const forward = valid(); forward.stages[1].divisions[0].seedingSelection = { kind: 'TOP_N_PER_DIVISION', fromStage: 'final', topN: 1 };
+    expect(() => validateLeagueConfig(empty)).toThrow();
+    expect(() => validateLeagueConfig(duplicate)).toThrow();
+    expect(() => validateLeagueConfig(forward)).toThrow();
+  });
+
+  // @spec CFG-013,CFG-014
+  it('requires one final-stage top tier and a format on every division', () => {
+    const noTopTier = valid(); delete noTopTier.stages[1].divisions[0].isTopTier;
+    const nonFinalTopTier = valid(); nonFinalTopTier.stages[0].divisions[0].isTopTier = true; delete nonFinalTopTier.stages[1].divisions[0].isTopTier;
+    const missingFormat = valid(); delete (missingFormat.stages[0].divisions[0] as any).format;
+    expect(() => validateLeagueConfig(noTopTier)).toThrow();
+    expect(() => validateLeagueConfig(nonFinalTopTier)).toThrow();
+    expect(() => validateLeagueConfig(missingFormat)).toThrow();
+  });
+
+  // @spec CFG-013
+  it('allows a divisionless lifecycle-only League config without a champion producer', () => {
+    expect(() => validateLeagueConfig({
+      name: 'Lifecycle-only', type: LeagueType.League,
+      stages: [{ id: 'default', name: 'Default', divisions: [] }],
+    })).not.toThrow();
+  });
+
+  // @spec CFG-015,CFG-016,CFG-017
+  it('rejects incompatible SWISS/selection, TWO_LEG/BoN, and invalid tier sources', () => {
+    const swissSelection = valid(); swissSelection.stages[0].divisions[0].format = { structure: 'SWISS', gamesPerTeam: 8, qualificationTiers: [] }; swissSelection.stages[0].divisions[0].seedingSelection = { kind: 'TOP_N_PER_DIVISION', fromStage: 'groups', topN: 1 };
+    const twoLegBestOf = valid(); twoLegBestOf.stages[1].divisions[0].format = { ...knockout, legs: 'TWO_LEG', winsToAdvance: 'Bo3' };
+    const badTier = valid(); badTier.stages[1].divisions[0].seedingSelection = { kind: 'TIERED_RANK', fromStage: 'groups', tierId: 'missing' };
+    expect(() => validateLeagueConfig(swissSelection)).toThrow();
+    expect(() => validateLeagueConfig(twoLegBestOf)).toThrow();
+    expect(() => validateLeagueConfig(badTier)).toThrow();
+  });
+
+  // @spec CFG-011,CFG-012,CFG-013,CFG-014,CFG-015,CFG-016,CFG-017
+  it('accepts every named template and runnable bundle config', () => {
+    Object.values(LeagueTemplates).forEach(validateLeagueConfig);
+    Object.values(DefaultWorlds).flatMap((world) => world.leagues).forEach((id) => validateLeagueConfig(LeagueTemplates[id]));
   });
 });
 
@@ -223,12 +285,13 @@ describe('pressure-test configs (#85)', () => {
     expect(['Bo1', 'Bo3', 'Bo5', 'Bo7']).toContain('Bo7' as CompetitionSeriesLength);
     const assertKoSeries = (name: string, len: string) => {
       const fmt = byName[name].format;
-      expect(fmt?.structure === 'KNOCKOUT' && fmt.seriesLength === len).toBe(true);
+      expect(fmt?.structure === 'KNOCKOUT' && fmt.winsToAdvance === len).toBe(true);
     };
     assertKoSeries('AL Wild Card', 'Bo3');
     assertKoSeries('AL Bracket', 'Bo7');   // LCS
-    assertKoSeries('World Series', 'Bo7');
-    expect(byName['World Series'].isTopTier).toBe(true);
+    const worldSeries = mlb.stages![2].divisions[0];
+    expect(worldSeries.format.structure === 'KNOCKOUT' && worldSeries.format.winsToAdvance).toBe('Bo7');
+    expect(worldSeries.isTopTier).toBe(true);
   });
 
   it('CFG-007 declares cross-stage seeding — MLB wild cards are best-of-rest per conference (BEST_OF_REST)', () => {
@@ -268,7 +331,6 @@ describe('pressure-test configs (#85)', () => {
     const world = useDefaultGameWorld();
     expect(world.leagues.map((l) => l.name)).toEqual(['Premier League', 'League Cup']);
     expect(world.teams.length).toBe(44);
-    // the relocated premier-league template still carries its divisions + league-level format
-    expect(world.leagues[0].divisions!.map((d) => d.name)).toEqual(['Premier League', 'Championship']);
+    expect(world.leagues[0].stages[0].divisions.map((d) => d.name)).toEqual(['Premier League', 'Championship']);
   });
 });

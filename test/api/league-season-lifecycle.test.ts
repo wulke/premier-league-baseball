@@ -23,7 +23,7 @@ const createLeague = async (status: 'CUTOVER' | 'IN_SEASON') => {
   const league = await LeagueFactory().create(gameWorld.id, {
     name: 'Lifecycle API League',
     type: LeagueType.League,
-    divisions: [],
+    stages: [{ id: "default", name: "Default", divisions: [] }],
   }, []);
   await db.models.League.update({ status }, { where: { id: league.id } });
   return league;

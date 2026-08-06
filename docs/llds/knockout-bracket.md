@@ -216,7 +216,7 @@ overtime winner leads that leg's score by ≥ 1 — making both the leg (non-dra
 | e6 | `SeasonResult` write timing | Upserted (not inserted blindly) — round-advancement could in principle be re-triggered defensively; `championTeamId` should not be overwritten once set for a `(divisionId, year)`. | CUP-002 |
 | e8 | Lower-division round-robin completion | Ignored for `SeasonResult` purposes even if the division has a standings leader — only `config.isTopTier === true` may write the League champion row. | LCH-003 |
 | e9 | Re-checking an already-decided round-robin division | Existing `SeasonResult` row wins; no duplicate row and no overwrite of `championTeamId`. | LCH-004 |
-| e7 | `seriesLength` (`Bo3`/`Bo5`) vs. `legs` | This LLD's tie resolution operates on `legs` (`ONE_LEG`/`TWO_LEG`), not `seriesLength` — best-of-N series generation is not yet implemented (see `competition-format.md` e3); a `KNOCKOUT` division's `seriesLength` field is currently inert. | — |
+| e7 | `winsToAdvance` (`Bo3`/`Bo5`) vs. `legs` | This LLD's tie resolution operates on `legs` (`ONE_LEG`/`TWO_LEG`), not `winsToAdvance` — best-of-N series generation is not yet implemented (see `competition-format.md` e3); a `KNOCKOUT` division's `winsToAdvance` field is currently inert. | — |
 
 ## Traceability
 
