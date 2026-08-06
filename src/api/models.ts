@@ -243,13 +243,13 @@ const validateLeagueConfig = (config: LeagueConfig): void => {
     stageIndexes.set(stage.id, index);
   });
 
-  const topTiers: { stageIndex: number }[] = [];
+  const topTierStageIndexes: number[] = [];
   stages.forEach((stage, stageIndex) => stage.divisions.forEach((division) => {
     const hasPool = Array.isArray(division.defaultTeams) && division.defaultTeams.length > 0;
     const hasSelection = division.seedingSelection != null;
     if (hasPool === hasSelection) throw Error(`Division '${division.name}' must declare exactly one team source`);
     if (!division.format) throw Error(`Division '${division.name}' requires a format`);
-    if (division.isTopTier) topTiers.push({ stageIndex });
+    if (division.isTopTier) topTierStageIndexes.push(stageIndex);
 
     const selection = division.seedingSelection;
     if (selection) {
@@ -272,7 +272,8 @@ const validateLeagueConfig = (config: LeagueConfig): void => {
     }
   }));
 
-  if (topTiers.length !== 1 || topTiers[0].stageIndex !== stages.length - 1) {
+  if (stages.some((stage) => stage.divisions.length > 0)
+    && (topTierStageIndexes.length !== 1 || topTierStageIndexes[0] !== stages.length - 1)) {
     throw Error('League config requires exactly one final-stage isTopTier division');
   }
 };

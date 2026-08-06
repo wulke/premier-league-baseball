@@ -16,7 +16,7 @@ Backend requirements for the `CompetitionFormat` config type and its resolution 
 | CFG-010 | WHEN reusable competition configs are authored THE system SHALL house them in a named `LeagueTemplates` registry decoupled from `GameWorldType`, with team pools in `TeamPools` and runnable bundles in `DefaultWorlds` | [x] → #85 |
 | CFG-011 | WHEN validating a League config THE system SHALL require every division to declare exactly one team source: non-empty `defaultTeams` XOR `seedingSelection` | [x] → #163 |
 | CFG-012 | WHEN validating stages and cross-stage seeding THE system SHALL require non-empty unique stage ids and each `fromStage` to resolve to a strictly-prior stage | [x] → #163 |
-| CFG-013 | WHEN validating a League config THE system SHALL require exactly one `isTopTier` division and require it to be in the final stage | [x] → #163 |
+| CFG-013 | WHEN validating a League config with one or more divisions THE system SHALL require exactly one `isTopTier` division and require it to be in the final stage | [x] → #163 |
 | CFG-014 | WHEN validating a League config THE system SHALL require every division to declare a `format` | [x] → #163 |
 | CFG-015 | WHEN validating a League config THE system SHALL reject a SWISS division that declares `seedingSelection` | [x] → #163 |
 | CFG-016 | WHEN validating a League config THE system SHALL reject a `TWO_LEG` format whose `winsToAdvance` is not `Bo1` | [x] → #163 |

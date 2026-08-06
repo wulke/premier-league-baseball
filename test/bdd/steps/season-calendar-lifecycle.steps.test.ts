@@ -47,7 +47,7 @@ const registerSteps = ({ given, when, then }: any) => {
     name: string, gameWorldId: string, year: string, status: string,
   ) => {
     const league = await db.models.League.create({
-      gameWorldId: Number(gameWorldId), config: { name }, year: Number(year), status,
+      gameWorldId: Number(gameWorldId), config: { name, stages: [{ id: 'default', name: 'Default', divisions: [] }] }, year: Number(year), status,
     }).then(({ dataValues }) => dataValues);
     world.leagueId = league.id;
   });
@@ -56,7 +56,7 @@ const registerSteps = ({ given, when, then }: any) => {
     const division = await db.models.Division.create({
       leagueId: world.leagueId,
       config: {
-        name: 'BDD Division', defaultTeams: world.teamIds, format: ROUND_ROBIN_FORMAT,
+        name: 'BDD Division', stageId: 'default', defaultTeams: world.teamIds, format: ROUND_ROBIN_FORMAT,
         schedulingConfig: { startDate: '2027-03-01', intervalDays: 7 },
       },
     }).then(({ dataValues }) => dataValues);
@@ -70,7 +70,7 @@ const registerSteps = ({ given, when, then }: any) => {
     name: string, gameWorldId: string, year: string, status: string,
   ) => {
     const league = await db.models.League.create({
-      gameWorldId: Number(gameWorldId), config: { name }, year: Number(year), status,
+      gameWorldId: Number(gameWorldId), config: { name, stages: [{ id: 'default', name: 'Default', divisions: [] }] }, year: Number(year), status,
     }).then(({ dataValues }) => dataValues);
     world.leagueId = league.id;
   });

@@ -86,7 +86,7 @@ champion-producing division in their final (and only) stage.
 | e1 | A division omits `format` | `validateLeagueConfig` rejects before persistence; no format fallback exists. | CFG-001, CFG-014 |
 | e2 | `ROUND_ROBIN` config attempting to set `seeding` | Prevented at the type level (discriminated union) — not a runtime guard. A malformed JSON `config` blob (bypassing TypeScript, e.g. hand-edited DB row) could still smuggle it in; the domain layer should ignore `seeding` when `structure !== 'KNOCKOUT'`. | CFG-002 |
 | e3 | `winsToAdvance` set to `Bo3`/`Bo5` today | Accepted and stored, but no domain logic yet generates or scores a multi-game series from it — `legs`/round-advancement logic (`knockout-bracket.md`) currently treats each round's ties as generating exactly the leg count from `legs`, independent of `winsToAdvance`. Series-length-driven game generation is future work. | — |
-| e4 | A League has zero/multiple top tiers, or one outside its final stage | Validation rejects: a config must identify exactly one final-stage champion producer. | CFG-013 |
+| e4 | A League with divisions has zero/multiple top tiers, or one outside its final stage | Validation rejects: a non-empty config must identify exactly one final-stage champion producer. A divisionless lifecycle-only config has no champion to produce and is accepted. | CFG-013 |
 | e5 | A selector owns a pool, no source, or points forward | Validation requires team-source XOR and a resolvable strictly-prior stage id. | CFG-011, CFG-012 |
 | e6 | SWISS consumes a selection, TWO_LEG uses BoN, or TIERED_RANK has no matching Swiss tier | Validation rejects incompatible mechanics or an invalid selector source. | CFG-015, CFG-016, CFG-017 |
 
@@ -151,6 +151,6 @@ A cross-stage-seeded division owns **no pool allocation** (`defaultTeams: []`) �
 ### Config validation (#163)
 
 The pure `validateLeagueConfig(config)` guard is the config-layer boundary. It validates team-source
-XOR; ordered unique stage ids and prior selectors; a single final-stage `isTopTier`; required formats;
+XOR; ordered unique stage ids and prior selectors; a single final-stage `isTopTier` when divisions exist; required formats;
 SWISS selector incompatibility; `TWO_LEG` + `Bo1`; and SWISS-tier-backed `TIERED_RANK` selectors.
 There are no runtime config-validity checks: stage sequencing remains the run-path's responsibility.

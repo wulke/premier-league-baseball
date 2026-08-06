@@ -80,6 +80,7 @@ describe('LeagueFactory (initial Season)', () => {
           name: 'Division A',
           defaultTeams: [0, 1],
           format: ROUND_ROBIN_FORMAT,
+          isTopTier: true,
         },
         {
           name: 'Division B',
@@ -248,7 +249,7 @@ describe('LeagueFactory.cutover', () => {
       .then(({ dataValues }) => dataValues);
     league = await LeagueFactory().create(gameWorld.id, {
       name: 'Cutover League', type: LeagueType.League, stages: [{ id: "default", name: "Default", divisions: [{
-        name: 'Division A', defaultTeams: [], isTopTier: true, format: ROUND_ROBIN_FORMAT,
+        name: 'Division A', defaultTeams: [0], isTopTier: true, format: ROUND_ROBIN_FORMAT,
       }] }],
     }, []);
     division = await db.models.Division.findOne({ where: { leagueId: league.id } })
@@ -371,7 +372,7 @@ describe('LeagueFactory.start', () => {
     await db.models.Division.create({
       leagueId: league.id,
       config: {
-        name: 'Earlier Division', defaultTeams: teams.map(({ id }) => id), format: ROUND_ROBIN_FORMAT,
+        name: 'Earlier Division', stageId: 'default', defaultTeams: teams.map(({ id }) => id), format: ROUND_ROBIN_FORMAT,
         schedulingConfig: { startDate: '2027-02-22', intervalDays: 7 },
       },
     });
@@ -420,7 +421,7 @@ describe('LeagueFactory.start', () => {
   it('rolls back every Division when a later Division fails to generate', async () => {
     const invalidDivision = await db.models.Division.create({
       leagueId: league.id,
-      config: { name: 'Invalid Division', defaultTeams: teams.map(({ id }) => id) },
+      config: { name: 'Invalid Division', stageId: 'default', defaultTeams: teams.map(({ id }) => id) },
     }).then(({ dataValues }) => dataValues);
 
     await expect(LeagueFactory(league.id).start()).rejects.toThrow();

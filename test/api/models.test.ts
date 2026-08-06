@@ -123,6 +123,14 @@ describe('strict League config validation (#163)', () => {
     expect(() => validateLeagueConfig(missingFormat)).toThrow();
   });
 
+  // @spec CFG-013
+  it('allows a divisionless lifecycle-only League config without a champion producer', () => {
+    expect(() => validateLeagueConfig({
+      name: 'Lifecycle-only', type: LeagueType.League,
+      stages: [{ id: 'default', name: 'Default', divisions: [] }],
+    })).not.toThrow();
+  });
+
   // @spec CFG-015,CFG-016,CFG-017
   it('rejects incompatible SWISS/selection, TWO_LEG/BoN, and invalid tier sources', () => {
     const swissSelection = valid(); swissSelection.stages[0].divisions[0].format = { structure: 'SWISS', gamesPerTeam: 8, qualificationTiers: [] }; swissSelection.stages[0].divisions[0].seedingSelection = { kind: 'TOP_N_PER_DIVISION', fromStage: 'groups', topN: 1 };
