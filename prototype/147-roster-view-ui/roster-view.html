@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roster view — prototype (#147)</title>
+<!--
+  Prototype for wayfinder map #135, ticket #147 — Roster view UI.
+  Throwaway. Not wired into the app. Open directly in a browser (no build).
+
+  Embodies a recommended layout and lets you REACT to the open decisions live:
+    1. Grouping   — by position group (default) vs flat table          [toggle]
+    2. Ratings    — 7 compact columns (default) vs 1 display-only OVR  [toggle]
+    3. Sort       — name / age / display-OVR / position                [select]
+    4. Filter     — all / pitchers / catchers / infielders / outfield  [select]
+
+  Data is a hand-authored fixture matching the #145 RosterPlayer response shape:
+    { id, givenName, familyName, countryCode, bats, throws, age, primaryPosition,
+      contact, power, armStrength, accuracy, reaction, vision, discipline }
+  (No SP/RP split — there is no such field in the data; see README.)
+  Row name links to the player-detail route  /:gwId/player/:playerId  (#149).
+-->
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #fff;
+    color: #111;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .page { max-width: 1040px; margin: 0 auto; padding: 8px 24px 64px; }
+
+  /* ---- prototype banner (not part of the real page) ---- */
+  .proto-banner {
+    margin: 0 0 20px; padding: 12px 14px; border: 1px solid #e0e0e0; border-radius: 6px;
+    background: #fafafa; font-size: 0.8rem; color: #555;
+  }
+  .proto-banner b { color: #111; }
+  .proto-banner code { background: #eee; padding: 1px 5px; border-radius: 3px; font-size: 0.78rem; }
+
+  /* ---- team header (mirrors team-calendar.tsx identity block) ---- */
+  .team-h1 { margin: 0 0 6px; font-size: 1.6rem; font-weight: 700; }
+  .team-sub { margin: 0; font-size: 0.9rem; color: #666; }
+  .team-sub .dot { margin: 0 8px; color: #bbb; }
+
+  /* ---- toolbar (mirrors calendar filter bar) ---- */
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+    margin: 24px 0; padding: 12px 16px; background: #f8f8f8; border-radius: 6px; font-size: 0.85rem;
+  }
+  .toolbar .label { font-weight: 600; color: #555; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; margin-right: 2px; }
+  .seg { display: inline-flex; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
+  .seg button {
+    border: none; background: #fff; padding: 4px 12px; font-size: 0.82rem; cursor: pointer; color: #555;
+    font-family: inherit;
+  }
+  .seg button + button { border-left: 1px solid #ddd; }
+  .seg button.on { background: #000; color: #fff; font-weight: 600; }
+  select { border: 1px solid #ddd; border-radius: 4px; padding: 4px 8px; font-size: 0.85rem; background: #fff; font-family: inherit; }
+
+  /* ---- group section header ---- */
+  .group-h {
+    margin: 0 0 6px; padding-bottom: 6px; border-bottom: 1px solid #eee;
+    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; color: #888; font-weight: 600;
+  }
+  .group-h .count { margin-left: 8px; font-weight: 400; color: #bbb; }
+  .group { margin-bottom: 26px; }
+
+  /* ---- table ---- */
+  table.roster { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  table.roster th {
+    text-align: left; padding: 8px 10px; border-bottom: 2px solid #000;
+    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; color: #888; font-weight: 600;
+    white-space: nowrap;
+  }
+  table.roster th.num, table.roster td.num { text-align: center; }
+  table.roster td { padding: 8px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+  table.roster tbody tr { transition: background 80ms; }
+  table.roster tbody tr:hover { background: #fafafa; }
+
+  .pname { color: #111; text-decoration: none; font-weight: 600; }
+  .pname:hover { text-decoration: underline; }
+  .pcode { color: #aaa; font-weight: 400; margin-left: 6px; font-size: 0.8rem; }
+
+  /* position badge (no design-token system in-app; subtle group hues) */
+  .pos {
+    display: inline-block; min-width: 30px; text-align: center; padding: 2px 7px; border-radius: 3px;
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
+  }
+  .pos-P  { background: #fdecec; color: #b33; border: 1px solid #f3c9c9; }   /* pitcher — red */
+  .pos-C  { background: #f4ece2; color: #9a6b32; border: 1px solid #e3cda9; } /* catcher — tan */
+  .pos-IF { background: #eaf0fb; color: #2a5db0; border: 1px solid #c7d8f3; } /* infield — blue */
+  .pos-OF { background: #ecf4ee; color: #2f7a43; border: 1px solid #c5e0cc; } /* outfield — green */
+
+  .bt { font-size: 0.78rem; color: #666; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .age { color: #555; font-variant-numeric: tabular-nums; text-align: center; }
+  .country { font-size: 0.78rem; color: #666; }
+
+  /* rating cell with percentile tint (Baseball-Savant-style) */
+  .rt {
+    text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 0.82rem;
+    min-width: 42px;
+  }
+  .ovr {
+    text-align: center; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.95rem;
+    min-width: 48px; border-radius: 4px;
+  }
+  .legend { margin: 6px 0 0; font-size: 0.72rem; color: #aaa; }
+  .scale { display: inline-flex; gap: 0; margin-left: 8px; vertical-align: middle; }
+  .scale i { display: inline-block; width: 14px; height: 10px; }
+
+  .footnote { margin-top: 32px; font-size: 0.78rem; color: #999; border-top: 1px solid #eee; padding-top: 12px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="proto-banner">
+    <b>Prototype — map #135 / ticket #147 (Roster view UI).</b> Throwaway mockup, not wired into the app.
+    Fixture data matches the <code>#145</code> <code>RosterPlayer</code> shape. Use the toggles to compare the open
+    decisions (grouping · ratings · sort · filter). Row names link to <code>/&lt;gwId&gt;/player/&lt;playerId&gt;</code> (#149).
+  </div>
+
+  <!-- team identity -->
+  <h1 class="team-h1">Seoul Tigres</h1>
+  <p class="team-sub">
+    Roster<span class="dot">·</span>26 players<span class="dot">·</span>2026 season
+    <span class="dot">·</span><a href="#" style="color:#888;text-decoration:none">← Team hub</a>
+  </p>
+
+  <!-- toolbar -->
+  <div class="toolbar">
+    <span class="label">Grouping</span>
+    <span class="seg" id="seg-grouping">
+      <button data-v="grouped" class="on">By position</button>
+      <button data-v="flat">Flat table</button>
+    </span>
+
+    <span class="label">Ratings</span>
+    <span class="seg" id="seg-ratings">
+      <button data-v="seven" class="on">7 columns</button>
+      <button data-v="ovr">Display OVR</button>
+    </span>
+
+    <span class="label">Sort</span>
+    <select id="sort">
+      <option value="pos">Position (default)</option>
+      <option value="name">Name (A–Z)</option>
+      <option value="age">Age (young → old)</option>
+      <option value="ovr">Display OVR (high → low)</option>
+    </select>
+
+    <span class="label">Filter</span>
+    <select id="filter">
+      <option value="all">All position groups</option>
+      <option value="P">Pitchers</option>
+      <option value="C">Catchers</option>
+      <option value="IF">Infielders</option>
+      <option value="OF">Outfielders</option>
+    </select>
+  </div>
+  <p class="legend">
+    Rating tint: <span class="scale" id="scale"></span> (low → high). Display OVR is the mean of the 7 ratings —
+    <b>display-only</b>; the API (#145) stays additive, no stored/computed OVR.
+  </p>
+
+  <div id="render"></div>
+
+  <p class="footnote">
+    Convention followed: the shipping app's inline-style, light, dense data-table look (see
+    <code>team-calendar.tsx</code> / <code>league.tsx</code>) — not the throwaway MLB-dark Tailwind references on
+    <code>prototype/ui-styling</code> (#2/#9), which are a separate, not-yet-adopted visual-direction effort.
+    Starting-pitcher (SP/RP) split is <b>not shown</b>: the data has no such field, so v1 cannot separate them
+    client-side — see README.
+  </p>
+</div>
+
+<script>
+// ---- fixture: 26-man roster, matches #145 RosterPlayer shape ----
+const RATINGS = ['contact','power','armStrength','accuracy','reaction','vision','discipline'];
+const SHORT = { contact:'CON', power:'POW', armStrength:'ARM', accuracy:'ACC', reaction:'REA', vision:'VIS', discipline:'DIS' };
+const POS = { Pitcher:'P', Catcher:'C', FirstBase:'1B', SecondBase:'2B', ThirdBase:'3B', Shortstop:'SS', LeftField:'LF', CenterField:'CF', RightField:'RF' };
+const GROUP_OF = {
+  Pitcher:'P', Catcher:'C',
+  FirstBase:'IF', SecondBase:'IF', ThirdBase:'IF', Shortstop:'IF',
+  LeftField:'OF', CenterField:'OF', RightField:'OF'
+};
+const GROUP_TITLE = { P:'Pitchers', C:'Catchers', IF:'Infielders', OF:'Outfielders' };
+const GROUP_ORDER = ['P','C','IF','OF'];
+
+let _id = 0;
+const P = (givenName, familyName, countryCode, bats, throws, age, primaryPosition, r) => ({
+  id: ++_id, givenName, familyName, countryCode, bats, throws, age, primaryPosition,
+  contact:r[0], power:r[1], armStrength:r[2], accuracy:r[3], reaction:r[4], vision:r[5], discipline:r[6]
+});
+
+const ROSTER = [
+  // ---- Pitchers (13) ----
+  P('Gerrit','Cole','US','R','R',33,'Pitcher',[42,38,95,92,70,78,88]),
+  P('Kevin','Gausman','US','R','R',32,'Pitcher',[40,35,90,89,72,76,84]),
+  P('Luis','Castillo','DO','R','R',29,'Pitcher',[38,34,88,86,68,74,80]),
+  P('Jesús','Luzardo','VE','L','L',25,'Pitcher',[35,33,84,82,66,70,76]),
+  P('Yoshinobu','Yamamoto','JP','R','R',25,'Pitcher',[44,40,93,94,78,82,90]),
+  P('Emmanuel','Clase','DO','R','R',26,'Pitcher',[30,28,96,88,64,66,82]),   // closer
+  P('Andrés','Muñoz','MX','R','R',25,'Pitcher',[28,26,94,82,60,62,76]),
+  P('Félix','Bautista','DO','R','R',28,'Pitcher',[29,27,95,84,62,64,78]),
+  P('Edwin','Díaz','PR','R','R',30,'Pitcher',[31,28,92,85,63,66,80]),
+  P('Josh','Hader','US','L','L',30,'Pitcher',[26,25,90,83,58,60,74]),
+  P('Ryan','Pressly','US','R','R',35,'Pitcher',[33,30,86,80,62,66,72]),
+  P('Devin','Williams','US','R','R',30,'Pitcher',[32,29,85,81,60,64,75]),
+  P('Robert','Suarez','VE','R','R',28,'Pitcher',[31,28,87,80,60,62,73]),
+  // ---- Catchers (2) ----
+  P('Adley','Rutschman','US','S','R',26,'Catcher',[78,64,70,82,90,96,60]),
+  P('Will','Smith','US','R','R',31,'Catcher',[74,58,68,78,86,90,58]),
+  // ---- Infielders (6) ----
+  P('Vladimir','Guerrero Jr.','DO','R','R',25,'FirstBase',[88,96,72,98,72,80,88]),
+  P('José','Altuve','VE','R','R',34,'SecondBase',[86,72,66,92,90,98,92]),
+  P('Manny','Machado','DO','R','R',31,'ThirdBase',[80,84,90,88,84,86,90]),
+  P('Francisco','Lindor','PR','S','R',30,'Shortstop',[82,78,92,96,95,92,94]),
+  P('Bobby','Witt Jr.','US','R','R',24,'Shortstop',[84,76,90,94,96,88,86]),
+  P('Pete','Alonso','US','R','R',29,'FirstBase',[70,97,68,94,70,76,80]),
+  // ---- Outfielders (5) ----
+  P('Mike','Trout','US','R','R',33,'CenterField',[88,92,88,86,92,90,84]),
+  P('Ronald','Acuña Jr.','VE','R','R',26,'RightField',[94,88,92,80,90,84,82]),
+  P('Juan','Soto','DO','L','L',25,'RightField',[92,86,60,82,88,72,96]),
+  P('Kyle','Tucker','US','L','L',27,'LeftField',[82,84,80,78,84,80,86]),
+  P('Shohei','Ohtani','JP','L','R',29,'LeftField',[96,98,94,96,90,98,70]),
+];
+
+// ---- helpers ----
+const ovr = p => Math.round((p.contact+p.power+p.armStrength+p.accuracy+p.reaction+p.vision+p.discipline)/7);
+const fullName = p => `${p.givenName} ${p.familyName}`;
+
+function rateColor(v){
+  // map 1..100 to a hue 0(red)..130(green); low values saturate red.
+  const t = Math.max(0, Math.min(1, (v - 35) / (99 - 35)));
+  const hue = Math.round(t * 130);
+  return { bg:`hsl(${hue} 65% 90%)`, fg:`hsl(${hue} 55% 30%)` };
+}
+function posBadge(pos){
+  const ab = POS[pos];
+  const cls = GROUP_OF[pos];
+  return `<span class="pos pos-${cls}">${ab}</span>`;
+}
+
+// ---- state + render ----
+const state = { grouping:'grouped', ratings:'seven', sort:'pos', filter:'all' };
+
+function sorted(list){
+  const a = [...list];
+  switch(state.sort){
+    case 'name': a.sort((x,y)=>fullName(x).localeCompare(fullName(y))); break;
+    case 'age':  a.sort((x,y)=>x.age-y.age); break;
+    case 'ovr':  a.sort((x,y)=>ovr(y)-ovr(x)); break;
+    default: // position: keep enum order, then ovr desc
+      a.sort((x,y)=> Object.keys(POS).indexOf(x.primaryPosition)-Object.keys(POS).indexOf(y.primaryPosition) || ovr(y)-ovr(x));
+  }
+  return a;
+}
+function filtered(list){
+  if(state.filter==='all') return list;
+  return list.filter(p => GROUP_OF[p.primaryPosition]===state.filter);
+}
+
+function ratingCells(p){
+  if(state.ratings==='ovr'){
+    const v = ovr(p); const c = rateColor(v);
+    return `<td class="ovr" style="background:${c.bg};color:${c.fg}">${v}</td>`;
+  }
+  return RATINGS.map(k=>{ const v=p[k]; const c=rateColor(v);
+    return `<td class="rt" style="background:${c.bg};color:${c.fg}">${v}</td>`; }).join('');
+}
+function rowHTML(p){
+  return `<tr>
+    <td>${posBadge(p.primaryPosition)}</td>
+    <td><a class="pname" href="#/${p.id}">${p.givenName} ${p.familyName}</a><span class="pcode">${p.countryCode}</span></td>
+    <td class="bt">${p.bats}/${p.throws}</td>
+    <td class="age">${p.age}</td>
+    ${ratingCells(p)}
+  </tr>`;
+}
+function tableHTML(rows){
+  const head = state.ratings==='ovr'
+    ? `<th class="num">OVR</th>`
+    : RATINGS.map(k=>`<th class="num" title="${k}">${SHORT[k]}</th>`).join('');
+  return `<table class="roster">
+    <thead><tr>
+      <th style="width:64px">Pos</th><th>Player</th><th>B/T</th><th class="num">Age</th>
+      ${head}
+    </tr></thead>
+    <tbody>${rows.map(rowHTML).join('')}</tbody>
+  </table>`;
+}
+
+function render(){
+  const list = sorted(filtered(ROSTER));
+  const out = document.getElementById('render');
+  if(state.grouping==='flat'){
+    out.innerHTML = tableHTML(list);
+    return;
+  }
+  const buckets = {};
+  GROUP_ORDER.forEach(g=>buckets[g]=[]);
+  list.forEach(p=>buckets[GROUP_OF[p.primaryPosition]].push(p));
+  out.innerHTML = GROUP_ORDER
+    .filter(g=>buckets[g].length)
+    .map(g=>`<div class="group">
+        <div class="group-h">${GROUP_TITLE[g]}<span class="count">${buckets[g].length}</span></div>
+        ${tableHTML(buckets[g])}
+      </div>`).join('');
+}
+
+// ---- wire controls ----
+function wireSeg(id, key){
+  const seg = document.getElementById(id);
+  seg.addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    seg.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); state[key]=b.dataset.v; render();
+  });
+}
+wireSeg('seg-grouping','grouping');
+wireSeg('seg-ratings','ratings');
+document.getElementById('sort').addEventListener('change', e=>{ state.sort=e.target.value; render(); });
+document.getElementById('filter').addEventListener('change', e=>{ state.filter=e.target.value; render(); });
+
+// legend scale
+(function(){
+  const s = document.getElementById('scale');
+  const stops = [40,55,70,85,99];
+  s.innerHTML = stops.map(v=>{ const c=rateColor(v); return `<i style="background:${c.bg}" title="${v}"></i>`; }).join('');
+})();
+
+render();
+</script>
+</body>
+</html>
