@@ -213,8 +213,8 @@ describe('TeamFactory', () => {
       });
       hydratedTeam?.dataValues.Contracts.forEach((contract: any) => {
         expect(contract.dataValues.teamId).toBe(team.id);
-        expect(contract.dataValues.startYear).toBe(gw.year);
-        expect(contract.dataValues.endYear).toBe(gw.year);
+        expect(contract.dataValues.startDate).toEqual(new Date(`${gw.year}-03-01T00:00:00.000Z`));
+        expect(contract.dataValues.endDate).toEqual(new Date(`${gw.year}-10-31T00:00:00.000Z`));
       });
     } finally {
       randomSpy.mockRestore();

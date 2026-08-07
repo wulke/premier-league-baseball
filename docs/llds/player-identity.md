@@ -41,7 +41,7 @@ type LeagueComposition = Record<CountryCode, number>; // weight-less registry; c
 
 export const POOLS: Record<CountryCode, { givenNames: string[]; familyNames: string[] }>;
 export const LEAGUE_COMPOSITIONS: Record<string, LeagueComposition>; // e.g. PREMIER_LEAGUE / KBO / NPB
-export function generateIdentity(composition: LeagueComposition, rng: () => number): PlayerIdentity;
+export function generateIdentity(composition: LeagueComposition, rng: () => number, gameWorldYear?: number): PlayerIdentity;
 // PlayerIdentity = { givenName, familyName, countryCode, bats, throws, birthDate }
 ```
 

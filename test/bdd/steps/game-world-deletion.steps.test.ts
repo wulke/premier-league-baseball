@@ -39,6 +39,7 @@ const TEST_PLAYER_ATTRIBUTES = {
   },
   pitches: [{ type: 'Fastball', velocity: 90, control: 50, spin: 50 }],
 };
+const TEST_PLAYER_IDENTITY = { givenName: 'Marcus', familyName: 'Jones', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date('2000-06-01') };
 
 // @spec GWD-001..GWD-004 (game-world-deletion acceptance)
 const feature = loadFeature(path.resolve(__dirname, '../features/game-world-deletion.feature'));
@@ -85,13 +86,14 @@ const createFixture = async (id: number, { inProgress = false } = {}) => {
       ...TEST_PLAYER_ATTRIBUTES,
       contact: TEST_PLAYER_ATTRIBUTES.contact + index,
     },
+    ...TEST_PLAYER_IDENTITY,
   }).then(({ dataValues }) => dataValues)));
 
   await db.models.Contract.bulkCreate(players.map((player, index) => ({
     playerId: player.id,
     teamId: teams[index].id,
-    startYear: 2025,
-    endYear: 2026,
+    startDate: new Date('2025-03-01T00:00:00.000Z'),
+    endDate: new Date('2026-10-31T00:00:00.000Z'),
   })));
 
   const divisionSeasons = await Promise.all(teams.map((team) => db.models.DivisionSeason.create({

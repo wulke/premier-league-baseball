@@ -1,6 +1,6 @@
 import { DataTypes } from 'sequelize';
 
-// @spec PCON-008
+// @spec PCON-008,PDET-009
 module.exports = (sequelize: any) => {
   sequelize.define('Contract', {
     id: {
@@ -24,12 +24,12 @@ module.exports = (sequelize: any) => {
         key: 'id',
       },
     },
-    startYear: {
-      type: DataTypes.INTEGER,
+    startDate: {
+      type: DataTypes.DATE,
       allowNull: false,
     },
-    endYear: {
-      type: DataTypes.INTEGER,
+    endDate: {
+      type: DataTypes.DATE,
       allowNull: false,
     },
   });

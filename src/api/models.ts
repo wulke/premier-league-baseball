@@ -90,6 +90,12 @@ interface PlayerRecord {
   teamId: number | null;
   gameWorldId: number;
   attributes: PlayerAttributes;
+  givenName: string;
+  familyName: string;
+  countryCode: string;
+  bats: 'R' | 'L' | 'S';
+  throws: 'R' | 'L';
+  birthDate: Date;
 }
 
 interface DivisionStandings {
@@ -230,6 +236,7 @@ interface LeagueConfig {
   type: LeagueType;
   stages: Stage[];                // array order = phase sequence
   standingsConfig?: StandingsConfig;
+  compositionKey?: string;
 };
 
 // @spec CFG-011,CFG-012,CFG-013,CFG-014,CFG-015,CFG-016,CFG-017
