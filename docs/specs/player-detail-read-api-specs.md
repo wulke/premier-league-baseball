@@ -15,7 +15,7 @@ read, current-Contract resolution, and the `Contract` integer-year → DATE migr
 | PDET-006 | WHEN Contract rows overlap or gap (a write-integrity violation) THE system SHALL apply no committed tie-break — well-formed data self-resolves; overlap/gap prevention is deferred to the transfers map | [D] |
 | PDET-007 | WHEN a Player is a free agent (`teamId: null`) THE system SHALL serve the detail unchanged with `contract: null` — no flag, no listing, no writes | [ ] |
 | PDET-008 | WHEN two or more positions tie for the highest rating THE system SHALL derive `primaryPosition` as the first-listed position in enum order (consistent with ROST-005) | [ ] |
-| PDET-009 | WHEN the `Contract` model is defined THE system SHALL use `startDate` and `endDate` as `DATE` columns (superseding the `startYear`/`endYear` integers in PCON-008 — year-ints could not disambiguate a same-year trade), and SHALL NOT define a salary field | [ ] |
+| PDET-009 | WHEN the `Contract` model is defined THE system SHALL use `startDate` and `endDate` as `DATE` columns (superseding the `startYear`/`endYear` integers in PCON-008 — year-ints could not disambiguate a same-year trade), and SHALL NOT define a salary field | [x] → #168 |
 | PDET-010 | WHEN a client requests `GET /api/player/:playerId` THE system SHALL return identity, the full `attributes` verbatim (flat-7 + 9-key `positions` + `pitches`), and the current Contract or null | [ ] |
 | PDET-011 | WHEN composing the detail response THE system SHALL NOT compute or include a stored OVR — `attributes` are served verbatim and the Player's team is reached via `contract` only | [ ] |
 

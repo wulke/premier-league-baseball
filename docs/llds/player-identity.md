@@ -50,11 +50,11 @@ export function generateIdentity(composition: LeagueComposition, rng: () => numb
 ### Identity generation, step by step (extends `generateRoster`)
 
 ```
-generateRoster(teamId, gwId, options):           // signature unchanged from #64
+generateRoster(teamId, gwId, { seed?, ...options }):
   ...existing headcount/slot/attribute logic (PATTR) unchanged...
 
   composition = LEAGUE_COMPOSITIONS[league.config.compositionKey] ?? LEAGUE_COMPOSITIONS.PREMIER_LEAGUE
-  rng = mulberry32(seed)                          // seeded → reproducible rosters (#143)
+  rng = mulberry32(seed ?? <per-call seed>)       // seeded → reproducible rosters (#143)
 
   for each player slot:
     attributes = generatePlayerAttributes()       // unchanged (ratings only)

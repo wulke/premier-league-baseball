@@ -1,8 +1,9 @@
-// @spec PATTR-001,PATTR-002,PATTR-003,PCON-001,PCON-002,PCON-003,PCON-004,PCON-007
+// @spec PATTR-001,PATTR-002,PATTR-003,PCON-001,PCON-002,PCON-003,PCON-004,PCON-007,PCON-008,PID-001,PID-002,PID-004..PID-010
 import { PlayerAttributes } from '../../../src/api/models';
 import db from '../../../src/db/client';
 import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE } from '../../../src/db/domain/contract';
 import { PlayerFactory, allocateRosterSlots, primaryPosition } from '../../../src/db/domain/player';
+import { generateIdentity, LEAGUE_COMPOSITIONS, mulberry32 } from '../../../src/db/domain/identity';
 
 const nonPitcherAttributes: PlayerAttributes = {
   contact: 71,
@@ -46,6 +47,23 @@ const EXPECTED_PITCHER_COUNTS: Record<number, number> = {
 describe('Player model + attribute schema', () => {
   beforeAll(async () => {
     await db.sync({ force: true });
+  });
+
+  // @spec PID-001,PID-004,PID-005,PID-007,PID-008,PID-009
+  it('@spec PID-001 @spec PID-004 @spec PID-005 @spec PID-007 @spec PID-008 @spec PID-009 generates reproducible country-pool identities with a bounded birth date', () => {
+    const first = Array.from({ length: 4 }, () => generateIdentity(LEAGUE_COMPOSITIONS.PREMIER_LEAGUE, mulberry32(168)));
+    const second = Array.from({ length: 4 }, () => generateIdentity(LEAGUE_COMPOSITIONS.PREMIER_LEAGUE, mulberry32(168)));
+
+    expect(first).toEqual(second);
+    first.forEach((identity) => {
+      expect(['US', 'DO', 'VE', 'PR', 'CU', 'JP', 'KR', 'MX', 'BR', 'TW']).toContain(identity.countryCode);
+      expect(identity.givenName).not.toEqual('');
+      expect(identity.familyName).not.toEqual('');
+      expect(['R', 'L', 'S']).toContain(identity.bats);
+      expect(['R', 'L']).toContain(identity.throws);
+      expect(identity.birthDate.getUTCFullYear()).toBeGreaterThanOrEqual(1987);
+      expect(identity.birthDate.getUTCFullYear()).toBeLessThanOrEqual(2008);
+    });
   });
 
   // @spec PATTR-001
@@ -114,8 +132,8 @@ describe('Player model + attribute schema', () => {
     }
   });
 
-  // @spec PCON-001,PCON-003,PCON-004,PCON-007
-  it('@spec PCON-001 @spec PCON-003 @spec PCON-004 @spec PCON-007 generates a minimum-size roster with uniform attributes and matching contracts', async () => {
+  // @spec PCON-001,PCON-003,PCON-004,PCON-007,PCON-008,PID-002,PID-006,PID-010
+  it('@spec PCON-001 @spec PCON-003 @spec PCON-004 @spec PCON-007 @spec PCON-008 @spec PID-002 @spec PID-006 @spec PID-010 generates a minimum-size roster with identity columns and DATE contracts', async () => {
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2052 }).then(({ dataValues }) => dataValues);
     const team = await db.models.Team.create({
@@ -133,8 +151,16 @@ describe('Player model + attribute schema', () => {
       expect(players).toHaveLength(MIN_ROSTER_SIZE);
       expect(contracts).toHaveLength(MIN_ROSTER_SIZE);
 
-      players.forEach((player) => {
+      const reloadedPlayers = await db.models.Player.findAll({ where: { teamId: team.id } }).then((rows) => rows.map(({ dataValues }) => dataValues));
+      expect(reloadedPlayers).toHaveLength(MIN_ROSTER_SIZE);
+      reloadedPlayers.forEach((player) => {
         expect(player.teamId).toBe(team.id);
+        expect(player.givenName).toEqual(expect.any(String));
+        expect(player.familyName).toEqual(expect.any(String));
+        expect(player.countryCode).toMatch(/^[A-Z]{2}$/);
+        expect(['R', 'L', 'S']).toContain(player.bats);
+        expect(['R', 'L']).toContain(player.throws);
+        expect(player.birthDate).toBeInstanceOf(Date);
         expect(player.attributes).toEqual({
           contact: 1,
           power: 1,
@@ -165,8 +191,8 @@ describe('Player model + attribute schema', () => {
 
       contracts.forEach((contract) => {
         expect(contract.teamId).toBe(team.id);
-        expect(contract.startYear).toBe(gameWorld.year);
-        expect(contract.endYear).toBe(gameWorld.year);
+        expect(contract.startDate).toEqual(new Date(`${gameWorld.year}-03-01T00:00:00.000Z`));
+        expect(contract.endDate).toEqual(new Date(`${gameWorld.year}-10-31T00:00:00.000Z`));
       });
       expect(contracts.map((contract) => contract.playerId).sort((a, b) => a - b)).toEqual(
         players.map((player) => player.id!).sort((a, b) => a - b)
