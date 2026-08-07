@@ -34,6 +34,11 @@ export const LEAGUE_COMPOSITIONS: Record<string, LeagueComposition> = {
 };
 
 // @spec PID-005
+// ELI5: this turns one starting number (the seed) into the same repeatable stream
+// of seemingly random numbers every time. Each call mixes the number a few times
+// and returns a decimal from 0 up to (but not including) 1, then keeps the mixed
+// number for the next call. That lets roster generation make random-looking choices
+// while tests and replays can reproduce the exact same roster from the same seed.
 export const mulberry32 = (seed: number): (() => number) => {
   let state = seed >>> 0;
   return () => {
