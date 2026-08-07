@@ -1,8 +1,9 @@
 // @spec SHELL-004..SHELL-009
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { useGameWorldContext } from '../context/game-world-context';
 import { BatchSimulateControl } from './batch-simulate-control';
+import { RapidSimulateControl } from './rapid-simulate-control';
 
 // @spec SIMUI-006
 const formatCurrentDate = (currentDate: string) => {
@@ -19,6 +20,8 @@ const NavRail = () => {
   const { gw } = useGameWorldContext();
   const { pathname } = useLocation();
   const { gwId, leagueId } = useParams();
+  // @spec RSSUI-006 — shared busy flag so the batch + rapid controls can lock each other.
+  const [simulateBusy, setSimulateBusy] = useState(false);
   const worldActive = Boolean(gwId && pathname === `/${gwId}`);
   const leagues = Array.isArray(gw?.Leagues) ? gw.Leagues : [];
   const linkStyle = (active: boolean): React.CSSProperties => ({
@@ -47,7 +50,8 @@ const NavRail = () => {
           <span data-testid="nav-current-date" style={{ display: 'block', color: '#888', fontSize: '0.85rem', margin: '4px 0 10px' }}>
             {gw.currentDate ? formatCurrentDate(gw.currentDate) : 'No date set'}
           </span>
-          <BatchSimulateControl />
+          <BatchSimulateControl disabled={simulateBusy} onBusyChange={setSimulateBusy} />
+          <RapidSimulateControl disabled={simulateBusy} onBusyChange={setSimulateBusy} />
         </section>
       )}
       {gw && leagues.length > 0 && (
