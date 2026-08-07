@@ -28,6 +28,8 @@ const playerAttributes: PlayerAttributes = {
   ],
 };
 
+const playerIdentity = { givenName: 'Marcus', familyName: 'Jones', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date('2025-06-01') };
+
 describe('Contract model schema', () => {
   beforeAll(async () => {
     await db.sync({ force: true });
@@ -44,13 +46,14 @@ describe('Contract model schema', () => {
       gameWorldId: gameWorld.id,
       teamId: team.id,
       attributes: playerAttributes,
+      ...playerIdentity,
     }).then(({ dataValues }) => dataValues);
 
     const contract = await db.models.Contract.create({
       playerId: player.id,
       teamId: team.id,
-      startYear: gameWorld.year,
-      endYear: gameWorld.year + 2,
+      startDate: new Date(`${gameWorld.year}-03-01T00:00:00.000Z`),
+      endDate: new Date(`${gameWorld.year + 2}-10-31T00:00:00.000Z`),
     }).then(({ dataValues }) => dataValues);
 
     const playerWithContracts = await db.models.Player.findByPk(player.id, {
@@ -77,13 +80,14 @@ describe('Contract model schema', () => {
       gameWorldId: gameWorld.id,
       teamId: team.id,
       attributes: playerAttributes,
+      ...playerIdentity,
     }).then(({ dataValues }) => dataValues);
 
     await db.models.Contract.create({
       playerId: player.id,
       teamId: team.id,
-      startYear: gameWorld.year - 2,
-      endYear: gameWorld.year - 1,
+      startDate: new Date(`${gameWorld.year - 2}-03-01T00:00:00.000Z`),
+      endDate: new Date(`${gameWorld.year - 1}-10-31T00:00:00.000Z`),
     });
 
     const attributes = db.models.Contract.getAttributes();
@@ -91,8 +95,10 @@ describe('Contract model schema', () => {
 
     expect(attributes.playerId.allowNull).toBe(false);
     expect(attributes.teamId.allowNull).toBe(false);
-    expect(attributes.startYear.allowNull).toBe(false);
-    expect(attributes.endYear.allowNull).toBe(false);
+    expect(attributes.startDate.allowNull).toBe(false);
+    expect(attributes.endDate.allowNull).toBe(false);
+    expect(attributes.startDate.type.constructor.name).toBe('DATE');
+    expect(attributes.endDate.type.constructor.name).toBe('DATE');
     expect(attributes.value).toBeUndefined();
     expect(persistedPlayer?.dataValues.teamId).toBe(team.id);
   });

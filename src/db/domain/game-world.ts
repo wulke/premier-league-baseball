@@ -27,9 +27,13 @@ const GameWorldFactory = (id?: number): IGameWorld => {
       const gw = await db.models.GameWorld.create({
         config: { ...config, inProgress: false },
       }).then(({ dataValues }) => dataValues);
+      // @spec PID-010 — teams are shared across the world's Leagues and are created
+      // before Division membership exists, so the first configured League is the
+      // explicit primary identity-composition source.
+      const primaryCompositionKey = config.leagues?.[0]?.compositionKey;
       // create teams
       const teams = await Promise.all(config.teams?.map(async (teamConfig) => 
-        await TeamFactory().create(gw.id, teamConfig)
+        await TeamFactory().create(gw.id, teamConfig, { compositionKey: primaryCompositionKey })
       ));
       // create Leagues
       const leagues = await Promise.all(config.leagues?.map(async (leagueConfig) =>

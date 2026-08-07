@@ -5,9 +5,14 @@ import { getKnockoutRoundLabel } from './knockout';
 import { PlayerFactory } from './player';
 
 interface ITeam {
-  create: (gwId: number, config: TeamConfig) => any;
+  create: (gwId: number, config: TeamConfig, options?: TeamCreateOptions) => any;
   getSchedule: (gwId: number, leagueId?: number) => Promise<TeamSeasonCalendar>;
 };
+
+interface TeamCreateOptions {
+  compositionKey?: string;
+  rosterSeed?: number;
+}
 
 let teamCreateQueue = Promise.resolve();
 
@@ -19,8 +24,8 @@ const enqueueTeamCreate = async <T>(work: () => Promise<T>): Promise<T> => {
 
 const TeamFactory = (id?: number): ITeam => {
   return {
-    // @spec PCON-001,PCON-004,PCON-007
-    create: async (gwId: number, config: TeamConfig) => enqueueTeamCreate(async () => {
+    // @spec PCON-001,PCON-004,PCON-007,PID-010
+    create: async (gwId: number, config: TeamConfig, options: TeamCreateOptions = {}) => enqueueTeamCreate(async () => {
       const transaction = await db.transaction();
 
       try {
@@ -36,6 +41,8 @@ const TeamFactory = (id?: number): ITeam => {
 
         await PlayerFactory().generateRoster(team.id, gwId, {
           gameWorldYear: gameWorld.year,
+          compositionKey: options.compositionKey,
+          seed: options.rosterSeed,
           transaction,
         });
 

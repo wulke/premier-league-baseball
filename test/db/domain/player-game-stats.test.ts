@@ -26,6 +26,7 @@ const playerAttributes: PlayerAttributes = {
     { type: 'Slider', velocity: 69, control: 63, spin: 80 },
   ],
 };
+const playerIdentity = { givenName: 'Marcus', familyName: 'Jones', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date('2028-06-01') };
 
 describe('PlayerGameStats model schema', () => {
   beforeAll(async () => {
@@ -43,6 +44,7 @@ describe('PlayerGameStats model schema', () => {
       gameWorldId: gameWorld.id,
       teamId: team.id,
       attributes: playerAttributes,
+      ...playerIdentity,
     }).then(({ dataValues }) => dataValues);
     const game = await db.models.Game.create({
       homeTeam: team.id,

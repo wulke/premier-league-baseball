@@ -1,8 +1,10 @@
-// @spec PATTR-001,PATTR-002,PATTR-003,PCON-001,PCON-002,PCON-003,PCON-004,PCON-007
+// @spec PATTR-001,PATTR-002,PATTR-003,PCON-001,PCON-002,PCON-003,PCON-004,PCON-007,PCON-008,PID-001,PID-002,PID-004..PID-010
 import { PlayerAttributes } from '../../../src/api/models';
 import db from '../../../src/db/client';
 import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE } from '../../../src/db/domain/contract';
 import { PlayerFactory, allocateRosterSlots, primaryPosition } from '../../../src/db/domain/player';
+import { GameWorldFactory } from '../../../src/db/domain/game-world';
+import { generateIdentity, LEAGUE_COMPOSITIONS, mulberry32, resolveComposition } from '../../../src/db/domain/identity';
 
 const nonPitcherAttributes: PlayerAttributes = {
   contact: 71,
@@ -46,6 +48,69 @@ const EXPECTED_PITCHER_COUNTS: Record<number, number> = {
 describe('Player model + attribute schema', () => {
   beforeAll(async () => {
     await db.sync({ force: true });
+  });
+
+  // @spec PID-001,PID-004,PID-005,PID-007,PID-008,PID-009
+  it('@spec PID-001 @spec PID-004 @spec PID-005 @spec PID-007 @spec PID-008 @spec PID-009 generates reproducible country-pool identities with a bounded birth date', () => {
+    const first = Array.from({ length: 4 }, () => generateIdentity(LEAGUE_COMPOSITIONS.PREMIER_LEAGUE, mulberry32(168)));
+    const second = Array.from({ length: 4 }, () => generateIdentity(LEAGUE_COMPOSITIONS.PREMIER_LEAGUE, mulberry32(168)));
+
+    expect(first).toEqual(second);
+    first.forEach((identity) => {
+      expect(['US', 'DO', 'VE', 'PR', 'CU', 'JP', 'KR', 'MX', 'BR', 'TW']).toContain(identity.countryCode);
+      expect(identity.givenName).not.toEqual('');
+      expect(identity.familyName).not.toEqual('');
+      expect(['R', 'L', 'S']).toContain(identity.bats);
+      expect(['R', 'L']).toContain(identity.throws);
+      expect(identity.birthDate.getUTCFullYear()).toBeGreaterThanOrEqual(1987);
+      expect(identity.birthDate.getUTCFullYear()).toBeLessThanOrEqual(2008);
+    });
+  });
+
+  // @spec PID-002,PID-010
+  it('@spec PID-002 @spec PID-010 resolves a named league composition and defaults unknown keys', () => {
+    expect(resolveComposition('NPB')).toBe(LEAGUE_COMPOSITIONS.NPB);
+    expect(resolveComposition('unknown')).toBe(LEAGUE_COMPOSITIONS.PREMIER_LEAGUE);
+  });
+
+  // @spec PID-010
+  it('@spec PID-010 forwards the primary League composition to rosters before multi-League membership exists', async () => {
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(168);
+    const format = { structure: 'ROUND_ROBIN' as const, legs: 'ONE_LEG' as const, winsToAdvance: 'Bo1' as const };
+    const stage = (teamIndex: number) => [{
+      id: 'regular',
+      name: 'Regular season',
+      divisions: [{ name: 'Division', defaultTeams: [teamIndex], format, isTopTier: true }],
+    }];
+    try {
+      const created = await GameWorldFactory().create({
+        name: 'Premier League',
+        year: 2056,
+        teams: [{ name: 'Tokyo Test Club' }],
+        leagues: [
+          { name: 'Japan First', type: 'League', compositionKey: 'NPB', stages: stage(0) },
+          { name: 'England Second', type: 'League Cup', compositionKey: 'PREMIER_LEAGUE', stages: stage(0) },
+        ],
+      });
+
+      const playerRow = await db.models.Player.findOne({ where: { teamId: created.teams[0].id } });
+      if (!playerRow) throw new Error('Expected initial roster player');
+      const player = playerRow.dataValues;
+      expect(player.countryCode).toBe(
+        generateIdentity(LEAGUE_COMPOSITIONS.NPB, mulberry32(168), 2056).countryCode
+      );
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
+
+  // @spec PID-006
+  it('@spec PID-006 defines all six required typed identity columns', () => {
+    const attributes = db.models.Player.getAttributes();
+    ['givenName', 'familyName', 'countryCode', 'bats', 'throws', 'birthDate'].forEach((field) => {
+      expect(attributes[field].allowNull).toBe(false);
+    });
+    expect(attributes.birthDate.type.constructor.name).toBe('DATE');
   });
 
   // @spec PATTR-001
@@ -114,17 +179,21 @@ describe('Player model + attribute schema', () => {
     }
   });
 
-  // @spec PCON-001,PCON-003,PCON-004,PCON-007
-  it('@spec PCON-001 @spec PCON-003 @spec PCON-004 @spec PCON-007 generates a minimum-size roster with uniform attributes and matching contracts', async () => {
+  // @spec PCON-001,PCON-003,PCON-004,PCON-007,PCON-008,PID-002,PID-006,PID-010
+  it('@spec PCON-001 @spec PCON-003 @spec PCON-004 @spec PCON-007 @spec PCON-008 @spec PID-002 @spec PID-006 @spec PID-010 generates a minimum-size roster with identity columns and DATE contracts', async () => {
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2052 }).then(({ dataValues }) => dataValues);
+    await db.models.League.bulkCreate([
+      { gameWorldId: gameWorld.id, config: { name: 'Premier League', compositionKey: 'PREMIER_LEAGUE' } },
+      { gameWorldId: gameWorld.id, config: { name: 'Tokyo League', compositionKey: 'NPB' } },
+    ]);
     const team = await db.models.Team.create({
       gameWorldId: gameWorld.id,
       config: { name: 'Austin Arrows' },
     }).then(({ dataValues }) => dataValues);
 
     try {
-      const players = await PlayerFactory().generateRoster(team.id, gameWorld.id);
+      const players = await PlayerFactory().generateRoster(team.id, gameWorld.id, { compositionKey: 'NPB', seed: 168 });
       const contracts = await db.models.Contract.findAll({
         where: { teamId: team.id },
         order: [['id', 'ASC']],
@@ -132,9 +201,20 @@ describe('Player model + attribute schema', () => {
 
       expect(players).toHaveLength(MIN_ROSTER_SIZE);
       expect(contracts).toHaveLength(MIN_ROSTER_SIZE);
+      expect(players[0].countryCode).toBe(
+        generateIdentity(LEAGUE_COMPOSITIONS.NPB, mulberry32(168), gameWorld.year).countryCode
+      );
 
-      players.forEach((player) => {
+      const reloadedPlayers = await db.models.Player.findAll({ where: { teamId: team.id } }).then((rows) => rows.map(({ dataValues }) => dataValues));
+      expect(reloadedPlayers).toHaveLength(MIN_ROSTER_SIZE);
+      reloadedPlayers.forEach((player) => {
         expect(player.teamId).toBe(team.id);
+        expect(player.givenName).toEqual(expect.any(String));
+        expect(player.familyName).toEqual(expect.any(String));
+        expect(player.countryCode).toMatch(/^[A-Z]{2}$/);
+        expect(['R', 'L', 'S']).toContain(player.bats);
+        expect(['R', 'L']).toContain(player.throws);
+        expect(player.birthDate).toBeInstanceOf(Date);
         expect(player.attributes).toEqual({
           contact: 1,
           power: 1,
@@ -165,8 +245,8 @@ describe('Player model + attribute schema', () => {
 
       contracts.forEach((contract) => {
         expect(contract.teamId).toBe(team.id);
-        expect(contract.startYear).toBe(gameWorld.year);
-        expect(contract.endYear).toBe(gameWorld.year);
+        expect(contract.startDate).toEqual(new Date(`${gameWorld.year}-03-01T00:00:00.000Z`));
+        expect(contract.endDate).toEqual(new Date(`${gameWorld.year}-10-31T00:00:00.000Z`));
       });
       expect(contracts.map((contract) => contract.playerId).sort((a, b) => a - b)).toEqual(
         players.map((player) => player.id!).sort((a, b) => a - b)

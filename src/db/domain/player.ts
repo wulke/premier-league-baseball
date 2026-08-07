@@ -2,14 +2,23 @@ import { Transaction } from 'sequelize';
 import { PlayerAttributes, PlayerPosition, PlayerRecord } from '../../api/models';
 import db from '../client';
 import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE } from './contract';
+import { generateIdentity, mulberry32, resolveComposition } from './identity';
 
 interface GenerateRosterOptions {
   gameWorldYear?: number;
+  compositionKey?: string;
+  seed?: number;
   transaction?: Transaction;
 }
 
+interface CreatePlayerOptions {
+  compositionKey?: string;
+  seed?: number;
+  gameWorldYear?: number;
+}
+
 interface IPlayer {
-  create: (gameWorldId: number, attributes: PlayerAttributes, teamId?: number | null) => Promise<PlayerRecord>;
+  create: (gameWorldId: number, attributes: PlayerAttributes, teamId?: number | null, options?: CreatePlayerOptions) => Promise<PlayerRecord>;
   generateRoster: (teamId: number, gameWorldId: number, options?: GenerateRosterOptions) => Promise<PlayerRecord[]>;
 }
 
@@ -74,12 +83,23 @@ const generatePlayerAttributes = (): PlayerAttributes => ({
 });
 
 const PlayerFactory = (): IPlayer => {
-  // @spec PATTR-002,PATTR-003
-  const create = async (gameWorldId: number, attributes: PlayerAttributes, teamId: number | null = null) => {
+  // @spec PATTR-002,PATTR-003,PID-002,PID-005,PID-006,PID-009,PID-010
+  const create = async (
+    gameWorldId: number,
+    attributes: PlayerAttributes,
+    teamId: number | null = null,
+    options: CreatePlayerOptions = {},
+  ) => {
+    const identity = generateIdentity(
+      resolveComposition(options.compositionKey),
+      mulberry32(options.seed ?? Date.now()),
+      options.gameWorldYear,
+    );
     const player = await db.models.Player.create({
       teamId,
       gameWorldId,
       attributes,
+      ...identity,
     }).then(({ dataValues }) => dataValues);
 
     return player;
@@ -88,9 +108,9 @@ const PlayerFactory = (): IPlayer => {
   return {
     create,
 
-    // @spec PCON-001,PCON-002,PCON-003,PCON-004,PCON-007
+    // @spec PCON-001,PCON-002,PCON-003,PCON-004,PCON-007,PCON-008,PID-002,PID-005,PID-007,PID-010
     generateRoster: async (teamId: number, gameWorldId: number, options: GenerateRosterOptions = {}) => {
-      const { gameWorldYear, transaction } = options;
+      const { gameWorldYear, compositionKey, seed = Date.now(), transaction } = options;
       const year = gameWorldYear ?? await db.models.GameWorld.findByPk(gameWorldId, { transaction }).then((gw) => {
         if (!gw) throw Error(`GameWorld '${gameWorldId}' not found`);
         return gw.dataValues.year;
@@ -98,11 +118,14 @@ const PlayerFactory = (): IPlayer => {
 
       const headcount = MIN_ROSTER_SIZE + Math.floor(Math.random() * (MAX_ROSTER_SIZE - MIN_ROSTER_SIZE + 1));
       const slots = allocateRosterSlots(headcount);
+      const composition = resolveComposition(compositionKey);
+      const rng = mulberry32(seed);
       const players = await db.models.Player.bulkCreate(
         slots.map(() => ({
           teamId,
           gameWorldId,
           attributes: generatePlayerAttributes(),
+          ...generateIdentity(composition, rng, year),
         }))
       , { transaction }).then((rows) => rows.map(({ dataValues }) => dataValues));
 
@@ -110,8 +133,8 @@ const PlayerFactory = (): IPlayer => {
         players.map((player) => ({
           playerId: player.id,
           teamId,
-          startYear: year,
-          endYear: year,
+          startDate: new Date(Date.UTC(year, 2, 1)),
+          endDate: new Date(Date.UTC(year, 9, 31)),
         }))
       , { transaction });
 

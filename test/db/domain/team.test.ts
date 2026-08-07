@@ -1,6 +1,7 @@
 // @spec PCON-001,PCON-004,PCON-007
 import db from '../../../src/db/client';
 import { TeamFactory } from '../../../src/db/domain';
+import { generateIdentity, LEAGUE_COMPOSITIONS, mulberry32 } from '../../../src/db/domain/identity';
 
 const ONE_LEG_KNOCKOUT_FIXED_FORMAT = {
   structure: 'KNOCKOUT' as const,
@@ -195,13 +196,13 @@ describe('TeamFactory', () => {
     );
   }, 10000);
 
-  // @spec PCON-001,PCON-004,PCON-007
-  it('@spec PCON-001 @spec PCON-004 @spec PCON-007 creates an initial roster with matching contracts after the team row exists', async () => {
+  // @spec PCON-001,PCON-004,PCON-007,PID-010
+  it('@spec PCON-001 @spec PCON-004 @spec PCON-007 @spec PID-010 creates an initial roster with matching contracts after the team row exists', async () => {
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
     const gw = await db.models.GameWorld.create({ config: {}, year: 2054 }).then((m) => m.dataValues);
 
     try {
-      const team = await TeamFactory().create(gw.id, { name: 'Milwaukee Makers' });
+      const team = await TeamFactory().create(gw.id, { name: 'Milwaukee Makers' }, { compositionKey: 'NPB', rosterSeed: 168 });
       const hydratedTeam = await db.models.Team.findByPk(team.id, {
         include: [db.models.Player, db.models.Contract],
       });
@@ -211,10 +212,13 @@ describe('TeamFactory', () => {
       hydratedTeam?.dataValues.Players.forEach((player: any) => {
         expect(player.dataValues.teamId).toBe(team.id);
       });
+      expect(hydratedTeam?.dataValues.Players[0].dataValues.countryCode).toBe(
+        generateIdentity(LEAGUE_COMPOSITIONS.NPB, mulberry32(168), gw.year).countryCode
+      );
       hydratedTeam?.dataValues.Contracts.forEach((contract: any) => {
         expect(contract.dataValues.teamId).toBe(team.id);
-        expect(contract.dataValues.startYear).toBe(gw.year);
-        expect(contract.dataValues.endYear).toBe(gw.year);
+        expect(contract.dataValues.startDate).toEqual(new Date(`${gw.year}-03-01T00:00:00.000Z`));
+        expect(contract.dataValues.endDate).toEqual(new Date(`${gw.year}-10-31T00:00:00.000Z`));
       });
     } finally {
       randomSpy.mockRestore();
