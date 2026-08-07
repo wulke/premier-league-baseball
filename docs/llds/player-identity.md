@@ -50,10 +50,14 @@ export function generateIdentity(composition: LeagueComposition, rng: () => numb
 ### Identity generation, step by step (extends `generateRoster`)
 
 ```
-generateRoster(teamId, gwId, { seed?, ...options }):
+GameWorldFactory.create(config):
+  primaryCompositionKey = config.leagues[0]?.compositionKey
+  TeamFactory.create(gwId, teamConfig, { compositionKey: primaryCompositionKey })
+
+generateRoster(teamId, gwId, { compositionKey?, seed?, ...options }):
   ...existing headcount/slot/attribute logic (PATTR) unchanged...
 
-  composition = LEAGUE_COMPOSITIONS[league.config.compositionKey] ?? LEAGUE_COMPOSITIONS.PREMIER_LEAGUE
+  composition = LEAGUE_COMPOSITIONS[compositionKey] ?? LEAGUE_COMPOSITIONS.PREMIER_LEAGUE
   rng = mulberry32(seed ?? <per-call seed>)       // seeded → reproducible rosters (#143)
 
   for each player slot:
@@ -77,7 +81,7 @@ generateRoster(teamId, gwId, { seed?, ...options }):
 - **Country first, then name** — pick `countryCode` from the league composition, then draw the name from that country's curated pool. `bats`/`throws` are independent of country and of each other (MLB-like distribution; faker has no handedness module, hence no faker).
 - **`birthDate`, not `age`** — the stored seed is a date; `age` is derived at read-time (`player-detail-read-api.md`), so it never drifts as seasons advance. Age band 18–38 is a generation-time tunable.
 - **Seeded mulberry32 RNG** — a single seed per `generateRoster` call makes a roster reproducible. Tunables (weights/pool sizes/age band) deferred to implementation.
-- **Per-league composition via `League.config`** — the composition key (`PREMIER_LEAGUE`/`KBO`/`NPB`) is a league property, so one generator serves any league.
+- **Primary-league composition via `League.config`** — GameWorld creation has one shared team pool and creates each roster before Division membership exists (teams can later enter multiple Leagues). It explicitly forwards the first configured League's composition key as the primary roster policy. Direct `TeamFactory`/`PlayerFactory` callers may pass that key explicitly; omitted keys fall back to `PREMIER_LEAGUE`. A future per-competition roster model would need a new association, not a lookup of an arbitrary League row.
 
 ## Edge Case Probe
 
@@ -89,6 +93,7 @@ generateRoster(teamId, gwId, { seed?, ...options }):
 | e4 | `birthDate` outside the 18–38 band | Cannot occur — generation clamps to the band. A future manual-edit path (out of scope, → #140 writes) is the only way to produce an out-of-band date. | PID-004 |
 | e5 | Two players on one roster draw the same name | Allowed — name collisions are realistic and not guarded against; `id` is the identity, not the name. | — |
 | e6 | Seeded RNG determinism vs concurrent `generateRoster` calls | One seed per call, consumed sequentially within it; no cross-call coupling. Reproducibility is per-call given the same seed, not global. | PID-005 |
+| e7 | A GameWorld has multiple Leagues while a Team has no League association at roster creation | `GameWorldFactory` forwards its first configured (primary) League's `compositionKey` explicitly. No `findOne({ gameWorldId })` lookup is permitted; teams may later participate in multiple Leagues without changing their identity. | PID-010 |
 
 ## Traceability
 

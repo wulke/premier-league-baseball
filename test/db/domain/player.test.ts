@@ -3,6 +3,7 @@ import { PlayerAttributes } from '../../../src/api/models';
 import db from '../../../src/db/client';
 import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE } from '../../../src/db/domain/contract';
 import { PlayerFactory, allocateRosterSlots, primaryPosition } from '../../../src/db/domain/player';
+import { GameWorldFactory } from '../../../src/db/domain/game-world';
 import { generateIdentity, LEAGUE_COMPOSITIONS, mulberry32, resolveComposition } from '../../../src/db/domain/identity';
 
 const nonPitcherAttributes: PlayerAttributes = {
@@ -70,6 +71,37 @@ describe('Player model + attribute schema', () => {
   it('@spec PID-002 @spec PID-010 resolves a named league composition and defaults unknown keys', () => {
     expect(resolveComposition('NPB')).toBe(LEAGUE_COMPOSITIONS.NPB);
     expect(resolveComposition('unknown')).toBe(LEAGUE_COMPOSITIONS.PREMIER_LEAGUE);
+  });
+
+  // @spec PID-010
+  it('@spec PID-010 forwards the primary League composition to rosters before multi-League membership exists', async () => {
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(168);
+    const format = { structure: 'ROUND_ROBIN' as const, legs: 'ONE_LEG' as const, winsToAdvance: 'Bo1' as const };
+    const stage = (teamIndex: number) => [{
+      id: 'regular',
+      name: 'Regular season',
+      divisions: [{ name: 'Division', defaultTeams: [teamIndex], format, isTopTier: true }],
+    }];
+    try {
+      const created = await GameWorldFactory().create({
+        name: 'Premier League',
+        year: 2056,
+        teams: [{ name: 'Tokyo Test Club' }],
+        leagues: [
+          { name: 'Japan First', type: 'League', compositionKey: 'NPB', stages: stage(0) },
+          { name: 'England Second', type: 'League Cup', compositionKey: 'PREMIER_LEAGUE', stages: stage(0) },
+        ],
+      });
+
+      const playerRow = await db.models.Player.findOne({ where: { teamId: created.teams[0].id } });
+      if (!playerRow) throw new Error('Expected initial roster player');
+      const player = playerRow.dataValues;
+      expect(player.countryCode).toBe(
+        generateIdentity(LEAGUE_COMPOSITIONS.NPB, mulberry32(168), 2056).countryCode
+      );
+    } finally {
+      nowSpy.mockRestore();
+    }
   });
 
   // @spec PID-006
@@ -151,17 +183,17 @@ describe('Player model + attribute schema', () => {
   it('@spec PCON-001 @spec PCON-003 @spec PCON-004 @spec PCON-007 @spec PCON-008 @spec PID-002 @spec PID-006 @spec PID-010 generates a minimum-size roster with identity columns and DATE contracts', async () => {
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2052 }).then(({ dataValues }) => dataValues);
-    await db.models.League.create({
-      gameWorldId: gameWorld.id,
-      config: { name: 'Tokyo League', compositionKey: 'NPB' },
-    });
+    await db.models.League.bulkCreate([
+      { gameWorldId: gameWorld.id, config: { name: 'Premier League', compositionKey: 'PREMIER_LEAGUE' } },
+      { gameWorldId: gameWorld.id, config: { name: 'Tokyo League', compositionKey: 'NPB' } },
+    ]);
     const team = await db.models.Team.create({
       gameWorldId: gameWorld.id,
       config: { name: 'Austin Arrows' },
     }).then(({ dataValues }) => dataValues);
 
     try {
-      const players = await PlayerFactory().generateRoster(team.id, gameWorld.id, { seed: 168 });
+      const players = await PlayerFactory().generateRoster(team.id, gameWorld.id, { compositionKey: 'NPB', seed: 168 });
       const contracts = await db.models.Contract.findAll({
         where: { teamId: team.id },
         order: [['id', 'ASC']],

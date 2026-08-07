@@ -51,6 +51,7 @@ export const resolveComposition = (compositionKey?: string): LeagueComposition =
 );
 
 const weightedPick = <T>(entries: Array<[T, number]>, rng: () => number): T => {
+  if (entries.length === 0) throw new Error('Identity composition must contain a positive country weight');
   const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
   let cursor = rng() * total;
   for (const [value, weight] of entries) {
@@ -77,6 +78,8 @@ export const generateIdentity = (
 
   const pick = <T>(values: T[]): T => values[Math.floor(rng() * values.length)];
   const age = 18 + Math.floor(rng() * 21);
+  // Days 1–28 are valid for every month, avoiding month-length branching while
+  // preserving a uniform month/day draw for generated birth dates.
   const birthDate = new Date(Date.UTC(gameWorldYear - age, Math.floor(rng() * 12), 1 + Math.floor(rng() * 28)));
 
   return {
