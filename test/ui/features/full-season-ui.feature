@@ -25,10 +25,10 @@ Feature: Full-Season UI
     And "Premier League" games are hidden
 
   @spec:UI-004
-  Scenario: League team navigation uses the GameWorld-scoped calendar route
+  Scenario: League team navigation opens the team hub
     Given the League page has a team named "River City"
     When the player clicks team "River City" from the League page
-    Then the app navigates to "/1/team/7/calendar"
+    Then the app navigates to "/1/team/7"
 
   @spec:UI-010
   Scenario: Team calendar renders knockout byes as played rows
@@ -82,7 +82,7 @@ Feature: Full-Season UI
     And the League identity block does not show "Season in progress"
     And the simulate control for the decided League is not shown
     When the player clicks team "River City" from the League page
-    Then the app navigates to "/1/team/7/calendar"
+    Then the app navigates to "/1/team/7"
 
   @spec:UI-001 @spec:UI-003
   Scenario: Decided cups show a cup champion banner and disable simulation
