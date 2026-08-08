@@ -592,7 +592,7 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('League team navigation uses the GameWorld-scoped calendar route', ({ given, when, then }) => {
+  test('League team navigation opens the team hub', ({ given, when, then }) => {
     given(/^a GameWorld with id (\d+) exists for the full-season UI$/, () => {
       /* fetch mock provides the fixture */
     });

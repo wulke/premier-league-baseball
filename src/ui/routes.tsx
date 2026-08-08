@@ -1,6 +1,6 @@
 import React from 'react';
-import { Routes, Route } from 'react-router';
-import { GameWorld, Home, League, TeamCalendar } from './pages';
+import { Navigate, Routes, Route } from 'react-router';
+import { GameWorld, Home, League, TeamCalendar, TeamHub, TeamRoster } from './pages';
 import { AppShell } from './components/app-shell';
 
 const R = () => (
@@ -11,7 +11,12 @@ const R = () => (
       <Route path=":gwId">
         <Route index element={<GameWorld />} />
         <Route path=":leagueId" element={<League />} />
-        <Route path="team/:teamId/calendar" element={<TeamCalendar />} />
+        {/* @spec ROSTUI-006,ROSTUI-007 */}
+        <Route path="team/:teamId" element={<TeamHub />}>
+          <Route index element={<Navigate to="calendar" replace />} />
+          <Route path="calendar" element={<TeamCalendar />} />
+          <Route path="roster" element={<TeamRoster />} />
+        </Route>
       </Route>
     </Route>
   </Routes>

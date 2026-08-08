@@ -377,8 +377,8 @@ const League = () => {
 
   if (!league) return <></>;
 
-  // @spec UI-004
-  const openTeamCalendar = (teamId: number) => navigate(`/${gwId}/team/${teamId}/calendar`);
+  // @spec ROSTUI-001
+  const openTeamHub = (teamId: number) => navigate(`/${gwId}/team/${teamId}`);
   const hasAnyStandings = standings.some((s) => s.standings.length > 0);
   const hasAnyBracketRounds = divisionBrackets.some((division) => division.rounds.length > 0);
   const championBanner = formatLeagueChampionBanner(
@@ -436,7 +436,7 @@ const League = () => {
             divisionStandings={standings.find((entry) => entry.divisionId === division.id)}
             divisionBracket={divisionBrackets.find((entry) => entry.divisionId === division.id)}
             seededFromGroupsLabel={getSeededFromGroupsLabel(league, division)}
-            onTeamClick={openTeamCalendar}
+            onTeamClick={openTeamHub}
           />
         ))}
       </section>
