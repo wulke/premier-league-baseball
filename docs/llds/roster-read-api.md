@@ -6,7 +6,7 @@
 
 ## Scope
 
-Adds `GET /api/team/:teamId/roster` (+ optional `?gwId=`), backed by `TeamFactory(teamId).getRoster()` anchoring on **active Contracts** (`Team → Contract → Player` join). Returns a **flat row, no envelope** — identity + derived `primaryPosition` + flat-7 ratings + a derived `positionCoverage` field (the corrigendum #147 graduated onto #145). Depends on the identity columns ([`player-identity.md`](./player-identity.md)) and the Contract DATE migration ([`player-detail-read-api.md`](./player-detail-read-api.md)). Does **not** cover player detail, any write, or UI.
+Adds `GET /api/team/:teamId/roster` (+ optional `?gwId=`), backed by `TeamFactory(teamId).getRoster()` anchoring on **Contracts** (`Team → Contract → Player` join). v1 intentionally returns every Contract row (the active-date filter belongs to #140). Returns a **flat row, no envelope** — identity + derived `primaryPosition` + flat-7 ratings + a derived `positionCoverage` field (the corrigendum #147 graduated onto #145). Depends on the identity columns ([`player-identity.md`](./player-identity.md)) and the Contract DATE migration ([`player-detail-read-api.md`](./player-detail-read-api.md)). Does **not** cover player detail, any write, or UI.
 
 ## Interface / Data Model
 

@@ -109,6 +109,14 @@ router.get(Endpoints.GetTeamSchedule, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
+router.get(Endpoints.GetTeamRoster, async (req: any, res: any) => {
+  // @spec ROST-001,ROST-002,ROST-003,ROST-005,ROST-007,ROST-008,ROST-009,ROST-010
+  const gwId = req.query.gwId == null ? undefined : Number(req.query.gwId);
+  await handlers.getTeamRoster(Number(req.params.teamId), gwId)
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
 router.post(Endpoints.BatchSimulateGames, async (req: any, res: any) => {
   await handlers.simulateBatchGames(Number(req.params.gwId), req.body?.endDate)
     .then((response) => res.send(response))

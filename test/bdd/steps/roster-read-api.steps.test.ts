@@ -91,7 +91,7 @@ const registerSteps = ({ given, when, then }: any) => {
   });
 
   given(/^Team (\d+) belongs to GameWorld (\d+)$/, async (teamId: string, gwId: string) => {
-    await db.models.Team.create({ id: Number(teamId), gameWorldId: Number(gwId), config: { name: 'Roster Team' } });
+    await db.models.Team.findOrCreate({ where: { id: Number(teamId) }, defaults: { gameWorldId: Number(gwId), config: { name: 'Roster Team' } } });
     scenarioWorld.teamId = Number(teamId);
   });
 

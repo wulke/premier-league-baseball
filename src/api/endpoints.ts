@@ -10,6 +10,8 @@ const enum Endpoints {
   LeagueSeasonStart = '/api/league/:leagueId/season/start',
   UpdateDivisionSchedulingConfig = '/api/division/:divisionId/config',
   GetTeamSchedule = '/api/team/:teamId/calendar',
+  // @spec ROST-001,ROST-002,ROST-003,ROST-005,ROST-007,ROST-008,ROST-009,ROST-010
+  GetTeamRoster = '/api/team/:teamId/roster',
   NewGameWorld = '/api/gameWorld/new',
   // @spec MCLB-003,MCLB-004,MCLB-005
   SetManagedClub = '/api/gameWorld/:gwId/managed-club',

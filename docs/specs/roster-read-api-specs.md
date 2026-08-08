@@ -6,16 +6,16 @@ Backend requirements for the team roster read endpoint and its domain read
 
 | ID | Requirement | Status |
 |---|---|---|
-| ROST-001 | WHEN `:teamId` does not match a Team THE system SHALL respond `404` with `{ error }` | [ ] |
-| ROST-002 | WHEN `?gwId=` is provided and the team belongs to a different GameWorld THE system SHALL respond `404` (team IDs are globally unique, so no gw-nested path is needed) | [ ] |
-| ROST-003 | WHEN a Team exists but has zero active Contracts THE system SHALL return an empty array, not an error | [ ] |
+| ROST-001 | WHEN `:teamId` does not match a Team THE system SHALL respond `404` with `{ error }` | [x] → #169 |
+| ROST-002 | WHEN `?gwId=` is provided and the team belongs to a different GameWorld THE system SHALL respond `404` (team IDs are globally unique, so no gw-nested path is needed) | [x] → #169 |
+| ROST-003 | WHEN a Team exists but has zero active Contracts THE system SHALL return an empty array, not an error | [x] → #169 |
 | ROST-004 | WHEN multiple Contract rows exist for one player (multi-year history) THE system SHALL NOT apply a `startDate`/`endDate` active-filter in v1 — the active-contract filter is deferred to the transfers map | [D] |
-| ROST-005 | WHEN two or more positions tie for the highest rating THE system SHALL derive `primaryPosition` as the first-listed position in enum order | [ ] |
+| ROST-005 | WHEN two or more positions tie for the highest rating THE system SHALL derive `primaryPosition` as the first-listed position in enum order | [x] → #169 |
 | ROST-006 | WHEN deriving `positionCoverage` THE system SHALL use a placeholder threshold of `70`; analytical calibration of the threshold is deferred to engine/generation work | [D] |
-| ROST-007 | WHEN a client requests `GET /api/team/:teamId/roster` THE system SHALL return a flat array of roster rows anchored on the team's active Contracts via a `Team → Contract → Player` join | [ ] |
-| ROST-008 | WHEN composing a roster row THE system SHALL include the identity fields, a derived `primaryPosition`, and the flat-7 ratings verbatim, and SHALL NOT include a stored or computed OVR | [ ] |
-| ROST-009 | WHEN deriving `positionCoverage` THE system SHALL return the set of positions whose rating meets the threshold, always including the primary position | [ ] |
-| ROST-010 | WHEN returning a roster THE system SHALL return rows in `Player.id` order with no server-side sort or filter — sort and filter are the UI's responsibility | [ ] |
+| ROST-007 | WHEN a client requests `GET /api/team/:teamId/roster` THE system SHALL return a flat array of roster rows anchored on the team's active Contracts via a `Team → Contract → Player` join | [x] → #169 |
+| ROST-008 | WHEN composing a roster row THE system SHALL include the identity fields, a derived `primaryPosition`, and the flat-7 ratings verbatim, and SHALL NOT include a stored or computed OVR | [x] → #169 |
+| ROST-009 | WHEN deriving `positionCoverage` THE system SHALL return the set of positions whose rating meets the threshold, always including the primary position | [x] → #169 |
+| ROST-010 | WHEN returning a roster THE system SHALL return rows in `Player.id` order with no server-side sort or filter — sort and filter are the UI's responsibility | [x] → #169 |
 
 `ROST-004` and `ROST-006` are Deferred, not Active — they record deliberate v1 gaps traceable to
 their owning future maps ([#140](https://github.com/wulke/premier-league-baseball/issues/140) and

@@ -98,6 +98,25 @@ interface PlayerRecord {
   birthDate: Date;
 }
 
+interface RosterPlayer {
+  id: number;
+  givenName: string;
+  familyName: string;
+  countryCode: string;
+  bats: 'R' | 'L' | 'S';
+  throws: 'R' | 'L';
+  age: number;
+  primaryPosition: PlayerPosition;
+  positionCoverage: PlayerPosition[];
+  contact: number;
+  power: number;
+  armStrength: number;
+  accuracy: number;
+  reaction: number;
+  vision: number;
+  discipline: number;
+}
+
 interface DivisionStandings {
   divisionId: number;
   divisionName: string;
@@ -624,6 +643,7 @@ export {
   PlayerPitch,
   PlayerAttributes,
   PlayerRecord,
+  RosterPlayer,
   DivisionStandings,
   BracketTeam,
   BracketGame,
