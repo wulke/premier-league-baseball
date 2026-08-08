@@ -117,6 +117,28 @@ interface RosterPlayer {
   discipline: number;
 }
 
+interface PlayerDetail {
+  id: number;
+  givenName: string;
+  familyName: string;
+  countryCode: string;
+  bats: 'R' | 'L' | 'S';
+  throws: 'R' | 'L';
+  birthDate: string;
+  age: number;
+  primaryPosition: PlayerPosition;
+  contact: number;
+  power: number;
+  armStrength: number;
+  accuracy: number;
+  reaction: number;
+  vision: number;
+  discipline: number;
+  positions: Record<PlayerPosition, number>;
+  pitches: PlayerPitch[];
+  contract: { team: { id: number; name: string }; startDate: string; endDate: string } | null;
+}
+
 interface DivisionStandings {
   divisionId: number;
   divisionName: string;
@@ -644,6 +666,7 @@ export {
   PlayerAttributes,
   PlayerRecord,
   RosterPlayer,
+  PlayerDetail,
   DivisionStandings,
   BracketTeam,
   BracketGame,

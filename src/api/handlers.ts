@@ -1,4 +1,4 @@
-import { DivisionFactory, GameFactory, GameWorldFactory, LeagueFactory, TeamFactory } from '../db/domain';
+import { DivisionFactory, GameFactory, GameWorldFactory, LeagueFactory, PlayerFactory, TeamFactory } from '../db/domain';
 import { DomainError } from '../db/domain/errors';
 import db from '../db/client';
 import { NewGameWorld, SchedulingConfig } from './models';
@@ -109,6 +109,23 @@ const getTeamRoster = async (teamId: number, gwId?: number) => {
   return await TeamFactory(teamId).getRoster();
 };
 
+// @spec PDET-001,PDET-002,PDET-003,PDET-004,PDET-007,PDET-008,PDET-010,PDET-011
+const getPlayerDetail = async (playerId: number, gwId?: number) => {
+  const player = await db.models.Player.findByPk(playerId);
+  if (!player || (gwId != null && player.dataValues.gameWorldId !== gwId)) {
+    throw new DomainError('Not found', 404);
+  }
+
+  const gameWorld = await db.models.GameWorld.findByPk(player.dataValues.gameWorldId);
+  if (!gameWorld) throw new DomainError('Not found', 404);
+
+  return await PlayerFactory(playerId).getDetail({
+    currentDate: gameWorld.dataValues.currentDate ?? undefined,
+    year: gameWorld.dataValues.year,
+    gwId,
+  });
+};
+
 export {
   getGameWorld,
   getGameWorlds,
@@ -118,6 +135,7 @@ export {
   getLeagueToday,
   getTeamSchedule,
   getTeamRoster,
+  getPlayerDetail,
   newGameWorld,
   setManagedClub,
   cutoverLeagueSeason,
