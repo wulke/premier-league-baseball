@@ -6,7 +6,7 @@
 
 ## Scope
 
-Adds `GET /api/player/:playerId` (+ optional `?gwId=`), backed by `PlayerFactory(playerId).getDetail(...)` — **refactors `PlayerFactory` to the anchored pattern** (`Factory(id)`) to match `TeamFactory`. Serves **full `attributes` verbatim** (flat-7 + 9-key `positions` + `pitches` array + raw `birthDate` + derived `age`/`primaryPosition`) + the **current Contract**. **Folds the `Contract` schema migration** (`startYear`/`endYear` INT → `startDate`/`endDate` DATE) — year-ints couldn't disambiguate a same-year trade; de-risks #140; consumed by [`player-identity.md`](./player-identity.md) (generation) and [`roster-read-api.md`](./roster-read-api.md). Does **not** cover roster, writes, or UI.
+Adds `GET /api/player/:playerId` (+ optional `?gwId=`), backed by `PlayerFactory(playerId).getDetail(...)` — **refactors `PlayerFactory` to the anchored pattern** (`Factory(id)`) to match `TeamFactory`. Serves **full `attributes` verbatim** (flat-7 + 9-key `positions` + `pitches` array + raw `birthDate` + derived `age`/`primaryPosition`) + the **current Contract**. The Contract DATE migration (`startDate`/`endDate`) is supplied by the player-identity foundation slice (#168); this map consumes it. Does **not** cover roster, writes, or UI.
 
 ## Interface / Data Model
 
