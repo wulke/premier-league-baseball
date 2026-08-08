@@ -1,5 +1,6 @@
 import { Transaction } from 'sequelize';
-import { PlayerAttributes, PlayerPosition, PlayerRecord } from '../../api/models';
+import { PlayerAttributes, PlayerDetail, PlayerPosition, PlayerRecord } from '../../api/models';
+import { DomainError } from './errors';
 import db from '../client';
 import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE } from './contract';
 import { generateIdentity, mulberry32, resolveComposition } from './identity';
@@ -20,6 +21,7 @@ interface CreatePlayerOptions {
 interface IPlayer {
   create: (gameWorldId: number, attributes: PlayerAttributes, teamId?: number | null, options?: CreatePlayerOptions) => Promise<PlayerRecord>;
   generateRoster: (teamId: number, gameWorldId: number, options?: GenerateRosterOptions) => Promise<PlayerRecord[]>;
+  getDetail: (options: { currentDate?: Date | string; year: number; gwId?: number }) => Promise<PlayerDetail>;
 }
 
 const PLAYER_POSITIONS: PlayerPosition[] = [
@@ -82,7 +84,21 @@ const generatePlayerAttributes = (): PlayerAttributes => ({
   })),
 });
 
-const PlayerFactory = (): IPlayer => {
+// @spec PDET-003,PDET-004
+const resolveCurrentContract = (contracts: any[], currentDate: Date | string | undefined, year: number): any | null => {
+  return contracts.find((contract) => {
+    const values = contract.dataValues ?? contract;
+    if (!currentDate) {
+      return new Date(values.startDate).getUTCFullYear() <= year && year <= new Date(values.endDate).getUTCFullYear();
+    }
+    const now = new Date(currentDate);
+    return new Date(values.startDate) <= now && now <= new Date(values.endDate);
+  }) ?? null;
+};
+
+const dateOnly = (value: Date | string) => new Date(value).toISOString().slice(0, 10);
+
+const PlayerFactory = (playerId?: number): IPlayer => {
   // @spec PATTR-002,PATTR-003,PID-002,PID-005,PID-006,PID-009,PID-010
   const create = async (
     gameWorldId: number,
@@ -140,6 +156,48 @@ const PlayerFactory = (): IPlayer => {
 
       return players;
     },
+
+    // @spec PDET-003,PDET-004,PDET-007,PDET-008,PDET-010,PDET-011
+    getDetail: async ({ currentDate, year, gwId }): Promise<PlayerDetail> => {
+      const player = await db.models.Player.findByPk(playerId);
+      if (!player || (gwId != null && player.dataValues.gameWorldId !== gwId)) {
+        throw new DomainError('Not found', 404);
+      }
+      const values = player.dataValues;
+      const contracts = await db.models.Contract.findAll({
+        where: { playerId: values.id },
+        include: [{ model: db.models.Team }],
+      });
+      const current = resolveCurrentContract(contracts, currentDate, year);
+      const contract = current?.dataValues ?? current;
+      const team = contract?.Team?.dataValues ?? contract?.Team;
+
+      return {
+        id: values.id,
+        givenName: values.givenName,
+        familyName: values.familyName,
+        countryCode: values.countryCode,
+        bats: values.bats,
+        throws: values.throws,
+        birthDate: dateOnly(values.birthDate),
+        age: year - new Date(values.birthDate).getUTCFullYear(),
+        primaryPosition: primaryPosition(values),
+        contact: values.attributes.contact,
+        power: values.attributes.power,
+        armStrength: values.attributes.armStrength,
+        accuracy: values.attributes.accuracy,
+        reaction: values.attributes.reaction,
+        vision: values.attributes.vision,
+        discipline: values.attributes.discipline,
+        positions: values.attributes.positions,
+        pitches: values.attributes.pitches,
+        contract: contract ? {
+          team: { id: team.id, name: team.config?.name ?? `Team ${team.id}` },
+          startDate: dateOnly(contract.startDate),
+          endDate: dateOnly(contract.endDate),
+        } : null,
+      };
+    },
   };
 };
 
@@ -152,4 +210,4 @@ const primaryPosition = (player: Pick<PlayerRecord, 'attributes'>): PlayerPositi
   ), PLAYER_POSITIONS[0]);
 };
 
-export { PlayerFactory, primaryPosition, allocateRosterSlots, PLAYER_POSITIONS };
+export { PlayerFactory, primaryPosition, allocateRosterSlots, PLAYER_POSITIONS, resolveCurrentContract };

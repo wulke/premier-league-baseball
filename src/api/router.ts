@@ -117,6 +117,14 @@ router.get(Endpoints.GetTeamRoster, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
+router.get(Endpoints.GetPlayerDetail, async (req: any, res: any) => {
+  // @spec PDET-001,PDET-002,PDET-003,PDET-004,PDET-007,PDET-008,PDET-010,PDET-011
+  const gwId = req.query.gwId == null ? undefined : Number(req.query.gwId);
+  await handlers.getPlayerDetail(Number(req.params.playerId), gwId)
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
 router.post(Endpoints.BatchSimulateGames, async (req: any, res: any) => {
   await handlers.simulateBatchGames(Number(req.params.gwId), req.body?.endDate)
     .then((response) => res.send(response))
