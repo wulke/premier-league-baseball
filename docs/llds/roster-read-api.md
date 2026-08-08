@@ -6,7 +6,7 @@
 
 ## Scope
 
-Adds `GET /api/team/:teamId/roster` (+ optional `?gwId=`), backed by `TeamFactory(teamId).getRoster()` anchoring on **active Contracts** (`Team → Contract → Player` join). Returns a **flat row, no envelope** — identity + derived `primaryPosition` + flat-7 ratings + a derived `positionCoverage` field (the corrigendum #147 graduated onto #145). Depends on the identity columns ([`player-identity.md`](./player-identity.md)) and the Contract DATE migration ([`player-detail-read-api.md`](./player-detail-read-api.md)). Does **not** cover player detail, any write, or UI.
+Adds `GET /api/team/:teamId/roster` (+ optional `?gwId=`), backed by `TeamFactory(teamId).getRoster()` anchoring on **Contracts** (`Team → Contract → Player` join). v1 intentionally returns every Contract row (the active-date filter belongs to #140). Returns a **flat row, no envelope** — identity + derived `primaryPosition` + flat-7 ratings + a derived `positionCoverage` field (the corrigendum #147 graduated onto #145). Depends on the identity columns ([`player-identity.md`](./player-identity.md)) and the Contract DATE migration ([`player-detail-read-api.md`](./player-detail-read-api.md)). Does **not** cover player detail, any write, or UI.
 
 ## Interface / Data Model
 
@@ -18,7 +18,7 @@ GetTeamRoster = '/api/team/:teamId/roster'
 interface ITeam {
   create: ...;
   getSchedule: ...;
-  getRoster: (gwId?: number) => Promise<RosterPlayer[]>;   // anchored on the closure teamId
+  getRoster: () => Promise<RosterPlayer[]>;                 // anchored on the closure teamId
 }
 
 // src/api/models.ts — flat row, no envelope (per backend-standards §5: raw, unwrapped)
@@ -41,7 +41,7 @@ GET /api/team/:teamId/roster?gwId=…
   → router: handlers.getTeamRoster(teamId = Number(req.params.teamId), gwId = Number(req.query.gwId))
   → handler:
       IF gwId provided: assert Team(teamId).gameWorldId === gwId else DomainError(404)   # ROST-002
-      return TeamFactory(teamId).getRoster(gwId)
+      return TeamFactory(teamId).getRoster()
   → TeamFactory(teamId).getRoster():
       team = Team.findByPk(teamId); if !team → DomainError('Not found', 404)             # ROST-001
       players = team.getPlayers({ include: [{ model: Contract,                              // anchored on active

@@ -152,4 +152,4 @@ const primaryPosition = (player: Pick<PlayerRecord, 'attributes'>): PlayerPositi
   ), PLAYER_POSITIONS[0]);
 };
 
-export { PlayerFactory, primaryPosition, allocateRosterSlots };
+export { PlayerFactory, primaryPosition, allocateRosterSlots, PLAYER_POSITIONS };

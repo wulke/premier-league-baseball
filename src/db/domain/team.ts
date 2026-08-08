@@ -1,13 +1,17 @@
 import { Op } from 'sequelize';
-import { TeamConfig, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
+import { RosterPlayer, TeamConfig, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
 import db from '../client';
 import { getKnockoutRoundLabel } from './knockout';
-import { PlayerFactory } from './player';
+import { PLAYER_POSITIONS, PlayerFactory, primaryPosition } from './player';
+import { DomainError } from './errors';
 
 interface ITeam {
   create: (gwId: number, config: TeamConfig, options?: TeamCreateOptions) => any;
   getSchedule: (gwId: number, leagueId?: number) => Promise<TeamSeasonCalendar>;
+  getRoster: () => Promise<RosterPlayer[]>;
 };
+
+const COVERAGE_THRESHOLD = 70;
 
 interface TeamCreateOptions {
   compositionKey?: string;
@@ -171,6 +175,49 @@ const TeamFactory = (id?: number): ITeam => {
         teamName: team.config?.name ?? `Team ${id}`,
         games,
       };
+    },
+
+    // @spec ROST-001,ROST-003,ROST-005,ROST-007,ROST-008,ROST-009,ROST-010
+    getRoster: async (): Promise<RosterPlayer[]> => {
+      const team = await db.models.Team.findByPk(id);
+      if (!team) throw new DomainError('Not found', 404);
+
+      const gameWorld = await db.models.GameWorld.findByPk(team.dataValues.gameWorldId);
+      if (!gameWorld) throw new DomainError('Not found', 404);
+
+      // Contract is the membership source of truth. ROST-004 deliberately leaves
+      // date filtering to the transfers map; every current v1 Contract is returned.
+      const contracts = await (team as any).getContracts({
+        include: [{ model: db.models.Player }],
+        order: [[db.models.Player, 'id', 'ASC']],
+      });
+
+      return contracts.map((contract: any) => {
+        const player = contract.dataValues.Player.dataValues;
+        const primary = primaryPosition(player);
+        const positionCoverage = PLAYER_POSITIONS.filter((position) => (
+          player.attributes.positions[position] >= COVERAGE_THRESHOLD || position === primary
+        ));
+
+        return {
+          id: player.id,
+          givenName: player.givenName,
+          familyName: player.familyName,
+          countryCode: player.countryCode,
+          bats: player.bats,
+          throws: player.throws,
+          age: gameWorld.dataValues.year - new Date(player.birthDate).getUTCFullYear(),
+          primaryPosition: primary,
+          positionCoverage,
+          contact: player.attributes.contact,
+          power: player.attributes.power,
+          armStrength: player.attributes.armStrength,
+          accuracy: player.attributes.accuracy,
+          reaction: player.attributes.reaction,
+          vision: player.attributes.vision,
+          discipline: player.attributes.discipline,
+        };
+      });
     },
   };
 };

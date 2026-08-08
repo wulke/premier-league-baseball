@@ -1,5 +1,6 @@
 import { DivisionFactory, GameFactory, GameWorldFactory, LeagueFactory, TeamFactory } from '../db/domain';
 import { DomainError } from '../db/domain/errors';
+import db from '../db/client';
 import { NewGameWorld, SchedulingConfig } from './models';
 
 /* ! todo ! will we need to start splitting this by model? */
@@ -99,6 +100,15 @@ const getTeamSchedule = async (teamId: number, gwId: number, leagueId?: number) 
   return await TeamFactory(teamId).getSchedule(gwId, leagueId);
 };
 
+// @spec ROST-001,ROST-002,ROST-003,ROST-005,ROST-007,ROST-008,ROST-009,ROST-010
+const getTeamRoster = async (teamId: number, gwId?: number) => {
+  if (gwId != null) {
+    const team = await db.models.Team.findByPk(teamId);
+    if (!team || team.dataValues.gameWorldId !== gwId) throw new DomainError('Not found', 404);
+  }
+  return await TeamFactory(teamId).getRoster();
+};
+
 export {
   getGameWorld,
   getGameWorlds,
@@ -107,6 +117,7 @@ export {
   getLeagueStandings,
   getLeagueToday,
   getTeamSchedule,
+  getTeamRoster,
   newGameWorld,
   setManagedClub,
   cutoverLeagueSeason,
