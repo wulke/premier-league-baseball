@@ -91,7 +91,6 @@ const TeamRoster = () => {
             <tr style={{ borderBottom: '2px solid #222' }}>
               <th style={{ textAlign: 'left', padding: '6px 8px' }}><button type="button" onClick={() => changeSort('name')} style={sortButtonStyle}>Player</button></th>
               <th style={{ textAlign: 'center', padding: '6px 8px' }}><button type="button" onClick={() => changeSort('age')} style={sortButtonStyle}>Age</button></th>
-              <th style={{ textAlign: 'left', padding: '6px 8px' }}>Pos</th>
               <th style={{ textAlign: 'left', padding: '6px 8px' }}><button type="button" onClick={() => changeSort('primaryPosition')} style={sortButtonStyle}>Coverage</button></th>
               <th style={{ textAlign: 'center', padding: '6px 8px' }}>B/T</th>
               {ratings.map((rating) => <th key={rating.key} data-testid={`rating-header-${rating.key}`} style={{ textAlign: 'center', padding: '6px 5px', fontSize: '0.7rem', color: '#555' }}>{rating.label}</th>)}
@@ -102,7 +101,6 @@ const TeamRoster = () => {
               <tr key={player.id} data-testid={`roster-row-${player.id}`} style={{ borderBottom: '1px solid #eee' }}>
                 <td style={{ padding: '8px' }}><Link to={`/${gwId}/player/${player.id}`} style={{ color: '#222', fontWeight: 600, textUnderlineOffset: '3px' }}>{playerName(player)}</Link></td>
                 <td style={{ padding: '8px', textAlign: 'center', color: '#555' }}>{player.age}</td>
-                <td style={{ padding: '8px' }}><span style={{ padding: '2px 5px', borderRadius: '3px', background: '#f1f1f1', fontWeight: 700, fontSize: '0.73rem' }}>{player.primaryPosition}</span></td>
                 <td data-testid={`position-coverage-${player.id}`} style={{ padding: '8px' }}>
                   {player.positionCoverage.map((position) => position === player.primaryPosition
                     ? <strong key={position} data-testid={`position-primary-${player.id}`} style={{ fontWeight: 700 }}>{position}</strong>

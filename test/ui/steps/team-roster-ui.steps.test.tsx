@@ -140,6 +140,7 @@ defineFeature(feature, (test) => {
       const row = await screen.findByTestId('roster-row-100');
       expect(within(row).getByTestId('position-coverage-100')).toHaveTextContent('SS');
       expect(within(row).getByTestId('position-coverage-100')).toHaveTextContent('3B');
+      expect(screen.queryByRole('columnheader', { name: 'Pos' })).toBeNull();
     });
     // @spec ROSTUI-008
     and('the primary position is bolded and the secondary is dimmed', () => {
