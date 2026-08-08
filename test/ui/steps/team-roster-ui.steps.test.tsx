@@ -173,7 +173,7 @@ defineFeature(feature, (test) => {
       renderAt('/1/team/10/roster');
       await screen.findByTestId('roster-row-100');
     });
-    and('the player sorts the roster by age', () => fireEvent.click(screen.getByRole('button', { name: /age/i })));
+    and('the player sorts the roster by age', () => fireEvent.click(screen.getByRole('button', { name: 'Age' })));
     // @spec ROSTUI-003
     then('the rows are reordered by age', () => expect(screen.getAllByTestId(/roster-row-/).map((row) => row.getAttribute('data-testid'))).toEqual(['roster-row-101', 'roster-row-100']));
     // @spec ROSTUI-003
@@ -198,7 +198,7 @@ defineFeature(feature, (test) => {
     given('GET /api/team/10/roster fails', () => { rosterStatus = 500; });
     when('the player navigates to "/1/team/10/roster"', () => renderAt('/1/team/10/roster'));
     // @spec ROSTUI-002
-    then('the roster table renders empty', async () => { await waitFor(() => expect(screen.getAllByTestId(/roster-row-/)).toHaveLength(0)); });
+    then('the roster table renders empty', async () => { await waitFor(() => expect(screen.queryAllByTestId(/roster-row-/)).toHaveLength(0)); });
     // @spec ROSTUI-002
     and('no error message is shown', () => expect(screen.queryByText(/failed|unable/i)).toBeNull());
   });
@@ -210,7 +210,7 @@ defineFeature(feature, (test) => {
     given('GET /api/team/10/roster returns no players', () => { roster = []; });
     when('the player navigates to "/1/team/10/roster"', () => renderAt('/1/team/10/roster'));
     // @spec ROSTUI-002
-    then('the roster table renders empty', async () => { await waitFor(() => expect(screen.getAllByTestId(/roster-row-/)).toHaveLength(0)); });
+    then('the roster table renders empty', async () => { await waitFor(() => expect(screen.queryAllByTestId(/roster-row-/)).toHaveLength(0)); });
     // @spec ROSTUI-002
     and('no "no players" message is shown', () => expect(screen.queryByText(/no players/i)).toBeNull());
   });
