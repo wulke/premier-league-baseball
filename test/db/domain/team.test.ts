@@ -251,4 +251,40 @@ describe('TeamFactory', () => {
       db.models.Contract.bulkCreate = originalBulkCreate;
     }
   });
+
+  // @spec ROST-007,ROST-008,ROST-009
+  it('@spec ROST-007 @spec ROST-008 @spec ROST-009 reads Contract membership even when Player.teamId is null', async () => {
+    const gw = await db.models.GameWorld.create({ config: {}, year: 2056 }).then(({ dataValues }) => dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gw.id, config: { name: 'Contract Club' } }).then(({ dataValues }) => dataValues);
+    const player = await db.models.Player.create({
+      teamId: null,
+      gameWorldId: gw.id,
+      givenName: 'Contract',
+      familyName: 'Only',
+      countryCode: 'US',
+      bats: 'L',
+      throws: 'R',
+      birthDate: new Date('2030-06-01T00:00:00.000Z'),
+      attributes: {
+        contact: 61, power: 62, armStrength: 63, accuracy: 64, reaction: 65, vision: 66, discipline: 67,
+        positions: { Pitcher: 10, Catcher: 10, FirstBase: 70, SecondBase: 10, ThirdBase: 10, Shortstop: 80, LeftField: 10, CenterField: 10, RightField: 10 },
+        pitches: [],
+      },
+    }).then(({ dataValues }) => dataValues);
+    await db.models.Contract.create({
+      playerId: player.id,
+      teamId: team.id,
+      startDate: new Date('2056-03-01T00:00:00.000Z'),
+      endDate: new Date('2056-10-31T00:00:00.000Z'),
+    });
+
+    await expect(TeamFactory(team.id).getRoster()).resolves.toEqual([expect.objectContaining({
+      id: player.id,
+      age: 26,
+      primaryPosition: 'Shortstop',
+      positionCoverage: ['FirstBase', 'Shortstop'],
+      contact: 61,
+      discipline: 67,
+    })]);
+  });
 });

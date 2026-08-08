@@ -1,21 +1,17 @@
 import { Op } from 'sequelize';
-import { PlayerPosition, RosterPlayer, TeamConfig, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
+import { RosterPlayer, TeamConfig, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
 import db from '../client';
 import { getKnockoutRoundLabel } from './knockout';
-import { PlayerFactory, primaryPosition } from './player';
+import { PLAYER_POSITIONS, PlayerFactory, primaryPosition } from './player';
 import { DomainError } from './errors';
 
 interface ITeam {
   create: (gwId: number, config: TeamConfig, options?: TeamCreateOptions) => any;
   getSchedule: (gwId: number, leagueId?: number) => Promise<TeamSeasonCalendar>;
-  getRoster: (gwId?: number) => Promise<RosterPlayer[]>;
+  getRoster: () => Promise<RosterPlayer[]>;
 };
 
 const COVERAGE_THRESHOLD = 70;
-const PLAYER_POSITIONS: PlayerPosition[] = [
-  'Pitcher', 'Catcher', 'FirstBase', 'SecondBase', 'ThirdBase',
-  'Shortstop', 'LeftField', 'CenterField', 'RightField',
-];
 
 interface TeamCreateOptions {
   compositionKey?: string;
@@ -182,7 +178,7 @@ const TeamFactory = (id?: number): ITeam => {
     },
 
     // @spec ROST-001,ROST-003,ROST-005,ROST-007,ROST-008,ROST-009,ROST-010
-    getRoster: async (_gwId?: number): Promise<RosterPlayer[]> => {
+    getRoster: async (): Promise<RosterPlayer[]> => {
       const team = await db.models.Team.findByPk(id);
       if (!team) throw new DomainError('Not found', 404);
 

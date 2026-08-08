@@ -18,7 +18,7 @@ GetTeamRoster = '/api/team/:teamId/roster'
 interface ITeam {
   create: ...;
   getSchedule: ...;
-  getRoster: (gwId?: number) => Promise<RosterPlayer[]>;   // anchored on the closure teamId
+  getRoster: () => Promise<RosterPlayer[]>;                 // anchored on the closure teamId
 }
 
 // src/api/models.ts — flat row, no envelope (per backend-standards §5: raw, unwrapped)
@@ -41,7 +41,7 @@ GET /api/team/:teamId/roster?gwId=…
   → router: handlers.getTeamRoster(teamId = Number(req.params.teamId), gwId = Number(req.query.gwId))
   → handler:
       IF gwId provided: assert Team(teamId).gameWorldId === gwId else DomainError(404)   # ROST-002
-      return TeamFactory(teamId).getRoster(gwId)
+      return TeamFactory(teamId).getRoster()
   → TeamFactory(teamId).getRoster():
       team = Team.findByPk(teamId); if !team → DomainError('Not found', 404)             # ROST-001
       players = team.getPlayers({ include: [{ model: Contract,                              // anchored on active

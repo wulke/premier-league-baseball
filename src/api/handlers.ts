@@ -106,7 +106,7 @@ const getTeamRoster = async (teamId: number, gwId?: number) => {
     const team = await db.models.Team.findByPk(teamId);
     if (!team || team.dataValues.gameWorldId !== gwId) throw new DomainError('Not found', 404);
   }
-  return await TeamFactory(teamId).getRoster(gwId);
+  return await TeamFactory(teamId).getRoster();
 };
 
 export {
