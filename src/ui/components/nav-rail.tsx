@@ -15,6 +15,16 @@ const formatCurrentDate = (currentDate: string) => {
   }).format(new Date(year, month - 1, day));
 };
 
+// @spec MCLUI-004 — the claimed trio's link style: legible (not dimmed) but distinct from the
+// WORLD/COMPETITIONS links, signalling these are manager-scoped redirects.
+const managedLinkStyle: React.CSSProperties = {
+  color: '#222',
+  fontWeight: 600,
+  textDecoration: 'none',
+  display: 'block',
+  padding: '6px 0',
+};
+
 // @spec SHELL-004..SHELL-009, SIMUI-006,SIMUI-007
 const NavRail = () => {
   const { gw } = useGameWorldContext();
@@ -24,6 +34,9 @@ const NavRail = () => {
   const [simulateBusy, setSimulateBusy] = useState(false);
   const worldActive = Boolean(gwId && pathname === `/${gwId}`);
   const leagues = Array.isArray(gw?.Leagues) ? gw.Leagues : [];
+  // @spec MCLUI-004,MCLUI-005 — the managed-club trio lights up only when a club is claimed.
+  const managedTeamId = gw?.managedTeamId;
+  const claimed = managedTeamId != null;
   const linkStyle = (active: boolean): React.CSSProperties => ({
     color: active ? '#000' : '#666',
     fontWeight: active ? 700 : 500,
@@ -67,10 +80,23 @@ const NavRail = () => {
           })}
         </section>
       )}
-      <section style={{ marginTop: 30, color: '#aaa' }} aria-disabled="true">
-        <div data-testid="nav-fog-club">My Club</div>
-        <div data-testid="nav-fog-roster">Roster</div>
-        <div data-testid="nav-fog-transfers">Transfers</div>
+      <section style={{ marginTop: 30, color: '#aaa' }} aria-disabled={claimed ? undefined : 'true'}>
+        {claimed ? (
+          <>
+            {/* @spec MCLUI-004 — redirects to the symmetric team hub/roster from map #135. */}
+            <Link data-testid="nav-managed-club" to={`/${gwId}/team/${managedTeamId}`} style={managedLinkStyle}>My Club</Link>
+            <Link data-testid="nav-managed-roster" to={`/${gwId}/team/${managedTeamId}/roster`} style={managedLinkStyle}>Roster</Link>
+            {/* @spec MCLUI-005 — no transfers surface yet (#140); always dimmed. */}
+            <div data-testid="nav-fog-transfers">Transfers</div>
+          </>
+        ) : (
+          <>
+            {/* @spec MCLUI-005 — null state: trio unchanged, no affordance. */}
+            <div data-testid="nav-fog-club">My Club</div>
+            <div data-testid="nav-fog-roster">Roster</div>
+            <div data-testid="nav-fog-transfers">Transfers</div>
+          </>
+        )}
       </section>
     </aside>
   );
