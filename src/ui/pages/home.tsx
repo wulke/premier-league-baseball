@@ -18,6 +18,7 @@ const Home = () => {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteStatus, setDeleteStatus] = useState<DeleteStatus>('confirming');
   const [deleteError, setDeleteError] = useState<string | undefined>(undefined);
+  const [createError, setCreateError] = useState<string | undefined>(undefined);
   const defaultGameWorld = useDefaultGameWorld();
 
   const { register, handleSubmit } = useForm<NewGameWorld>({
@@ -36,20 +37,30 @@ const Home = () => {
 
   const submit: SubmitHandler<NewGameWorld> = async (data) => {
     setIsCreating(true);
+    setCreateError(undefined);
     const payload: NewGameWorld = {
       ...defaultGameWorld,
       ...data,
       name: data.name,
     };
-    await fetch(Endpoints.NewGameWorld, {
-      method: 'POST',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).then((r) => r.json())
-      .then((gw) => navigate(`/${gw.id}`))
-      .catch(console.error)
-      .finally(() => setIsCreating(false));
+    try {
+      const response = await fetch(Endpoints.NewGameWorld, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const gw = await response.json().catch(() => ({}));
+      if (!response.ok || !gw?.id) {
+        throw new Error(typeof gw?.error === 'string' ? gw.error : 'Failed to create game world');
+      }
+      navigate(`/${gw.id}`);
+    } catch (error) {
+      console.error(error);
+      setCreateError(error instanceof Error ? error.message : 'Failed to create game world');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const openDeleteModal = (gw: any, event: React.MouseEvent<HTMLButtonElement>) => {
@@ -285,6 +296,20 @@ const Home = () => {
                   <li>Starting year: {new Date().getFullYear() - 1}</li>
                 </ul>
               </div>
+
+              {createError && (
+                <div style={{
+                  marginBottom: '16px',
+                  padding: '10px 12px',
+                  border: '1px solid #f0b4b4',
+                  background: '#fdecec',
+                  borderRadius: '4px',
+                  color: '#b00020',
+                  fontSize: '0.85rem',
+                }}>
+                  {createError}
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <button
