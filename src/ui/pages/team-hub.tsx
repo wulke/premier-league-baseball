@@ -17,6 +17,10 @@ const TeamHub = () => {
   const isManaged = managedTeamId != null && managedTeamId === Number(teamId);
 
   // MCLUI-003 — POST the setter, then re-read managedTeamId from the context re-GET (no reload).
+  // NB: the fetch response status is intentionally unchecked (LLD `docs/llds/managed-club-ui.md`
+  // edge case u2). A 4xx/422 leaves the server pointer unchanged, so invalidate()'s re-GET reverts
+  // the UI to the prior state — no bespoke error UI in MVP (frictionless posture, MCLUI-006). Don't
+  // "fix" this by gating invalidate() on response.ok.
   const submitManagedClub = async (nextTeamId: number | null) => {
     if (!gwId || submitting) return;
     setSubmitting(true);
