@@ -111,26 +111,28 @@ const GameWorld = () => {
     setStartSeasonStatus('submitting');
     setStartSeasonError(null);
 
-    await Promise.all(leagues.map((league) =>
-      fetch(Endpoints.LeagueSeasonStart.replace(':leagueId', String(league.id)), {
-        method: 'POST',
-        mode: 'cors',
-        headers: { 'Content-Type': 'application/json' },
-      }).then(async (response) => {
+    try {
+      // Sequential, not Promise.all: the leagues share a single-writer SQLite
+      // connection, so starting them concurrently causes SQLITE_BUSY.
+      for (const league of leagues) {
+        const response = await fetch(Endpoints.LeagueSeasonStart.replace(':leagueId', String(league.id)), {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'application/json' },
+        });
         if (!response.ok) throw Error(`Failed to start season for League ${league.id} (${response.status})`);
-        return response.json();
-      })
-    )).then(() => {
+        await response.json();
+      }
       // LLD u3 — refresh the shared context gw instead of a divergent local copy so the rail's
       // chip/batch guard stays in sync after a season start.
       invalidate();
       setStartSeasonStatus('success');
       navigate(`/${gwId}/${leagues[0].id}`);
-    }).catch((error) => {
+    } catch (error) {
       console.error(error);
       setStartSeasonError('Could not start a new season. Try again.');
       setStartSeasonStatus('error');
-    });
+    }
   };
 
   if (!gw) return <></>;
