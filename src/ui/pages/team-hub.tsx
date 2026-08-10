@@ -1,10 +1,37 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, Outlet, useParams } from 'react-router';
+import { Endpoints } from '../../api/endpoints';
+import { useGameWorldContext } from '../context/game-world-context';
 
-// @spec ROSTUI-006,ROSTUI-007
+// @spec ROSTUI-006,ROSTUI-007, MCLUI-001,MCLUI-002,MCLUI-003
 const TeamHub = () => {
   const { gwId, teamId } = useParams();
+  const { gw, invalidate } = useGameWorldContext();
+  const [submitting, setSubmitting] = useState(false);
   const basePath = `/${gwId}/team/${teamId}`;
+
+  // MCLUI-001/MCLUI-002 — the hub is the sole claim affordance. `managedTeamId` arrives via
+  // the GET /api/gameWorld/:gwId payload (MCLB-002); it is `undefined` while the context loads,
+  // so an unclaimed (or still-loading) hub shows "Claim as My Club".
+  const managedTeamId = gw?.managedTeamId;
+  const isManaged = managedTeamId != null && managedTeamId === Number(teamId);
+
+  // MCLUI-003 — POST the setter, then re-read managedTeamId from the context re-GET (no reload).
+  const submitManagedClub = async (nextTeamId: number | null) => {
+    if (!gwId || submitting) return;
+    setSubmitting(true);
+    try {
+      await fetch(Endpoints.SetManagedClub.replace(':gwId', gwId), {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId: nextTeamId }),
+      });
+      invalidate();
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -30,6 +57,31 @@ const TeamHub = () => {
             {tab === 'calendar' ? 'Calendar' : 'Roster'}
           </NavLink>
         ))}
+        {gwId && teamId && (
+          <button
+            data-testid={isManaged ? 'resign-managed-club' : 'claim-managed-club'}
+            type="button"
+            onClick={() => submitManagedClub(isManaged ? null : Number(teamId))}
+            disabled={submitting}
+            style={{
+              marginLeft: 'auto',
+              alignSelf: 'center',
+              marginBottom: '10px',
+              padding: '5px 12px',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              background: '#fff',
+              cursor: submitting ? 'default' : 'pointer',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              color: isManaged ? '#666' : '#222',
+            }}
+          >
+            {isManaged ? 'Stop managing' : 'Claim as My Club'}
+          </button>
+        )}
       </nav>
       <Outlet />
     </>
