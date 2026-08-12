@@ -60,7 +60,7 @@ describe('pickable old Champions League game world (#87)', () => {
     await GameFactory().rapidSimulateSeason(gwId);
 
     const divisions = await db.models.Division.findAll({ where: { leagueId: league.id } });
-    const knockout = divisions.find((d: any) => d.dataValues.config.isTopTier);
+    const knockout = divisions.find((d: any) => d.dataValues.config.isTopTier)!;
     // exactly one champion, recorded on the final-stage knockout division (MSS-008)
     expect(await db.models.SeasonResult.count({
       where: { divisionId: knockout.dataValues.id, year: league.year },

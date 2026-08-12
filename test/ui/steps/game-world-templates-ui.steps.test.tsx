@@ -3,7 +3,7 @@ import React from 'react';
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { screen, fireEvent, waitFor } from '@testing-library/react';
-import { render, mockFetch } from '../test-utils';
+import { render } from '../test-utils';
 import { Home } from '../../../src/ui/pages';
 import { useDefaultGameWorld, GameWorldType } from '../../../src/api/models';
 
@@ -34,13 +34,17 @@ defineFeature(feature, (test) => {
     }) as jest.Mock;
   });
 
-  test('The create-world form offers both pickable templates', ({ given, then }) => {
+  test('The create-world form offers both pickable templates', ({ given, then, and }) => {
     given('the player opens the home create-world form', () => {
       render(<Home />);
-      fireEvent.click(screen.getByRole('button', { name: /create your first game world|new game world/i }));
+      fireEvent.click(screen.getByRole('button', { name: /\+ new game world/i }));
     });
 
-    then('the template selector lists {string}', (template: string) => {
+    then(/^the template selector lists "(.*)"$/, (template: string) => {
+      expect(screen.getByRole('option', { name: template })).toBeInTheDocument();
+    });
+
+    and(/^the template selector lists "(.*)"$/, (template: string) => {
       expect(screen.getByRole('option', { name: template })).toBeInTheDocument();
     });
   });
@@ -48,19 +52,19 @@ defineFeature(feature, (test) => {
   test('Selecting Champions League shows its bundle summary and submits that bundle', ({ given, when, then, and }) => {
     given('the player opens the home create-world form', () => {
       render(<Home />);
-      fireEvent.click(screen.getByRole('button', { name: /create your first game world|new game world/i }));
+      fireEvent.click(screen.getByRole('button', { name: /\+ new game world/i }));
     });
 
-    when('the player selects the {string} template', (template: string) => {
+    when(/^the player selects the "(.*)" template$/, (template: string) => {
       fireEvent.change(screen.getByRole('combobox', { name: /template/i }), { target: { value: template } });
     });
 
-    then('the summary shows {string}', (text: string) => {
+    then(/^the summary shows "(.*)"$/, (text: string) => {
       expect(screen.getByText(new RegExp(text, 'i'))).toBeInTheDocument();
     });
 
-    and('the summary lists the {string} competition', (competition: string) => {
-      expect(screen.getByText(new RegExp(competition, 'i'))).toBeInTheDocument();
+    and(/^the summary lists the "(.*)" competition$/, (competition: string) => {
+      expect(screen.getByText(new RegExp(`${competition} — \\d+ divisions`, 'i'))).toBeInTheDocument();
     });
 
     and('the create-world request posts the Champions League bundle', async () => {

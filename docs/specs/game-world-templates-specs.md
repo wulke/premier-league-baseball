@@ -12,10 +12,10 @@ UI: `src/ui/pages/home.tsx`.
 
 | ID | Requirement | Status |
 |---|---|---|
-| GWT-001 | WHEN a League template is promoted to a runnable game world THE system SHALL declare exactly one `GameWorldType` arm, one `TeamPools` entry sized to the template's largest pool-index set, and one `DefaultWorlds` entry — and SHALL keep `DefaultWorlds` exhaustive over `GameWorldType` so a missing entry fails to compile | [ ] → #87 |
-| GWT-002 | WHEN the old Champions League bundle is created THE system SHALL accept the existing `champions-league` `LeagueTemplate` (8 group divisions over pool indices `0..31` + one `TOP_N_PER_DIVISION` knockout division) and pass `validateLeagueConfig` (CFG-011..017) before persistence, with no change to the template or the validation | [ ] → #87 |
-| GWT-003 | WHEN a world is created from the Champions League template and rapid-simulated THE system SHALL exercise the multi-stage run-path (MSS-005 → MSS-006 → MSS-002 → MSS-009) and record exactly one `SeasonResult` on the `isTopTier` knockout division, after which `isSeasonComplete` is true | [ ] → #87 |
-| GWT-004 | WHEN the home create-world form renders THE system SHALL offer a template selector over the keys of `DefaultWorlds`, and on selection SHALL recompute the bundle (`teams` + `leagues`) via `useDefaultGameWorld(selectedType)` and render a summary derived from that bundle (team count; per-league name and division count) — with no new route or page | [ ] → #87 |
+| GWT-001 | WHEN a League template is promoted to a runnable game world THE system SHALL declare exactly one `GameWorldType` arm, one `TeamPools` entry sized to the template's largest pool-index set, and one `DefaultWorlds` entry — and SHALL keep `DefaultWorlds` exhaustive over `GameWorldType` so a missing entry fails to compile | [x] → #87 |
+| GWT-002 | WHEN the old Champions League bundle is created THE system SHALL accept the existing `champions-league` `LeagueTemplate` (8 group divisions over pool indices `0..31` + one `TOP_N_PER_DIVISION` knockout division) and pass `validateLeagueConfig` (CFG-011..017) before persistence, with no change to the template or the validation | [x] → #87 |
+| GWT-003 | WHEN a world is created from the Champions League template and rapid-simulated THE system SHALL exercise the multi-stage run-path (MSS-005 → MSS-006 → MSS-002 → MSS-009) and record exactly one `SeasonResult` on the `isTopTier` knockout division, after which `isSeasonComplete` is true | [x] → #87 |
+| GWT-004 | WHEN the home create-world form renders THE system SHALL offer a template selector over the keys of `DefaultWorlds`, and on selection SHALL recompute the bundle (`teams` + `leagues`) via `useDefaultGameWorld(selectedType)` and render a summary derived from that bundle (team count; per-league name and division count) — with no new route or page | [x] → #87 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
