@@ -1,5 +1,9 @@
+// @spec GWT-001 — `GameWorldType` is the *runnable* identity (only worlds that
+// actually simulate get an arm). The old Champions League graduates from a
+// registry-only pressure-test config (#85) to a pickable world here (#87).
 enum GameWorldType {
   PremierLeague = 'Premier League',
+  ChampionsLeague = 'Champions League',
 };
 
 interface StandingsConfig {
@@ -563,9 +567,10 @@ const LeagueTemplates: Record<string, LeagueConfig> = {
 };
 
 // --- Named team pools (#85) --------------------------------------------------
-// Decoupled from `GameWorldType`, symmetric with LeagueTemplates. `england-44` is
-// the only pool referenced by a runnable DefaultWorld today; `europe-32` /
-// `mlb-30` populate when their worlds run (#87 / the builder map).
+// Decoupled from `GameWorldType`, symmetric with LeagueTemplates. `england-44`
+// backs the Premier League world; `europe-32` backs the old Champions League
+// world (#87 pickability). `mlb-30` populates when its world runs (builder map).
+// @spec GWT-001
 const TeamPools: Record<string, TeamConfig[]> = {
   'england-44': [
     'Manchester City',
@@ -613,6 +618,42 @@ const TeamPools: Record<string, TeamConfig[]> = {
     'Rotherham United',
     'Sheffield Wednesday',
   ].map((name): TeamConfig => ({ name })),
+  // @spec GWT-001 — 32 stub European clubs; group divisions reference indices 0..31.
+  // Name-only, symmetric with england-44; roster realism is the factory's concern.
+  'europe-32': [
+    'Real Madrid',
+    'FC Barcelona',
+    'Atletico Madrid',
+    'Sevilla',
+    'Manchester City',
+    'Liverpool',
+    'Chelsea',
+    'Arsenal',
+    'Bayern Munich',
+    'Borussia Dortmund',
+    'RB Leipzig',
+    'Bayer Leverkusen',
+    'Inter Milan',
+    'AC Milan',
+    'Juventus',
+    'Napoli',
+    'Paris Saint-Germain',
+    'Marseille',
+    'Monaco',
+    'Lyon',
+    'Benfica',
+    'Porto',
+    'Sporting CP',
+    'Braga',
+    'Ajax',
+    'PSV Eindhoven',
+    'Feyenoord',
+    'Celtic',
+    'Rangers',
+    'Shakhtar Donetsk',
+    'Dinamo Zagreb',
+    'Red Star Belgrade',
+  ].map((name): TeamConfig => ({ name })),
 };
 
 // --- Runnable bundles (#85) --------------------------------------------------
@@ -620,9 +661,10 @@ const TeamPools: Record<string, TeamConfig[]> = {
 // runnable world. `GameWorldType` stays the *runnable* identity (only worlds that
 // actually simulate get one); new-CL + MLB are registry-only and so have no entry
 // here. The future builder map makes both fields user-selectable.
-// @spec CFG-010
+// @spec CFG-010,GWT-001
 const DefaultWorlds: Record<GameWorldType, { teamPool: string; leagues: string[] }> = {
   [GameWorldType.PremierLeague]: { teamPool: 'england-44', leagues: ['premier-league', 'league-cup'] },
+  [GameWorldType.ChampionsLeague]: { teamPool: 'europe-32', leagues: ['champions-league'] },
 };
 
 interface NewGameWorld {

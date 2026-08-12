@@ -389,3 +389,63 @@ Pages render content + identity strip inside <Outlet/> — no per-page header.
 - **Active league highlighting** uses the `leagueId` param match; deeper sub-routes
   (`team/:teamId/calendar`) keep their nearest lit section (World) rather than introducing a Team
   section that #10 reserves for the later Team-overview rebuild.
+
+# HLD: Game-world templates (pickable old Champions League)
+
+## Goal
+Make the existing `champions-league` multi-stage template a **pickable, runnable game world** —
+the proving slice [#87](https://github.com/wulke/premier-league-baseball/issues/87) on
+[Map #78](https://github.com/wulke/premier-league-baseball/issues/78) defines as complete. The
+multi-stage run-path, generalized config, and multi-stage render-UI are landed (#164 / #163 /
+#162); old-CL is currently proven only by an **inline** config in a unit test. This closes the gap
+so a user creates a 32-team Champions League world and watches it crown a single champion via the
+existing simulation + cross-phase advancement path. The map carries execution into itself.
+
+## Strategy
+- **Options**:
+  1. Promote old-CL to a pickable `DefaultWorld` now (this slice).
+  2. Defer all pickability to the separately-chartered game-world builder map (#85) and close #87
+     at "test-proven, render-ready."
+- **Decision**: **(1)**. #85 deliberately made old-CL a *runnable* archetype (not registry-only
+  like new-CL/MLB); the destination says "backend + minimal UI" and "runnable to a champion"; and
+  the lift is small and purely additive. The difference between a green unit test with a hand-built
+  config and a world a user clicks into existence and watches crown a champion is exactly what a
+  proving slice is for. Option (2) reopens a scope question the map already settled.
+
+## Architecture
+- **Config layer** (`src/api/models.ts`, MODIFIED — additive): one `GameWorldType.ChampionsLeague`
+  arm, one `europe-32` team pool (32 stub teams), one `DefaultWorlds` entry. The
+  `Record<GameWorldType,…>` exhaustiveness makes the enum arm force its bundle entry at compile
+  time. The `champions-league` `LeagueTemplate` (8 group divisions over pool indices `0..31` +
+  one `TOP_N_PER_DIVISION` knockout division, `isTopTier`) is already authored (#85) and validated
+  by `validateLeagueConfig` (CFG-011..017).
+- **UI** (`src/ui/pages/home.tsx`, MODIFIED — minimal): the existing create-world form gains a
+  template `<select>` whose selection drives `useDefaultGameWorld(type)` → the bundle (`teams` +
+  `leagues`) + a **dynamic** template summary. No new route or page; submit is unchanged
+  (`POST /api/gameWorld/new`).
+- **Domain/scheduler**: **unchanged**. Every step after `create` is an already-green requirement —
+  MSS-005 (first-stage only) → MSS-006 (group completion fires dependent KO) → MSS-002
+  (`TOP_N_PER_DIVISION` seeds 16) → MSS-009 (two-leg KO) → MSS-008 (one champion). This slice
+  exercises those via the *real* bundle instead of an inline test config.
+
+### Flow
+```
+home form: user selects "Champions League" template
+  → useDefaultGameWorld(ChampionsLeague) → { 32 teams, [champions-league] }
+  → POST /api/gameWorld/new (bundle + typed name)
+  → GameWorldFactory().create → 32 TeamFactory creates + LeagueFactory.create
+      → validateLeagueConfig + stageId/stageOrder stamping
+  → navigate /:gwId → rapid-simulate → MSS-005..009 → one champion
+```
+
+### Key Trade-offs
+- **Stub team names, not real rosters** (`europe-32`): symmetry with `england-44` (name-only
+  `TeamConfig`); player generation is the existing factory's concern. The pool proves pool-index
+  wiring (`0..31`) and field size, not roster realism — consistent with this map's random-sim
+  posture and the deferred builder map owning mix/match realism.
+- **No static guard against a registry-only archetype leaking into `DefaultWorlds`** (new-CL/MLB
+  exist by design): enforced by a pickability test enumerating `DefaultWorlds` keys rather than a
+  type-level rule, since their templates are intentionally present in `LeagueTemplates`.
+- **UI reuses the single create-world form**: a template `<select>` + dynamic summary over
+  introducing a template-detail page — keeps the change inside one component and honors the map's
+  "minimal UI" stance, leaving the rich builder UX to the builder map.

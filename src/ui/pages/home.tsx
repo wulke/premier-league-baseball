@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { Endpoints } from '../../api/endpoints';
-import { NewGameWorld, useDefaultGameWorld } from '../../api/models';
+import { NewGameWorld, GameWorldType, DefaultWorlds, useDefaultGameWorld } from '../../api/models';
 import { useNavigate } from 'react-router';
 import { ConfirmDeleteModal } from '../components/confirm-delete-modal';
 
@@ -20,10 +20,21 @@ const Home = () => {
   const [deleteError, setDeleteError] = useState<string | undefined>(undefined);
   const [createError, setCreateError] = useState<string | undefined>(undefined);
   const defaultGameWorld = useDefaultGameWorld();
+  const [selectedType, setSelectedType] = useState<GameWorldType>(GameWorldType.PremierLeague);
+  // @spec GWT-004 — the selected template drives the bundle (teams + leagues);
+  // the summary derives from this single source so it never drifts from the payload.
+  const selectedBundle = useDefaultGameWorld(selectedType);
 
-  const { register, handleSubmit } = useForm<NewGameWorld>({
+  const { register, handleSubmit, setValue } = useForm<NewGameWorld>({
     defaultValues: defaultGameWorld
   });
+
+  // @spec GWT-004 — selecting a template pre-fills the Name with the template's
+  // display name (the GameWorldType value) and recomputes the bundle.
+  const onSelectTemplate = (type: GameWorldType) => {
+    setSelectedType(type);
+    setValue('name', type);
+  };
 
   useEffect(() => {
     fetch(Endpoints.GetGameWorlds, {
@@ -38,9 +49,10 @@ const Home = () => {
   const submit: SubmitHandler<NewGameWorld> = async (data) => {
     setIsCreating(true);
     setCreateError(undefined);
+    // @spec GWT-004 — payload carries the selected template's bundle (teams +
+    // leagues); only the Name field is user-editable, so it is taken from the form.
     const payload: NewGameWorld = {
-      ...defaultGameWorld,
-      ...data,
+      ...selectedBundle,
       name: data.name,
     };
     try {
@@ -276,7 +288,32 @@ const Home = () => {
                 />
               </div>
 
-              {/* Template summary */}
+              {/* @spec GWT-004 — template selector + dynamic summary */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>
+                  Template
+                </label>
+                <select
+                  aria-label="Template"
+                  value={selectedType}
+                  onChange={(e) => onSelectTemplate(e.target.value as GameWorldType)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    boxSizing: 'border-box',
+                    background: '#fff',
+                  }}
+                >
+                  {Object.keys(DefaultWorlds).map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Template summary — derived from the selected bundle */}
               <div style={{
                 background: '#f8f8f8',
                 border: '1px solid #e8e8e8',
@@ -287,13 +324,15 @@ const Home = () => {
                 color: '#555',
               }}>
                 <div style={{ fontWeight: 700, color: '#333', marginBottom: '8px' }}>
-                  Template: Premier League
+                  Template: {selectedType}
                 </div>
                 <ul style={{ margin: 0, padding: '0 0 0 16px', lineHeight: '1.7' }}>
-                  <li>44 teams</li>
-                  <li>Premier League — 2 divisions (PL + Championship)</li>
-                  <li>League Cup — knockout format</li>
-                  <li>Starting year: {new Date().getFullYear() - 1}</li>
+                  <li>{selectedBundle.teams.length} teams</li>
+                  {selectedBundle.leagues.map((league) => (
+                    <li key={league.name}>{league.name} — {league.stages
+                      .flatMap((stage) => stage.divisions).length} divisions</li>
+                  ))}
+                  <li>Starting year: {selectedBundle.year}</li>
                 </ul>
               </div>
 
