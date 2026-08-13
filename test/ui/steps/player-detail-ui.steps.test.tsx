@@ -127,6 +127,42 @@ defineFeature(feature, (test) => {
     and('the field diagram is shown by default', () => expect(screen.getByTestId('position-field-diagram')).toBeInTheDocument());
   });
 
+  test('Position affinity remains legible across the polished Positions views', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {});
+    and('Player 100 "Marcus Velandez" is a Pitcher belonging to GameWorld 1', () => {});
+    given('GET /api/player/100 returns Player 100\'s detail with the full positions map', () => { players[100] = detail(); });
+    when('the player navigates to "/1/player/100"', () => renderAt('/1/player/100'));
+    and('the player selects the Positions tab', async () => fireEvent.click(await screen.findByRole('button', { name: 'Positions' })));
+    // @spec PDETUI-007
+    then('the masthead primary-position badge uses the primary affinity tint', () => expect(screen.getByTestId('primary-position-badge')).toHaveStyle({ background: 'hsl(108 72% 58%)' }));
+    // @spec PDETUI-007
+    and('the field diagram shows a baseball field, affinity legend, and visible affinity for every position', () => {
+      expect(screen.getByTestId('position-field-dirt')).toBeInTheDocument();
+      expect(screen.getByTestId('position-field-mound')).toBeInTheDocument();
+      expect(screen.getByTestId('position-affinity-legend')).toHaveTextContent('Low affinity');
+      expect(screen.getAllByTestId(/field-position-affinity-/)).toHaveLength(9);
+    });
+    // @spec PDETUI-007
+    and('the field diagram explicitly labels the primary position', () => expect(screen.getByTestId('field-position-primary-Pitcher')).toHaveTextContent('Primary'));
+    // @spec PDETUI-007
+    and('the field diagram includes Left Field and Right Field markers', () => {
+      expect(screen.getByTestId('field-position-LeftField')).toBeInTheDocument();
+      expect(screen.getByTestId('field-position-RightField')).toBeInTheDocument();
+    });
+    when('the player selects the bar grid view', () => fireEvent.click(screen.getByRole('button', { name: 'Bar grid' })));
+    // @spec PDETUI-007
+    then('the bar grid includes Left Field and Right Field with visible affinities', () => {
+      expect(screen.getByTestId('bar-position-LeftField')).toHaveTextContent('LF 10');
+      expect(screen.getByTestId('bar-position-RightField')).toHaveTextContent('RF 10');
+    });
+    when('the player selects the coverage pills view', () => fireEvent.click(screen.getByRole('button', { name: 'Coverage pills' })));
+    // @spec PDETUI-007
+    then('the coverage pills include Left Field and Right Field with visible affinities', () => {
+      expect(screen.getByTestId('pill-position-LeftField')).toHaveTextContent('LF 10');
+      expect(screen.getByTestId('pill-position-RightField')).toHaveTextContent('RF 10');
+    });
+  });
+
   test('The Positions view-switcher defaults to field diagram and is not URL-encoded', ({ given, and, when, then }) => {
     given('GameWorld 1 exists', () => {}); and('Player 100 "Marcus Velandez" is a Pitcher belonging to GameWorld 1', () => {});
     given('GET /api/player/100 returns Player 100\'s detail', () => { players[100] = detail(); });
