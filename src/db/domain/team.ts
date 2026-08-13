@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { RosterPlayer, TeamConfig, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
+import { MatchRules, RosterPlayer, TeamConfig, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
 import db from '../client';
 import { getKnockoutRoundLabel } from './knockout';
 import { PLAYER_POSITIONS, PlayerFactory, primaryPosition } from './player';
@@ -16,6 +16,7 @@ const COVERAGE_THRESHOLD = 70;
 interface TeamCreateOptions {
   compositionKey?: string;
   rosterSeed?: number;
+  matchRules?: MatchRules;
 }
 
 let teamCreateQueue = Promise.resolve();
@@ -47,6 +48,7 @@ const TeamFactory = (id?: number): ITeam => {
           gameWorldYear: gameWorld.year,
           compositionKey: options.compositionKey,
           seed: options.rosterSeed,
+          matchRules: options.matchRules,
           transaction,
         });
 

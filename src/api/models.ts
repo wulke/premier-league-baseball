@@ -245,6 +245,14 @@ interface SchedulingConfig {
   intervalDays: number;
 }
 
+interface MatchRules {
+  dhEnabled: boolean;
+  benchSize: number;
+  bullpenSize: number;
+}
+
+const DefaultMatchRules: MatchRules = { dhEnabled: false, benchSize: 5, bullpenSize: 7 };
+
 // #80,#84,#95 — `seedingSelection` lives on the *consuming* division and points,
 // by id only, at its source stage (and, for TIERED_RANK, the source tier). No
 // selector carries rank ranges or overrides — the producer is the single source
@@ -265,6 +273,7 @@ interface DivisionConfig {
   seedingSelection?: SeedingSelection;
   conference?: string;            // #84 producer label (AL/NL) — not a node or Stage
   schedulingConfig?: SchedulingConfig;
+  matchRules?: Partial<MatchRules>;
 };
 
 // #79 — a Stage is a config-only grouping layer above Division; array order on
@@ -282,6 +291,7 @@ interface LeagueConfig {
   stages: Stage[];                // array order = phase sequence
   standingsConfig?: StandingsConfig;
   compositionKey?: string;
+  matchRules?: Partial<MatchRules>;
 };
 
 // @spec CFG-011,CFG-012,CFG-013,CFG-014,CFG-015,CFG-016,CFG-017
@@ -696,6 +706,8 @@ export {
   SeedingSelection,
   SwissTier,
   SchedulingConfig,
+  MatchRules,
+  DefaultMatchRules,
   StandingsConfig,
   DefaultStandingsConfig,
   TeamStanding,

@@ -1,7 +1,7 @@
 // @spec LIN-001,LIN-002,LIN-003,LIN-004,LIN-005,LIN-006
 import db from '../../../src/db/client';
 import { PlayerAttributes } from '../../../src/api/models';
-import { LineupFactory, validateLineup } from '../../../src/db/domain/lineup';
+import { LineupFactory, optimalFieldingAssignment, resolveMatchRules, startingPitcherId, validateLineup } from '../../../src/db/domain/lineup';
 import { TeamFactory } from '../../../src/db/domain/team';
 
 const positions = ['Pitcher', 'Catcher', 'FirstBase', 'SecondBase', 'ThirdBase', 'Shortstop', 'LeftField', 'CenterField', 'RightField'] as const;
@@ -37,10 +37,45 @@ describe('active lineup generation', () => {
     expect(lineup).toBeDefined();
     expect(lineup.LineupEntries.filter((entry: any) => entry.dataValues.role === 'STARTER')).toHaveLength(9);
     expect(() => validateLineup(lineup, { dhEnabled: false, benchSize: 5, bullpenSize: 7 })).not.toThrow();
-  });
+  }, 10000);
 
-  // @spec LIN-004,LIN-005,LIN-006
-  it('@spec LIN-004 @spec LIN-005 @spec LIN-006 builds an optimal DH lineup and gracefully caps partial reserves', async () => {
-    expect(LineupFactory).toBeDefined();
+  // @spec LIN-002,LIN-004,LIN-005,LIN-006
+  it('@spec LIN-002 @spec LIN-004 @spec LIN-005 @spec LIN-006 builds an optimal DH lineup and gracefully caps partial reserves', async () => {
+    const gw = await db.models.GameWorld.create({ config: {}, year: 2052 }).then((row) => row.dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gw.id, config: { name: 'DH Club' } }).then((row) => row.dataValues);
+    const fielders = (['Catcher', 'FirstBase', 'ThirdBase', 'LeftField', 'CenterField', 'RightField'] as typeof positions[number][]).map((position, index) => ({
+      primary: position, name: `F${index}`, rating: 80,
+    }));
+    // A naive 2B-first greedy pick takes A at 2B (100), leaving B at SS (1).
+    // The global optimum is A at SS (99) and B at 2B (98).
+    const crafted: Array<{ primary: typeof positions[number]; name: string; rating: number; control?: number }> = [
+      { primary: 'Pitcher' as const, name: 'Low Control', rating: 70, control: 30 },
+      { primary: 'Pitcher' as const, name: 'Ace', rating: 75, control: 95 },
+      { primary: 'Catcher' as const, name: 'A', rating: 1 },
+      { primary: 'Catcher' as const, name: 'B', rating: 1 },
+      ...fielders,
+      { primary: 'FirstBase' as const, name: 'DH', rating: 99 },
+    ];
+    const players = await Promise.all(crafted.map(async ({ primary, name, rating, control }) => {
+      const playerAttributes = attributes(primary, rating, control ?? 50);
+      if (name === 'A') { playerAttributes.positions.SecondBase = 100; playerAttributes.positions.Shortstop = 99; }
+      if (name === 'B') { playerAttributes.positions.SecondBase = 98; playerAttributes.positions.Shortstop = 1; }
+      return db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: playerAttributes, givenName: name, familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date('2000-01-01') }).then((row) => row.dataValues);
+    }));
+    const rules = resolveMatchRules({ matchRules: { dhEnabled: false, benchSize: 1, bullpenSize: 1 } }, { matchRules: { dhEnabled: true, benchSize: 5, bullpenSize: 7 } });
+    expect(rules).toEqual({ dhEnabled: true, benchSize: 5, bullpenSize: 7 });
+    const assignment = optimalFieldingAssignment(players.filter((player: any) => player.givenName === 'A' || player.givenName === 'B' || player.givenName.startsWith('F')));
+    expect((assignment.find(({ position }) => position === 'SecondBase')?.player as any)?.givenName).toBe('B');
+    expect((assignment.find(({ position }) => position === 'Shortstop')?.player as any)?.givenName).toBe('A');
+    const lineup = await LineupFactory().generateActive(team.id, gw.id, players, { matchRules: rules });
+    const hydrated = await db.models.Lineup.findByPk(lineup.id, { include: [db.models.LineupEntry] }).then((row) => row?.dataValues);
+    const entries = hydrated.LineupEntries.map((entry: any) => entry.dataValues);
+    expect(entries.filter((entry: any) => entry.role === 'STARTER')).toHaveLength(10);
+    expect(entries.find((entry: any) => entry.fieldingPosition === null && entry.role === 'STARTER')?.battingOrder).not.toBeNull();
+    expect(entries.find((entry: any) => entry.fieldingPosition === 'Pitcher')?.battingOrder).toBeNull();
+    expect(startingPitcherId(hydrated)).toBe(players.find((player: any) => player.givenName === 'Ace').id);
+    expect(entries.filter((entry: any) => entry.role === 'BENCH')).toHaveLength(0);
+    expect(entries.filter((entry: any) => entry.role === 'BULLPEN')).toHaveLength(1);
+    expect(() => validateLineup(hydrated, rules)).not.toThrow();
   });
 });

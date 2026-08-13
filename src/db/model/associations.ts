@@ -7,6 +7,8 @@ const applyAssociations = (sequelize) => {
     Game,
     GameWorld,
     League,
+    Lineup,
+    LineupEntry,
     Player,
     PlayerGameStats,
     SeasonResult,
@@ -17,12 +19,14 @@ const applyAssociations = (sequelize) => {
   GameWorld.hasMany(League, { foreignKey: 'gameWorldId' });
   GameWorld.hasMany(Player, { foreignKey: 'gameWorldId' });
   GameWorld.hasMany(Team, { foreignKey: 'gameWorldId' });
+  GameWorld.hasMany(Lineup, { foreignKey: 'gameWorldId' });
   // League
   League.belongsTo(GameWorld, { foreignKey: 'gameWorldId' });
   League.hasMany(Division, { foreignKey: 'leagueId' });
   // Player
   Player.belongsTo(GameWorld, { foreignKey: 'gameWorldId' });
   Player.belongsTo(Team, { foreignKey: 'teamId' });
+  Player.hasMany(LineupEntry, { foreignKey: 'playerId' });
   // @spec PCON-009
   Player.hasMany(Contract, { foreignKey: 'playerId' });
   // @spec PSTAT-001,PSTAT-004
@@ -35,6 +39,7 @@ const applyAssociations = (sequelize) => {
   // Team
   Team.belongsTo(GameWorld, { foreignKey: 'gameWorldId' });
   Team.hasMany(Player, { foreignKey: 'teamId' });
+  Team.hasMany(Lineup, { foreignKey: 'teamId' });
   // @spec PCON-009
   Team.hasMany(Contract, { foreignKey: 'teamId' });
   Team.belongsToMany(Division, { foreignKey: 'teamId', through: 'DivisionSeason' });
@@ -49,6 +54,13 @@ const applyAssociations = (sequelize) => {
   // Game
   // @spec PSTAT-001,PSTAT-004
   Game.hasMany(PlayerGameStats, { foreignKey: 'gameId' });
+  Game.hasMany(Lineup, { foreignKey: 'gameId' });
+  Lineup.belongsTo(GameWorld, { foreignKey: 'gameWorldId' });
+  Lineup.belongsTo(Team, { foreignKey: 'teamId' });
+  Lineup.belongsTo(Game, { foreignKey: 'gameId' });
+  Lineup.hasMany(LineupEntry, { foreignKey: 'lineupId' });
+  LineupEntry.belongsTo(Lineup, { foreignKey: 'lineupId' });
+  LineupEntry.belongsTo(Player, { foreignKey: 'playerId' });
   PlayerGameStats.belongsTo(Game, { foreignKey: 'gameId' });
   Game.belongsToMany(DivisionSeason, { foreignKey: 'gameId', through: DivisionSeasonGame });
   DivisionSeason.belongsToMany(Game, { foreignKey: 'divisionSeasonId', through: DivisionSeasonGame });

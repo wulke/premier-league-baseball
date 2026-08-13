@@ -1,15 +1,17 @@
 import { Transaction } from 'sequelize';
-import { PlayerAttributes, PlayerDetail, PlayerPosition, PlayerRecord } from '../../api/models';
+import { MatchRules, PlayerAttributes, PlayerDetail, PlayerPosition, PlayerRecord } from '../../api/models';
 import { DomainError } from './errors';
 import db from '../client';
 import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE } from './contract';
 import { generateIdentity, mulberry32, resolveComposition } from './identity';
+import { LineupFactory } from './lineup';
 
 interface GenerateRosterOptions {
   gameWorldYear?: number;
   compositionKey?: string;
   seed?: number;
   transaction?: Transaction;
+  matchRules?: MatchRules;
 }
 
 interface CreatePlayerOptions {
@@ -126,7 +128,7 @@ const PlayerFactory = (playerId?: number): IPlayer => {
 
     // @spec PCON-001,PCON-002,PCON-003,PCON-004,PCON-007,PCON-008,PID-002,PID-005,PID-007,PID-010
     generateRoster: async (teamId: number, gameWorldId: number, options: GenerateRosterOptions = {}) => {
-      const { gameWorldYear, compositionKey, seed = Date.now(), transaction } = options;
+      const { gameWorldYear, compositionKey, seed = Date.now(), transaction, matchRules } = options;
       const year = gameWorldYear ?? await db.models.GameWorld.findByPk(gameWorldId, { transaction }).then((gw) => {
         if (!gw) throw Error(`GameWorld '${gameWorldId}' not found`);
         return gw.dataValues.year;
@@ -153,6 +155,9 @@ const PlayerFactory = (playerId?: number): IPlayer => {
           endDate: new Date(Date.UTC(year, 9, 31)),
         }))
       , { transaction });
+
+      // @spec LIN-003
+      await LineupFactory().generateActive(teamId, gameWorldId, players, { transaction, matchRules });
 
       return players;
     },
@@ -210,4 +215,4 @@ const primaryPosition = (player: Pick<PlayerRecord, 'attributes'>): PlayerPositi
   ), PLAYER_POSITIONS[0]);
 };
 
-export { PlayerFactory, primaryPosition, allocateRosterSlots, PLAYER_POSITIONS, resolveCurrentContract };
+export { PlayerFactory, primaryPosition, allocateRosterSlots, PLAYER_POSITIONS, FIELDER_POSITIONS, resolveCurrentContract };
