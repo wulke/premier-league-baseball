@@ -51,8 +51,11 @@ Roster row click (team-roster-ui.md) → navigate(`/${gwId}/player/${playerId}`)
         contract block: team (linked) + term (start–end); Free Agent chip if contract === null
         "Career & accomplishments" deferred block (stats #139 / contract-history #140 / awards)
       Positions tab:
-        view-switcher (field diagram | bar grid | coverage pills), all over the 9-key `positions` map
-        field diagram = baseball-field layout, nodes tinted by affinity, primary (argmax) ringed
+        segmented view-switcher (field diagram | bar grid | coverage pills), all over the 9-key `positions` map
+        field diagram = stylized baseball field (striped grass, dirt infield, mound, plate, bases, foul lines)
+                        with realistic defensive-depth markers; every marker exposes label + affinity
+        affinity tint = shared, high-contrast scale used by field markers, bars/pills, and masthead badge
+        primary (argmax) = explicit text label in every view; field includes an explanatory tint legend
       Pitches tab (pitchers only):
         4 pitch cards, each VEL/CTL/SPN tinted
 ```
@@ -65,6 +68,7 @@ Roster row click (team-roster-ui.md) → navigate(`/${gwId}/player/${playerId}`)
 - **Pitch tab = pitchers only** — `PlayerFactory` generates pitches for every player but they're meaningless for fielders; the tab is hidden for non-pitchers (FM hides inapplicable tabs). The cleaner fix (don't generate them for fielders) → #136.
 - **No stored OVR** — ratings shown verbatim; a *display-only* OVR is a client toggle, never carried by the API (#145/#146 additive constraint).
 - **Contract block, not a tab** — team + term only; no salary (no schema field), no history (no writer → #140). A contract-history view graduates when #140 lands — same deferral as stats (#139: detail never renders an always-empty section).
+- **Affinity presentation remains one data source** — all three Positions views render the keys actually present in `positions`, including LF and RF. The primary is the existing argmax, but is named in text rather than conveyed by a border alone. The masthead badge uses the same affinity tint so it agrees with the field rendering.
 
 ## Edge Case Probe
 
@@ -76,6 +80,8 @@ Roster row click (team-roster-ui.md) → navigate(`/${gwId}/player/${playerId}`)
 | u4 | User on the Pitches tab, then switches to a fielder player | Cannot occur via in-app navigation — switching player re-mounts with the new player's tab set; default tab is Overview. (A direct URL has no tab in the path, so no stale-tab hazard.) | — |
 | u5 | Positions view-switcher persistence | Client-side state; default is the field diagram on every mount. No URL encoding of the sub-view in v1. | PDETUI-004 |
 | u6 | "Career & accomplishments" block is empty | Renders as a deferred-state hook (text explaining what graduates in and from which map), NOT as an empty data section — consistent with the #139 deferral logic. | PDETUI-005 |
+| u7 | A low-affinity or colorblind user cannot infer the primary marker from hue/border alone | Every view renders the affinity number and an explicit “Primary” label; the field also includes a non-hover legend. | PDETUI-007 |
+| u8 | `positions` includes LeftField or RightField | The same map iteration renders LF/RF in the field, bar, and pill views at their dedicated defensive locations. | PDETUI-007 |
 
 ## Traceability
 

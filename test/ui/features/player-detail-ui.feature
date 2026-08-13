@@ -44,6 +44,20 @@ Feature: Player Detail UI
     Then the Positions tab shows a view-switcher with field diagram, bar grid, and coverage pills options
     And the field diagram is shown by default
 
+  @spec:PDETUI-007
+  Scenario: Position affinity remains legible across the polished Positions views
+    Given GET /api/player/100 returns Player 100's detail with the full positions map
+    When the player navigates to "/1/player/100"
+    And the player selects the Positions tab
+    Then the masthead primary-position badge uses the primary affinity tint
+    And the field diagram shows a baseball field, affinity legend, and visible affinity for every position
+    And the field diagram explicitly labels the primary position
+    And the field diagram includes Left Field and Right Field markers
+    When the player selects the bar grid view
+    Then the bar grid includes Left Field and Right Field with visible affinities
+    When the player selects the coverage pills view
+    Then the coverage pills include Left Field and Right Field with visible affinities
+
   @spec:PDETUI-004
   Scenario: The Positions view-switcher defaults to field diagram and is not URL-encoded
     Given GET /api/player/100 returns Player 100's detail
