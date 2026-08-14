@@ -3,6 +3,7 @@ import { NewGameWorld } from "../../api/models";
 import db from '../client';
 import { DomainError } from './errors';
 import { LeagueFactory, TeamFactory } from ".";
+import { resolveMatchRules } from './lineup';
 
 interface IGameWorld {
   create: (NewGameWorld) => any;
@@ -31,9 +32,12 @@ const GameWorldFactory = (id?: number): IGameWorld => {
       // before Division membership exists, so the first configured League is the
       // explicit primary identity-composition source.
       const primaryCompositionKey = config.leagues?.[0]?.compositionKey;
+      // @spec LIN-002,LIN-003 — teams precede Division rows, so their active cards
+      // use the first League's defaults; a Division override applies to later match contexts.
+      const primaryMatchRules = resolveMatchRules(config.leagues?.[0]);
       // create teams
       const teams = await Promise.all(config.teams?.map(async (teamConfig) => 
-        await TeamFactory().create(gw.id, teamConfig, { compositionKey: primaryCompositionKey })
+        await TeamFactory().create(gw.id, teamConfig, { compositionKey: primaryCompositionKey, matchRules: primaryMatchRules })
       ));
       // create Leagues
       const leagues = await Promise.all(config.leagues?.map(async (leagueConfig) =>
@@ -134,6 +138,9 @@ const GameWorldFactory = (id?: number): IGameWorld => {
         });
         const playerIds = mapIds(players);
 
+        const lineups = await db.models.Lineup.findAll({ where: { gameWorldId }, transaction });
+        const lineupIds = mapIds(lineups);
+
         const divisions = leagueIds.length === 0 ? [] : await db.models.Division.findAll({
           where: { leagueId: { [Op.in]: leagueIds } },
           transaction,
@@ -157,6 +164,11 @@ const GameWorldFactory = (id?: number): IGameWorld => {
             where: { playerId: { [Op.in]: playerIds } },
             transaction,
           });
+        }
+
+        if (lineupIds.length > 0) {
+          await db.models.LineupEntry.destroy({ where: { lineupId: { [Op.in]: lineupIds } }, transaction });
+          await db.models.Lineup.destroy({ where: { id: { [Op.in]: lineupIds } }, transaction });
         }
 
         const contractWhere = [

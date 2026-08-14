@@ -240,6 +240,7 @@ Team creation (TeamFactory.create())
         birthDate in 18–38 band; seeded mulberry32 RNG)
        → Player rows (6 identity cols + ratings JSON), teamId + gameWorldId
   → Contract rows (startDate/endDate DATE, 1-year term)
+  → LineupFactory.generateActive() → one active Lineup plus Starter/Bench/Bullpen entries
 
 Read path:
   GET /api/team/:teamId/roster  → TeamFactory.getRoster()
@@ -250,6 +251,16 @@ Read path:
        team hub Roster tab → roster view (row name → /:gwId/player/:playerId)
        player detail → Overview/Positions/Pitch-repertoire tabs (pitch tab hidden for fielders)
 ```
+
+### Active lineup foundation (#198)
+
+`Lineup` is the team-owned card: its nullable `gameId` distinguishes the single active card from a
+future per-game snapshot. `LineupEntry` assigns each player once to starter, bench, or bullpen; the
+starting pitcher is derived from the Pitcher starter entry, never persisted separately. The generator
+uses roster ratings and resolved `matchRules` (League default, optional Division override) to select
+an optimal defensive assignment, starter, batting order, and capped reserve pools. Validation is
+domain-level because DH and pool limits vary by match rules; database indexes protect only identity
+and active/per-game uniqueness. Manager editing and game snapshots remain later slices.
 
 ### Key Trade-offs
 - **Additive attributes, no stored OVR**: every read consumer (roster + detail) gets the flat-7 verbatim plus trivial read-time derivations; a stored/computed OVR is never introduced, so adding a rating later can't silently invalidate a tuning. A *display-only* OVR may be computed client-side, never carried by the API.
