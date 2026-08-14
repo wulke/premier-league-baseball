@@ -39,6 +39,18 @@ describe('active lineup generation', () => {
     expect(() => validateLineup(lineup, { dhEnabled: false, benchSize: 5, bullpenSize: 7 })).not.toThrow();
   }, 10000);
 
+  // @spec LIN-004
+  it('@spec LIN-004 finds the optimal assignment for a 30-player roster within the world-creation budget', () => {
+    const realisticRoster = Array.from({ length: 30 }, (_, index) => ({
+      id: index + 1,
+      attributes: attributes(index % 9 === 0 ? 'Pitcher' : 'CenterField', 50 + (index % 50)),
+    }));
+    const startedAt = performance.now();
+    const assignment = optimalFieldingAssignment(realisticRoster);
+    expect(assignment).toHaveLength(8);
+    expect(performance.now() - startedAt).toBeLessThan(500);
+  }, 1000);
+
   // @spec LIN-002,LIN-004,LIN-005,LIN-006
   it('@spec LIN-002 @spec LIN-004 @spec LIN-005 @spec LIN-006 builds an optimal DH lineup and gracefully caps partial reserves', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2052 }).then((row) => row.dataValues);
