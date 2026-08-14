@@ -23,27 +23,63 @@ const resolveMatchRules = (leagueConfig?: { matchRules?: Partial<MatchRules> }, 
   ...divisionConfig?.matchRules,
 });
 
-// Maximum-weight bipartite matching via a small dynamic-programming assignment.
+// Hungarian minimum-cost assignment on a rectangular 8-position x N-fielder matrix.
+// Negating ratings turns the maximum-weight fielding problem into minimum cost in O(8 * N²).
 // @spec LIN-004
 const optimalFieldingAssignment = (fielders: Player[]): Array<{ player: Player; position: Exclude<PlayerPosition, 'Pitcher'> }> => {
   if (fielders.length < FIELDER_POSITIONS.length) throw Error('Roster cannot fill the eight non-pitcher positions');
-  const memo = new Map<string, { score: number; indexes: number[] }>();
-  const solve = (positionIndex: number, used: number): { score: number; indexes: number[] } => {
-    if (positionIndex === FIELDER_POSITIONS.length) return { score: 0, indexes: [] };
-    const key = `${positionIndex}:${used}`;
-    const cached = memo.get(key);
-    if (cached) return cached;
-    let best = { score: -Infinity, indexes: [] as number[] };
-    for (let index = 0; index < fielders.length; index += 1) {
-      if ((used & (1 << index)) !== 0) continue;
-      const tail = solve(positionIndex + 1, used | (1 << index));
-      const candidate = fielders[index].attributes.positions[FIELDER_POSITIONS[positionIndex]] + tail.score;
-      if (candidate > best.score) best = { score: candidate, indexes: [index, ...tail.indexes] };
-    }
-    memo.set(key, best);
-    return best;
-  };
-  return solve(0, 0).indexes.map((index, positionIndex) => ({
+  const rowCount = FIELDER_POSITIONS.length;
+  const columnCount = fielders.length;
+  const u = Array(rowCount + 1).fill(0);
+  const v = Array(columnCount + 1).fill(0);
+  const p = Array(columnCount + 1).fill(0);
+  const way = Array(columnCount + 1).fill(0);
+
+  for (let row = 1; row <= rowCount; row += 1) {
+    p[0] = row;
+    let column = 0;
+    const minCost = Array(columnCount + 1).fill(Infinity);
+    const used = Array(columnCount + 1).fill(false);
+    do {
+      used[column] = true;
+      const currentRow = p[column];
+      let delta = Infinity;
+      let nextColumn = 0;
+      for (let candidate = 1; candidate <= columnCount; candidate += 1) {
+        if (used[candidate]) continue;
+        const rating = fielders[candidate - 1].attributes.positions[FIELDER_POSITIONS[currentRow - 1]];
+        const cost = 100 - rating - u[currentRow] - v[candidate];
+        if (cost < minCost[candidate]) {
+          minCost[candidate] = cost;
+          way[candidate] = column;
+        }
+        if (minCost[candidate] < delta) {
+          delta = minCost[candidate];
+          nextColumn = candidate;
+        }
+      }
+      for (let candidate = 0; candidate <= columnCount; candidate += 1) {
+        if (used[candidate]) {
+          u[p[candidate]] += delta;
+          v[candidate] -= delta;
+        } else {
+          minCost[candidate] -= delta;
+        }
+      }
+      column = nextColumn;
+    } while (p[column] !== 0);
+    do {
+      const previousColumn = way[column];
+      p[column] = p[previousColumn];
+      column = previousColumn;
+    } while (column !== 0);
+  }
+
+  const assignment = Array(rowCount).fill(-1);
+  for (let column = 1; column <= columnCount; column += 1) {
+    if (p[column] !== 0) assignment[p[column] - 1] = column - 1;
+  }
+  return assignment.map((index, positionIndex) => ({
     player: fielders[index], position: FIELDER_POSITIONS[positionIndex] as Exclude<PlayerPosition, 'Pitcher'>,
   }));
 };
@@ -75,7 +111,15 @@ const LineupFactory = () => ({
     if (existing) return existing.dataValues;
     const pitchers = players.filter((player) => primaryPosition(player as any) === 'Pitcher');
     const startingPitcher = [...(pitchers.length > 0 ? pitchers : players)].sort(comparePitchers)[0];
-    const fielderPool = players.filter((player) => player.id !== startingPitcher.id);
+    const nonPitcherFielders = players.filter((player) => (
+      player.id !== startingPitcher.id && primaryPosition(player as any) !== 'Pitcher'
+    ));
+    // Generated rosters have enough primary fielders. The fallback keeps legacy or
+    // all-tied attribute fixtures constructible without letting reserve pitchers inflate
+    // the normal matching matrix.
+    const fielderPool = nonPitcherFielders.length >= FIELDER_POSITIONS.length
+      ? nonPitcherFielders
+      : players.filter((player) => player.id !== startingPitcher.id);
     const fielding = optimalFieldingAssignment(fielderPool);
     const selected = new Set<number>([startingPitcher.id, ...fielding.map(({ player }) => player.id)]);
     const remaining = players.filter((player) => !selected.has(player.id));
