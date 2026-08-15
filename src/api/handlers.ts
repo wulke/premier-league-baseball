@@ -109,9 +109,9 @@ const getTeamRoster = async (teamId: number, gwId?: number) => {
   return await TeamFactory(teamId).getRoster();
 };
 
-// @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004
-const getTeamLineup = async (teamId: number, gwId?: number) => {
-  return await TeamFactory(teamId).getLineup({ gwId });
+// @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004,LSNAP-004
+const getTeamLineup = async (teamId: number, gwId?: number, gameId?: number) => {
+  return await TeamFactory(teamId).getLineup({ gwId, gameId });
 };
 
 // @spec PDET-001,PDET-002,PDET-003,PDET-004,PDET-007,PDET-008,PDET-010,PDET-011

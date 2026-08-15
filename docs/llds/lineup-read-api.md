@@ -18,23 +18,23 @@ type TeamLineup = {
   bullpen: Array<{ playerId: number }>;
 };
 
-TeamFactory(teamId).getLineup(): Promise<TeamLineup>
-GET /api/team/:teamId/lineup?gwId=…
+TeamFactory(teamId).getLineup({ gameId?, gwId? }): Promise<TeamLineup>
+GET /api/team/:teamId/lineup?gameId=…&gwId=…
 ```
 
-`getLineup` resolves only the team's active `Lineup` (`teamId`, `gameId IS NULL`). It projects
-only entry IDs and lineup assignments; it does not join or denormalize player identity. The
+`getLineup` resolves the team's active `Lineup` when `gameId` is omitted, or its per-game `Lineup`
+when `gameId` is supplied. It projects only entry IDs and lineup assignments; it does not join or denormalize player identity. The
 starting pitcher is derived from the unique `STARTER` entry positioned at `Pitcher`, never from a
 stored foreign key. `bench` and `bullpen` are intentionally unordered pools.
 
 ## Logic Flow
 
 ```
-GET /api/team/:teamId/lineup?gwId=…
+GET /api/team/:teamId/lineup?gameId=…&gwId=…
   → if gwId supplied, reject absent team or team.gameWorldId !== gwId with 404
-  → TeamFactory(teamId).getLineup()
+  → TeamFactory(teamId).getLineup({ gameId? })
       → resolve Team or 404
-      → resolve Lineup where teamId and gameId IS NULL or 404
+      → resolve Lineup where teamId and gameId is the supplied value, or gameId IS NULL when omitted, or 404
       → load LineupEntry rows
       → starters = STARTER rows sorted by battingOrder (null last)
       → startingPitcherId = STARTER row whose fieldingPosition is Pitcher
