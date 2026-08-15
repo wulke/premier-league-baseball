@@ -25,7 +25,7 @@ user opens Team Hub → Lineup tab
   → fetch active lineup scoped by gwId and the team's roster concurrently
   → index roster records by player ID
   → render batting starters in battingOrder 1..9
-  → when a null-position starter exists, render it as a separate DH row
+  → when a null-position starter exists, render its batting-order row as DH
   → render the starting pitcher callout plus bench and bullpen ID pools
   → link every known player row to /:gwId/player/:playerId
 ```

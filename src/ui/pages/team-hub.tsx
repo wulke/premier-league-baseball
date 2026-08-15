@@ -3,7 +3,7 @@ import { NavLink, Outlet, useParams } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { useGameWorldContext } from '../context/game-world-context';
 
-// @spec ROSTUI-006,ROSTUI-007, MCLUI-001,MCLUI-002,MCLUI-003
+// @spec ROSTUI-006,ROSTUI-007,LINEUI-001,MCLUI-001,MCLUI-002,MCLUI-003
 const TeamHub = () => {
   const { gwId, teamId } = useParams();
   const { gw, invalidate } = useGameWorldContext();
@@ -43,7 +43,7 @@ const TeamHub = () => {
         aria-label="Team sections"
         style={{ maxWidth: '960px', margin: '0 auto', padding: '20px 24px 0', display: 'flex', gap: '18px', borderBottom: '1px solid #e5e5e5' }}
       >
-        {(['calendar', 'roster'] as const).map((tab) => (
+        {(['calendar', 'roster', 'lineup'] as const).map((tab) => (
           <NavLink
             key={tab}
             to={`${basePath}/${tab}`}
@@ -58,7 +58,7 @@ const TeamHub = () => {
               borderBottom: `2px solid ${isActive ? '#222' : 'transparent'}`,
             })}
           >
-            {tab === 'calendar' ? 'Calendar' : 'Roster'}
+            {tab === 'calendar' ? 'Calendar' : tab === 'roster' ? 'Roster' : 'Lineup'}
           </NavLink>
         ))}
         {gwId && teamId && (
