@@ -1,5 +1,5 @@
-import { Op } from 'sequelize';
-import { MatchRules, RosterPlayer, TeamConfig, TeamLineup, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
+import { Op, UniqueConstraintError } from 'sequelize';
+import { GameLineupSnapshot, MatchRules, RosterPlayer, TeamConfig, TeamLineup, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
 import db from '../client';
 import { getKnockoutRoundLabel } from './knockout';
 import { PLAYER_POSITIONS, PlayerFactory, primaryPosition } from './player';
@@ -9,7 +9,8 @@ interface ITeam {
   create: (gwId: number, config: TeamConfig, options?: TeamCreateOptions) => any;
   getSchedule: (gwId: number, leagueId?: number) => Promise<TeamSeasonCalendar>;
   getRoster: () => Promise<RosterPlayer[]>;
-  getLineup: (options?: { gwId?: number }) => Promise<TeamLineup>;
+  snapshotForGame: (gameId: number) => Promise<GameLineupSnapshot>;
+  getLineup: (options?: { gameId?: number; gwId?: number }) => Promise<TeamLineup>;
 };
 
 const COVERAGE_THRESHOLD = 70;
@@ -223,14 +224,54 @@ const TeamFactory = (id?: number): ITeam => {
       });
     },
 
-    // @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004
-    getLineup: async ({ gwId }: { gwId?: number } = {}): Promise<TeamLineup> => {
+    // @spec LSNAP-001,LSNAP-002,LSNAP-003,LSNAP-005
+    snapshotForGame: async (gameId: number): Promise<GameLineupSnapshot> => {
+      const team = await db.models.Team.findByPk(id);
+      if (!team) throw new DomainError('Not found', 404);
+      const game = await db.models.Game.findByPk(gameId);
+      if (!game) throw new DomainError('Not found', 404);
+
+      const transaction = await db.transaction();
+      try {
+        const existing = await db.models.Lineup.findOne({ where: { teamId: id, gameId }, transaction });
+        if (existing) {
+          await transaction.commit();
+          return existing.dataValues;
+        }
+
+        const active = await db.models.Lineup.findOne({ where: { teamId: id, gameId: null }, transaction });
+        if (!active) throw new DomainError('Not found', 404);
+        const entries = await db.models.LineupEntry.findAll({ where: { lineupId: active.dataValues.id }, transaction });
+        const lineup = await db.models.Lineup.create({ teamId: id, gameWorldId: team.dataValues.gameWorldId, gameId }, { transaction });
+        await db.models.LineupEntry.bulkCreate(entries.map(({ dataValues }: any) => ({
+          lineupId: lineup.dataValues.id,
+          playerId: dataValues.playerId,
+          role: dataValues.role,
+          battingOrder: dataValues.battingOrder,
+          fieldingPosition: dataValues.fieldingPosition,
+        })), { transaction });
+
+        // #140 owns repair when roster membership later changes; a #138-season roster is static at freeze time.
+        await transaction.commit();
+        return lineup.dataValues;
+      } catch (error) {
+        await transaction.rollback();
+        if (error instanceof UniqueConstraintError) {
+          const existing = await db.models.Lineup.findOne({ where: { teamId: id, gameId } });
+          if (existing) return existing.dataValues;
+        }
+        throw error;
+      }
+    },
+
+    // @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004,LSNAP-004
+    getLineup: async ({ gameId, gwId }: { gameId?: number; gwId?: number } = {}): Promise<TeamLineup> => {
       const team = await db.models.Team.findByPk(id);
       if (!team || (gwId != null && team.dataValues.gameWorldId !== gwId)) {
         throw new DomainError('Not found', 404);
       }
 
-      const lineup = await db.models.Lineup.findOne({ where: { teamId: id, gameId: null } });
+      const lineup = await db.models.Lineup.findOne({ where: { teamId: id, gameId: gameId ?? null } });
       if (!lineup) throw new DomainError('Not found', 404);
 
       const entries = await db.models.LineupEntry.findAll({ where: { lineupId: lineup.dataValues.id } })

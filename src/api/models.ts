@@ -134,6 +134,13 @@ interface TeamLineup {
   bullpen: Array<{ playerId: number }>;
 }
 
+interface GameLineupSnapshot {
+  id: number;
+  teamId: number;
+  gameWorldId: number;
+  gameId: number;
+}
+
 interface PlayerDetail {
   id: number;
   givenName: string;
@@ -735,6 +742,7 @@ export {
   RosterPlayer,
   LineupStarter,
   TeamLineup,
+  GameLineupSnapshot,
   PlayerDetail,
   DivisionStandings,
   BracketTeam,
