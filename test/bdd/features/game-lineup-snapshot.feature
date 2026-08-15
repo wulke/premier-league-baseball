@@ -32,3 +32,8 @@ Feature: Per-game lineup snapshot
   Scenario: A missing per-game lineup signals not found
     When the client reads Team 10's lineup for Game 43
     Then the game lineup response indicates the lineup was not found
+
+  @spec:LSNAP-005
+  Scenario: A snapshot cannot target a missing Game
+    When Team 10 attempts to snapshot missing Game 44
+    Then the snapshot response indicates the Game was not found

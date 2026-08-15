@@ -1,4 +1,4 @@
-// @spec LSNAP-001,LSNAP-002,LSNAP-003,LSNAP-004
+// @spec LSNAP-001,LSNAP-002,LSNAP-003,LSNAP-004,LSNAP-005
 // Per-game lineup snapshot acceptance bindings.
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
@@ -11,6 +11,7 @@ const feature = loadFeature(path.resolve(__dirname, '../features/game-lineup-sna
 const positions = ['Pitcher', 'Catcher', 'FirstBase', 'SecondBase', 'ThirdBase', 'Shortstop', 'LeftField', 'CenterField', 'RightField'] as const;
 let activeAtSnapshot: any;
 let response: { statusCode: number; body?: any; error?: unknown } | undefined;
+let snapshotResponse: { statusCode: number; body?: any; error?: unknown } | undefined;
 let existingLineup: { id: number; entries: any[] } | undefined;
 
 const createPlayer = async (teamId: number, gameWorldId: number, index: number) => db.models.Player.create({
@@ -35,7 +36,7 @@ const capture = async (teamId: number, gameId?: number) => {
   catch (error) { response = { statusCode: error instanceof DomainError ? error.statusCode : (error as any)?.statusCode ?? 500, error }; }
 };
 
-beforeEach(async () => { await db.sync({ force: true }); activeAtSnapshot = undefined; response = undefined; existingLineup = undefined; });
+beforeEach(async () => { await db.sync({ force: true }); activeAtSnapshot = undefined; response = undefined; snapshotResponse = undefined; existingLineup = undefined; });
 
 autoBindSteps(feature, [({ given, when, then }: any) => {
   given(/^GameWorld (\d+) exists for game lineup snapshots$/, async (gwId: string) => { await db.models.GameWorld.create({ id: Number(gwId), year: 2025, config: {} }); });
@@ -57,6 +58,10 @@ autoBindSteps(feature, [({ given, when, then }: any) => {
     await db.models.Game.findOrCreate({ where: { id: Number(gameId) }, defaults: { homeTeam: Number(teamId), awayTeam: Number(teamId) } });
     await (TeamFactory(Number(teamId)) as any).snapshotForGame(Number(gameId));
   });
+  when(/^Team (\d+) attempts to snapshot missing Game (\d+)$/, async (teamId: string, gameId: string) => {
+    try { snapshotResponse = { statusCode: 200, body: await (TeamFactory(Number(teamId)) as any).snapshotForGame(Number(gameId)) }; }
+    catch (error) { snapshotResponse = { statusCode: error instanceof DomainError ? error.statusCode : (error as any)?.statusCode ?? 500, error }; }
+  });
   when(/^the client reads Team (\d+)'s lineup for Game (\d+)$/, async (teamId: string, gameId: string) => capture(Number(teamId), Number(gameId)));
   when(/^the client reads Team (\d+)'s active lineup$/, async (teamId: string) => capture(Number(teamId)));
   when(/^Team (\d+)'s active lineup is edited after the snapshot$/, async (teamId: string) => {
@@ -74,4 +79,8 @@ autoBindSteps(feature, [({ given, when, then }: any) => {
     expect(entries.map(({ lineupId, playerId, role, battingOrder, fieldingPosition }: any) => ({ lineupId, playerId, role, battingOrder, fieldingPosition }))).toEqual(existingLineup?.entries);
   });
   then('the game lineup response indicates the lineup was not found', () => expect(response?.statusCode).toBe(404));
+  then('the snapshot response indicates the Game was not found', async () => {
+    expect(snapshotResponse?.statusCode).toBe(404);
+    await expect(db.models.Lineup.count({ where: { teamId: 10, gameId: 44 } })).resolves.toBe(0);
+  });
 }]);
