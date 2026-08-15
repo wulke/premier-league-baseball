@@ -109,6 +109,11 @@ const getTeamRoster = async (teamId: number, gwId?: number) => {
   return await TeamFactory(teamId).getRoster();
 };
 
+// @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004
+const getTeamLineup = async (teamId: number, gwId?: number) => {
+  return await TeamFactory(teamId).getLineup({ gwId });
+};
+
 // @spec PDET-001,PDET-002,PDET-003,PDET-004,PDET-007,PDET-008,PDET-010,PDET-011
 const getPlayerDetail = async (playerId: number, gwId?: number) => {
   const player = await db.models.Player.findByPk(playerId);
@@ -135,6 +140,7 @@ export {
   getLeagueToday,
   getTeamSchedule,
   getTeamRoster,
+  getTeamLineup,
   getPlayerDetail,
   newGameWorld,
   setManagedClub,

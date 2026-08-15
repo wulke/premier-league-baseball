@@ -117,6 +117,14 @@ router.get(Endpoints.GetTeamRoster, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
+router.get(Endpoints.GetTeamLineup, async (req: any, res: any) => {
+  // @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004
+  const gwId = req.query.gwId == null ? undefined : Number(req.query.gwId);
+  await handlers.getTeamLineup(Number(req.params.teamId), gwId)
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
 router.get(Endpoints.GetPlayerDetail, async (req: any, res: any) => {
   // @spec PDET-001,PDET-002,PDET-003,PDET-004,PDET-007,PDET-008,PDET-010,PDET-011
   const gwId = req.query.gwId == null ? undefined : Number(req.query.gwId);

@@ -12,6 +12,8 @@ const enum Endpoints {
   GetTeamSchedule = '/api/team/:teamId/calendar',
   // @spec ROST-001,ROST-002,ROST-003,ROST-005,ROST-007,ROST-008,ROST-009,ROST-010
   GetTeamRoster = '/api/team/:teamId/roster',
+  // @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004
+  GetTeamLineup = '/api/team/:teamId/lineup',
   // @spec PDET-001,PDET-002,PDET-003,PDET-004,PDET-007,PDET-008,PDET-010,PDET-011
   GetPlayerDetail = '/api/player/:playerId',
   NewGameWorld = '/api/gameWorld/new',
