@@ -4,4 +4,5 @@ export * from './league';
 export * from './player-detail';
 export * from './team-calendar';
 export * from './team-hub';
+export * from './team-lineup';
 export * from './team-roster';
