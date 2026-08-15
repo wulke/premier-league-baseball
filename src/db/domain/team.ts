@@ -1,5 +1,5 @@
-import { Op } from 'sequelize';
-import { MatchRules, RosterPlayer, TeamConfig, TeamLineup, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
+import { Op, UniqueConstraintError } from 'sequelize';
+import { GameLineupSnapshot, MatchRules, RosterPlayer, TeamConfig, TeamLineup, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
 import db from '../client';
 import { getKnockoutRoundLabel } from './knockout';
 import { PLAYER_POSITIONS, PlayerFactory, primaryPosition } from './player';
@@ -9,7 +9,7 @@ interface ITeam {
   create: (gwId: number, config: TeamConfig, options?: TeamCreateOptions) => any;
   getSchedule: (gwId: number, leagueId?: number) => Promise<TeamSeasonCalendar>;
   getRoster: () => Promise<RosterPlayer[]>;
-  snapshotForGame: (gameId: number) => Promise<any>;
+  snapshotForGame: (gameId: number) => Promise<GameLineupSnapshot>;
   getLineup: (options?: { gameId?: number; gwId?: number }) => Promise<TeamLineup>;
 };
 
@@ -224,10 +224,12 @@ const TeamFactory = (id?: number): ITeam => {
       });
     },
 
-    // @spec LSNAP-001,LSNAP-002,LSNAP-003
-    snapshotForGame: async (gameId: number) => {
+    // @spec LSNAP-001,LSNAP-002,LSNAP-003,LSNAP-005
+    snapshotForGame: async (gameId: number): Promise<GameLineupSnapshot> => {
       const team = await db.models.Team.findByPk(id);
       if (!team) throw new DomainError('Not found', 404);
+      const game = await db.models.Game.findByPk(gameId);
+      if (!game) throw new DomainError('Not found', 404);
 
       const transaction = await db.transaction();
       try {
@@ -254,8 +256,10 @@ const TeamFactory = (id?: number): ITeam => {
         return lineup.dataValues;
       } catch (error) {
         await transaction.rollback();
-        const existing = await db.models.Lineup.findOne({ where: { teamId: id, gameId } });
-        if (existing) return existing.dataValues;
+        if (error instanceof UniqueConstraintError) {
+          const existing = await db.models.Lineup.findOne({ where: { teamId: id, gameId } });
+          if (existing) return existing.dataValues;
+        }
         throw error;
       }
     },

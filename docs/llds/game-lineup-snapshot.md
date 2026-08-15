@@ -50,4 +50,4 @@ getLineup(teamId, { gameId?, gwId? }):
 |---|---|
 | EARS | `docs/specs/game-lineup-snapshot-specs.md` |
 | Tests | `test/bdd/features/game-lineup-snapshot.feature`, `test/bdd/steps/game-lineup-snapshot.steps.test.ts` |
-| Code | `src/db/domain/team.ts`, `src/api/handlers.ts`, `src/api/router.ts` |
+| Code | `src/api/models.ts`, `src/db/domain/team.ts`, `src/api/endpoints.ts`, `src/api/handlers.ts`, `src/api/router.ts` |
