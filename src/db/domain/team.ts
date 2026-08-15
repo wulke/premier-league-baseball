@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { MatchRules, RosterPlayer, TeamConfig, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
+import { MatchRules, RosterPlayer, TeamConfig, TeamLineup, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
 import db from '../client';
 import { getKnockoutRoundLabel } from './knockout';
 import { PLAYER_POSITIONS, PlayerFactory, primaryPosition } from './player';
@@ -9,6 +9,7 @@ interface ITeam {
   create: (gwId: number, config: TeamConfig, options?: TeamCreateOptions) => any;
   getSchedule: (gwId: number, leagueId?: number) => Promise<TeamSeasonCalendar>;
   getRoster: () => Promise<RosterPlayer[]>;
+  getLineup: (options?: { gwId?: number }) => Promise<TeamLineup>;
 };
 
 const COVERAGE_THRESHOLD = 70;
@@ -220,6 +221,35 @@ const TeamFactory = (id?: number): ITeam => {
           discipline: player.attributes.discipline,
         };
       });
+    },
+
+    // @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004
+    getLineup: async ({ gwId }: { gwId?: number } = {}): Promise<TeamLineup> => {
+      const team = await db.models.Team.findByPk(id);
+      if (!team || (gwId != null && team.dataValues.gameWorldId !== gwId)) {
+        throw new DomainError('Not found', 404);
+      }
+
+      const lineup = await db.models.Lineup.findOne({ where: { teamId: id, gameId: null } });
+      if (!lineup) throw new DomainError('Not found', 404);
+
+      const entries = await db.models.LineupEntry.findAll({ where: { lineupId: lineup.dataValues.id } })
+        .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+      const starters = entries
+        .filter((entry: any) => entry.role === 'STARTER')
+        .sort((a: any, b: any) => (a.battingOrder ?? Infinity) - (b.battingOrder ?? Infinity))
+        .map((entry: any) => ({
+          playerId: entry.playerId,
+          battingOrder: entry.battingOrder,
+          fieldingPosition: entry.fieldingPosition,
+        }));
+      const startingPitcherId = starters.find((entry) => entry.fieldingPosition === 'Pitcher')?.playerId;
+      if (startingPitcherId == null) throw new DomainError('Not found', 404);
+
+      const toPool = (role: 'BENCH' | 'BULLPEN') => entries
+        .filter((entry: any) => entry.role === role)
+        .map((entry: any) => ({ playerId: entry.playerId }));
+      return { starters, startingPitcherId, bench: toPool('BENCH'), bullpen: toPool('BULLPEN') };
     },
   };
 };

@@ -121,6 +121,19 @@ interface RosterPlayer {
   discipline: number;
 }
 
+interface LineupStarter {
+  playerId: number;
+  battingOrder: number | null;
+  fieldingPosition: PlayerPosition | null;
+}
+
+interface TeamLineup {
+  starters: LineupStarter[];
+  startingPitcherId: number;
+  bench: Array<{ playerId: number }>;
+  bullpen: Array<{ playerId: number }>;
+}
+
 interface PlayerDetail {
   id: number;
   givenName: string;
@@ -720,6 +733,8 @@ export {
   PlayerAttributes,
   PlayerRecord,
   RosterPlayer,
+  LineupStarter,
+  TeamLineup,
   PlayerDetail,
   DivisionStandings,
   BracketTeam,
