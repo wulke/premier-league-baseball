@@ -12,7 +12,7 @@ Let players advance the season by simulating one or more scheduled games — fro
 ## Architecture
 
 ### Components
-- **Backend**: `GameFactory.result()` (single-game simulate + status guard), new batch endpoint `POST /api/gameWorld/:gwId/simulate`, `Game.status` enum, `GameWorld.currentDate` field, transaction-scoped BPMN flow (guard → simulate → update, skip-vs-error split by single/batch mode).
+- **Backend**: `GameFactory(id).simulate()` / `GameFactory().simulateBatch()` (guarded simulate — score production delegated to the `SimulationEngine` strategy per the [Simulation Engine Strategy Seam](#hld-simulation-engine-strategy-seam)), batch endpoint `POST /api/gameWorld/:gwId/simulate`, `Game.status` enum, `GameWorld.currentDate` field, transaction-scoped BPMN flow (guard → simulate → update, skip-vs-error split by single/batch mode).
 - **Frontend**: `GameWorldProvider` (context: `gw`, `refreshToken`, `invalidate()`), `AppHeader` (currentDate chip + batch "Simulate Today"), `TeamCalendar`/`GameRow` (per-row simulate, subscribes to `refreshToken`).
 
 ### Flow
@@ -460,3 +460,65 @@ home form: user selects "Champions League" template
 - **UI reuses the single create-world form**: a template `<select>` + dynamic summary over
   introducing a template-detail page — keeps the change inside one component and honors the map's
   "minimal UI" stance, leaving the rich builder UX to the builder map.
+
+---
+
+# HLD: Simulation Engine Strategy Seam
+
+> Backed by [Map: Attribute-driven Simulation Engine](https://github.com/wulke/premier-league-baseball/issues/136)
+> — decisions 7 (determinism) and 8 (engine wiring) are the source decisions for this HLD.
+> Ticket: [Engine strategy seam](https://github.com/wulke/premier-league-baseball/issues/190) —
+> the tracer bullet for the attribute-driven engine. Subsequent stages (LLD corrigendum, EARS
+> `SIM-016..018`, tests, code) follow through the LID Arrow of Intent on top of this HLD.
+
+## Goal
+Make score production a **swappable strategy** and a **reproducible computation**: extract a
+`SimulationEngine` interface that `GameFactory.simulate()` / `simulateBatch()` delegate to for
+score production; today's `floor(random()*10)` becomes one concrete implementation
+(`RandomSimulationEngine`); RNG seeding is injectable; the unguarded vestigial
+`GameFactory(id).result()` is deleted. **Behavior is preserved** — this slice adds
+swappability + reproducibility infrastructure only, no new game logic; `SIM-001..015` stay green.
+
+## Strategy
+- **Options**:
+  - Option A: leave `Math.random()` inline; rewrite call sites when the attribute-driven engine
+    ([framework milestone](https://github.com/wulke/premier-league-baseball/issues/191)) arrives.
+  - Option B (chosen): extract the strategy seam now, ahead of the attribute-driven engine.
+- **Decision**: **Option B** — the attribute-driven engine lands as a *second* implementation
+  behind the interface without touching guards, transactions, or completion hooks, and behavior
+  is pinned from here on by golden-master tests (pinned seed → reproducible scores). Production
+  draws a fresh seed per game so variance is preserved (still feels like real baseball).
+
+## Architecture
+- **Domain** (`src/db/domain/`, MODIFIED — additive + one deletion): `GameFactory` retains all
+  guards, the batch transaction, and the completion hooks, but **delegates score production** to
+  an engine resolved per call: `resolveSimulationEngine(seed?) → SimulationEngine`, whose
+  `simulateGame(ctx)` returns `{ homeTeamResult, awayTeamResult }`. Today's random logic becomes
+  `RandomSimulationEngine`. New `src/db/domain/simulation/` module. The seed is a **domain-only
+  optional parameter** — handlers and the API surface are unchanged.
+- **RNG**: seeded mulberry32 (already in-repo via player-identity, #143); house pattern
+  `seed ?? Date.now()` — fresh seed per game in production, pinned seed in tests. Per-game seed
+  derivation must be collision-free within a batch (mix in `gameId` — detailed in the LLD).
+- **Deletion**: `GameFactory(id).result()` (LLD edge case e4) — zero callers; its removal leaves
+  no unguarded score-write path.
+
+### Flow
+```
+simulate / simulateBatch
+  → guards + date checks (unchanged, in GameFactory)
+  → resolveSimulationEngine(seed?)          # tests: pinned; production: fresh per game
+  → engine.simulateGame(gameContext)         # → { homeTeamResult, awayTeamResult }
+  → Game.update(...) + completion hooks (unchanged, in GameFactory)
+```
+
+### Key Trade-offs
+- **Seam at score production only**: guards, transaction, and completion hooks stay in
+  `GameFactory` — the strategy owns *what the score is*, never *whether/how it is written*.
+  Keeps SIM-001..015's contract squarely on the factory while the engine stays pure
+  (input context → result tuple).
+- **Per-game seeds, not per-batch**: a per-batch RNG shared across games would serialize game
+  outcomes to call order inside the loop (and collide same-millisecond `Date.now()` seeds);
+  per-game derived seeds keep batch results order-independent and re-runnable per game.
+- **Domain-only seed parameter**: no API/env exposure now — the golden-master tests call the
+  factory directly (matching `test/db/domain/game.test.ts` precedent, e.g. PID-005). Exposing a
+  seed via API would leak a test concern into the contract.
