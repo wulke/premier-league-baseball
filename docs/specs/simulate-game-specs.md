@@ -19,9 +19,9 @@ Backend requirements for single-game and batch game simulation (`GameFactory(id)
 | SIM-013 | WHEN the player triggers batch simulation IF a reachable game's status is IN_PROGRESS THE system SHALL skip it and return it in the response's skipped list with reason "game in progress" | [x] |
 | SIM-014 | WHEN the player triggers batch simulation IF a reachable game's scheduledDate is after the effective end date THE system SHALL skip it and return it in the response's skipped list with reason "future date" | [x] |
 | SIM-015 | WHEN a database error occurs while writing batch simulation results THE system SHALL roll back the transaction, leaving all games in the batch unchanged with no result values written | [x] |
-| SIM-016 | WHEN the system simulates a game, singly or in batch THE system SHALL produce that game's homeTeamResult and awayTeamResult by delegating to the configured SimulationEngine strategy, with guards, the transaction, and completion hooks remaining in GameFactory | [ ] → #190 |
-| SIM-017 | WHEN a game or batch is simulated with a provided seed THE system SHALL derive each game's RNG stream deterministically from the seed and the gameId, so the same seed reproduces the same scores across runs and machines, independent of loop order and skipped games | [ ] → #190 |
-| SIM-018 | WHEN a game is simulated without a provided seed THE system SHALL draw a fresh seed per game (current time mixed with gameId) so outcomes vary between simulations and no two games in a batch share a seed | [ ] → #190 |
+| SIM-016 | WHEN the system simulates a game, singly or in batch THE system SHALL produce that game's homeTeamResult and awayTeamResult by delegating to the configured SimulationEngine strategy, with guards, the transaction, and completion hooks remaining in GameFactory | [x] → #190 |
+| SIM-017 | WHEN a game or batch is simulated with a provided seed THE system SHALL derive each game's RNG stream deterministically from the seed and the gameId, so the same seed reproduces the same scores across runs and machines, independent of loop order and skipped games | [x] → #190 |
+| SIM-018 | WHEN a game is simulated without a provided seed THE system SHALL draw a fresh seed per game (current time mixed with gameId) so outcomes vary between simulations and no two games in a batch share a seed | [x] → #190 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
