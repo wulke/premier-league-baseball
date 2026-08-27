@@ -6,6 +6,12 @@
 > `src/db/domain/game-world.ts`), not the PRD's proposals where they diverge. Divergences are
 > called out in the [Edge Case Probe](#edge-case-probe).
 >
+> **Corrigendum (#190 — engine strategy seam).** Score production is now delegated to a
+> swappable `SimulationEngine` strategy behind an injectable seeded RNG, and the vestigial
+> `result()` is removed. The sections below describe the **post-seam** design (code follows the
+> arrow). Upstream: *HLD: Simulation Engine Strategy Seam* in
+> [`docs/high-level-design.md`](../high-level-design.md).
+>
 > Upstream: [HLD: Simulate Game](../high-level-design.md) · EARS: `docs/specs/simulate-game-specs.md`
 > (`SIM-001`..`SIM-015`) · PRD: `docs/architecture/prd/simulate-game-plan.md` ·
 > Gherkin: `test/bdd/features/simulate-game.feature`
@@ -17,8 +23,8 @@ The domain logic that lets a player advance the season by simulating scheduled g
 - **Single-game simulate** — `GameFactory(id).simulate()`: one guarded game → random score + `COMPLETED`.
 - **Batch simulate** — `GameFactory().simulateBatch(gwId, endDate?)`: every reachable, still-simulatable game in a GameWorld up to a date, in one transaction, with a skip ledger.
 
-Status/date guards, the random score generation, and the transaction boundary all live in the
-domain layer. The API layer (`src/api/handlers.ts`, `src/api/router.ts`) is a thin pass-through and
+Status/date guards, the engine-delegated score production, and the transaction boundary all live
+in the domain layer. Score production itself is a swappable `SimulationEngine` strategy (#190); The API layer (`src/api/handlers.ts`, `src/api/router.ts`) is a thin pass-through and
 is summarized under [API Surface](#api-surface) for traceability only.
 
 ---
@@ -31,13 +37,64 @@ is summarized under [API Surface](#api-surface) for traceability only.
 // src/db/domain/game.ts
 const GameFactory = (id?: number) => ({
   create(homeTeam, awayTeam),          // not part of simulate flow
-  result(homeTeam, awayTeam),          // VESTIGIAL blind update — see Edge Case Probe (e4)
-  simulate(): Promise<GameRow>,        // single-game, guarded
-  simulateBatch(gwId, endDate?): Promise<{ simulated: GameRow[]; skipped: { game; reason }[] }>,
+  simulate(options?: { seed?: number }): Promise<GameRow>,        // single-game, guarded
+  simulateBatch(gwId, endDate?, options?: { seed?: number }): Promise<{ simulated: GameRow[]; skipped: { game; reason }[] }>,
+  rapidSimulateSeason(gwId),           // unchanged — delegates through simulateBatch
 });
+// result(): REMOVED (#190, was e4) — no unguarded score-write path remains
 ```
 
 `simulateBatch` ignores the factory's `id` argument; it is invoked as `GameFactory().simulateBatch(...)`.
+The optional `seed` is **domain-only** (tests/golden master); handlers never pass it (e16).
+
+### Simulation engine seam (#190)
+
+New module `src/db/domain/simulation/` — the strategy that owns *what the score is*, never
+*whether/how it is written* (guards, transaction, completion hooks stay in `GameFactory`).
+
+```ts
+// src/db/domain/simulation/engine.ts
+export interface SimulationContext {
+  gameId: number;      // seed derivation; stays stable across engine impls
+  homeTeam: number;
+  awayTeam: number;
+  // #191/#192 grow this: lineups, attribute reads — the seam contract
+}
+
+export interface SimulationResult {
+  homeTeamResult: number;   // [0, 9] at Depth 0 (e8)
+  awayTeamResult: number;
+}
+
+export interface SimulationEngine {
+  simulateGame(ctx: SimulationContext): SimulationResult;   // pure: no DB, no side effects
+}
+
+export const resolveSimulationEngine = (seed?: number): SimulationEngine;
+// → RandomSimulationEngine today; the attribute-driven engine (#191) is the second impl
+```
+
+```ts
+// src/db/domain/simulation/seed.ts — per-game seed derivation (shared infra)
+// Deterministic 32-bit avalanche mix (murmur3-style finalizer) of (base, gameId):
+// imul/xor/shift integer ops only — no floats, no Math.random — so a pinned seed yields
+// the same scores on every machine, every run (golden master).
+export const deriveGameSeed = (base: number, gameId: number): number;
+```
+
+```ts
+// src/db/domain/simulation/random-engine.ts — preserves today's behavior exactly
+export class RandomSimulationEngine implements SimulationEngine {
+  constructor(private readonly seed?: number) {}
+  simulateGame(ctx: SimulationContext): SimulationResult {
+    const rng = mulberry32(deriveGameSeed(this.seed ?? Date.now(), ctx.gameId));
+    const homeTeamResult = Math.floor(rng() * 10);   // draw 1: home (e15 — order pinned)
+    const awayTeamResult = Math.floor(rng() * 10);   // draw 2: away
+    return { homeTeamResult, awayTeamResult };
+  }
+}
+// mulberry32: existing export from src/db/domain/identity.ts (#143) — no new RNG code.
+```
 
 ### Data model (simulate-relevant fields)
 
@@ -123,8 +180,9 @@ BatchSimulateGames = '/api/gameWorld/:gwId/simulate'     // POST → handlers.si
             → throw DomainError('…scheduled for a future date', 422)              # SIM-005
         (comparison is lexicographic on 'YYYY-MM-DD' strings → chronological;
          '<=' therefore permits backfill of a missed/past date.)
-4. homeTeamResult = floor(random() * 10)   // 0..9 inclusive
-   awayTeamResult = floor(random() * 10)
+4. engine = resolveSimulationEngine(options?.seed)                                     # SIM-016
+   { homeTeamResult, awayTeamResult } = engine.simulateGame(
+       { gameId: id, homeTeam, awayTeam })       # homeTeam/awayTeam from the loaded row; [0,9] (e8)
 5. Game.update({ homeTeamResult, awayTeamResult, status: 'COMPLETED' }, { where: { id } })
 6. return (await Game.findByPk(id)).dataValues                                   // status now COMPLETED  # SIM-001
 ```
@@ -155,7 +213,8 @@ carry a time component) down to `'YYYY-MM-DD'` so it compares cleanly against th
      games           = Game.findAll({ where:{ id IN gameIds } })
    (NB: no date predicate in the query — ALL reachable games are loaded; date/status
     filtering happens in the loop below. See Edge Case Probe e1.)
-7. tx = db.transaction()
+7. engine = resolveSimulationEngine(options?.seed)   # resolved once; calls are pure per game
+   tx = db.transaction()
    try:
      for game of games:
        if game.status == 'COMPLETED'
@@ -164,7 +223,8 @@ carry a time component) down to `'YYYY-MM-DD'` so it compares cleanly against th
             → skipped.push({ game, reason:'game in progress' }); continue           # SIM-013
        if game.scheduledDate != null AND toDateStr(scheduledDate) > effectiveEndDate
             → skipped.push({ game, reason:'future date' }); continue                # SIM-014
-       homeTeamResult, awayTeamResult = floor(random()*10), floor(random()*10)
+       { homeTeamResult, awayTeamResult } = engine.simulateGame(
+           { gameId: game.id, homeTeam: game.homeTeam, awayTeam: game.awayTeam })   # SIM-016
        Game.update({ homeTeamResult, awayTeamResult, status:'COMPLETED' },
                    { where:{ id: game.id }, transaction: tx })
        simulated.push({ ...game, homeTeamResult, awayTeamResult, status:'COMPLETED' })   # SIM-011
@@ -188,7 +248,7 @@ Each row ties a condition to its handling and the EARS id that pins it.
 | e1 | `simulateBatch` candidate set | Loaded in full via reachability joins, **then** filtered for status/date in the loop — *not* by a SQL `scheduledDate <= ?` predicate (the PRD, Task 7.5, proposed a DB-side date filter). Correctness is identical; only set size differs. Revisit if batch sizes grow. | — |
 | e2 | `endDate` supplied but `currentDate` is `null` | Step 3's "no current date" guard fires only when **both** are null, so this case *passes* step 4 (its `currentDate` conjunct is false) and simulates every reachable game with `scheduledDate <= endDate`. Reasonable but undocumented; align with `SIM-009` intent before relying on it. | SIM-009 |
 | e3 | Single game with no `DivisionSeasonGame` link | Same `422 "no current date configured"` as a `null` `currentDate` — the two causes share one message/status. Distinguishable only by inspection. | SIM-006 |
-| e4 | `GameFactory(id).result()` still exists | Legacy blind `UPDATE … status='COMPLETED'` with **no guards** and caller-supplied scores. Not used by the simulate flow; left in place. A direct call would bypass every guard — delete or gate it before extending the factory. | — |
+| e4 | `GameFactory(id).result()` — **REMOVED (#190)** | Legacy blind `UPDATE … status='COMPLETED'` with **no guards** and caller-supplied scores. Zero callers existed; deleted. `Game.update` is now reachable only through the guarded `simulate` / `simulateBatch` paths — no unguarded score-write path remains. | — |
 | e5 | `scheduledDate` carries a time component | `toDateStr()` strips to `'YYYY-MM-DD'` before comparison, so a game scheduled at `2025-04-10T23:00` still compares equal to `currentDate "2025-04-10"`. Without normalization a time-bearing `scheduledDate` would string-compare greater and look "future." | SIM-001/005 |
 | e6 | `currentDate` lifecycle | `DATEONLY`, nullable, and **not** populated by `GameWorldFactory.newSeason()` — it is written out-of-band (tests/handlers set it directly). Any caller that forgets to set it hits the SIM-006/SIM-009 guard. Wire `newSeason()` to seed it from `config.seasonStartDate` to remove this footgun. | SIM-006/009 |
 | e7 | Score ties | Results are independent `floor(random()*10)` draws, so `homeTeamResult === awayTeamResult` is possible. The domain records results only; **no winner/tiebreaker logic exists** here. (Standings resolution is out of scope for this LLD.) | — |
@@ -197,6 +257,11 @@ Each row ties a condition to its handling and the EARS id that pins it.
 | e10 | Batch concurrency | A single transaction serializes the batch's own writes. There is no row/optimistic lock guarding a concurrent single-game `simulate()` of the same id racing a batch — last writer wins on `status`/results. Acceptable for the current single-player simulation model. | — |
 | e11 | DB error mid-batch | `catch` rolls the transaction back and rethrows; nothing in `simulated` persists. The API layer surfaces this as a `500`. The BDD exercises this via a forced-error step (`forceDbError`), not a domain-level injection. | SIM-015 |
 | e12 | Empty GameWorld (no leagues/divisions/seasons/games) | Each reachability layer early-returns `{ simulated: [], skipped: [] }` rather than throwing — an empty world is a successful no-op, not an error. | SIM-011 |
+| e13 | Same-millisecond `Date.now()` seeds within a batch | Production base seed is drawn per `simulateGame` call, so consecutive games in one loop share a millisecond. `deriveGameSeed(base, gameId)` mixes in `gameId` — unique per game ⇒ distinct RNG streams, no identical-score collisions. | SIM-016 |
+| e14 | Batch determinism vs loop order / skipped games | Each game's outcome is `f(base, gameId)` only — no shared stream. Reordering the loop, skipping games (already-completed / in-progress / future), or adding games to the world leaves every other game's pinned-seed score unchanged. Golden-master batch tests are stable under reachable-set drift. | SIM-017 |
+| e15 | RNG draw order inside a game | Pinned **home-then-away**. Changing draw order changes pinned-seed scores — the golden master fails loudly rather than silently, which is the desired alarm. | SIM-017 |
+| e16 | Seed exposure | `seed` is a domain-only optional parameter. Handlers/API pass nothing — production always draws a fresh per-game seed (variance preserved). A seed in the API contract would leak a test concern into the public surface. | SIM-018 |
+| e17 | Engine purity vs transaction scope | `simulateGame` is pure (no DB reads/writes, no side effects), so calling it inside the batch transaction changes nothing about tx semantics — writes still begin and end at `Game.update`. | SIM-016 |
 
 ---
 
@@ -206,10 +271,10 @@ Each row ties a condition to its handling and the EARS id that pins it.
 |---|---|
 | HLD | [`docs/high-level-design.md`](../high-level-design.md) |
 | **This LLD** | `docs/llds/game-simulation.md` |
-| EARS | `docs/specs/simulate-game-specs.md` — `SIM-001`..`SIM-015` |
-| Gherkin | `test/bdd/features/simulate-game.feature` (22 scenarios, one `@spec:SIM-###` tag per scenario) |
+| EARS | `docs/specs/simulate-game-specs.md` — `SIM-001`..`SIM-015`, plus `SIM-016`..`SIM-018` (engine seam, #190) |
+| Gherkin | `test/bdd/features/simulate-game.feature` (22 scenarios, one `@spec:SIM-###` tag per scenario; #190 adds engine-seam scenarios) |
 | Step defs | `test/bdd/steps/simulate-game.steps.test.ts` |
-| Code | `src/db/domain/game.ts` (`GameFactory.simulate`, `simulateBatch`), `src/db/domain/game-world.ts` (`currentDate`), `src/db/domain/errors.ts` (`DomainError`), `src/api/handlers.ts` (`simulateGame`, `simulateBatchGames`) |
+| Code | `src/db/domain/game.ts` (`GameFactory.simulate`, `simulateBatch`), `src/db/domain/simulation/` (`engine.ts`, `seed.ts`, `random-engine.ts` — #190), `src/db/domain/game-world.ts` (`currentDate`), `src/db/domain/errors.ts` (`DomainError`), `src/api/handlers.ts` (`simulateGame`, `simulateBatchGames`) |
 
 **Branch note (for the merge ticket).** The EARS spec file and `LID.md` currently live on the
 `docs/simulate-game-ears-specs` branch and are **not yet present on `feat/simulate-game`**; the
