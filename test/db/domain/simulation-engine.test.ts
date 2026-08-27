@@ -80,6 +80,21 @@ describe('simulation engine seam', () => {
     });
   });
 
+  describe('golden master (SIM-017)', () => {
+    // Literal pin — machine-independent by construction (deriveGameSeed uses
+    // integer ops only; LLD e13/e14). If this breaks, draw order or derivation
+    // drifted: fail loudly, do not "fix" the literal (e15).
+    it('pins the literal score pair for seed 4242, gameId 7', () => {
+      expect(new RandomSimulationEngine(4242).simulateGame({ gameId: 7, homeTeam: 1, awayTeam: 2 }))
+        .toStrictEqual({ homeTeamResult: 2, awayTeamResult: 8 });
+    });
+
+    it('pins a second literal pair (seed 99, gameId 12345)', () => {
+      expect(new RandomSimulationEngine(99).simulateGame({ gameId: 12345, homeTeam: 3, awayTeam: 4 }))
+        .toStrictEqual({ homeTeamResult: 8, awayTeamResult: 4 });
+    });
+  });
+
   describe('GameFactory delegation (#190)', () => {
     it('delegates score production to the engine (SIM-016)', async () => {
       const game = await GameFactory().create(1, 2);

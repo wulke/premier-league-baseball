@@ -5,6 +5,7 @@ import { GameWorldFactory } from './game-world';
 import { resolveKnockoutGameCompletion } from './knockout-advancement';
 import { resolveRoundRobinGameCompletion } from './season-result';
 import { resolveCrossStageAdvancement } from './stage-advancement';
+import { resolveSimulationEngine, SimulateOptions } from './simulation/engine';
 
 const toDateStr = (d: any): string => new Date(d).toISOString().slice(0, 10);
 
@@ -50,23 +51,15 @@ const GameFactory = (id?: number) => {
       }).then(({ dataValues }) => dataValues);
     },
 
-    result: async (homeTeam: number, awayTeam: number) => {
-      return await db.models.Game.update({
-        homeTeamResult: homeTeam,
-        awayTeamResult: awayTeam,
-        status: 'COMPLETED'
-      }, {
-        where: {
-          id: { [Op.eq]: id }
-        }
-      });
-    },
+    // result(): REMOVED (#190, LLD e4) — the unguarded blind-update path is deleted;
+    // Game writes are reachable only through the guarded simulate paths below.
 
-    simulate: async () => {
+    // @spec SIM-001,SIM-002,SIM-003,SIM-004,SIM-005,SIM-006,SIM-007,SIM-016
+    simulate: async (options?: SimulateOptions) => {
       const game = await db.models.Game.findByPk(id);
       if (!game) throw new DomainError('the game was not found', 404);
 
-      const { status, scheduledDate } = game.dataValues;
+      const { status, scheduledDate, homeTeam, awayTeam } = game.dataValues;
 
       if (status === 'COMPLETED') {
         throw new DomainError('the game has already been completed', 422);
@@ -94,8 +87,10 @@ const GameFactory = (id?: number) => {
         }
       }
 
-      const homeTeamResult = Math.floor(Math.random() * 10);
-      const awayTeamResult = Math.floor(Math.random() * 10);
+      // @spec SIM-016 score production delegated to the SimulationEngine strategy
+      // (seed domain-only — LLD e16; per-game derivation — e13/e14).
+      const { homeTeamResult, awayTeamResult } = resolveSimulationEngine(options?.seed)
+        .simulateGame({ gameId: id!, homeTeam, awayTeam });
 
       const [affectedCount] = await db.models.Game.update(
         { homeTeamResult, awayTeamResult, status: 'COMPLETED' },
@@ -113,8 +108,8 @@ const GameFactory = (id?: number) => {
       return updated!.dataValues;
     },
 
-    // @spec SCL-013
-    simulateBatch: async (gwId: number, endDate?: string) => {
+    // @spec SCL-013,SIM-011,SIM-012,SIM-013,SIM-014,SIM-016
+    simulateBatch: async (gwId: number, endDate?: string, options?: SimulateOptions) => {
       const gameWorld = await db.models.GameWorld.findByPk(gwId);
       if (!gameWorld) throw new DomainError('the GameWorld was not found', 404);
 
@@ -160,6 +155,11 @@ const GameFactory = (id?: number) => {
       const simulated: any[] = [];
       const skipped: { game: any; reason: string }[] = [];
 
+      // @spec SIM-016 resolved once before the loop; per-game calls are pure, so
+      // transaction semantics are unchanged (LLD e17) and batch outcomes are
+      // order- and skip-independent (e14).
+      const engine = resolveSimulationEngine(options?.seed);
+
       const t = await db.transaction();
       try {
         for (const game of games) {
@@ -178,8 +178,13 @@ const GameFactory = (id?: number) => {
             continue;
           }
 
-          const homeTeamResult = Math.floor(Math.random() * 10);
-          const awayTeamResult = Math.floor(Math.random() * 10);
+          // @spec SIM-016 per-game delegation — fresh seed per game in production,
+          // pinned base seed in tests (SIM-017/SIM-018).
+          const { homeTeamResult, awayTeamResult } = engine.simulateGame({
+            gameId: game.dataValues.id,
+            homeTeam: game.dataValues.homeTeam,
+            awayTeam: game.dataValues.awayTeam,
+          });
 
           await db.models.Game.update(
             { homeTeamResult, awayTeamResult, status: 'COMPLETED' },

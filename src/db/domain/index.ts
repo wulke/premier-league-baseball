@@ -7,4 +7,7 @@ export * from './knockout-advancement';
 export * from './lineup';
 export * from './league';
 export * from './player';
+export * from './simulation/engine';
+export * from './simulation/random-engine';
+export * from './simulation/seed';
 export * from './team';
