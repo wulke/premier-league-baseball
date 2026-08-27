@@ -197,3 +197,27 @@ Feature: Simulate Game
     And homeTeamResult remains 5
     And awayTeamResult remains 0
     And the game status remains "COMPLETED"
+
+  # ─── Engine Strategy Seam (#190) ─────────────────────────────────────────────
+  # Seed is a domain-only parameter (LLD e16): these scenarios call the domain directly,
+  # bypassing the handler layer which never passes a seed.
+
+  @spec:SIM-016
+  Scenario: Score production is delegated to the engine strategy
+    Given a Game exists with status "SCHEDULED" and no scheduledDate
+    When the domain simulates the game by id with pinned seed 4242
+    Then the recorded scores match the engine's direct output for the same seed and game context
+
+  @spec:SIM-017
+  Scenario: A pinned seed reproduces the same scores on re-simulation
+    Given a Game exists with status "SCHEDULED" and no scheduledDate
+    When the domain simulates the game by id with pinned seed 4242
+    And the game is reset to SCHEDULED with no results
+    And the domain simulates the game by id with pinned seed 4242 again
+    Then the recorded score pair is identical to the first simulation's
+
+  @spec:SIM-018
+  Scenario: Without a seed, simulating many games produces varied scores
+    Given 12 Games exist with status "SCHEDULED" and scheduledDate "2025-04-10"
+    When the domain simulates every created game by id without a seed
+    Then at least two games have different score pairs

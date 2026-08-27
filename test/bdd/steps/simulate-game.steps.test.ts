@@ -1,6 +1,7 @@
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import { simulateGame, simulateBatchGames as simulateBatchGamesHandler } from '../../../src/api/handlers';
+import { GameFactory, resolveSimulationEngine } from '../../../src/db/domain';
 import { DomainError } from '../../../src/db/domain/errors';
 import db from '../../../src/db/client';
 
@@ -22,6 +23,8 @@ interface WorldState {
   focusGameId?: number;
   createdGameIds: number[];
   preSimulationResult?: { homeTeamResult: number | null; awayTeamResult: number | null; status: string | null };
+  pinnedSeed?: number;
+  firstPinnedScores?: { homeTeamResult: number; awayTeamResult: number };
   response?: ResponseState;
   forceDbError: boolean;
 }
@@ -438,6 +441,65 @@ const registerSteps = ({ given, when, then, and }: any) => {
     const world = scenarioWorld;
     const game = await readGame(requireFocusGameId(world));
     expect(game.awayTeamResult).toBe(Number(away));
+  });
+
+  // ── #190 engine strategy seam: domain-direct steps (SIM-016..SIM-018).
+  // The seed is a domain-only parameter (LLD e16) — handlers never pass one, so
+  // these steps call GameFactory directly rather than through the API layer.
+
+  when(/^the domain simulates the game by id with pinned seed (\d+)$/, async (seed: string) => {
+    const world = scenarioWorld;
+    const id = requireFocusGameId(world);
+    world.pinnedSeed = Number(seed);
+    const game = await GameFactory(id).simulate({ seed: Number(seed) });
+    world.firstPinnedScores = { homeTeamResult: game.homeTeamResult, awayTeamResult: game.awayTeamResult };
+  });
+
+  when(/^the domain simulates the game by id with pinned seed (\d+) again$/, async (seed: string) => {
+    await GameFactory(requireFocusGameId(scenarioWorld)).simulate({ seed: Number(seed) });
+  });
+
+  given('the game is reset to SCHEDULED with no results', async () => {
+    await db.models.Game.update(
+      { status: 'SCHEDULED', homeTeamResult: null, awayTeamResult: null },
+      { where: { id: requireFocusGameId(scenarioWorld) } }
+    );
+  });
+
+  when('the domain simulates every created game by id without a seed', async () => {
+    for (const gameId of [...scenarioWorld.createdGameIds]) {
+      await GameFactory(gameId).simulate();
+    }
+  });
+
+  then(/^the recorded scores match the engine's direct output for the same seed and game context$/, async () => {
+    const world = scenarioWorld;
+    const id = requireFocusGameId(world);
+    const game = await readGame(id);
+    const expected = resolveSimulationEngine(world.pinnedSeed).simulateGame({
+      gameId: id,
+      homeTeam: game.homeTeam,
+      awayTeam: game.awayTeam,
+    });
+    expect(game.homeTeamResult).toBe(expected.homeTeamResult);
+    expect(game.awayTeamResult).toBe(expected.awayTeamResult);
+  });
+
+  then("the recorded score pair is identical to the first simulation's", async () => {
+    const world = scenarioWorld;
+    const game = await readGame(requireFocusGameId(world));
+    expect(game.homeTeamResult).toBe(world.firstPinnedScores!.homeTeamResult);
+    expect(game.awayTeamResult).toBe(world.firstPinnedScores!.awayTeamResult);
+  });
+
+  then('at least two games have different score pairs', async () => {
+    const world = scenarioWorld;
+    const pairs = new Set<string>();
+    for (const gameId of world.createdGameIds) {
+      const game = await readGame(gameId);
+      pairs.add(`${game.homeTeamResult}-${game.awayTeamResult}`);
+    }
+    expect(pairs.size).toBeGreaterThan(1);
   });
 };
 
