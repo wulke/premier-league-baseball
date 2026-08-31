@@ -1,10 +1,13 @@
 import { Transaction } from 'sequelize';
-import { MatchRules, PlayerAttributes, PlayerDetail, PlayerPosition, PlayerRecord } from '../../api/models';
+import { MatchRules, PlayerAttributes, PlayerDetail, PlayerPosition, PlayerRecord, RosterPlayer } from '../../api/models';
 import { DomainError } from './errors';
 import db from '../client';
-import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE } from './contract';
+import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE, SEASON_END_DAY, SEASON_END_MONTH } from './contract';
 import { generateIdentity, mulberry32, resolveComposition } from './identity';
 import { LineupFactory } from './lineup';
+
+// @spec ROST-006
+const COVERAGE_THRESHOLD = 70;
 
 interface GenerateRosterOptions {
   gameWorldYear?: number;
@@ -24,6 +27,7 @@ interface IPlayer {
   create: (gameWorldId: number, attributes: PlayerAttributes, teamId?: number | null, options?: CreatePlayerOptions) => Promise<PlayerRecord>;
   generateRoster: (teamId: number, gameWorldId: number, options?: GenerateRosterOptions) => Promise<PlayerRecord[]>;
   getDetail: (options: { currentDate?: Date | string; year: number; gwId?: number }) => Promise<PlayerDetail>;
+  setTeam: (teamId: number | null, options?: { transaction?: Transaction }) => Promise<void>;
 }
 
 const PLAYER_POSITIONS: PlayerPosition[] = [
@@ -152,7 +156,8 @@ const PlayerFactory = (playerId?: number): IPlayer => {
           playerId: player.id,
           teamId,
           startDate: new Date(Date.UTC(year, 2, 1)),
-          endDate: new Date(Date.UTC(year, 9, 31)),
+          // @spec XFER-021 — reuses the same SEASON_END_MONTH/DAY anchor Sign/Renew derive from.
+          endDate: new Date(Date.UTC(year, SEASON_END_MONTH, SEASON_END_DAY)),
         }))
       , { transaction });
 
@@ -203,6 +208,16 @@ const PlayerFactory = (playerId?: number): IPlayer => {
         } : null,
       };
     },
+
+    // @spec XFER-013,XFER-017 — the only sanctioned writer of Player.teamId outside
+    // generateRoster(); ContractFactory calls this instead of touching db.models.Player
+    // directly (backend-standards §1 model-ownership boundary).
+    setTeam: async (teamId, options = {}) => {
+      await db.models.Player.update(
+        { teamId },
+        { where: { id: playerId }, transaction: options.transaction },
+      );
+    },
   };
 };
 
@@ -215,4 +230,44 @@ const primaryPosition = (player: Pick<PlayerRecord, 'attributes'>): PlayerPositi
   ), PLAYER_POSITIONS[0]);
 };
 
-export { PlayerFactory, primaryPosition, allocateRosterSlots, PLAYER_POSITIONS, FIELDER_POSITIONS, resolveCurrentContract };
+// @spec ROST-008,ROST-009,ROST-011,XFER-022,XFER-023 — shared row serializer for
+// TeamFactory.getRoster() and GameWorldFactory.getFreeAgents(); accepts either a plain
+// dataValues-shaped object or a raw Sequelize instance.
+const toRosterPlayer = (gameWorldYear: number) => (player: any): RosterPlayer => {
+  const values = player.dataValues ?? player;
+  const primary = primaryPosition(values);
+  const positionCoverage = PLAYER_POSITIONS.filter((position) => (
+    values.attributes.positions[position] >= COVERAGE_THRESHOLD || position === primary
+  ));
+
+  return {
+    id: values.id,
+    givenName: values.givenName,
+    familyName: values.familyName,
+    countryCode: values.countryCode,
+    bats: values.bats,
+    throws: values.throws,
+    age: gameWorldYear - new Date(values.birthDate).getUTCFullYear(),
+    primaryPosition: primary,
+    positionCoverage,
+    positions: values.attributes.positions,
+    contact: values.attributes.contact,
+    power: values.attributes.power,
+    armStrength: values.attributes.armStrength,
+    accuracy: values.attributes.accuracy,
+    reaction: values.attributes.reaction,
+    vision: values.attributes.vision,
+    discipline: values.attributes.discipline,
+  };
+};
+
+export {
+  PlayerFactory,
+  primaryPosition,
+  toRosterPlayer,
+  COVERAGE_THRESHOLD,
+  allocateRosterSlots,
+  PLAYER_POSITIONS,
+  FIELDER_POSITIONS,
+  resolveCurrentContract,
+};

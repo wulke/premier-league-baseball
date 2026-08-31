@@ -78,6 +78,34 @@ router.post(Endpoints.SetManagedClub, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
+router.post(Endpoints.SignPlayer, async (req: any, res: any) => {
+  // @spec XFER-001,XFER-002,XFER-003,XFER-007,XFER-010,XFER-012,XFER-013,XFER-020
+  await handlers.signPlayer(Number(req.params.teamId), req.body?.playerId, req.body?.endDate)
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
+router.post(Endpoints.ReleasePlayer, async (req: any, res: any) => {
+  // @spec XFER-001,XFER-004,XFER-010,XFER-014,XFER-015,XFER-016,XFER-017
+  await handlers.releasePlayer(Number(req.params.teamId), req.body?.playerId)
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
+router.post(Endpoints.RenewPlayer, async (req: any, res: any) => {
+  // @spec XFER-001,XFER-005,XFER-006,XFER-007,XFER-010,XFER-018,XFER-019,XFER-020
+  await handlers.renewPlayer(Number(req.params.teamId), req.body?.playerId, req.body?.endDate)
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
+router.get(Endpoints.GetFreeAgents, async (req: any, res: any) => {
+  // @spec XFER-009,XFER-023
+  await handlers.getFreeAgents(Number(req.params.gwId))
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
 router.post(Endpoints.LeagueSeasonCutover, async (req: any, res: any) => {
   // @spec SCL-015
   await handlers.cutoverLeagueSeason(Number(req.params.leagueId))

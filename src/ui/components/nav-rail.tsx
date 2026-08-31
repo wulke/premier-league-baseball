@@ -86,8 +86,8 @@ const NavRail = () => {
             {/* @spec MCLUI-004 — redirects to the symmetric team hub/roster from map #135. */}
             <Link data-testid="nav-managed-club" to={`/${gwId}/team/${managedTeamId}`} style={managedLinkStyle}>My Club</Link>
             <Link data-testid="nav-managed-roster" to={`/${gwId}/team/${managedTeamId}/roster`} style={managedLinkStyle}>Roster</Link>
-            {/* @spec MCLUI-005 — no transfers surface yet (#140); always dimmed. */}
-            <div data-testid="nav-fog-transfers">Transfers</div>
+            {/* @spec XFERUI-001 — the Transfers surface now exists (#237); lit only once a club is claimed. */}
+            <Link data-testid="nav-managed-transfers" to={`/${gwId}/transfers`} style={managedLinkStyle}>Transfers</Link>
           </>
         ) : (
           <>

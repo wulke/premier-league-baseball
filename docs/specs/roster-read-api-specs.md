@@ -9,7 +9,7 @@ Backend requirements for the team roster read endpoint and its domain read
 | ROST-001 | WHEN `:teamId` does not match a Team THE system SHALL respond `404` with `{ error }` | [x] → #169 |
 | ROST-002 | WHEN `?gwId=` is provided and the team belongs to a different GameWorld THE system SHALL respond `404` (team IDs are globally unique, so no gw-nested path is needed) | [x] → #169 |
 | ROST-003 | WHEN a Team exists but has zero active Contracts THE system SHALL return an empty array, not an error | [x] → #169 |
-| ROST-004 | WHEN multiple Contract rows exist for one player (multi-year history) THE system SHALL NOT apply a `startDate`/`endDate` active-filter in v1 — the active-contract filter is deferred to the transfers map | [D] |
+| ROST-004 | WHEN multiple Contract rows exist for one player (multi-year history) THE system SHALL apply a `startDate`/`endDate` active-filter, returning only the Contract that covers `GameWorld.currentDate` | [x] → #237 |
 | ROST-005 | WHEN two or more positions tie for the highest rating THE system SHALL derive `primaryPosition` as the first-listed position in enum order | [x] → #169 |
 | ROST-006 | WHEN deriving `positionCoverage` THE system SHALL use a placeholder threshold of `70`; analytical calibration of the threshold is deferred to engine/generation work | [D] |
 | ROST-007 | WHEN a client requests `GET /api/team/:teamId/roster` THE system SHALL return a flat array of roster rows anchored on the team's active Contracts via a `Team → Contract → Player` join | [x] → #169 |
@@ -18,10 +18,14 @@ Backend requirements for the team roster read endpoint and its domain read
 | ROST-010 | WHEN returning a roster THE system SHALL return rows in `Player.id` order with no server-side sort or filter — sort and filter are the UI's responsibility | [x] → #169 |
 | ROST-011 | WHEN composing a roster row THE system SHALL include a `positions` field carrying the full 9-key fielding-rating map verbatim, alongside (not in place of) the derived `primaryPosition`/`positionCoverage` fields | [x] → #225 |
 
-`ROST-004` and `ROST-006` are Deferred, not Active — they record deliberate v1 gaps traceable to
-their owning future maps ([#140](https://github.com/wulke/premier-league-baseball/issues/140) and
-[#136](https://github.com/wulke/premier-league-baseball/issues/136) respectively); the anchored-on-Contract
-design makes the `ROST-004` filter a one-line seam when #140 lands.
+`ROST-004` was Deferred, recording a deliberate v1 gap traceable to the transfers map
+([#140](https://github.com/wulke/premier-league-baseball/issues/140)); the anchored-on-Contract
+design made it a one-line seam. [#237](https://github.com/wulke/premier-league-baseball/issues/237)
+is that map — `docs/specs/contract-lifecycle-specs.md`'s `XFER-022` supersedes this row, implementing
+the concrete filter via the existing `resolveCurrentContract` helper.
+
+`ROST-006` remains Deferred — it records a v1 gap traceable to the engine/generation map
+([#136](https://github.com/wulke/premier-league-baseball/issues/136)), unrelated to transfers.
 
 `ROST-011` was added by the Lineup View redesign
 ([#225](https://github.com/wulke/premier-league-baseball/issues/225),

@@ -11,8 +11,15 @@ Frontend requirements for claiming/resigning the managed club and wiring the nav
 | MCLUI-002 | WHEN the team hub renders for the team that IS the GameWorld's managed club THE system SHALL show a "Stop managing" action that posts `{ teamId: null }` to the managed-club setter | [x] → #153 |
 | MCLUI-003 | WHEN a claim/resign setter call responds THE system SHALL re-read `managedTeamId` from the game-world context (re-GET) with no full page reload, so the hub action and the nav rail update from the re-fetched GameWorld | [x] → #153 |
 | MCLUI-004 | WHEN a managed club is set THE system SHALL light the nav rail's "My Club" item as a link to the managed team's hub (`/:gwId/team/:managedTeamId`) and "Roster" as a link to the managed team's roster view (`/:gwId/team/:managedTeamId/roster`) | [x] → #153 |
-| MCLUI-005 | WHEN no managed club is set THE system SHALL keep the "My Club" / "Roster" / "Transfers" trio dimmed with no affordance, and "Transfers" SHALL remain dimmed in both states | [x] → #153 |
+| MCLUI-005 | WHEN no managed club is set THE system SHALL keep the "My Club" / "Roster" / "Transfers" trio dimmed with no affordance | [x] → #153 |
 | MCLUI-006 | WHEN the user claims or resigns THE system SHALL do so unconditionally with no apply/interview gate (deferred post-engine) | [x] → #153 |
+
+`MCLUI-005`'s original text additionally said "Transfers SHALL remain dimmed in both states" — true
+through [#153](https://github.com/wulke/premier-league-baseball/issues/153), when no Transfers surface
+existed. [#237](https://github.com/wulke/premier-league-baseball/issues/237) supersedes that clause:
+`docs/specs/transfers-ui-specs.md`'s `XFERUI-001` now lights "Transfers" as a link once a club is
+claimed, same as "My Club"/"Roster" (`MCLUI-004`). `MCLUI-005` above is trimmed to only the
+unclaimed-state guarantee, which is still true unchanged.
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 

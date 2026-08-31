@@ -1,8 +1,9 @@
 import { Op, UniqueConstraintError } from 'sequelize';
 import { GameLineupSnapshot, MatchRules, RosterPlayer, TeamConfig, TeamLineup, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
 import db from '../client';
+import { listForTeam } from './contract';
 import { getKnockoutRoundLabel } from './knockout';
-import { PLAYER_POSITIONS, PlayerFactory, primaryPosition } from './player';
+import { PlayerFactory, resolveCurrentContract, toRosterPlayer } from './player';
 import { DomainError } from './errors';
 
 interface ITeam {
@@ -12,8 +13,6 @@ interface ITeam {
   snapshotForGame: (gameId: number) => Promise<GameLineupSnapshot>;
   getLineup: (options?: { gameId?: number; gwId?: number }) => Promise<TeamLineup>;
 };
-
-const COVERAGE_THRESHOLD = 70;
 
 interface TeamCreateOptions {
   compositionKey?: string;
@@ -182,6 +181,9 @@ const TeamFactory = (id?: number): ITeam => {
     },
 
     // @spec ROST-001,ROST-003,ROST-005,ROST-007,ROST-008,ROST-009,ROST-010,ROST-011
+    // @spec XFER-022 — Contract is the membership source of truth; this now filters to
+    // each player's *current* Contract (superseding ROST-004's unfiltered v1 behavior)
+    // via the same resolveCurrentContract helper the player-detail read already uses.
     getRoster: async (): Promise<RosterPlayer[]> => {
       const team = await db.models.Team.findByPk(id);
       if (!team) throw new DomainError('Not found', 404);
@@ -189,40 +191,23 @@ const TeamFactory = (id?: number): ITeam => {
       const gameWorld = await db.models.GameWorld.findByPk(team.dataValues.gameWorldId);
       if (!gameWorld) throw new DomainError('Not found', 404);
 
-      // Contract is the membership source of truth. ROST-004 deliberately leaves
-      // date filtering to the transfers map; every current v1 Contract is returned.
-      const contracts = await (team as any).getContracts({
-        include: [{ model: db.models.Player }],
-        order: [[db.models.Player, 'id', 'ASC']],
+      const contracts = await listForTeam(id!);
+
+      const currentDate = gameWorld.dataValues.currentDate ?? undefined;
+      const year = gameWorld.dataValues.year;
+
+      const byPlayer = new Map<number, any[]>();
+      contracts.forEach((contract: any) => {
+        const playerId = contract.dataValues.playerId;
+        byPlayer.set(playerId, [...(byPlayer.get(playerId) ?? []), contract]);
       });
 
-      return contracts.map((contract: any) => {
-        const player = contract.dataValues.Player.dataValues;
-        const primary = primaryPosition(player);
-        const positionCoverage = PLAYER_POSITIONS.filter((position) => (
-          player.attributes.positions[position] >= COVERAGE_THRESHOLD || position === primary
-        ));
-
-        return {
-          id: player.id,
-          givenName: player.givenName,
-          familyName: player.familyName,
-          countryCode: player.countryCode,
-          bats: player.bats,
-          throws: player.throws,
-          age: gameWorld.dataValues.year - new Date(player.birthDate).getUTCFullYear(),
-          primaryPosition: primary,
-          positionCoverage,
-          positions: player.attributes.positions,
-          contact: player.attributes.contact,
-          power: player.attributes.power,
-          armStrength: player.attributes.armStrength,
-          accuracy: player.attributes.accuracy,
-          reaction: player.attributes.reaction,
-          vision: player.attributes.vision,
-          discipline: player.attributes.discipline,
-        };
-      });
+      return Array.from(byPlayer.values())
+        .map((playerContracts) => resolveCurrentContract(playerContracts, currentDate, year))
+        .filter((contract): contract is any => contract !== null)
+        .map((contract) => contract.dataValues.Player)
+        .sort((a: any, b: any) => a.dataValues.id - b.dataValues.id)
+        .map(toRosterPlayer(year));
     },
 
     // @spec LSNAP-001,LSNAP-002,LSNAP-003,LSNAP-005

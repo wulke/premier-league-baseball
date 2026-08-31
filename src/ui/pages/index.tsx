@@ -6,3 +6,4 @@ export * from './team-calendar';
 export * from './team-hub';
 export * from './team-lineup';
 export * from './team-roster';
+export * from './transfers';
