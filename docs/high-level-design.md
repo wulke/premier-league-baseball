@@ -821,7 +821,7 @@ user opens Team Hub → Lineup tab (unchanged route: /:gwId/team/:teamId/lineup)
 ## Goal
 
 Give every **person-attribute** one durable storage shape that preserves innate ability, earned
-career history, short-term form, fixed expression, and aging separately. Consumers such as game
+career history, short-term form, named fixed disposition, and aging separately. Consumers such as game
 simulation, scouting, salary, and management must be able to make purpose-specific reads from the
 same underlying person without a global rating, destructive aging writes, or entity-specific
 parallel systems.
@@ -864,6 +864,15 @@ parallel systems.
     all outcome-graded contributions. Uniform storage and reads preserve one learning model while
     allowing sparse, delayed, or fuzzy signals without special storage.
 
+- **Options (numeric Nature per attribute vs. named person-level Natures):**
+  - Option A: Persist a raw Nature multiplier inside every attribute tuple.
+  - Option B (chosen): Give a person zero or more fixed, named Natures; resolve only the Natures
+    applicable to the attribute being read into that formula's expression multiplier.
+  - **Decision:** Option B. Nature is a recognizable disposition, not an unexplained number. A
+    person-level named collection preserves that identity, lets the Nature catalog say which
+    attribute kinds each Nature affects, and makes every non-applicable Nature an explicit no-op
+    rather than duplicated arbitrary data on unrelated attributes.
+
 ## Architecture
 
 ### Storage contract
@@ -871,17 +880,21 @@ parallel systems.
 Every attribute belonging to a person-entity carries this logical tuple:
 
 ```
-{ IV, EV, Nature, formWindow, ageDiscountMeta }
+per attribute: { IV, EV, formWindow, ageDiscountMeta }
+per person:    { Natures[] }
 ```
 
 - **IV** is the fixed innate baseline. It is a reference point, not a ceiling or a cap.
 - **EV** is the signed, unbounded sum of earned `±delta` writes. Failures may lower it; neither
   slump recovery nor aging mutates it.
-- **Nature** is a fixed, per-attribute expression multiplier.
 - **formWindow** is a ring buffer of recent `±delta` writes. It is a second view of those events,
   not a second learning stream.
 - **ageDiscountMeta** is a fixed, hidden per-person meta-modulator. Together with the attribute's
   aging profile, it sets that person's prime offset and decline acceleration.
+- **Natures** are fixed, named person-level dispositions. A Nature catalog declares the attribute
+  kinds each name affects and its fixed expression effect. At read time, a formula resolves all
+  applicable Natures for its input attribute; their effects compose multiplicatively in stable
+  catalog order. No applicable Nature resolves to multiplier `1`.
 
 This is a **person-attribute** contract. World inputs such as gear and weather remain flat and out
 of scope. Visible and hidden attributes use the same tuple: hidden attributes may feed gameplay
@@ -894,7 +907,7 @@ another person's EV.
 ```
 capacity: (IV, EV)
   → combine with the age discount applied to IV only
-  → × Nature
+  → × resolve applicable person-level Natures for this attribute
   → faded capacity
 
 formWindow → form read
@@ -905,8 +918,9 @@ formula-owned combine(faded capacity, form read)
 ```
 
 The age discount is a read-time multiplier: it is decline-only, never exceeds `1`, and has a hard
-per-profile floor. The capacity form is conceptually `Nature × (discount(age) × IV + EV)`; exact
-constants and attribute-profile assignments are tuning. Form does not receive the age discount.
+per-profile floor. The capacity form is conceptually
+`resolveNatures(person.natures, attributeKind) × (discount(age) × IV + EV)`; exact catalog effects,
+constants, and attribute-profile assignments are tuning. Form does not receive the age discount.
 `[-C,+C]` bounds a formula's consumed game-performance read, never stored EV; formulae deliberately
 intended to read an unfaded aggregate may opt out of that clamp.
 
@@ -986,5 +1000,5 @@ storage decision for this pattern.
 - Migration or persistence design against the current Sequelize schema, including any rewrite of
   `Player.attributes`.
 - All tuning constants: `C`, event delta caps, form-window length, event granularity, Nature
-  values, aging profile constants/primes/floors, and meta-modulator naming/ranges.
+  catalog effects, aging profile constants/primes/floors, and meta-modulator naming/ranges.
 - Any first simulation, scouting, salary, UI, or API consumer implementation.
