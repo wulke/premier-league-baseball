@@ -1,11 +1,10 @@
 // @spec SHELL-001..SHELL-010, SIMUI-006,SIMUI-007 (AppShell + NavRail acceptance; real MemoryRouter locations).
-import React from 'react';
 import { act } from 'react';
-import { MemoryRouter } from 'react-router';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import { cleanup, render, screen } from '@testing-library/react';
 import path from 'path';
-import Routes from '../../../src/ui/routes';
+import routes from '../../../src/ui/routes';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/app-shell-ui.feature'));
 
@@ -20,11 +19,8 @@ let calls: string[] = [];
 
 const response = (body: unknown) => ({ ok: true, json: () => Promise.resolve(body) });
 const renderAt = async (entry: string) => {
-  render(
-    <MemoryRouter initialEntries={[entry]}>
-      <Routes />
-    </MemoryRouter>,
-  );
+  const router = createMemoryRouter(routes, { initialEntries: [entry] });
+  render(<RouterProvider router={router} />);
   await act(async () => {
     await Promise.resolve();
     await Promise.resolve();

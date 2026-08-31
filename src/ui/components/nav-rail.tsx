@@ -1,7 +1,6 @@
 // @spec SHELL-004..SHELL-009
 import React, { useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router';
-import { useGameWorldContext } from '../context/game-world-context';
+import { Link, useLocation, useParams, useRouteLoaderData } from 'react-router';
 import { BatchSimulateControl } from './batch-simulate-control';
 import { RapidSimulateControl } from './rapid-simulate-control';
 
@@ -27,7 +26,8 @@ const managedLinkStyle: React.CSSProperties = {
 
 // @spec SHELL-004..SHELL-009, SIMUI-006,SIMUI-007
 const NavRail = () => {
-  const { gw } = useGameWorldContext();
+  // @spec RLDRUI-001 — gw comes from the :gwId route's loader; undefined on Home (no match).
+  const gw = useRouteLoaderData('gwId') as any;
   const { pathname } = useLocation();
   const { gwId, leagueId } = useParams();
   // @spec RSSUI-006 — shared busy flag so the batch + rapid controls can lock each other.

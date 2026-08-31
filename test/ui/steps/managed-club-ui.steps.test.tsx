@@ -1,10 +1,9 @@
 // @spec MCLUI-001..MCLUI-006 (managed-club UI acceptance)
-import React from 'react';
 import path from 'path';
-import { MemoryRouter } from 'react-router';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import Routes from '../../../src/ui/routes';
+import routes from '../../../src/ui/routes';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/managed-club-ui.feature'));
 
@@ -56,12 +55,10 @@ beforeEach(() => {
 });
 afterEach(() => cleanup());
 
-const renderAt = (entry: string) => {
-  render(
-    <MemoryRouter initialEntries={[entry]}>
-      <Routes />
-    </MemoryRouter>,
-  );
+const renderAt = async (entry: string) => {
+  const router = createMemoryRouter(routes, { initialEntries: [entry] });
+  render(<RouterProvider router={router} />);
+  await screen.findByTestId('app-shell');
 };
 
 const registerSteps = ({ given, when, then }: any) => {

@@ -1,10 +1,9 @@
 // @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004
-import React from 'react';
 import path from 'path';
-import { MemoryRouter } from 'react-router';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
-import Routes from '../../../src/ui/routes';
+import routes from '../../../src/ui/routes';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/lineup-view-ui.feature'));
 
@@ -34,8 +33,11 @@ const installFetch = () => {
   }) as jest.Mock;
 };
 
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004
-const renderAt = (entry: string) => render(<MemoryRouter initialEntries={[entry]}><Routes /></MemoryRouter>);
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,RLDRUI-006
+const renderAt = async (entry: string) => {
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [entry] })} />);
+  await screen.findByTestId('app-shell');
+};
 
 beforeEach(() => { lineup = dhOff(); roster = makeRoster(); installFetch(); });
 afterEach(() => cleanup());

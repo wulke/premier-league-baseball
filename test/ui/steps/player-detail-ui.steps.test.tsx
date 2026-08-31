@@ -1,10 +1,9 @@
 // @spec PDETUI-001..PDETUI-009
-import React from 'react';
 import path from 'path';
-import { MemoryRouter, useLocation } from 'react-router';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import Routes from '../../../src/ui/routes';
+import routes from '../../../src/ui/routes';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/player-detail-ui.feature'));
 
@@ -61,12 +60,12 @@ const detail = (overrides: Partial<PlayerDetail> = {}): PlayerDetail => ({
 let players: Record<number, PlayerDetail> = {};
 let failedPlayerIds: number[] = [];
 let unmountPage: (() => void) | undefined;
+let router: ReturnType<typeof createMemoryRouter>;
 
-const LocationProbe = () => <output data-testid="location">{useLocation().pathname}</output>;
-
-// @spec PDETUI-001..PDETUI-009
+// @spec PDETUI-001..PDETUI-009,RLDRUI-006
 const renderAt = (entry: string) => {
-  const page = render(<MemoryRouter initialEntries={[entry]}><Routes /><LocationProbe /></MemoryRouter>);
+  router = createMemoryRouter(routes, { initialEntries: [entry] });
+  const page = render(<RouterProvider router={router} />);
   unmountPage = page.unmount;
 };
 
@@ -173,7 +172,7 @@ defineFeature(feature, (test) => {
     // @spec PDETUI-004
     then('the Positions tab is shown with the field diagram by default', async () => { fireEvent.click(await screen.findByRole('button', { name: 'Positions' })); expect(screen.getByTestId('position-field-diagram')).toBeInTheDocument(); });
     // @spec PDETUI-004
-    and('the URL does not encode the sub-view', () => expect(screen.getByTestId('location')).toHaveTextContent('/1/player/100'));
+    and('the URL does not encode the sub-view', () => expect(router.state.location.pathname).toBe('/1/player/100'));
   });
 
   test('A pitcher\'s Pitch repertoire tab shows the 4-pitch cards', ({ given, and, when, then }) => {

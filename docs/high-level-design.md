@@ -522,3 +522,175 @@ simulate / simulateBatch
 - **Domain-only seed parameter**: no API/env exposure now — the golden-master tests call the
   factory directly (matching `test/db/domain/game.test.ts` precedent, e.g. PID-005). Exposing a
   seed via API would leak a test concern into the contract.
+
+# HLD: Route-Loader Data Migration
+
+> Backed by [Map: Route-loader migration for click-to-render lag](https://github.com/wulke/premier-league-baseball/issues/229)
+> — a wayfinder planning map whose six resolved tickets (#230–#235) are the source decisions
+> for this HLD. This is a **mechanism-swap map**: it changes *when and how* existing GET
+> requests fire, not what data any page shows or what any mutation does. It assumes the
+> current `AppShell`/`GameWorldProvider`/page-component structure from
+> [HLD: App Shell — Left Nav Rail](#hld-app-shell--left-nav-rail) is already on `main`.
+
+## Goal
+
+Move every fetch-on-mount GET across the UI (`Home`, `GameWorld`, `League`, `PlayerDetail`,
+`TeamHub`, `TeamCalendar`, `TeamRoster`, `TeamLineupView`, and `GameWorldProvider`) onto
+react-router v7 data-router loaders, so data fetching starts during the navigation
+transition instead of after mount — eliminating the click-to-render lag caused by today's
+render-then-`useEffect`-fetch waterfall. Mutations stay as imperative fetches with local
+state; loaders own reads only. This HLD is architecture + a batch-sequenced rollout plan;
+no migration code lands from the map or this document.
+
+## Strategy
+
+- **Options (router config style)**:
+  - Option A: Rewrite `routes.tsx` to object-based `RouteObject[]` authored directly (no JSX).
+  - Option B (chosen): Keep `createRoutesFromElements(<Routes>…)`, feeding its output into
+    both `createBrowserRouter` (app) and `createMemoryRouter` (tests).
+  - **Decision**: Option B (#233). Preserves `routes.tsx`'s current JSX shape and inline
+    `@spec` comment placement — a pure mechanism swap, not a route-tree rewrite — while still
+    giving app and tests one shared `RouteObject[]` source of truth.
+
+- **Options (`GameWorldProvider` replacement)**:
+  - Option A: Keep the Context provider, layer loaders only on leaf routes.
+  - Option B (chosen): Delete `GameWorldProvider` entirely; `gw` becomes a loader on the
+    `:gwId` Route (`id="gwId"`), read via `useRouteLoaderData`.
+  - **Decision**: Option B (#230). One loader attached to the route every consumer already
+    sits under matches today's single-fetch-per-`gwId` behavior exactly, with no separate
+    context tree to keep in sync. `invalidate()` is replaced at its ~4 call sites by
+    `useRevalidator().revalidate()`, whose scoping to the matched route tree satisfies
+    "not the whole tree" for free. Cancellation moves from a manual flag to the loader's
+    `request.signal`.
+
+- **Options (blocking vs. deferred data)**:
+  - Option A: Every loader blocks navigation until its data resolves.
+  - Option B (chosen): Blocking loaders for single-fetch pages; `defer()`/`Await`/`Suspense`
+    for fan-out pages, at the finest granularity each fan-out naturally offers.
+  - **Decision**: Option B (#231). Blocking alone still leaves the route unpainted for the
+    length of the round trip — no better than today for the slowest pages. `Home`,
+    `PlayerDetail`, `TeamCalendar`, `TeamRoster`, and the `gw` loader are single-fetch and
+    block. `GameWorld` (per-league), `League` (per-section), and `TeamLineup` (per-fetch) defer
+    at their finest unit so independent pieces paint as they resolve rather than waiting on
+    the slowest one; each deferred boundary shows a skeleton shaped like its eventual content.
+
+- **Options (not-found / error modeling)**:
+  - Option A: Adopt React Router's idiomatic `throw new Response(...)` + `errorElement`.
+  - Option B (chosen): Keep the loader-returns-`null` shape; the page component renders its
+    existing not-found branch.
+  - **Decision**: Option B (#233). `PlayerDetail` is the only page with a single-entity 404
+    today; introducing a new error-boundary mechanism for one page would add a second failure
+    pattern alongside the null-returning one every other page keeps for network failures, for
+    no behavioral gain — status quo shape, new plumbing underneath.
+
+- **Options (`TeamCalendar` date filter)**:
+  - Option A: Keep the filter as local component state, calling `revalidate()` explicitly.
+  - Option B (chosen): Promote the date-range filter to real URL search params
+    (`?from=&to=`), replacing today's Status/Competition dropdowns.
+  - **Decision**: Option B (#234). Search-param changes re-run the loader for free and make
+    the filtered view shareable/back-button-able; `shouldRevalidate` skips a refetch when only
+    the search string is identical-but-reapplied while still letting explicit `revalidate()`
+    calls (e.g. post-simulate) through.
+
+- **Options (hover-prefetch)**:
+  - Option A: Hand-roll a hover-triggered prefetch (loader-call + shared cache on
+    `onMouseEnter`) alongside the loader migration.
+  - Option B (chosen): Out of scope for this map.
+  - **Decision**: Option B (#232 research). `<Link prefetch>` is Framework-mode only (requires
+    the react-router Vite plugin); this repo builds with Parcel. A manual hover-prefetch is
+    possible on top of loaders but was already rejected as a standalone fix in favor of the
+    loader architecture itself — parked as optional future icing, not part of this migration.
+
+- **Options (rollout shape)**:
+  - Option A: One PR migrating all 8 pages + `GameWorldProvider` + the test harness at once.
+  - Option B (chosen): Six sequenced batches, each its own PR/LID cycle.
+  - **Decision**: Option B (#235). A single PR-sized surface this large is hard to review and
+    hard to revert piecemeal; batching lets the harness and `GameWorldProvider` pattern prove
+    out on the lowest-risk pages before the highest-traffic ones adopt it. See Architecture →
+    Flow for the batch order.
+
+## Architecture
+
+### Components
+
+- **`routes.tsx`** (MODIFIED): exports the `createRoutesFromElements(...)` result as a
+  `RouteObject[]`, consumed by both `createBrowserRouter` (app) and `createMemoryRouter`
+  (tests) — one source of truth for the route tree.
+- **`GameWorldProvider`** (DELETED, `src/ui/context/game-world-context.tsx`): superseded by a
+  loader on the `:gwId` Route; all consumers switch to `useRouteLoaderData("gwId")`.
+- **Page loaders** (NEW, one per page — `Home`, `PlayerDetail`, `TeamCalendar`, `TeamRoster`,
+  `GameWorld`, `League`, `TeamLineupView`): blocking for the single-fetch pages, `defer()`-based
+  for the three fan-out pages, per the Strategy decision above.
+- **`TeamCalendar`** (MODIFIED): Status/Competition dropdowns replaced by a `?from=&to=`
+  search-param date-range filter; adds a `shouldRevalidate` override.
+- **`TeamHub`** (MODIFIED): its `SetManagedClub` mutation swaps to
+  `useRevalidator().revalidate()`.
+- **UI test harness** (`test/ui/test-utils.tsx`, `test/ui/steps/*.steps.test.tsx`, MODIFIED):
+  renders via `createMemoryRouter(routes, { initialEntries, initialIndex })` +
+  `<RouterProvider>` in place of `<MemoryRouter><Routes/></MemoryRouter>`; existing
+  `given`/`when`-ordered fetch-mock setup and `findBy*` assertions carry over unchanged.
+- Per-batch LLDs (`docs/llds/route-loader-<batch>.md`, TO BE PRODUCED, one per batch below)
+  detail each batch's loader signatures, `shouldRevalidate` logic, and skeleton components.
+
+### Flow
+
+```
+Rollout batches (each its own PR + LID cycle: LLD → EARS → Tests → Code):
+
+Batch 0 — Foundation
+  routes.tsx → RouteObject[]; test harness → createMemoryRouter/RouterProvider (#233)
+  GameWorldProvider deleted; gw loader lands on :gwId Route (#230)
+  ↓ (everything below depends on this batch's harness + gw loader)
+
+Batch 1 — Leaf pages (low risk)
+  PlayerDetail, TeamRoster: blocking loaders, no defer, minimal mutations
+
+Batch 2 — TeamCalendar
+  ?from=&to= search-param loader + shouldRevalidate (#234)
+  TeamHub's SetManagedClub → useRevalidator().revalidate()
+
+Batch 3 — TeamLineup
+  First defer()/Await page: independent deferred value per fetch (lineup, roster)
+
+Batch 4 — League, GameWorld
+  defer() per section (League) / per league (GameWorld); heaviest mutation density
+
+Batch 5 — Home
+  Highest-traffic entry point, migrated last
+
+Runtime request flow (any migrated page, e.g. PlayerDetail):
+  User clicks <Link to="/:gwId/player/:playerId">
+    → react-router starts the transition AND calls the route's loader concurrently
+    → loader issues GET (fetch, with request.signal for cancellation)
+    → [blocking] route paints once loader resolves
+    → [deferred] route shell + skeletons paint immediately; Await resolves each
+       section's promise independently as its fetch completes
+```
+
+### Key Trade-offs
+
+- **Six-batch rollout accepts a transitional mixed state** (some pages on loaders, some still
+  `useEffect`+`fetch`) between Batch 0 and Batch 5 landing, in exchange for reviewable,
+  independently revertible PRs and a harness/pattern proven on low-traffic pages before the
+  highest-traffic ones (Home, GameWorld) adopt it.
+- **Per-unit defer granularity** (per-league, per-section, per-fetch) costs more Suspense
+  boundaries and skeleton components than one bundled promise per fan-out page, in exchange
+  for independent pieces painting as they resolve instead of all waiting on the slowest fetch
+  in the group — the core lag fix `defer()` exists to deliver.
+- **No new error-boundary mechanism**: keeping the loader-returns-`null` shape for
+  `PlayerDetail`'s 404 avoids introducing `errorElement`/`ErrorBoundary` for a single call
+  site, at the cost of not adopting React Router's more idiomatic error-modeling pattern
+  project-wide.
+- **Skeleton visual design and cancellation semantics for every deferred fetch beyond the `gw`
+  loader are left to each batch's own LLD**, not pinned here — the map deliberately parked
+  them as implementation detail once the architecture (defer granularity, request.signal
+  pattern) was locked.
+
+### Out of scope
+
+- Server-side changes (Express/Sequelize/SQLite) — the lag was confirmed to be UI-side.
+- Hover/viewport prefetch (`<Link prefetch>` equivalent) — Framework-mode only, unavailable
+  under this repo's Parcel/library-mode setup (#232); a hand-rolled version is sketched in
+  #232's resolution comment as optional future work, not part of this migration.
+- The lightweight prefetch-on-hover + in-memory-cache + skeleton patch — considered and
+  explicitly rejected in favor of this loader-based architectural fix.

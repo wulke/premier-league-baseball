@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet, useParams } from 'react-router';
+import { NavLink, Outlet, useParams, useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
-import { useGameWorldContext } from '../context/game-world-context';
 
 // @spec ROSTUI-006,ROSTUI-007,LINEUI-001,MCLUI-001,MCLUI-002,MCLUI-003
 const TeamHub = () => {
   const { gwId, teamId } = useParams();
-  const { gw, invalidate } = useGameWorldContext();
+  // @spec RLDRUI-001,RLDRUI-003
+  const gw = useRouteLoaderData('gwId') as any;
+  const { revalidate } = useRevalidator();
   const [submitting, setSubmitting] = useState(false);
   const basePath = `/${gwId}/team/${teamId}`;
 
@@ -31,7 +32,7 @@ const TeamHub = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ teamId: nextTeamId }),
       });
-      invalidate();
+      revalidate();
     } finally {
       setSubmitting(false);
     }

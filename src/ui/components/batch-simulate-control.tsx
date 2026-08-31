@@ -1,7 +1,7 @@
 // @spec SIMUI-009..SIMUI-018,SCL-014
 import React, { useEffect, useState } from 'react';
+import { useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
-import { useGameWorldContext } from '../context/game-world-context';
 
 type BatchStatus = 'idle' | 'submitting' | 'success-clean' | 'success-skipped' | 'error';
 type BatchResult = { simulated: unknown[]; skipped: unknown[] };
@@ -15,7 +15,9 @@ type BatchSimulateControlProps = {
 
 // @spec SIMUI-009..SIMUI-018,SCL-014
 const BatchSimulateControl = ({ disabled = false, onBusyChange }: BatchSimulateControlProps = {}) => {
-  const { gw, invalidate } = useGameWorldContext();
+  // @spec RLDRUI-001,RLDRUI-003
+  const gw = useRouteLoaderData('gwId') as any;
+  const { revalidate } = useRevalidator();
   const [batchStatus, setBatchStatus] = useState<BatchStatus>('idle');
   const [batchResult, setBatchResult] = useState<BatchResult | null>(null);
   const canBatch = Boolean(gw && gw.config?.inProgress && gw.currentDate);
@@ -45,7 +47,7 @@ const BatchSimulateControl = ({ disabled = false, onBusyChange }: BatchSimulateC
         const skipped = result?.skipped ?? [];
         setBatchResult({ simulated, skipped });
         transition(skipped.length === 0 ? 'success-clean' : 'success-skipped');
-        invalidate();
+        revalidate();
       })
       .catch((err) => {
         console.error(err);

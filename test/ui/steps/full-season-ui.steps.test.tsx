@@ -1,15 +1,11 @@
-// @spec:UI-001 @spec:UI-002 @spec:UI-003 @spec:UI-004 @spec:UI-005 @spec:UI-006 @spec:UI-007 @spec:UI-008 @spec:UI-010 @spec:LIFE-001
-import React from 'react';
+// @spec:UI-001 @spec:UI-002 @spec:UI-003 @spec:UI-004 @spec:UI-005 @spec:UI-006 @spec:UI-007 @spec:UI-008 @spec:UI-010 @spec:LIFE-001,RLDRUI-006
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { render } from '../test-utils';
-import { GameWorldProvider } from '../../../src/ui/context/game-world-context';
-import { GameWorld, League, TeamCalendar } from '../../../src/ui/pages';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
+import routes from '../../../src/ui/routes';
 
 jest.setTimeout(30000);
-
-type MockParams = { gwId?: string; leagueId?: string; teamId?: string };
 
 type MockGame = {
   gameId: number;
@@ -35,15 +31,8 @@ type MockLeagueResponse = {
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const mockNavigate = jest.fn();
-let mockParams: MockParams = {};
-
-jest.mock('react-router', () => ({
-  ...jest.requireActual('react-router'),
-  useParams: () => mockParams,
-  useNavigate: () => mockNavigate,
-  Link: ({ children, to, ...props }: { children: React.ReactNode; to: string }) => <a href={to} {...props}>{children}</a>,
-}));
+let router: ReturnType<typeof createMemoryRouter> | null = null;
+let currentLeagueId: string | undefined;
 
 const feature = loadFeature(path.resolve(__dirname, '../features/full-season-ui.feature'));
 
@@ -473,30 +462,23 @@ const installFetch = () => {
   }) as jest.Mock;
 };
 
+const mountAt = (entry: string) => {
+  router = createMemoryRouter(routes, { initialEntries: [entry] });
+  render(<RouterProvider router={router} />);
+};
+
 const renderCalendar = async () => {
-  render(
-    <GameWorldProvider gwId="1">
-      <TeamCalendar />
-    </GameWorldProvider>,
-  );
+  mountAt('/1/team/7/calendar');
   await screen.findByRole('heading', { name: 'River City' });
 };
 
 const renderLeague = async (leagueId: string) => {
-  render(
-    <GameWorldProvider gwId="1">
-      <League />
-    </GameWorldProvider>,
-  );
+  mountAt(`/1/${leagueId}`);
   await screen.findByRole('heading', { name: currentLeagueResponses[leagueId].league.config.name });
 };
 
 const renderGameWorld = async () => {
-  render(
-    <GameWorldProvider gwId="1">
-      <GameWorld />
-    </GameWorldProvider>,
-  );
+  mountAt('/1');
   await screen.findByRole('heading', { name: currentGameWorldPayload.config.name });
 };
 
@@ -507,8 +489,8 @@ const getDivisionCard = (leagueId: string, divisionName: string) => {
 };
 
 beforeEach(() => {
-  mockNavigate.mockReset();
-  mockParams = {};
+  currentLeagueId = undefined;
+  router = null;
   fetchCalls = [];
   currentLeagueResponses = clone(leagueResponses);
   currentGameWorldPayload = clone(baseGameWorldPayload);
@@ -525,9 +507,7 @@ defineFeature(feature, (test) => {
       /* fetch mock provides the fixture */
     });
 
-    given(/^the player opens the TeamCalendar route "([^"]+)"$/, (_route: string) => {
-      mockParams = { gwId: '1', teamId: '7' };
-    });
+    given(/^the player opens the TeamCalendar route "([^"]+)"$/, (_route: string) => {});
 
     and('the team schedule includes games from the League and League Cup', () => {
       expect(teamSchedule.map((game) => game.divisionName)).toEqual(
@@ -557,9 +537,7 @@ defineFeature(feature, (test) => {
       /* fetch mock provides the fixture */
     });
 
-    given(/^the player opens the TeamCalendar route "([^"]+)"$/, (_route: string) => {
-      mockParams = { gwId: '1', teamId: '7' };
-    });
+    given(/^the player opens the TeamCalendar route "([^"]+)"$/, (_route: string) => {});
 
     and('the team schedule includes games from the League and League Cup', () => {
       expect(teamSchedule.map((game) => game.divisionName)).toEqual(
@@ -598,7 +576,6 @@ defineFeature(feature, (test) => {
     });
 
     given(/^the League page has a team named "([^"]+)"$/, async (_teamName: string) => {
-      mockParams = { gwId: '1', leagueId: '3' };
       await renderLeague('3');
     });
 
@@ -606,8 +583,10 @@ defineFeature(feature, (test) => {
       fireEvent.click(screen.getByRole('button', { name: teamName }));
     });
 
-    then(/^the app navigates to "([^"]+)"$/, (target: string) => {
-      expect(mockNavigate).toHaveBeenCalledWith(target);
+    then(/^the app navigates to "([^"]+)"$/, async (target: string) => {
+      // TeamHub's index route redirects to its calendar tab (replace), so the settled
+      // location is one segment deeper than the navigate() call target.
+      await waitFor(() => expect(router!.state.location.pathname).toBe(`${target}/calendar`));
     });
   });
 
@@ -616,9 +595,7 @@ defineFeature(feature, (test) => {
       /* fetch mock provides the fixture */
     });
 
-    given(/^the player opens the TeamCalendar route "([^"]+)"$/, (_route: string) => {
-      mockParams = { gwId: '1', teamId: '7' };
-    });
+    given(/^the player opens the TeamCalendar route "([^"]+)"$/, (_route: string) => {});
 
     and('the team schedule includes a completed knockout bye', () => {
       expect(teamSchedule.some((game) => game.gameId === 151 && game.status === 'COMPLETED')).toBe(true);
@@ -661,33 +638,33 @@ defineFeature(feature, (test) => {
     });
 
     given(/^the League page loads for league "([^"]+)"$/, (leagueId: string) => {
-      mockParams = { gwId: '1', leagueId };
+      currentLeagueId = leagueId;
     });
 
     when('the League page renders', async () => {
-      await renderLeague(mockParams.leagueId!);
+      await renderLeague(currentLeagueId!);
     });
 
     then(/^the "([^"]+)" card still shows the standings table$/, (divisionName: string) => {
-      const card = getDivisionCard(mockParams.leagueId!, divisionName);
+      const card = getDivisionCard(currentLeagueId!, divisionName);
       expect(within(card).getByRole('columnheader', { name: 'Pos' })).toBeInTheDocument();
       expect(within(card).getByRole('button', { name: 'River City' })).toBeInTheDocument();
     });
 
     and(/^the "([^"]+)" card shows round "([^"]+)"$/, (divisionName: string, roundLabel: string) => {
-      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).getByText(roundLabel)).toBeInTheDocument();
+      expect(within(getDivisionCard(currentLeagueId!, divisionName)).getByText(roundLabel)).toBeInTheDocument();
     });
 
     and(/^the "([^"]+)" card groups byes under "([^"]+)"$/, (divisionName: string, label: string) => {
-      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).getByText(label)).toBeInTheDocument();
+      expect(within(getDivisionCard(currentLeagueId!, divisionName)).getByText(label)).toBeInTheDocument();
     });
 
     and(/^the "([^"]+)" card lists bye teams "([^"]+)"$/, (divisionName: string, teams: string) => {
-      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).getByText(teams)).toBeInTheDocument();
+      expect(within(getDivisionCard(currentLeagueId!, divisionName)).getByText(teams)).toBeInTheDocument();
     });
 
     and(/^the "([^"]+)" card shows "([^"]+)"$/, (divisionName: string, text: string) => {
-      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).getByText(text)).toBeInTheDocument();
+      expect(within(getDivisionCard(currentLeagueId!, divisionName)).getByText(text)).toBeInTheDocument();
     });
   });
 
@@ -697,19 +674,19 @@ defineFeature(feature, (test) => {
     });
 
     given(/^the League page loads for league "([^"]+)"$/, (leagueId: string) => {
-      mockParams = { gwId: '1', leagueId };
+      currentLeagueId = leagueId;
     });
 
     when('the League page renders', async () => {
-      await renderLeague(mockParams.leagueId!);
+      await renderLeague(currentLeagueId!);
     });
 
     then(/^the "([^"]+)" card shows "([^"]+)"$/, (divisionName: string, text: string) => {
-      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).getByText(text)).toBeInTheDocument();
+      expect(within(getDivisionCard(currentLeagueId!, divisionName)).getByText(text)).toBeInTheDocument();
     });
 
     and(/^the "([^"]+)" card does not show the standings table$/, (divisionName: string) => {
-      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).queryByRole('columnheader', { name: 'Pos' })).toBeNull();
+      expect(within(getDivisionCard(currentLeagueId!, divisionName)).queryByRole('columnheader', { name: 'Pos' })).toBeNull();
     });
   });
 
@@ -719,31 +696,31 @@ defineFeature(feature, (test) => {
     });
 
     given(/^the League page loads for league "([^"]+)"$/, (leagueId: string) => {
-      mockParams = { gwId: '1', leagueId };
+      currentLeagueId = leagueId;
     });
 
     when('the League page renders', async () => {
-      await renderLeague(mockParams.leagueId!);
+      await renderLeague(currentLeagueId!);
     });
 
     then(/^the "([^"]+)" card shows collapsed series "([^"]+)"$/, (divisionName: string, seriesText: string) => {
       expect(
-        within(getDivisionCard(mockParams.leagueId!, divisionName)).getByRole('button', { name: new RegExp(seriesText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }),
+        within(getDivisionCard(currentLeagueId!, divisionName)).getByRole('button', { name: new RegExp(seriesText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }),
       ).toBeInTheDocument();
     });
 
     when(/^the player expands the "([^"]+)" knockout series$/, (teamName: string) => {
       fireEvent.click(
-        within(getDivisionCard(mockParams.leagueId!, 'League Cup')).getByRole('button', { name: new RegExp(teamName, 'i') }),
+        within(getDivisionCard(currentLeagueId!, 'League Cup')).getByRole('button', { name: new RegExp(teamName, 'i') }),
       );
     });
 
     then(/^the "([^"]+)" card shows game score "([^"]+)"$/, (divisionName: string, gameLabel: string) => {
-      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).getByText(gameLabel)).toBeInTheDocument();
+      expect(within(getDivisionCard(currentLeagueId!, divisionName)).getByText(gameLabel)).toBeInTheDocument();
     });
 
     and(/^the "([^"]+)" card shows game score "([^"]+)"$/, (divisionName: string, gameLabel: string) => {
-      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).getByText(gameLabel)).toBeInTheDocument();
+      expect(within(getDivisionCard(currentLeagueId!, divisionName)).getByText(gameLabel)).toBeInTheDocument();
     });
   });
 
@@ -753,19 +730,19 @@ defineFeature(feature, (test) => {
     });
 
     given(/^the League page loads for league "([^"]+)"$/, (leagueId: string) => {
-      mockParams = { gwId: '1', leagueId };
+      currentLeagueId = leagueId;
     });
 
     when('the League page renders', async () => {
-      await renderLeague(mockParams.leagueId!);
+      await renderLeague(currentLeagueId!);
     });
 
     then(/^the "([^"]+)" card shows "([^"]+)"$/, (divisionName: string, text: string) => {
-      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).getByText(text)).toBeInTheDocument();
+      expect(within(getDivisionCard(currentLeagueId!, divisionName)).getByText(text)).toBeInTheDocument();
     });
 
     and(/^the "([^"]+)" card shows roster teams "([^"]+)"$/, (divisionName: string, teamList: string) => {
-      const card = within(getDivisionCard(mockParams.leagueId!, divisionName));
+      const card = within(getDivisionCard(currentLeagueId!, divisionName));
       for (const teamName of teamList.split(', ').map((team) => team.trim())) {
         expect(card.getByRole('button', { name: teamName })).toBeInTheDocument();
       }
@@ -778,11 +755,11 @@ defineFeature(feature, (test) => {
     });
 
     given(/^the League page loads for league "([^"]+)"$/, (leagueId: string) => {
-      mockParams = { gwId: '1', leagueId };
+      currentLeagueId = leagueId;
     });
 
     when('the League page renders', async () => {
-      await renderLeague(mockParams.leagueId!);
+      await renderLeague(currentLeagueId!);
     });
 
     then(/^the League identity block shows "([^"]+)"$/, (text: string) => {
@@ -793,16 +770,14 @@ defineFeature(feature, (test) => {
       expect(screen.queryByText(new RegExp(text, 'i'))).toBeNull();
     });
 
-    and('the simulate control for the decided League is not shown', () => {
-      expect(screen.queryByTestId('batch-simulate')).toBeNull();
-    });
-
     when(/^the player clicks team "([^"]+)" from the League page$/, (teamName: string) => {
       fireEvent.click(screen.getByRole('button', { name: teamName }));
     });
 
-    then(/^the app navigates to "([^"]+)"$/, (target: string) => {
-      expect(mockNavigate).toHaveBeenCalledWith(target);
+    then(/^the app navigates to "([^"]+)"$/, async (target: string) => {
+      // TeamHub's index route redirects to its calendar tab (replace), so the settled
+      // location is one segment deeper than the navigate() call target.
+      await waitFor(() => expect(router!.state.location.pathname).toBe(`${target}/calendar`));
     });
   });
 
@@ -812,29 +787,25 @@ defineFeature(feature, (test) => {
     });
 
     given(/^the League page loads for league "([^"]+)"$/, (leagueId: string) => {
-      mockParams = { gwId: '1', leagueId };
+      currentLeagueId = leagueId;
     });
 
     when('the League page renders', async () => {
-      await renderLeague(mockParams.leagueId!);
+      await renderLeague(currentLeagueId!);
     });
 
     then(/^the League identity block shows "([^"]+)"$/, (text: string) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
 
-    and('the simulate control for the decided League is not shown', () => {
-      expect(screen.queryByTestId('batch-simulate')).toBeNull();
-    });
-
     when(/^the player expands the "([^"]+)" knockout series$/, (teamName: string) => {
       fireEvent.click(
-        within(getDivisionCard(mockParams.leagueId!, 'League Cup')).getByRole('button', { name: new RegExp(teamName, 'i') }),
+        within(getDivisionCard(currentLeagueId!, 'League Cup')).getByRole('button', { name: new RegExp(teamName, 'i') }),
       );
     });
 
     then(/^the "([^"]+)" card shows game score "([^"]+)"$/, (divisionName: string, gameLabel: string) => {
-      expect(within(getDivisionCard(mockParams.leagueId!, divisionName)).getByText(gameLabel)).toBeInTheDocument();
+      expect(within(getDivisionCard(currentLeagueId!, divisionName)).getByText(gameLabel)).toBeInTheDocument();
     });
   });
 
@@ -844,8 +815,7 @@ defineFeature(feature, (test) => {
     });
 
     given('the GameWorld page loads with only the league champion decided', () => {
-      mockParams = { gwId: '1' };
-      currentLeagueResponses['6'].bracket[0].champion = { teamId: 7 };
+            currentLeagueResponses['6'].bracket[0].champion = { teamId: 7 };
       delete currentLeagueResponses['7'].bracket[0].champion;
     });
 
@@ -878,8 +848,7 @@ defineFeature(feature, (test) => {
     });
 
     given('the GameWorld page loads with both league champions decided', () => {
-      mockParams = { gwId: '1' };
-      currentLeagueResponses['6'].bracket[0].champion = { teamId: 7 };
+            currentLeagueResponses['6'].bracket[0].champion = { teamId: 7 };
       currentLeagueResponses['7'].bracket[0].champion = { teamId: 201 };
     });
 

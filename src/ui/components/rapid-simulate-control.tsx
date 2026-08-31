@@ -6,8 +6,8 @@
 // each other while either is in flight (RSSUI-006) via the optional
 // disabled/onBusyChange props threaded from NavRail.
 import React, { useState } from 'react';
+import { useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
-import { useGameWorldContext } from '../context/game-world-context';
 
 type RapidStatus = 'idle' | 'submitting' | 'success' | 'error';
 type RapidResult = { daysAdvanced: number; simulated: unknown[]; skipped: unknown[] };
@@ -28,7 +28,9 @@ const summaryStyle: React.CSSProperties = { fontSize: '0.85rem', color: '#3a7d4d
 
 // @spec RSSUI-001..RSSUI-006
 const RapidSimulateControl = ({ disabled = false, onBusyChange }: RapidSimulateControlProps) => {
-  const { gw, invalidate } = useGameWorldContext();
+  // @spec RLDRUI-001,RLDRUI-003
+  const gw = useRouteLoaderData('gwId') as any;
+  const { revalidate } = useRevalidator();
   const [rapidStatus, setRapidStatus] = useState<RapidStatus>('idle');
   const [rapidResult, setRapidResult] = useState<RapidResult | null>(null);
   const [rapidError, setRapidError] = useState<string | undefined>();
@@ -65,7 +67,7 @@ const RapidSimulateControl = ({ disabled = false, onBusyChange }: RapidSimulateC
           skipped: result?.skipped ?? [],
         });
         transition('success');
-        invalidate();
+        revalidate();
       })
       .catch((err) => {
         console.error(err);

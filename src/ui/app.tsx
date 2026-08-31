@@ -1,13 +1,9 @@
-import React from 'react';
+// @spec RLDRUI-001,RLDRUI-006
 import { createRoot } from 'react-dom/client';
-import Router from './routes';
-import { BrowserRouter } from 'react-router';
+import { createBrowserRouter, RouterProvider } from 'react-router';
+import routes from './routes';
 
-const App = () => {
-  return (
-    <Router />
-  );
-};
+const router = createBrowserRouter(routes);
 
 const root = createRoot(document.getElementById('app')!);
-root.render(<BrowserRouter><App /></BrowserRouter>);
+root.render(<RouterProvider router={router} />);

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Endpoints } from '../../api/endpoints';
-import { useParams, useNavigate } from 'react-router';
-import { useGameWorldContext } from '../context/game-world-context';
+import { useParams, useNavigate, useRevalidator, useRouteLoaderData } from 'react-router';
 import { getChampionDivisionId, getChampionTeamName } from '../champion';
 import { TeamSeasonGame } from '../../api/models';
 
@@ -20,7 +19,9 @@ type LeagueTodaySummary = {
 // @spec UI-002,LIFE-001,TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005
 const GameWorld = () => {
   const { gwId } = useParams();
-  const { gw, invalidate } = useGameWorldContext();
+  // @spec RLDRUI-001,RLDRUI-003
+  const gw = useRouteLoaderData('gwId') as any;
+  const { revalidate } = useRevalidator();
   const [startSeasonStatus, setStartSeasonStatus] = useState<StartSeasonStatus>('idle');
   const [startSeasonError, setStartSeasonError] = useState<string | null>(null);
   const [leagueSeasonSummary, setLeagueSeasonSummary] = useState<LeagueSeasonSummary[]>([]);
@@ -123,9 +124,9 @@ const GameWorld = () => {
         if (!response.ok) throw Error(`Failed to start season for League ${league.id} (${response.status})`);
         await response.json();
       }
-      // LLD u3 — refresh the shared context gw instead of a divergent local copy so the rail's
-      // chip/batch guard stays in sync after a season start.
-      invalidate();
+      // @spec RLDRUI-003 — refresh the shared gw loader instead of a divergent local copy so
+      // the rail's chip/batch guard stays in sync after a season start.
+      revalidate();
       setStartSeasonStatus('success');
       navigate(`/${gwId}/${leagues[0].id}`);
     } catch (error) {
