@@ -1,7 +1,7 @@
 // @spec PATTR-001,PATTR-002,PATTR-003,PCON-001,PCON-002,PCON-003,PCON-004,PCON-007,PCON-008,PID-001,PID-002,PID-004..PID-010
 import { PlayerAttributes } from '../../../src/api/models';
 import db from '../../../src/db/client';
-import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE } from '../../../src/db/domain/contract';
+import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE, SEASON_END_DAY, SEASON_END_MONTH } from '../../../src/db/domain/contract';
 import { PlayerFactory, allocateRosterSlots, primaryPosition } from '../../../src/db/domain/player';
 import { GameWorldFactory } from '../../../src/db/domain/game-world';
 import { generateIdentity, LEAGUE_COMPOSITIONS, mulberry32, resolveComposition } from '../../../src/db/domain/identity';
@@ -271,5 +271,20 @@ describe('Player model + attribute schema', () => {
     } finally {
       randomSpy.mockRestore();
     }
+  });
+
+  // @spec XFER-021 — not Gherkin-routed (internal refactor, no observable behavior change).
+  it('@spec XFER-021 generated Contracts end on the shared SEASON_END anchor', async () => {
+    const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2053 }).then(({ dataValues }) => dataValues);
+    const team = await db.models.Team.create({
+      gameWorldId: gameWorld.id,
+      config: { name: 'Anchor City' },
+    }).then(({ dataValues }) => dataValues);
+
+    const players = await PlayerFactory().generateRoster(team.id, gameWorld.id);
+    const contract = await db.models.Contract.findOne({ where: { playerId: players[0].id } });
+
+    expect(new Date(contract!.dataValues.endDate).toISOString().slice(0, 10))
+      .toBe(new Date(Date.UTC(gameWorld.year, SEASON_END_MONTH, SEASON_END_DAY)).toISOString().slice(0, 10));
   });
 });

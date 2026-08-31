@@ -7,12 +7,12 @@ Frontend requirements for the world-scoped Transfers page and the Release/Renew 
 
 | ID | Requirement | Status |
 |---|---|---|
-| XFERUI-001 | WHEN a user with a claimed managed club clicks "Transfers" in the nav rail THE system SHALL navigate to `/:gwId/transfers` | [ ] |
-| XFERUI-002 | WHEN the Transfers page mounts THE system SHALL fetch `GET /api/gameWorld/:gwId/free-agents` and render the result as a flat table, showing an empty table (no error UI) when the response is empty or the request fails | [ ] |
-| XFERUI-003 | WHEN a Sign action succeeds THE system SHALL refetch the free-agent list so the signed player's row no longer appears, without a full page reload | [ ] |
-| XFERUI-004 | WHEN a Sign action is rejected with `422` (the player is no longer a free agent) THE system SHALL show an inline "no longer available" message and refetch the free-agent list | [ ] |
-| XFERUI-005 | WHEN the viewed team's roster IS the managed club THE system SHALL render Release and Renew actions on each roster row, and SHALL refetch the team roster after either action succeeds; WHEN the viewed team is NOT the managed club THE system SHALL render the roster table with no action column | [ ] |
-| XFERUI-006 | WHEN no club is managed THE system SHALL keep the nav rail's "Transfers" entry in the dimmed fog trio rather than linking it, even though a direct visit to `/:gwId/transfers` still renders the read-only free-agent market | [ ] |
+| XFERUI-001 | WHEN a user with a claimed managed club clicks "Transfers" in the nav rail THE system SHALL navigate to `/:gwId/transfers` | [x] → #237 |
+| XFERUI-002 | WHEN the Transfers page mounts THE system SHALL fetch `GET /api/gameWorld/:gwId/free-agents` and render the result as a flat table, showing an empty table (no error UI) when the response is empty or the request fails | [x] → #237 |
+| XFERUI-003 | WHEN a Sign action succeeds THE system SHALL refetch the free-agent list so the signed player's row no longer appears, without a full page reload | [x] → #237 |
+| XFERUI-004 | WHEN a Sign action is rejected with `422` (the player is no longer a free agent) THE system SHALL show an inline "no longer available" message and refetch the free-agent list | [x] → #237 |
+| XFERUI-005 | WHEN the viewed team's roster IS the managed club THE system SHALL render Release and Renew actions on each roster row, and SHALL refetch the team roster after either action succeeds; WHEN the viewed team is NOT the managed club THE system SHALL render the roster table with no action column | [x] → #237 |
+| XFERUI-006 | WHEN no club is managed THE system SHALL keep the nav rail's "Transfers" entry in the dimmed fog trio rather than linking it, even though a direct visit to `/:gwId/transfers` still renders the read-only free-agent market | [x] → #237 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 

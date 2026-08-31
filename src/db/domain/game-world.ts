@@ -1,8 +1,8 @@
 import { Op } from 'sequelize';
-import { NewGameWorld } from "../../api/models";
+import { NewGameWorld, RosterPlayer } from "../../api/models";
 import db from '../client';
 import { DomainError } from './errors';
-import { LeagueFactory, TeamFactory } from ".";
+import { LeagueFactory, TeamFactory, resolveCurrentContract, toRosterPlayer } from ".";
 import { resolveMatchRules } from './lineup';
 
 interface IGameWorld {
@@ -11,6 +11,7 @@ interface IGameWorld {
   newSeason: () => any;
   advanceCurrentDate: (date: string) => Promise<{ id: number; currentDate: string }>;
   setManagedClub: (teamId: number | null) => Promise<{ id: number; managedTeamId: number | null }>;
+  getFreeAgents: () => Promise<RosterPlayer[]>;
   delete: () => Promise<{ id: number }>;
 };
 
@@ -108,6 +109,24 @@ const GameWorldFactory = (id?: number): IGameWorld => {
 
       await db.models.GameWorld.update({ managedTeamId: teamId }, { where: { id } });
       return { id, managedTeamId: teamId };
+    },
+    // @spec XFER-009,XFER-023 — read via GameWorld's own association (backend-standards §1
+    // exception: a Factory may read an associated model via `include`, starting from its
+    // own primary key), reusing the same row serializer TeamFactory.getRoster() uses.
+    getFreeAgents: async (): Promise<RosterPlayer[]> => {
+      if (!id) throw Error('no game world to list free agents for');
+      const gameWorld = await db.models.GameWorld.findByPk(id, {
+        include: [{ model: db.models.Player, include: [db.models.Contract] }],
+      });
+      if (!gameWorld) throw notFoundError(Number(id));
+
+      const currentDate = gameWorld.dataValues.currentDate ?? undefined;
+      const year = gameWorld.dataValues.year;
+      const players = gameWorld.dataValues.Players ?? [];
+
+      return players
+        .filter((player: any) => resolveCurrentContract(player.dataValues.Contracts ?? [], currentDate, year) === null)
+        .map(toRosterPlayer(year));
     },
     // @spec GWD-001,GWD-002,GWD-003,GWD-004
     delete: async () => {

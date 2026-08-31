@@ -59,8 +59,8 @@ Feature: Managed Club UI
     And the nav rail shows the dimmed "Transfers" item
     And the nav rail shows no active "My Club" or "Roster" link
 
-  @spec:MCLUI-005
-  Scenario: Transfers stays dimmed even when a club is claimed
-    Given GameWorld 1 has Team 10 as its managed club
-    When the player navigates to Team 10's hub
-    Then the nav rail shows the dimmed "Transfers" item
+  # ─── Deferred: Transfers when claimed (superseded by XFERUI-001, → #237) ─────
+  # "Transfers stays dimmed even when a club is claimed" was true through #153 but
+  # is superseded now that the Transfers surface exists — see
+  # test/ui/features/transfers-ui.feature's "Clicking Transfers in the nav rail
+  # navigates to the Transfers page" (@spec:XFERUI-001).

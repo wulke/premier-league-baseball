@@ -19,6 +19,14 @@ const enum Endpoints {
   NewGameWorld = '/api/gameWorld/new',
   // @spec MCLB-003,MCLB-004,MCLB-005
   SetManagedClub = '/api/gameWorld/:gwId/managed-club',
+  // @spec XFER-001,XFER-002,XFER-003,XFER-007,XFER-010,XFER-012,XFER-013,XFER-020
+  SignPlayer = '/api/team/:teamId/transfers/sign',
+  // @spec XFER-001,XFER-004,XFER-010,XFER-014,XFER-015,XFER-016,XFER-017
+  ReleasePlayer = '/api/team/:teamId/transfers/release',
+  // @spec XFER-001,XFER-005,XFER-006,XFER-007,XFER-010,XFER-018,XFER-019,XFER-020
+  RenewPlayer = '/api/team/:teamId/transfers/renew',
+  // @spec XFER-009,XFER-023
+  GetFreeAgents = '/api/gameWorld/:gwId/free-agents',
   BatchSimulateGames = '/api/gameWorld/:gwId/simulate',
   RapidSimulateSeason = '/api/gameWorld/:gwId/rapid-simulate',
   SimulateGame = '/api/game/:gameId/simulate',

@@ -1,4 +1,4 @@
-import { DivisionFactory, GameFactory, GameWorldFactory, LeagueFactory, PlayerFactory, TeamFactory } from '../db/domain';
+import { ContractFactory, DivisionFactory, GameFactory, GameWorldFactory, LeagueFactory, PlayerFactory, TeamFactory } from '../db/domain';
 import { DomainError } from '../db/domain/errors';
 import db from '../db/client';
 import { NewGameWorld, SchedulingConfig } from './models';
@@ -131,6 +131,55 @@ const getPlayerDetail = async (playerId: number, gwId?: number) => {
   });
 };
 
+// @spec XFER-001,XFER-010 — ancestor resolution (GameWorld) + the authorization seam,
+// shared by all three transfer-mutation handlers (backend-standards §1: cross-entity
+// resolution is explicit orchestration at this layer, not buried in the Factory).
+const resolveMutationContext = async (teamId: number) => {
+  const team = await db.models.Team.findByPk(teamId);
+  if (!team) throw new DomainError('Not found', 404);
+
+  const gameWorld = await db.models.GameWorld.findByPk(team.dataValues.gameWorldId);
+  if (!gameWorld) throw new DomainError('Not found', 404);
+
+  // @spec XFER-010 — read live (not cached at module load) so it can be toggled at runtime.
+  if (process.env.DEV_MODE !== 'true' && gameWorld.dataValues.managedTeamId !== teamId) {
+    throw new DomainError('team is not managed by the player', 422);
+  }
+  // @spec XFER-001
+  if (gameWorld.dataValues.currentDate == null) {
+    throw new DomainError('the GameWorld has no current date configured', 422);
+  }
+
+  return {
+    currentDate: gameWorld.dataValues.currentDate as string,
+    gameWorldYear: gameWorld.dataValues.year as number,
+    gameWorldId: gameWorld.dataValues.id as number,
+  };
+};
+
+// @spec XFER-002,XFER-003,XFER-007,XFER-012,XFER-013,XFER-020
+const signPlayer = async (teamId: number, playerId: number, endDate?: string) => {
+  const context = await resolveMutationContext(teamId);
+  return await ContractFactory(teamId, playerId).sign({ ...context, endDate });
+};
+
+// @spec XFER-004,XFER-014,XFER-015,XFER-016,XFER-017
+const releasePlayer = async (teamId: number, playerId: number) => {
+  const context = await resolveMutationContext(teamId);
+  return await ContractFactory(teamId, playerId).release(context);
+};
+
+// @spec XFER-005,XFER-006,XFER-007,XFER-018,XFER-019
+const renewPlayer = async (teamId: number, playerId: number, endDate?: string) => {
+  const context = await resolveMutationContext(teamId);
+  return await ContractFactory(teamId, playerId).renew({ ...context, endDate });
+};
+
+// @spec XFER-009,XFER-023
+const getFreeAgents = async (gwId: number) => {
+  return await GameWorldFactory(gwId).getFreeAgents();
+};
+
 export {
   getGameWorld,
   getGameWorlds,
@@ -151,4 +200,8 @@ export {
   simulateBatchGames,
   rapidSimulateSeason,
   simulateGame,
+  signPlayer,
+  releasePlayer,
+  renewPlayer,
+  getFreeAgents,
 };

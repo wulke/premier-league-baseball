@@ -48,7 +48,8 @@ Feature: Contract Lifecycle (Sign / Release / Renew)
 
   @spec:XFER-012 @spec:XFER-013
   Scenario: Signing a free agent creates a Contract and updates team membership
-    Given Player 100 is a free agent in GameWorld 1
+    Given Team 10's roster is trimmed to exactly 9 Players
+    And Player 100 is a free agent in GameWorld 1
     When Team 10 signs Player 100
     Then the response is 200 with a Contract starting "2025-06-01"
     And Player 100's teamId is Team 10
@@ -72,6 +73,7 @@ Feature: Contract Lifecycle (Sign / Release / Renew)
   @spec:XFER-014 @spec:XFER-017
   Scenario: Releasing a Player closes the contract early and frees the roster slot
     Given Player 100 has a Contract with Team 10 starting "2025-03-01" and ending "2025-10-31"
+    And Player 100 is in Team 10's active Lineup
     When Team 10 releases Player 100
     Then the response is 200
     And Player 100's Contract with Team 10 now ends "2025-05-31"
@@ -127,7 +129,7 @@ Feature: Contract Lifecycle (Sign / Release / Renew)
   @spec:XFER-007
   Scenario: Renewing with an explicit endDate before the successor start date
     Given Player 100 has a Contract with Team 10 starting "2025-03-01" and ending "2025-10-31"
-    When Team 10 renews Player 100 with endDate "2025-11-01"
+    When Team 10 renews Player 100 with endDate "2025-09-01"
     Then the response is a 422 error
 
   # ─── SEASON_END Default Anchor ──────────────────────────────────────────────
@@ -150,7 +152,6 @@ Feature: Contract Lifecycle (Sign / Release / Renew)
   @spec:XFER-008
   Scenario: League cutover corrects a stale Player.teamId left by natural contract expiry
     Given Player 100 has a Contract with Team 10 that has already ended, with no successor
-    And Player 100's teamId is still Team 10
     And League "MLS" is IN_SEASON in GameWorld 1 with a complete season
     When an admin cuts over League "MLS"
     Then the response is 200

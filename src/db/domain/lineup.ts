@@ -102,6 +102,7 @@ const validateLineup = (lineup: any, rules: MatchRules): void => {
 };
 
 interface GenerateOptions { transaction?: Transaction; matchRules?: MatchRules; }
+interface RepairOptions { transaction?: Transaction; matchRules?: MatchRules; }
 
 const LineupFactory = () => ({
   // @spec LIN-003,LIN-004,LIN-005,LIN-006
@@ -147,6 +148,22 @@ const LineupFactory = () => ({
     const lineup = await db.models.Lineup.create({ teamId, gameWorldId }, { transaction: options.transaction });
     await db.models.LineupEntry.bulkCreate(entries.map((entry) => ({ lineupId: lineup.dataValues.id, ...entry })), { transaction: options.transaction });
     return lineup.dataValues;
+  },
+
+  // @spec XFER-011,XFER-013,XFER-017 — a forcing variant of generateActive(): that method
+  // is idempotent (returns the existing active Lineup untouched), so Sign/Release need this
+  // to clear the stale Lineup first, then re-derive from the roster as it stands *after*
+  // the mutation. Reuses generateActive()'s whole assignment/DH/bench/bullpen algorithm
+  // unchanged rather than duplicating it.
+  repairActive: async (teamId: number, gameWorldId: number, options: RepairOptions = {}) => {
+    const existing = await db.models.Lineup.findOne({ where: { teamId, gameId: null }, transaction: options.transaction });
+    if (existing) {
+      await db.models.LineupEntry.destroy({ where: { lineupId: existing.dataValues.id }, transaction: options.transaction });
+      await db.models.Lineup.destroy({ where: { id: existing.dataValues.id }, transaction: options.transaction });
+    }
+    const players = await db.models.Player.findAll({ where: { teamId }, transaction: options.transaction })
+      .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+    return LineupFactory().generateActive(teamId, gameWorldId, players, options);
   },
 });
 

@@ -4,6 +4,7 @@ import db from '../client';
 import { Op, Transaction } from 'sequelize';
 import { DomainError } from './errors';
 import { getKnockoutRoundLabel } from './knockout';
+import { reconcileTeamMemberships } from './contract';
 
 interface ILeague {
   create: (gwId: number, config: any, teamIdRefs: number[]) => any;
@@ -189,6 +190,15 @@ const LeagueFactory = (id?: number): ILeague => {
     try {
       await db.models.League.update({ year, status: 'CUTOVER' }, { where: { id: league.id }, transaction });
       await recomputeGameWorldInProgress(league.gameWorldId, transaction);
+      // @spec XFER-008 — corrects any Player.teamId left stale by natural contract expiry.
+      const gameWorld = await db.models.GameWorld.findByPk(league.gameWorldId, { transaction });
+      if (!gameWorld) throw Error(`Invalid GameWorld '${league.gameWorldId}'`);
+      await reconcileTeamMemberships(
+        league.gameWorldId,
+        gameWorld.dataValues.currentDate ?? undefined,
+        gameWorld.dataValues.year,
+        transaction,
+      );
       await transaction.commit();
     } catch (error) {
       await transaction.rollback();
