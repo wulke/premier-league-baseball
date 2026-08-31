@@ -127,7 +127,7 @@ const TeamLineupView = () => {
                 <span style={ratingStyle}>{isDh ? '' : row.positionRating ?? '—'}</span>
               </div>;
             })}
-            {poolRows.map((row) => <PoolRow key={`${row.tag}-${row.playerId}`} row={row} players={players} gwId={gwId} />)}
+            {poolRows.map((row) => <PoolRow key={`${row.tag}-${row.playerId}`} row={row} players={players} gwId={gwId} variant="DEFENSIVE" />)}
           </section>
         )}
 
@@ -143,7 +143,7 @@ const TeamLineupView = () => {
                   <span style={positionStyle}>{isDh ? 'DH' : row.fieldingPosition}</span>
                 </div>;
               })}
-              {poolRows.map((row) => <PoolRow key={`${row.tag}-${row.playerId}`} row={row} players={players} gwId={gwId} />)}
+              {poolRows.map((row) => <PoolRow key={`${row.tag}-${row.playerId}`} row={row} players={players} gwId={gwId} variant="BATTING" />)}
             </section>
             {startingPitcher && <section data-testid="starting-pitcher" style={{ ...panelStyle, borderColor: '#71896e', background: '#f1f6ef' }}>
               <h2 style={headingStyle}>Starting pitcher</h2>
@@ -157,10 +157,12 @@ const TeamLineupView = () => {
 };
 
 // @spec LINEUI-007
-const PoolRow = ({ row, players, gwId }: { row: LineupRow; players: Map<number, RosterPlayer>; gwId?: string }) => (
+const PoolRow = ({ row, players, gwId, variant }: { row: LineupRow; players: Map<number, RosterPlayer>; gwId?: string; variant: 'DEFENSIVE' | 'BATTING' }) => (
   <div data-testid={`${row.tag.toLowerCase()}-row-${row.playerId}`} style={rowStyle}>
     <span style={tagStyle}>{row.tag}</span>
     <span style={{ flex: 1 }}><LineupPlayerLink playerId={row.playerId} players={players} gwId={gwId} /></span>
+    <span style={positionStyle} aria-hidden="true" />
+    {variant === 'DEFENSIVE' && <span style={ratingStyle} aria-hidden="true" />}
   </div>
 );
 
