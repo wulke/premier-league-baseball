@@ -1,19 +1,28 @@
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import routes from '../../../src/ui/routes';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/lineup-view-ui.feature'));
 
-type RosterPlayer = { id: number; givenName: string; familyName: string; countryCode: string; bats: 'R'; throws: 'R'; age: number; primaryPosition: string; positionCoverage: string[]; contact: number; power: number; armStrength: number; accuracy: number; reaction: number; vision: number; discipline: number };
-type TeamLineup = { starters: Array<{ playerId: number; battingOrder: number | null; fieldingPosition: string | null }>; startingPitcherId: number; bench: Array<{ playerId: number }>; bullpen: Array<{ playerId: number }> };
+type PlayerPosition = 'Pitcher' | 'Catcher' | 'FirstBase' | 'SecondBase' | 'ThirdBase' | 'Shortstop' | 'LeftField' | 'CenterField' | 'RightField';
+type RosterPlayer = { id: number; givenName: string; familyName: string; countryCode: string; bats: 'R'; throws: 'R'; age: number; primaryPosition: PlayerPosition; positionCoverage: PlayerPosition[]; positions: Record<PlayerPosition, number>; contact: number; power: number; armStrength: number; accuracy: number; reaction: number; vision: number; discipline: number };
+type TeamLineup = { starters: Array<{ playerId: number; battingOrder: number | null; fieldingPosition: PlayerPosition | null }>; startingPitcherId: number; bench: Array<{ playerId: number }>; bullpen: Array<{ playerId: number }> };
+
+const ALL_POSITIONS: PlayerPosition[] = ['Pitcher', 'Catcher', 'FirstBase', 'SecondBase', 'ThirdBase', 'Shortstop', 'LeftField', 'CenterField', 'RightField'];
+const RATING = 82;
 
 let lineup: TeamLineup;
 let roster: RosterPlayer[];
 
-const rosterPlayer = (id: number): RosterPlayer => ({ id, givenName: `Player`, familyName: String(id), countryCode: 'US', bats: 'R', throws: 'R', age: 25, primaryPosition: 'Shortstop', positionCoverage: ['Shortstop'], contact: 60, power: 60, armStrength: 60, accuracy: 60, reaction: 60, vision: 60, discipline: 60 });
+const rosterPlayer = (id: number): RosterPlayer => ({
+  id, givenName: `Player`, familyName: String(id), countryCode: 'US', bats: 'R', throws: 'R', age: 25,
+  primaryPosition: 'Shortstop', positionCoverage: ['Shortstop'],
+  positions: ALL_POSITIONS.reduce((map, position) => ({ ...map, [position]: RATING }), {} as Record<PlayerPosition, number>),
+  contact: 60, power: 60, armStrength: 60, accuracy: 60, reaction: 60, vision: 60, discipline: 60,
+});
 const makeRoster = () => Array.from({ length: 13 }, (_, index) => rosterPlayer(index + 1));
 const dhOff = (): TeamLineup => ({ starters: [
   { playerId: 1, battingOrder: 1, fieldingPosition: 'Catcher' }, { playerId: 2, battingOrder: 2, fieldingPosition: 'FirstBase' }, { playerId: 3, battingOrder: 3, fieldingPosition: 'SecondBase' },
@@ -21,6 +30,8 @@ const dhOff = (): TeamLineup => ({ starters: [
   { playerId: 7, battingOrder: 7, fieldingPosition: 'CenterField' }, { playerId: 8, battingOrder: 8, fieldingPosition: 'RightField' }, { playerId: 9, battingOrder: 9, fieldingPosition: 'Pitcher' },
 ], startingPitcherId: 9, bench: [{ playerId: 10 }, { playerId: 11 }], bullpen: [{ playerId: 12 }, { playerId: 13 }] });
 const dhOn = (): TeamLineup => ({ ...dhOff(), starters: [...dhOff().starters.slice(0, 8), { playerId: 9, battingOrder: 9, fieldingPosition: null }, { playerId: 10, battingOrder: null, fieldingPosition: 'Pitcher' }], startingPitcherId: 10, bench: [{ playerId: 11 }], bullpen: [{ playerId: 12 }] });
+
+const MISSING_STARTER_ID = 5; // the Shortstop starter in dhOff()
 
 const installFetch = () => {
   global.fetch = jest.fn((input: RequestInfo | URL) => {
@@ -33,11 +44,14 @@ const installFetch = () => {
   }) as jest.Mock;
 };
 
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,RLDRUI-006
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,RLDRUI-006
 const renderAt = async (entry: string) => {
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [entry] })} />);
   await screen.findByTestId('app-shell');
+  await waitFor(() => expect(screen.getByRole('tab', { name: 'Defensive' })).toBeInTheDocument());
 };
+
+const selectTab = (name: 'Defensive' | 'Batting') => fireEvent.click(screen.getByRole('tab', { name }));
 
 beforeEach(() => { lineup = dhOff(); roster = makeRoster(); installFetch(); });
 afterEach(() => cleanup());
@@ -50,33 +64,105 @@ defineFeature(feature, (test) => {
     then('the page shows a Lineup tab', () => expect(screen.getByRole('link', { name: 'Lineup' })).toBeInTheDocument());
   });
 
-  test('A DH-off active lineup shows its nine batting starters and reserve pools', ({ given, and, when, then }) => {
+  test('A DH-off active lineup shows its nine batting starters and reserve rows on the Batting tab', ({ given, and, when, then }) => {
     given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
-    given('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); }); and('GET /api/team/10/roster returns names for the active lineup', () => { roster = makeRoster(); });
+    given('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the player selects the Batting tab', () => selectTab('Batting'));
     // @spec LINEUI-002
-    then('the batting-order card shows starters 1 through 9 with fielding positions', async () => { await waitFor(() => expect(screen.getAllByTestId(/batting-order-row-/)).toHaveLength(9)); expect(screen.getByTestId('batting-order-row-9')).toHaveTextContent('Pitcher'); });
+    then('the batting rows show starters 1 through 9 with fielding positions', async () => { await waitFor(() => expect(screen.getAllByTestId(/batting-row-/)).toHaveLength(9)); expect(screen.getByTestId('batting-row-9')).toHaveTextContent('Pitcher'); });
     // @spec LINEUI-002
     and('the starting pitcher is highlighted', () => expect(screen.getByTestId('starting-pitcher')).toHaveTextContent('Player 9'));
     // @spec LINEUI-002
     and('no DH row is shown', () => expect(screen.queryByTestId('dh-row')).toBeNull());
+    // @spec LINEUI-004,LINEUI-007
+    and('bench and bullpen rows tagged BENCH and BULLPEN are shown', () => {
+      expect(screen.getByTestId('bench-row-10')).toHaveTextContent('BENCH');
+      expect(screen.getByTestId('bullpen-row-12')).toHaveTextContent('BULLPEN');
+    });
     // @spec LINEUI-004
-    and('the bench and bullpen pools are shown', () => { expect(screen.getByTestId('bench-pool')).toHaveTextContent('Player 10'); expect(screen.getByTestId('bullpen-pool')).toHaveTextContent('Player 12'); });
-    // @spec LINEUI-004
-    and('starter, bench, and bullpen rows link to player detail', () => { expect(within(screen.getByTestId('batting-order-row-1')).getByRole('link')).toHaveAttribute('href', '/1/player/1'); expect(within(screen.getByTestId('bench-pool')).getByRole('link', { name: 'Player 10' })).toHaveAttribute('href', '/1/player/10'); expect(within(screen.getByTestId('bullpen-pool')).getByRole('link', { name: 'Player 12' })).toHaveAttribute('href', '/1/player/12'); });
+    and('starter, bench, and bullpen rows link to player detail', () => {
+      expect(within(screen.getByTestId('batting-row-1')).getByRole('link')).toHaveAttribute('href', '/1/player/1');
+      expect(within(screen.getByTestId('bench-row-10')).getByRole('link', { name: 'Player 10' })).toHaveAttribute('href', '/1/player/10');
+      expect(within(screen.getByTestId('bullpen-row-12')).getByRole('link', { name: 'Player 12' })).toHaveAttribute('href', '/1/player/12');
+    });
   });
 
-  test('A DH-on active lineup shows a DH row and a non-batting starting pitcher', ({ given, and, when, then }) => {
+  test('A DH-on active lineup shows a DH row and a non-batting starting pitcher on the Batting tab', ({ given, and, when, then }) => {
     given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
-    given('GET /api/team/10/lineup returns a DH-on active lineup', () => { lineup = dhOn(); }); and('GET /api/team/10/roster returns names for the active lineup', () => { roster = makeRoster(); });
+    given('GET /api/team/10/lineup returns a DH-on active lineup', () => { lineup = dhOn(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the player selects the Batting tab', () => selectTab('Batting'));
     // @spec LINEUI-003
-    then('the batting-order card shows starters 1 through 9 with fielding positions', async () => { await waitFor(() => expect(screen.getAllByTestId(/batting-order-row-/)).toHaveLength(9)); expect(screen.getByTestId('batting-order-row-9')).toHaveTextContent('DH'); });
+    then('the batting rows show starters 1 through 9 with fielding positions', async () => { await waitFor(() => expect(screen.getAllByTestId(/batting-row-/)).toHaveLength(9)); expect(screen.getByTestId('batting-row-9')).toHaveTextContent('DH'); });
     // @spec LINEUI-003
     and('a DH row is shown', () => expect(screen.getByTestId('dh-row')).toHaveTextContent('Player 9'));
     // @spec LINEUI-003
     and('the starting pitcher is highlighted', () => expect(screen.getByTestId('starting-pitcher')).toHaveTextContent('Player 10'));
     // @spec LINEUI-004
     and('no mutating lineup controls are shown', () => expect(screen.queryByRole('button', { name: /edit|save|set starter|substitute/i })).toBeNull());
+  });
+
+  test('The Lineup tab defaults to the Defensive tab, showing each starter\'s position and rating', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    // @spec LINEUI-006
+    then('the Defensive tab is shown by default', () => expect(screen.getByRole('tab', { name: 'Defensive' })).toHaveAttribute('aria-selected', 'true'));
+    // @spec LINEUI-005
+    and('the defensive rows show one row per starter with their fielding position and positional rating', async () => {
+      await waitFor(() => expect(screen.getAllByTestId(/defensive-row-/)).toHaveLength(9));
+      expect(screen.getByTestId('defensive-row-5')).toHaveTextContent('Shortstop');
+      expect(screen.getByTestId('defensive-row-5')).toHaveTextContent(String(RATING));
+    });
+  });
+
+  test('Switching between Defensive and Batting tabs does not refetch data', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    let callsBeforeTabSwitches = 0;
+    when('the player navigates to "/1/team/10/lineup"', async () => {
+      await renderAt('/1/team/10/lineup');
+      await waitFor(() => expect(screen.getAllByTestId(/defensive-row-/)).toHaveLength(9));
+      callsBeforeTabSwitches = (global.fetch as jest.Mock).mock.calls.length;
+    });
+    and('the player selects the Batting tab', () => selectTab('Batting'));
+    and('the player selects the Defensive tab', () => selectTab('Defensive'));
+    // @spec LINEUI-006
+    then('no additional lineup or roster request is made', () => expect((global.fetch as jest.Mock).mock.calls.length).toBe(callsBeforeTabSwitches));
+  });
+
+  test('Bench and bullpen rows show no fielding position or rating on the Defensive tab', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    // @spec LINEUI-007
+    then('bench and bullpen rows tagged BENCH and BULLPEN are shown', () => {
+      expect(screen.getByTestId('bench-row-10')).toHaveTextContent('BENCH');
+      expect(screen.getByTestId('bullpen-row-12')).toHaveTextContent('BULLPEN');
+    });
+    // @spec LINEUI-007
+    and('the bench and bullpen rows show no fielding position or rating', () => {
+      expect(screen.getByTestId('bench-row-10')).not.toHaveTextContent(String(RATING));
+      expect(screen.getByTestId('bullpen-row-12')).not.toHaveTextContent(String(RATING));
+    });
+  });
+
+  test('A starter absent from the roster response shows an em-dash rating on the Defensive tab', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup except one starter', () => { roster = makeRoster().filter((player) => player.id !== MISSING_STARTER_ID); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    // @spec LINEUI-008
+    then('the row for the missing starter shows "Player #<id>" as its label', async () => {
+      await waitFor(() => expect(screen.getByTestId(`defensive-row-${MISSING_STARTER_ID}`)).toHaveTextContent(`Player #${MISSING_STARTER_ID}`));
+    });
+    // @spec LINEUI-008
+    and('the row for the missing starter shows an em dash for its rating', () => expect(screen.getByTestId(`defensive-row-${MISSING_STARTER_ID}`)).toHaveTextContent('—'));
   });
 });
