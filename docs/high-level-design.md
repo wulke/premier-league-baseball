@@ -807,3 +807,184 @@ user opens Team Hub → Lineup tab (unchanged route: /:gwId/team/:teamId/lineup)
   framework ([#139](https://github.com/wulke/premier-league-baseball/issues/139)/
   [#215](https://github.com/wulke/premier-league-baseball/issues/215)), and the transfer/contract
   lifecycle design ([#140](https://github.com/wulke/premier-league-baseball/issues/140)).
+
+---
+
+# HLD: Decoupled IV/EV Person-Attribute Pattern
+
+> Backed by [Map: IV/EV Feasibility & Feel Report](https://github.com/wulke/premier-league-baseball/issues/178)
+> and its GO decision, [#209](https://github.com/wulke/premier-league-baseball/issues/209). The
+> worked examples behind that decision established the shared pattern for Players, Managers,
+> Scouts, Umpires, and future person-entities. This HLD defines the pattern, not a migration or
+> the first consumer.
+
+## Goal
+
+Give every **person-attribute** one durable storage shape that preserves innate ability, earned
+career history, short-term form, fixed expression, and aging separately. Consumers such as game
+simulation, scouting, salary, and management must be able to make purpose-specific reads from the
+same underlying person without a global rating, destructive aging writes, or entity-specific
+parallel systems.
+
+## Strategy
+
+- **Options (one global effective rating vs. consumer-owned reads):**
+  - Option A: Collapse each attribute to one shared effective value, then use it everywhere.
+  - Option B (chosen): Store the common pieces once and let each consuming formula combine them
+    for its own purpose.
+  - **Decision:** Option B. A game decision needs present performance, scouting needs a
+    talent/trajectory read, and salary needs an unfaded career aggregate. A global effective value
+    makes those legitimate consumers fight over one meaning and erases the IV/EV composition that
+    makes aging legible.
+
+- **Options (one mutable EV vs. partitioned aggregate and form):**
+  - Option A: Put career effort, slumps, recovery, and aging into a single bounded EV value.
+  - Option B (chosen): Keep EV as a signed, unbounded career aggregate; write each event delta to
+    both EV and a bounded recent-event form window; apply aging only at read time.
+  - **Decision:** Option B. Career history must remain inspectable and unfaded while a slump must
+    recover on a much shorter timescale. Separating the aggregate from the ring buffer keeps those
+    forces independent, and clamping only a consumed read prevents runaway performance without
+    rewriting history.
+
+- **Options (whole-capacity aging vs. discount-IV-only):**
+  - Option A: Subtract a general age penalty from the whole capacity read.
+  - Option B (chosen): Apply a decline-only, convex age discount to IV only; EV remains earned
+    craft that resists the age transform.
+  - **Decision:** Option B. It preserves the intended "wheels go, craft stays" distinction and
+    lets a scout distinguish an innate-built fading player from an earned-built veteran with the
+    same current rating. The accepted consequence is that an EV-heavy veteran fades slowly; a
+    fading-star archetype must be innately built.
+
+- **Options (universal mechanics vs. separate non-Player models):**
+  - Option A: Use IV/EV only for Players and invent separate growth systems for staff and
+    officials.
+  - Option B (chosen): Apply the same per-attribute contract to every person-entity; vary only
+    attribute catalogs, outcome signals, and grading grain.
+  - **Decision:** Option B. A Player action, Umpire call, Scout report, and Manager decision are
+    all outcome-graded contributions. Uniform storage and reads preserve one learning model while
+    allowing sparse, delayed, or fuzzy signals without special storage.
+
+## Architecture
+
+### Storage contract
+
+Every attribute belonging to a person-entity carries this logical tuple:
+
+```
+{ IV, EV, Nature, formWindow, ageDiscountMeta }
+```
+
+- **IV** is the fixed innate baseline. It is a reference point, not a ceiling or a cap.
+- **EV** is the signed, unbounded sum of earned `±delta` writes. Failures may lower it; neither
+  slump recovery nor aging mutates it.
+- **Nature** is a fixed, per-attribute expression multiplier.
+- **formWindow** is a ring buffer of recent `±delta` writes. It is a second view of those events,
+  not a second learning stream.
+- **ageDiscountMeta** is a fixed, hidden per-person meta-modulator. Together with the attribute's
+  aging profile, it sets that person's prime offset and decline acceleration.
+
+This is a **person-attribute** contract. World inputs such as gear and weather remain flat and out
+of scope. Visible and hidden attributes use the same tuple: hidden attributes may feed gameplay
+formulas directly or meta-modulate another read/write formula. Cross-person effects (for example,
+a captain or manager influence) are multi-person formula inputs; one person's outcome never writes
+another person's EV.
+
+### Effective-read pipeline
+
+```
+capacity: (IV, EV)
+  → combine with the age discount applied to IV only
+  → × Nature
+  → faded capacity
+
+formWindow → form read
+
+formula-owned combine(faded capacity, form read)
+  → clamp[-C, +C]
+  → consumed value
+```
+
+The age discount is a read-time multiplier: it is decline-only, never exceeds `1`, and has a hard
+per-profile floor. The capacity form is conceptually `Nature × (discount(age) × IV + EV)`; exact
+constants and attribute-profile assignments are tuning. Form does not receive the age discount.
+`[-C,+C]` bounds a formula's consumed game-performance read, never stored EV; formulae deliberately
+intended to read an unfaded aggregate may opt out of that clamp.
+
+There is no global `effectiveAttribute` field or universal read algorithm. Each formula declares
+how it combines faded capacity and form, then consumes only that result.
+
+### Per-formula combination contract
+
+The default formula combination is a linear weighted sum. A formula may opt into a local
+per-attribute gate plus saturation curve when a specialist/collapsed-dimension outcome cannot be
+represented honestly by a sum alone. That nonlinearity belongs only inside the consuming formula;
+it never changes storage or the shared read pipeline.
+
+The initial combination catalog establishes three intentionally different consumers:
+
+| Consumer | Read contract |
+| --- | --- |
+| Manager/game decision | Form-heavy read of faded capacity plus recent form, normally clamped. |
+| Scout | IV-heavy projected read, normally form-light or form-blind, able to expose composition and trajectory. |
+| Salary | Unfaded EV/career-aggregate read, deliberately aggregate-oriented and unclamped. |
+
+Future consumers add catalog entries rather than a new attribute store or a new global rating.
+
+### Aging model
+
+Each attribute type chooses an aging-profile family with a convex, accelerating decline after its
+prime and a hard floor. The profile supplies the attribute-level character (for example, earlier,
+faster physical decline versus later, gentler craft decline). `ageDiscountMeta` supplies the
+per-person prime offset and acceleration rate together, so player-to-player variation stays in the
+generated person rather than accumulating ad hoc control knobs. The discount does not create a
+rise-to-prime: EV earning owns development; the discount only takes away from IV.
+
+### Earning loop
+
+For every person-entity, a graded outcome produces one signed `delta` for each attributable
+attribute. The write appends that delta to the attribute's `formWindow` and adds it to EV. The
+mechanism is uniform; only the outcome signal and its frequency, latency, and attribution clarity
+vary by entity class.
+
+Before implementation, each entity class must explicitly choose its **delta-zero convention**:
+raw outcome, outcome versus that person's expectation, or outcome versus the league line. This is
+a required contract choice because it controls which performances count as learning versus form.
+The grader/event system that produces and attributes the value remains separate.
+
+### Boundary and sequencing
+
+```
+person outcome
+  → future grader/event system chooses delta and attribution
+  → IV/EV pattern appends delta to formWindow and EV
+  → future consumer selects a catalog entry
+  → formula-owned read → consumed value
+```
+
+The next LID stage defines component-level interfaces, catalog ownership, and edge cases. It must
+not infer a Sequelize migration from this HLD: the current `Player.attributes` shape is not the
+storage decision for this pattern.
+
+### Key trade-offs
+
+- **Unbounded storage, bounded performance:** EV can tell the truth about a long career while a
+  game formula remains bounded. This trades a simple stored rating for per-formula read work.
+- **IV-only aging:** earned craft is intentionally durable, which makes exceptional high-EV
+  veterans resilient; that is a modeling constraint for generation and archetype design, not a
+  reason to erase the IV/EV distinction.
+- **Uniform mechanism, variable grading:** staff and officials can have sparse or delayed form
+  windows without a special-case model. The price is that every entity class must later state its
+  signal and delta-zero convention explicitly.
+- **Local nonlinearity:** gates and saturation can express specialist failure modes without
+  contaminating every consumer, but a formula author must justify that escape hatch in its catalog
+  entry.
+
+### Out of scope
+
+- The grader/event and attribution system that determines `delta` values, including Manager
+  counterfactual grading ([#218](https://github.com/wulke/premier-league-baseball/issues/218)).
+- Migration or persistence design against the current Sequelize schema, including any rewrite of
+  `Player.attributes`.
+- All tuning constants: `C`, event delta caps, form-window length, event granularity, Nature
+  values, aging profile constants/primes/floors, and meta-modulator naming/ranges.
+- Any first simulation, scouting, salary, UI, or API consumer implementation.
