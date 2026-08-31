@@ -1,6 +1,7 @@
 import { Op, UniqueConstraintError } from 'sequelize';
 import { GameLineupSnapshot, MatchRules, RosterPlayer, TeamConfig, TeamLineup, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
 import db from '../client';
+import { listForTeam } from './contract';
 import { getKnockoutRoundLabel } from './knockout';
 import { PlayerFactory, resolveCurrentContract, toRosterPlayer } from './player';
 import { DomainError } from './errors';
@@ -190,9 +191,7 @@ const TeamFactory = (id?: number): ITeam => {
       const gameWorld = await db.models.GameWorld.findByPk(team.dataValues.gameWorldId);
       if (!gameWorld) throw new DomainError('Not found', 404);
 
-      const contracts = await (team as any).getContracts({
-        include: [{ model: db.models.Player }],
-      });
+      const contracts = await listForTeam(id!);
 
       const currentDate = gameWorld.dataValues.currentDate ?? undefined;
       const year = gameWorld.dataValues.year;

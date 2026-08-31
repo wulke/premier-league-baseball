@@ -213,8 +213,21 @@ const reconcileTeamMemberships = async (
   }
 };
 
+// @spec XFER-022 — Contract-owned read: TeamFactory.getRoster() calls this instead of the
+// Team↔Contract association (backend-standards §1 — that association-traversal read
+// belongs to a Factory reading a model it doesn't own via its own PK; now that
+// ContractFactory owns Contract, a whole-team Contract read is this Factory's to expose).
+const listForTeam = async (teamId: number, options: { transaction?: Transaction } = {}): Promise<any[]> => {
+  return db.models.Contract.findAll({
+    where: { teamId },
+    include: [{ model: db.models.Player }],
+    transaction: options.transaction,
+  });
+};
+
 export {
   ContractFactory,
+  listForTeam,
   MAX_ROSTER_SIZE,
   MIN_ROSTER_SIZE,
   SEASON_END_MONTH,
