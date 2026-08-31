@@ -224,7 +224,7 @@ behind the pattern boundary rather than making today's `Player.attributes` JSON 
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-decoupled-ivev-person-attribute-pattern) |
 | **This LLD** | `docs/llds/iv-ev-person-attribute-pattern.md` |
 | Formula registry | [`docs/FORMULA-REGISTRY.md`](../FORMULA-REGISTRY.md) — `F-IVEV-001..004` (Draft) |
-| EARS | Next LID stage — no requirement IDs minted yet |
+| EARS | [`docs/specs/iv-ev-person-attribute-specs.md`](../specs/iv-ev-person-attribute-specs.md) — `IVEV-001`..`IVEV-013` |
 | Tests | Next LID stage — Red tests follow EARS |
 | Code | Next LID stage — no implementation entry point selected |
 | Decision record | [#178](https://github.com/wulke/premier-league-baseball/issues/178) → [#209](https://github.com/wulke/premier-league-baseball/issues/209) |
