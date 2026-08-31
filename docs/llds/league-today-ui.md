@@ -1,7 +1,7 @@
 # LLD: GameWorld Home "Today" Section (`game-world.tsx`)
 
 > Backend LLD (sibling): [`league-today.md`](./league-today.md) ·
-> EARS: `docs/specs/league-today-ui-specs.md` (`TODAYUI-001`..`TODAYUI-005`) ·
+> EARS: `docs/specs/league-today-ui-specs.md` (`TODAYUI-001`..`TODAYUI-006`) ·
 > Gherkin: `test/ui/features/league-today-ui.feature` ·
 > Decision record: [#101](https://github.com/wulke/premier-league-baseball/issues/101), resolved via `/grill-me`
 
@@ -38,11 +38,16 @@ component prematurely.
 1. Existing effect (game-world.tsx, gated on gw?.config?.inProgress and gw.Leagues.length > 0)
    is extended: for each league, add a third parallel fetch alongside GetLeague/GetLeagueBracket:
 
-     fetch(Endpoints.GetLeagueToday.replace(':leagueId', String(leagueRow.id)))
-       .then((response) => (response.ok ? response.json() : []))
-       // non-ok (e.g. 422 when currentDate isn't configured, or any network error)
-       // resolves to [] rather than rejecting — a league with no "today" data behaves
-       // identically to a league with an empty window.                        # TODAYUI-002
+     // TODAYUI-006: a null currentDate makes the request a guaranteed 422 (TODAY-002)
+     // that only produces server-side log noise — the fetch is skipped entirely and
+     // the league behaves as an empty window.
+     gw?.currentDate == null
+       ? Promise.resolve([])
+       : fetch(Endpoints.GetLeagueToday.replace(':leagueId', String(leagueRow.id)))
+           .then((response) => (response.ok ? response.json() : []))
+           // non-ok (e.g. 422, or any network error) resolves to [] rather than
+           // rejecting — a league with no "today" data behaves identically to a
+           // league with an empty window.                                              # TODAYUI-002
 
 2. Build leagueTodaySummary from the per-league results:
      { leagueId, leagueName: leagueRow.config?.name ?? `League ${leagueRow.id}`, games }

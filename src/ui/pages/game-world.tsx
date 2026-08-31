@@ -16,7 +16,7 @@ type LeagueTodaySummary = {
   games: TeamSeasonGame[];
 };
 
-// @spec UI-002,LIFE-001,TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005
+// @spec UI-002,LIFE-001,TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-006
 const GameWorld = () => {
   const { gwId } = useParams();
   // @spec RLDRUI-001,RLDRUI-003
@@ -46,7 +46,10 @@ const GameWorld = () => {
 
     Promise.all(
       leagues.map(async (leagueRow) => {
-        // @spec TODAYUI-001,TODAYUI-002
+        // @spec TODAYUI-001,TODAYUI-002,TODAYUI-006
+        // TODAYUI-006: a null currentDate guarantees TODAY-002's 422 — skip the
+        // request (and the server-side log noise it produces) and treat the league
+        // as an empty window instead.
         const [leagueResponse, bracketResponse, games] = await Promise.all([
           fetch(Endpoints.GetLeague.replace(':leagueId', String(leagueRow.id)), {
             method: 'GET',
@@ -58,13 +61,15 @@ const GameWorld = () => {
             mode: 'cors',
             headers: { 'Content-Type': 'application/json' },
           }).then((response) => (response.ok ? response.json() : [])),
-          fetch(Endpoints.GetLeagueToday.replace(':leagueId', String(leagueRow.id)), {
-            method: 'GET',
-            mode: 'cors',
-            headers: { 'Content-Type': 'application/json' },
-          })
-            .then((response) => (response.ok ? response.json() : []))
-            .catch(() => []),
+          gw?.currentDate == null
+            ? Promise.resolve([])
+            : fetch(Endpoints.GetLeagueToday.replace(':leagueId', String(leagueRow.id)), {
+              method: 'GET',
+              mode: 'cors',
+              headers: { 'Content-Type': 'application/json' },
+            })
+              .then((response) => (response.ok ? response.json() : []))
+              .catch(() => []),
         ]);
 
         const championDivisionId = getChampionDivisionId(leagueResponse);
