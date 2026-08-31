@@ -63,7 +63,7 @@ const SEASON_END_MONTH = 9;  // October, 0-indexed — matches the existing gene
 const SEASON_END_DAY = 31;
 
 // A date on/after November targets *next* season's year; anything else targets the current one.
-function defaultSeasonEnd(fromDate: Date, gameWorldYear: number): Date {
+function defaultSeasonEnd(fromDate: Date, gameWorldYear: number): Date {   // XFER-020
   const seasonYear = fromDate.getUTCMonth() >= 10 ? gameWorldYear + 1 : gameWorldYear;
   return new Date(Date.UTC(seasonYear, SEASON_END_MONTH, SEASON_END_DAY));
 }
@@ -72,7 +72,7 @@ function defaultSeasonEnd(fromDate: Date, gameWorldYear: number): Date {
 `generateRoster()`'s hardcoded `Date.UTC(year, 9, 31)` (`docs/llds/player-contracts-roster.md`)
 is refactored to call `SEASON_END_MONTH`/`SEASON_END_DAY` directly (its term always starts at
 season generation, never crosses the November boundary, so it does not need `defaultSeasonEnd`'s
-year-rollover branch).
+year-rollover branch).                                                     # XFER-021
 
 ### Authorization seam
 
@@ -113,9 +113,9 @@ router → handlers.signPlayer(teamId, playerId = req.body.playerId, endDate = r
       start = currentDate
       end = endDate ?? defaultSeasonEnd(start, gw.year)
       if end < start → DomainError('endDate must be on or after the effective date', 422)   # XFER-007
-      contract = Contract.create({ playerId, teamId, startDate: start, endDate: end }, { transaction })
-      Player.update({ teamId }, { where: { id: playerId }, transaction })            # PCON-007 sync
-      LineupFactory().repairActive(teamId, gw.id, { transaction })                   # roster composition changed
+      contract = Contract.create({ playerId, teamId, startDate: start, endDate: end }, { transaction })  # XFER-012
+      Player.update({ teamId }, { where: { id: playerId }, transaction })            # XFER-013, supersedes PCON-007
+      LineupFactory().repairActive(teamId, gw.id, { transaction })                   # XFER-013 — roster composition changed
       return contract
 ```
 
@@ -130,12 +130,12 @@ router → handlers.releasePlayer(teamId, playerId = req.body.playerId)
       current = Contract.findOne({ where: { playerId, teamId,
         startDate: { lte: currentDate }, endDate: { gte: currentDate } }, transaction })
       if !current → DomainError('team has no current contract for this player', 422) # XFER-004
-      Contract.update({ endDate: currentDate - 1 day }, { where: { id: current.id }, transaction })  # close early
+      Contract.update({ endDate: currentDate - 1 day }, { where: { id: current.id }, transaction })  # XFER-014 close early
       Contract.destroy({ where: { playerId, teamId,
-        startDate: { gt: currentDate } }, transaction })                             # delete THIS team's future rows only
-      # other teams' rows (any playerId/teamId pair not matching the acting teamId) are never touched
-      Player.update({ teamId: null }, { where: { id: playerId }, transaction })      # PCON-007 sync — free agent
-      LineupFactory().repairActive(teamId, gw.id, { transaction })                   # roster composition changed
+        startDate: { gt: currentDate } }, transaction })                             # XFER-015 delete THIS team's future rows only
+      # other teams' rows (any playerId/teamId pair not matching the acting teamId) are never touched  # XFER-016
+      Player.update({ teamId: null }, { where: { id: playerId }, transaction })      # XFER-017, supersedes PCON-007 — free agent
+      LineupFactory().repairActive(teamId, gw.id, { transaction })                   # XFER-017 — roster composition changed
       return { playerId, teamId }
 ```
 
@@ -156,8 +156,8 @@ router → handlers.renewPlayer(teamId, playerId = req.body.playerId, endDate = 
       if overlap → DomainError('a contract already covers the renewal start date', 422)  # XFER-006 (no stacking)
       end = endDate ?? defaultSeasonEnd(successorStart, gw.year)
       if end < successorStart → DomainError('endDate must be on or after the renewal start date', 422)  # XFER-007
-      successor = Contract.create({ playerId, teamId, startDate: successorStart, endDate: end }, { transaction })
-      # no Player.teamId change, no lineup repair — team membership is unchanged by a renewal
+      successor = Contract.create({ playerId, teamId, startDate: successorStart, endDate: end }, { transaction })  # XFER-018
+      # no Player.teamId change, no lineup repair — team membership is unchanged by a renewal  # XFER-019
       return successor
 ```
 
@@ -191,7 +191,7 @@ getRoster():
   contracts = team.getContracts({ include: [Player], transaction? })          # unchanged query — full history
   byPlayer = group contracts by playerId
   currentRows = [player.id in byPlayer].map(id => resolveCurrentContract(byPlayer[id], gw.currentDate, gw.year))
-                  .filter(row => row !== null)
+                  .filter(row => row !== null)                                          # XFER-022, supersedes ROST-004
   return currentRows.map(toRosterPlayer(gw.year))    // shared serializer, extracted from the old inline .map()
 ```
 
@@ -233,7 +233,7 @@ only adds the "clear what's there" step `generateActive` intentionally never doe
 GameWorldFactory(gwId).getFreeAgents():
   gw = GameWorld.findByPk(gwId); if !gw → 404                                        # XFER-009
   players = gw.getPlayers({ include: [Contract] })       // read via own association — backend-standards §1 exception
-  freeAgents = players.filter(p => resolveCurrentContract(p.Contracts, gw.currentDate, gw.year) === null)
+  freeAgents = players.filter(p => resolveCurrentContract(p.Contracts, gw.currentDate, gw.year) === null)  # XFER-023
   return freeAgents.map(toRosterPlayer(gw.year))          // same serializer as getRoster()
 ```
 
@@ -276,9 +276,9 @@ GameWorldFactory(gwId).getFreeAgents():
 | e3 | Sign targets a player who already has a contract covering `currentDate` (with this team or another) | `DomainError('player is not a free agent', 422)` — Sign never overwrites an active tenure. | XFER-003 |
 | e4 | Release/Renew targets a player the acting team does **not** currently hold (wrong team, or player is a free agent) | `DomainError('team has no current contract for this player', 422)` — a team may only release/renew its own current tenure. | XFER-004 / XFER-005 |
 | e5 | Renew is attempted while the current contract has not yet reached its `endDate` ("renew-before-expiry") | **Allowed by design** — renewal only requires a *current* contract with the acting team; it doesn't require the current one to be expiring. The successor always starts at `oldRow.endDate + 1 day`, so an early renewal just queues the next tenure in advance without touching the active row. | XFER-005 |
-| e6 | Release is attempted on a team that already has future (not-yet-started) successor rows for that player (e.g. renewed earlier, then released before the renewal takes effect) | Release deletes **all** of the releasing team's not-yet-started rows for that player, not just the current one — so a queued renewal is discarded along with the release, leaving no dangling future tenure. | XFER-004 |
+| e6 | Release is attempted on a team that already has future (not-yet-started) successor rows for that player (e.g. renewed earlier, then released before the renewal takes effect) | Release deletes **all** of the releasing team's not-yet-started rows for that player, not just the current one — so a queued renewal is discarded along with the release, leaving no dangling future tenure. | XFER-015 |
 | e7 | Renew/Sign is called with a client-supplied `endDate` before the mutation's own start date | `DomainError('endDate must be on or after the effective/renewal start date', 422)` — `startDate ≤ endDate` enforced at mint. | XFER-007 |
-| e8 | Release targets a player who has contract rows with **other** teams (past or future tenures unrelated to the acting team) | Left untouched — Release only ever reads/writes `Contract` rows scoped to `{ playerId, teamId: <acting team> }`. Another team's history is never queried or mutated by this call. | XFER-004 |
+| e8 | Release targets a player who has contract rows with **other** teams (past or future tenures unrelated to the acting team) | Left untouched — Release only ever reads/writes `Contract` rows scoped to `{ playerId, teamId: <acting team> }`. Another team's history is never queried or mutated by this call. | XFER-016 |
 | e9 | A `GameWorld` has multiple `Leagues`, each running its own `cutover()` | The reconcile sweep is `GameWorld`-wide and idempotent (it only writes where `Player.teamId` actually differs from the resolved current team), so a second League's cutover re-running it is a correctness no-op, not a bug. | XFER-008 |
 | e10 | `DEV_MODE` is set and a write targets a team with no `managedTeamId` set at all (`gw.managedTeamId === null`) | `assertManaged` returns immediately under `DEV_MODE` regardless of `managedTeamId`'s value — the bypass is unconditional identity-skipping, not a "matches null" special case. Every mutation invariant above still applies. | XFER-010 |
 | e11 | A write is attempted against a team the caller does not manage, with `DEV_MODE` unset | `DomainError('team is not managed by the player', 422)` before any `ContractFactory` call — no partial writes. | XFER-010 |
