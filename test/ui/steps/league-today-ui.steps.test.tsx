@@ -1,11 +1,9 @@
 // @spec TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005
-import React from 'react';
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
-import { screen, waitFor, within } from '@testing-library/react';
-import { render } from '../test-utils';
-import { GameWorldProvider } from '../../../src/ui/context/game-world-context';
-import { GameWorld } from '../../../src/ui/pages';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
+import routes from '../../../src/ui/routes';
 
 type MockGame = {
   gameId: number;
@@ -25,16 +23,9 @@ type MockGame = {
 type TodayResponse = { status: number; games: MockGame[] };
 
 const feature = loadFeature(path.resolve(__dirname, '../features/league-today-ui.feature'));
-const mockNavigate = jest.fn();
 let todayResponses: Record<string, TodayResponse> = {};
 let fetchCalls: string[] = [];
 let seasonInProgress = true;
-
-jest.mock('react-router', () => ({
-  ...jest.requireActual('react-router'),
-  useParams: () => ({ gwId: '1' }),
-  useNavigate: () => mockNavigate,
-}));
 
 const game = (gameId: number, scheduledDate: string): MockGame => ({
   gameId,
@@ -86,16 +77,12 @@ const installFetch = () => {
 
 // @spec TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005
 const renderGameWorld = async () => {
-  render(
-    <GameWorldProvider gwId="1">
-      <GameWorld />
-    </GameWorldProvider>,
-  );
+  const router = createMemoryRouter(routes, { initialEntries: ['/1'] });
+  render(<RouterProvider router={router} />);
   await screen.findByRole('heading', { name: 'Test World' });
 };
 
 beforeEach(() => {
-  mockNavigate.mockReset();
   todayResponses = {};
   fetchCalls = [];
   seasonInProgress = true;

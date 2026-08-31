@@ -9,7 +9,7 @@ and season-lifecycle display (`src/ui/pages/league.tsx`, `src/ui/pages/game-worl
 | LIFE-001 | WHEN determining whether a season is complete THE UI SHALL derive it from each League's `GetLeagueBracket` champion presence at render time, with no new persisted GameWorld-level state | [x] |
 | UI-001 | WHEN a League's champion-producing division has a `SeasonResult` row for the current year THE League page SHALL show a champion banner on the League identity block in place of the in-progress subtitle, using `🏆 Cup Champion: <team> · Final` for the League Cup and `🏆 <League> Champion: <team> · Table decided` for the round-robin League | [x] |
 | UI-002 | WHEN both Leagues in a GameWorld are decided THE GameWorld hub SHALL show a computed `Season Complete` block naming both champions; WHILE only one is decided THE hub SHALL show that champion and `In progress` for the other | [x] |
-| UI-003 | WHEN a League page's champion-producing division is decided THE UI SHALL disable that page's simulate-triggering control while leaving team-click navigation and bracket expand-on-click interactive | [x] |
+| UI-003 | WHEN a League page's champion-producing division is decided THE UI SHALL disable that page's simulate-triggering control while leaving team-click navigation and bracket expand-on-click interactive | [ ] — gap found during #229, see note below |
 | UI-004 | WHEN a user navigates to a team's calendar THE system SHALL show that team's games across all leagues in the GameWorld at route `/:gwId/team/:teamId/calendar`, with no `leagueId` scoping | [x] |
 | UI-005 | WHEN a Division's `structure` is `KNOCKOUT` THE Division card SHALL render `BracketView` grouped by round instead of `StandingsTable` | [x] |
 | UI-006 | WHEN a round contains byes THE `BracketView` SHALL group them under a "Byes (N)" subheading listing team names inline | [x] |
@@ -19,6 +19,16 @@ and season-lifecycle display (`src/ui/pages/league.tsx`, `src/ui/pages/game-worl
 | UI-010 | WHEN a team's calendar includes a knockout bye row THE UI SHALL render the opponent as `Bye`, omit the scoreline, and count that row as played rather than scheduled | [x] → #52 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
+
+**UI-003 gap (found during map #229's route-loader migration, not caused by it):** its Gherkin
+scenarios were previously asserted against a standalone League-page mount that never rendered
+`NavRail`/`BatchSimulateControl` at all, so `queryByTestId('batch-simulate')` returning `null`
+passed vacuously. Rendered through the real app (as of #229's harness), `BatchSimulateControl`'s
+guard is GameWorld-wide (`gw.config.inProgress && gw.currentDate`), not league-scoped — deciding
+one League does not disable it while other Leagues remain in progress. The requirement was never
+actually implemented; its scenario assertions are removed from `full-season-ui.feature` rather
+than asserting behavior that doesn't exist. Needs its own ticket to either implement league-scoped
+disabling or retire the requirement.
 
 ## Traceability
 

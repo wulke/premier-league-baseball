@@ -1,34 +1,29 @@
-// @spec SHELL-001,SHELL-002
-import React from 'react';
-import { Outlet, useParams } from 'react-router';
-import { GameWorldProvider, useGameWorldContext } from '../context/game-world-context';
+// @spec SHELL-001,SHELL-002,RLDRUI-003
+import { Outlet } from 'react-router';
+import { useRevalidator } from 'react-router';
 import { NavRail } from './nav-rail';
 
+// @spec RLDRUI-003 — test-only hook: simulate an externally-triggered refresh of the gw loader.
 const ShellInvalidateProbe = () => {
-  const { invalidate } = useGameWorldContext();
+  const { revalidate } = useRevalidator();
   return (
     <button
       data-testid="shell-invalidate"
-      onClick={invalidate}
+      onClick={revalidate}
       style={{ display: 'none' }}
       aria-hidden="true"
     />
   );
 };
 
-const AppShell = () => {
-  const { gwId } = useParams();
-  return (
-    <GameWorldProvider gwId={gwId}>
-      <div data-testid="app-shell" style={{ display: 'flex', minHeight: '100vh' }}>
-        <NavRail />
-        <main style={{ flex: 1 }}>
-          <ShellInvalidateProbe />
-          <Outlet />
-        </main>
-      </div>
-    </GameWorldProvider>
-  );
-};
+const AppShell = () => (
+  <div data-testid="app-shell" style={{ display: 'flex', minHeight: '100vh' }}>
+    <NavRail />
+    <main style={{ flex: 1 }}>
+      <ShellInvalidateProbe />
+      <Outlet />
+    </main>
+  </div>
+);
 
 export { AppShell };

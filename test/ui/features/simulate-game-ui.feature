@@ -1,50 +1,22 @@
 Feature: Simulate Game UI
 
   The player can simulate one or more scheduled games from the React frontend.
-  A shared GameWorldProvider context provides GameWorld data (including currentDate)
-  to all gwId-scoped pages. A shared AppHeader component displays the current date
-  and hosts the batch "Simulate Today" action. Individual game rows on the TeamCalendar
-  page show a per-row simulate button that updates the score in-place.
+  The GameWorld (including currentDate) is shared to all gwId-scoped pages via the
+  :gwId route's loader (docs/llds/route-loader-foundation-ui.md). The NavRail hosts the
+  batch "Simulate Today" action ("AppHeader" below is the historical name for that
+  control's host, predating the App Shell rebuild). Individual game rows on the
+  TeamCalendar page show a per-row simulate button that updates the score in-place.
 
   Background:
     Given a GameWorld exists with id 1, year 2025, currentDate "2025-04-10", and season in progress
     And teams, a League, a Division, and a DivisionSeason exist in GameWorld 1
     And the player is viewing a page scoped to GameWorld 1
 
-  # ─── Flow C: GameWorldProvider ────────────────────────────────────────────────
-
-  @spec:SIMUI-001
-  Scenario: Provider fetches and exposes GameWorld data on mount
-    When the GameWorldProvider mounts for GameWorld 1
-    Then the context exposes gw with id 1, year 2025, and currentDate "2025-04-10"
-    And the context exposes refreshToken with value 0
-
-  @spec:SIMUI-002
-  Scenario: invalidate() re-fetches GameWorld and increments refreshToken
-    Given the GameWorldProvider is mounted with refreshToken 0
-    When invalidate() is called
-    Then GET /api/gameWorld/1 is requested again
-    And refreshToken is incremented to 1
-
-  @spec:SIMUI-003
-  Scenario: Children receive updated gw data after invalidate()
-    Given a child component consuming GameWorldProvider context
-    And the GameWorld currentDate is "2025-04-10"
-    When invalidate() is called and GET /api/gameWorld/1 responds with currentDate "2025-04-11"
-    Then the child component receives the updated currentDate "2025-04-11"
-
-  @spec:SIMUI-004
-  Scenario: GameWorld page consumes context and does not make a duplicate fetch
-    When the GameWorld page renders within GameWorldProvider for GameWorld 1
-    Then the GameWorld page reads gw from context
-    And no additional GET /api/gameWorld/1 request is made by the GameWorld page itself
-
-  @spec:SIMUI-005
-  Scenario: Provider exposes null gw when the GameWorld fetch fails
-    Given GET /api/gameWorld/1 returns a server error
-    When the GameWorldProvider mounts for GameWorld 1
-    Then the context gw is null
-    And child pages render without crashing
+  # ─── Retired: Flow C (GameWorldProvider) ──────────────────────────────────────
+  # SIMUI-001..005 tested the GameWorldProvider React Context directly (mount, invalidate(),
+  # refreshToken, null-on-failure). That Context is deleted — gw now comes from the :gwId
+  # route's loader (docs/llds/route-loader-foundation-ui.md). Equivalent coverage lives in
+  # test/ui/features/route-loader-foundation-ui.feature as RLDRUI-001/RLDRUI-002.
 
   # ─── Flow B: AppHeader — Batch Simulate Button Guards ─────────────────────────
 
@@ -93,12 +65,11 @@ Feature: Simulate Game UI
     And the warning does not auto-dismiss
     And the "Simulate Today" button is not shown while the warning is active
 
-  @spec:SIMUI-015
-  Scenario: Batch simulation calls invalidate() on any successful response
-    Given the player clicks "Simulate Today"
-    When POST /api/gameWorld/1/simulate returns a 200 response
-    Then invalidate() is called on the GameWorldProvider context
-    And refreshToken is incremented
+  # ─── Retired: SIMUI-015 ────────────────────────────────────────────────────────
+  # "Batch simulation calls invalidate() on any successful response" tested the deleted
+  # GameWorldProvider API by name. Equivalent coverage: RLDRUI-003 in
+  # test/ui/features/route-loader-foundation-ui.feature ("A successful batch simulation
+  # revalidates the gw loader").
 
   # ─── Flow B: AppHeader — Batch Simulate Error Paths ──────────────────────────
 
@@ -116,12 +87,11 @@ Feature: Simulate Game UI
     Then the header returns to the "Simulating…" disabled state
     And POST /api/gameWorld/1/simulate is requested again
 
-  @spec:SIMUI-018
-  Scenario: Batch simulation failure does not call invalidate()
-    Given the player clicks "Simulate Today"
-    When POST /api/gameWorld/1/simulate returns a server error
-    Then invalidate() is not called
-    And refreshToken remains unchanged
+  # ─── Retired: SIMUI-018 ────────────────────────────────────────────────────────
+  # "Batch simulation failure does not call invalidate()" tested the deleted
+  # GameWorldProvider API by name. Equivalent coverage: RLDRUI-003 in
+  # test/ui/features/route-loader-foundation-ui.feature ("A failed batch simulation does
+  # not revalidate the gw loader").
 
   # ─── Flow A: TeamCalendar — GameRow Button Guards ─────────────────────────────
 
@@ -186,14 +156,11 @@ Feature: Simulate Game UI
 
   # ─── Cross-flow: Batch Simulate → TeamCalendar Refresh ───────────────────────
 
-  @spec:SIMUI-027
-  Scenario: Batch simulation from AppHeader triggers TeamCalendar re-fetch via refreshToken
-    Given the player is viewing the TeamCalendar page
-    And the TeamCalendar has loaded a list of games
-    When the player clicks "Simulate Today" in the AppHeader and batch simulation succeeds
-    Then invalidate() is called and refreshToken increments
-    And the TeamCalendar re-fetches GET /api/team/:teamId/calendar
-    And the TeamCalendar displays the updated game results
+  # ─── Retired: SIMUI-027 ────────────────────────────────────────────────────────
+  # "Batch simulation from AppHeader triggers TeamCalendar re-fetch via refreshToken"
+  # tested the deleted refreshToken/invalidate() mechanism by name. Equivalent coverage:
+  # RLDRUI-005 in test/ui/features/route-loader-foundation-ui.feature ("A batch simulation
+  # revalidation triggers a TeamCalendar re-fetch").
 
   @spec:SIMUI-028
   Scenario: Games simulated via batch show updated scores on TeamCalendar after re-fetch

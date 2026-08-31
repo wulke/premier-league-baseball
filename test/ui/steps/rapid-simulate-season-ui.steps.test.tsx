@@ -1,15 +1,14 @@
-// @spec RSSUI-001,RSSUI-002,RSSUI-003,RSSUI-004,RSSUI-005,RSSUI-006
+// @spec RSSUI-001,RSSUI-002,RSSUI-003,RSSUI-004,RSSUI-005,RSSUI-006,RLDRUI-006
 // Acceptance bindings for the dev-only RapidSimulateControl (renders in the NavRail
-// alongside the player-facing BatchSimulateControl). Both controls are mounted under
-// one GameWorldProvider with a shared busy flag so RSSUI-006 cross-locking is exercised.
-import React, { act } from 'react';
+// alongside the player-facing BatchSimulateControl). Rendered through the real route tree
+// (createMemoryRouter) so both controls read gw from the :gwId loader and share NavRail's
+// busy-flag wiring, exercising RSSUI-006 cross-locking as it actually runs in the app.
+import { act } from 'react';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
-import { cleanup, fireEvent, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import path from 'path';
-import { BatchSimulateControl } from '../../../src/ui/components/batch-simulate-control';
-import { RapidSimulateControl } from '../../../src/ui/components/rapid-simulate-control';
-import { GameWorldProvider } from '../../../src/ui/context/game-world-context';
-import { render } from '../test-utils';
+import routes from '../../../src/ui/routes';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/rapid-simulate-season-ui.feature'));
 
@@ -62,21 +61,10 @@ const flush = async () => {
   });
 };
 
-// Mirrors NavRail: both simulate controls under one provider, sharing a busy flag so
-// they lock each other while either request is in flight (RSSUI-006).
-const SimulateControlsMount = () => {
-  const [busy, setBusy] = React.useState(false);
-  return (
-    <GameWorldProvider gwId="1">
-      <BatchSimulateControl disabled={busy} onBusyChange={setBusy} />
-      <RapidSimulateControl disabled={busy} onBusyChange={setBusy} />
-    </GameWorldProvider>
-  );
-};
-
 const mountControls = async () => {
   if (!world.mounted) {
-    render(<SimulateControlsMount />);
+    const router = createMemoryRouter(routes, { initialEntries: ['/1'] });
+    render(<RouterProvider router={router} />);
     world.mounted = true;
   }
   await flush();

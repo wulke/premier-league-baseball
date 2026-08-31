@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router';
+import { useParams, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { TeamSeasonCalendar, TeamSeasonGame } from '../../api/models';
-import { useGameWorldContext } from '../context/game-world-context';
 
 type CalendarFilter = 'all' | 'scheduled' | 'played';
 type SimulateRowStatus = 'idle' | 'loading' | 'error';
@@ -167,9 +166,11 @@ const TeamCalendar = () => {
   const [divisionFilter, setDivisionFilter] = useState<string>('all');
   const [retryToken, setRetryToken] = useState<number>(0);
   const [simulateState, setSimulateState] = useState<Map<number, SimulateRowStatus>>(new Map());
-  // Flow A — subscribe to the shared refreshToken (LLD Flow C) so a batch simulate elsewhere
-  // (NavRail) triggers a full re-fetch here, keeping single-row and batch simulate consistent.
-  const { refreshToken: contextRefreshToken } = useGameWorldContext();
+  // @spec RLDRUI-005 — interim bridge: the gw loader result's identity changes on every
+  // loader re-run (including a revalidate() from NavRail's batch simulate), same trigger
+  // semantics as the retired refreshToken counter. Removed once TeamCalendar gets its own
+  // loader + shouldRevalidate (#234).
+  const gw = useRouteLoaderData('gwId');
 
   useEffect(() => {
     if (!teamId) return;
@@ -203,7 +204,7 @@ const TeamCalendar = () => {
     });
 
     return () => { isMounted = false; };
-  }, [gwId, retryToken, contextRefreshToken, teamId]);
+  }, [gwId, retryToken, gw, teamId]);
 
   const handleSimulate = (gameId: number) => {
     setSimulateState((prev) => new Map(prev).set(gameId, 'loading'));

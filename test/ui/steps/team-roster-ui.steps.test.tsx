@@ -1,10 +1,9 @@
 // @spec ROSTUI-001,ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-005,ROSTUI-006,ROSTUI-007,ROSTUI-008,ROSTUI-009
-import React from 'react';
 import path from 'path';
-import { MemoryRouter, useLocation } from 'react-router';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import Routes from '../../../src/ui/routes';
+import routes from '../../../src/ui/routes';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/team-roster-ui.feature'));
 
@@ -51,19 +50,13 @@ const player = (overrides: Partial<RosterPlayer> = {}): RosterPlayer => ({
   ...overrides,
 });
 
-const LocationProbe = () => {
-  const location = useLocation();
-  return <output data-testid="location">{location.pathname}</output>;
-};
+let router: ReturnType<typeof createMemoryRouter>;
 
-// @spec ROSTUI-001,ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-005,ROSTUI-006,ROSTUI-007,ROSTUI-008,ROSTUI-009
-const renderAt = (entry: string) => {
-  render(
-    <MemoryRouter initialEntries={[entry]}>
-      <Routes />
-      <LocationProbe />
-    </MemoryRouter>,
-  );
+// @spec ROSTUI-001,ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-005,ROSTUI-006,ROSTUI-007,ROSTUI-008,ROSTUI-009,RLDRUI-006
+const renderAt = async (entry: string) => {
+  router = createMemoryRouter(routes, { initialEntries: [entry] });
+  render(<RouterProvider router={router} />);
+  await screen.findByTestId('app-shell');
 };
 
 // @spec ROSTUI-001,ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-005,ROSTUI-006,ROSTUI-007,ROSTUI-008,ROSTUI-009
@@ -105,7 +98,7 @@ defineFeature(feature, (test) => {
     });
     // @spec ROSTUI-001
     then('the browser navigates to "/1/team/10"', async () => {
-      await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/1/team/10/calendar'));
+      await waitFor(() => expect(router.state.location.pathname).toBe('/1/team/10/calendar'));
     });
   });
 
@@ -115,7 +108,7 @@ defineFeature(feature, (test) => {
     when('the player navigates to "/1/team/10"', () => renderAt('/1/team/10'));
     // @spec ROSTUI-006
     then('the browser is redirected to "/1/team/10/calendar"', async () => {
-      await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/1/team/10/calendar'));
+      await waitFor(() => expect(router.state.location.pathname).toBe('/1/team/10/calendar'));
     });
   });
 
@@ -189,7 +182,7 @@ defineFeature(feature, (test) => {
     when('the player navigates to "/1/team/10/roster"', async () => { renderAt('/1/team/10/roster'); await screen.findByTestId('roster-row-100'); });
     and('the player clicks that Player\'s name', () => fireEvent.click(screen.getByRole('link', { name: 'Riley Rivera' })));
     // @spec ROSTUI-004
-    then('the browser navigates to "/1/player/100"', async () => await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/1/player/100')));
+    then('the browser navigates to "/1/player/100"', async () => await waitFor(() => expect(router.state.location.pathname).toBe('/1/player/100')));
   });
 
   test('A failed roster fetch degrades to an empty table', ({ given, and, when, then }) => {

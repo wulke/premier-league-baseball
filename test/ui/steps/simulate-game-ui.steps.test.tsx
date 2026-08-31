@@ -1,42 +1,20 @@
-// @spec:SIMUI-001..SIMUI-005, SIMUI-009..SIMUI-028 (simulate-game UI acceptance).
+// @spec:SIMUI-009..SIMUI-028, RLDRUI-006 (simulate-game UI acceptance).
 // SIMUI-006/007 (currentDate chip display) are implemented in app-shell-ui.steps.test.tsx.
+// Flow C (SIMUI-001..005) and SIMUI-015/018/027 are retired — GameWorldProvider is deleted;
+// see test/ui/features/route-loader-foundation-ui.feature (RLDRUI-001/002/003/005).
 // The @future Advance-Date scenario is excluded here via the `not @future` tag filter.
 //
-// LID Arrow of Intent: these step definitions are authored AHEAD of the components they drive
-// (#23 GameWorldProvider, #24 BatchSimulateControl, #25 TeamCalendar/GameRow). Until those land the suite
-// is RED by design (the component modules do not yet exist). The shared step world, the
-// `fetch` router, and the data-testid contracts below are the blueprint the implementation
-// tickets turn green against.
-//
-// Test contracts this file assumes (to be provided by the implementation tickets):
-//   - GameWorldProvider({ gwId, children }) exposes { gw, refreshToken, invalidate } via context
-//     (useGameWorldContext). See docs/llds/simulate-game-ui.md Flow C. [#23]
-//   - BatchSimulateControl renders the batch "Simulate Today" button as
-//     [data-testid="batch-simulate"] (label toggles "Simulate Today" / "Simulating…"); batch
-//     error region is [role="alert"]; Retry button by name /retry/i. [#24]
-//   - TeamCalendar GameRow: Simulate button [data-testid="simulate-<gameId>"], spinner
-//     [data-testid="spinner-<gameId>"], error icon [data-testid="error-<gameId>"],
-//     status indicator [data-testid="status-<gameId>"], score [data-testid="score-<gameId>"].
-//     GameRow reads `game.status` (SCHEDULED/IN_PROGRESS/COMPLETED) — see LLD edge case u1. [#25]
-import React from 'react';
+// Rendered through the real route tree (createMemoryRouter, per RLDRUI-006) so the batch
+// control (in NavRail) and TeamCalendar/GameRow read gw from the :gwId loader exactly as
+// they do in the app — no react-router param mock, no standalone GameWorldProvider mount.
 import { act } from 'react-dom/test-utils';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
-import { screen, fireEvent, cleanup } from '@testing-library/react';
-import { render } from '../test-utils';
-import { GameWorldProvider, useGameWorldContext } from '../../../src/ui/context/game-world-context';
-import { BatchSimulateControl } from '../../../src/ui/components/batch-simulate-control';
-import { GameWorld, League, TeamCalendar } from '../../../src/ui/pages';
+import { screen, fireEvent, cleanup, render, waitFor } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
+import routes from '../../../src/ui/routes';
 import path from 'path';
 
 jest.setTimeout(30000);
-
-// react-router: stub the routing primitives so the pages resolve the path params they expect.
-jest.mock('react-router', () => ({
-  ...jest.requireActual('react-router'),
-  useParams: () => ({ gwId: '1', leagueId: '1', teamId: '1' }),
-  useNavigate: () => jest.fn(),
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
-}));
 
 const feature = loadFeature(path.resolve(__dirname, '../features/simulate-game-ui.feature'), {
   tagFilter: 'not @future',
@@ -86,7 +64,7 @@ interface WorldState {
   // Recorded outbound requests (assertions on re-fetch / no-duplicate-fetch)
   fetchCalls: FetchCall[];
   // What has been mounted this scenario (mount helpers are idempotent)
-  mounted: 'none' | 'probe' | 'appheader' | 'gameworld' | 'league' | 'calendar' | 'crossflow';
+  mounted: 'none' | 'appheader' | 'calendar' | 'crossflow';
   // Cross-flow (SIMUI-027/028) calendar data after a batch-driven re-fetch
   calendarFetchCount: number;
 }
@@ -131,7 +109,10 @@ const installFetch = () => {
     });
 
     if (method === 'GET' && /\/api\/gameWorld\/\d+$/.test(url)) {
-      return Promise.resolve(resolveWith(world.gwFetchStatus, world.gw));
+      // Clone so every fetch resolves to a new object identity, matching a real network
+      // response's fresh JSON.parse — several consumers (e.g. TeamCalendar's RLDRUI-005
+      // bridge) key a dependency on this object's reference, not a deep-equality check.
+      return Promise.resolve(resolveWith(world.gwFetchStatus, { ...world.gw }));
     }
     if (method === 'POST' && /\/api\/gameWorld\/\d+\/simulate$/.test(url)) {
       // Deferred: stays pending until a "When POST returns …" step calls resolveBatch() (after
@@ -186,25 +167,10 @@ const resolveSingle = (gameId: number) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Test-only context probe (Flow C) — renders the context value into the DOM so
-// the SIMUI-001..005 assertions can observe gw / refreshToken / invalidate().
-// ─────────────────────────────────────────────────────────────────────────────
-
-const ContextProbe = () => {
-  const ctx = useGameWorldContext();
-  return (
-    <div data-testid="context-probe">
-      <span data-testid="gw-id">{ctx.gw?.id ?? 'null'}</span>
-      <span data-testid="gw-year">{ctx.gw?.year ?? 'null'}</span>
-      <span data-testid="gw-currentDate">{ctx.gw?.currentDate ?? 'null'}</span>
-      <span data-testid="refreshToken">{ctx.refreshToken}</span>
-      <button onClick={() => ctx.invalidate()}>invalidate</button>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Mount helpers — idempotent within a scenario. `world.mounted` guards re-render.
+// Rendered through the real route tree: NavRail (and its BatchSimulateControl) is always
+// present alongside whichever page is open, so a GameWorld-route mount and a
+// TeamCalendar-route mount both give the batch button + the page-specific UI.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const flush = async (ms = 0) => {
@@ -225,33 +191,27 @@ const flush = async (ms = 0) => {
   });
 };
 
-const mountProvider = (children: React.ReactNode, kind: WorldState['mounted']) => {
+const mountAt = (entry: string, kind: WorldState['mounted']) => {
   if (world.mounted !== 'none') return;
-  render(<GameWorldProvider gwId="1">{children}</GameWorldProvider>);
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [entry] })} />);
   world.mounted = kind;
 };
 
-const ensureProbe = async () => {
-  mountProvider(<ContextProbe />, 'probe');
-  await flush();
-};
-
 const ensureAppHeader = async () => {
-  mountProvider(<BatchSimulateControl />, 'appheader');
+  mountAt('/1', 'appheader');
   await flush();
 };
 
 const ensureCalendar = async () => {
-  mountProvider(<TeamCalendar />, 'calendar');
+  mountAt('/1/team/1/calendar', 'calendar');
   await flush();
 };
 
 const ensureCrossFlow = async () => {
-  // TeamCalendar renders its own AppHeader (#24 wired AppHeader into every /:gwId page), so
-  // mounting a second standalone <AppHeader /> alongside it would duplicate
-  // [data-testid="batch-simulate"]. TeamCalendar alone gives the cross-flow scenarios both the
-  // batch button and the per-row simulate UI they need.
-  mountProvider(<><BatchSimulateControl /><TeamCalendar /></>, 'crossflow');
+  // NavRail (with BatchSimulateControl) renders on every /:gwId page, so the TeamCalendar
+  // route alone gives the cross-flow scenarios both the batch button and the per-row
+  // simulate UI they need.
+  mountAt('/1/team/1/calendar', 'crossflow');
   await flush();
 };
 
@@ -275,83 +235,7 @@ const registerSteps = ({ given, when, then }: any) => {
     /* contextual framing only — no-op */
   });
 
-  // ── Flow C: GameWorldProvider (SIMUI-001..005) ─────────────────────────────
-  when(/^the GameWorldProvider mounts for GameWorld (\d+)$/, async () => {
-    await ensureProbe();
-  });
-
-  then(/^the context exposes gw with id (\d+), year (\d+), and currentDate "([^"]+)"$/, (id: string, year: string, currentDate: string) => {
-    expect(screen.getByTestId('gw-id')).toHaveTextContent(id);
-    expect(screen.getByTestId('gw-year')).toHaveTextContent(year);
-    expect(screen.getByTestId('gw-currentDate')).toHaveTextContent(currentDate);
-  });
-
-  then(/^the context exposes refreshToken with value (\d+)$/, (value: string) => {
-    expect(screen.getByTestId('refreshToken')).toHaveTextContent(value);
-  });
-
-  given(/^the GameWorldProvider is mounted with refreshToken (\d+)$/, async () => {
-    await ensureProbe();
-  });
-
-  when('invalidate() is called', async () => {
-    fireEvent.click(screen.getByText('invalidate'));
-    await flush();
-  });
-
-  then(/^GET \/api\/gameWorld\/(\d+) is requested again$/, (id: string) => {
-    expect(countCalls('GET', new RegExp(`/api/gameWorld/${id}$`))).toBeGreaterThanOrEqual(2);
-  });
-
-  then(/^refreshToken is incremented to (\d+)$/, (value: string) => {
-    expect(screen.getByTestId('refreshToken')).toHaveTextContent(value);
-  });
-
-  given(/^a child component consuming GameWorldProvider context$/, async () => {
-    await ensureProbe();
-  });
-
-  given(/^the GameWorld currentDate is "([^"]+)"$/, (currentDate: string) => {
-    (world.gw as Record<string, unknown>).currentDate = currentDate;
-  });
-
-  when(/^invalidate\(\) is called and GET \/api\/gameWorld\/(\d+) responds with currentDate "([^"]+)"$/, async (_id: string, currentDate: string) => {
-    (world.gw as Record<string, unknown>).currentDate = currentDate;
-    fireEvent.click(screen.getByText('invalidate'));
-    await flush();
-  });
-
-  then(/^the child component receives the updated currentDate "([^"]+)"$/, (currentDate: string) => {
-    expect(screen.getByTestId('gw-currentDate')).toHaveTextContent(currentDate);
-  });
-
-  when(/^the GameWorld page renders within GameWorldProvider for GameWorld (\d+)$/, async () => {
-    mountProvider(<GameWorld />, 'gameworld');
-    await flush();
-  });
-
-  then('the GameWorld page reads gw from context', () => {
-    // The page renders GameWorld content sourced from the context gw (no own fetch).
-    expect(screen.getByText(/Current year/i)).toBeInTheDocument();
-  });
-
-  then(/^no additional GET \/api\/gameWorld\/(\d+) request is made by the GameWorld page itself$/, (id: string) => {
-    expect(countCalls('GET', new RegExp(`/api/gameWorld/${id}$`))).toBe(1);
-  });
-
-  given(/^GET \/api\/gameWorld\/(\d+) returns a server error$/, (_id: string) => {
-    world.gwFetchStatus = 500;
-  });
-
-  then('the context gw is null', () => {
-    expect(screen.getByTestId('gw-id')).toHaveTextContent('null');
-  });
-
-  then('child pages render without crashing', () => {
-    expect(screen.getByTestId('context-probe')).toBeInTheDocument();
-  });
-
-  given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
+given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
     (world.gw.config as Record<string, unknown>).inProgress = flag === 'true';
   });
 
@@ -441,22 +325,6 @@ const registerSteps = ({ given, when, then }: any) => {
     expect(screen.queryByTestId('batch-simulate')).toBeNull();
   });
 
-  when(/^POST \/api\/gameWorld\/(\d+)\/simulate returns a 200 response$/, async () => {
-    world.batchResponse = { status: 200, simulated: [{}], skipped: [] };
-    resolveBatch();
-    await flush();
-  });
-
-  then('invalidate() is called on the GameWorldProvider context', () => {
-    // invalidate() re-GETs the GameWorld; a second GET evidences the call.
-    expect(countCalls('GET', /\/api\/gameWorld\/\d+$/)).toBeGreaterThanOrEqual(2);
-  });
-
-  then('refreshToken is incremented', () => {
-    // The provider re-fetched after invalidate → at least two GameWorld GETs.
-    expect(countCalls('GET', /\/api\/gameWorld\/\d+$/)).toBeGreaterThanOrEqual(2);
-  });
-
   when(/^POST \/api\/gameWorld\/(\d+)\/simulate returns a server error$/, async () => {
     world.batchResponse = { status: 500, simulated: [], skipped: [] };
     resolveBatch();
@@ -492,14 +360,6 @@ const registerSteps = ({ given, when, then }: any) => {
 
   then(/^POST \/api\/gameWorld\/(\d+)\/simulate is requested again$/, (_id: string) => {
     expect(countCalls('POST', /\/api\/gameWorld\/\d+\/simulate$/)).toBeGreaterThanOrEqual(2);
-  });
-
-  then('invalidate() is not called', () => {
-    expect(countCalls('GET', /\/api\/gameWorld\/\d+$/)).toBe(1);
-  });
-
-  then('refreshToken remains unchanged', () => {
-    expect(countCalls('GET', /\/api\/gameWorld\/\d+$/)).toBe(1);
   });
 
   // ── Flow A: TeamCalendar / GameRow (SIMUI-019..028) ────────────────────────
@@ -630,38 +490,9 @@ const registerSteps = ({ given, when, then }: any) => {
     expect(screen.queryAllByRole('button', { name: /retry/i })).toHaveLength(0);
   });
 
-  // ── Cross-flow: batch (AppHeader) → TeamCalendar refresh (SIMUI-027/028) ────
-  given('the player is viewing the TeamCalendar page', async () => {
-    await ensureCrossFlow();
-  });
-
-  given('the TeamCalendar has loaded a list of games', () => {
-    if (world.games.length === 0) {
-      world.games = [makeGame({ gameId: 42, status: 'SCHEDULED', scheduledDate: '2025-04-10' })];
-    }
-  });
-
-  when('the player clicks "Simulate Today" in the AppHeader and batch simulation succeeds', async () => {
-    world.batchResponse = { status: 200, simulated: [makeGame({ gameId: 42 })], skipped: [] };
-    // Reflect the batch result in the calendar data so the re-fetch returns updated scores.
-    world.games = world.games.map((g) => (g.gameId === 42 ? { ...g, status: 'COMPLETED', homeTeamResult: 7, awayTeamResult: 4 } : g));
-    fireEvent.click(batchButton());
-    resolveBatch();
-    await flush();
-  });
-
-  then('invalidate() is called and refreshToken increments', () => {
-    expect(countCalls('GET', /\/api\/gameWorld\/\d+$/)).toBeGreaterThanOrEqual(2);
-  });
-
-  then('the TeamCalendar re-fetches GET /api/team/:teamId/calendar', () => {
-    expect(world.calendarFetchCount).toBeGreaterThanOrEqual(2);
-  });
-
-  then('the TeamCalendar displays the updated game results', () => {
-    expect(screen.queryAllByTestId(/^score-\d+$/).some((el) => el.textContent?.includes('7'))).toBe(true);
-  });
-
+  // ── Cross-flow: batch (nav rail) → TeamCalendar refresh (SIMUI-028) ─────────
+  // SIMUI-027's own scenario is retired (see route-loader-foundation-ui.feature RLDRUI-005);
+  // this remaining step covers SIMUI-028 (updated score/button state after the re-fetch).
   given(/^game (\d+) is showing a "Simulate" button on the TeamCalendar$/, async (gameId: string) => {
     world.games = [makeGame({ gameId: Number(gameId), status: 'SCHEDULED', scheduledDate: '2025-04-10' })];
     await ensureCrossFlow();
@@ -675,8 +506,8 @@ const registerSteps = ({ given, when, then }: any) => {
     await flush();
   });
 
-  then('the TeamCalendar re-fetches its game list', () => {
-    expect(world.calendarFetchCount).toBeGreaterThanOrEqual(2);
+  then('the TeamCalendar re-fetches its game list', async () => {
+    await waitFor(() => expect(world.calendarFetchCount).toBeGreaterThanOrEqual(2));
   });
 
   then(/^game (\d+) no longer shows a "Simulate" button$/, (gameId: string) => {

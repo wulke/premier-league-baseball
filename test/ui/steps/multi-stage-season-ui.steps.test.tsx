@@ -1,22 +1,13 @@
 // @spec MSUI-001,MSUI-002,MSUI-003 — multi-stage League UI acceptance bindings
-import React from 'react';
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
-import { screen, within } from '@testing-library/react';
-import { render } from '../test-utils';
-import { GameWorldProvider } from '../../../src/ui/context/game-world-context';
-import { League } from '../../../src/ui/pages';
+import { render, screen, within } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
+import routes from '../../../src/ui/routes';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/multi-stage-season-ui.feature'));
 
-const mockNavigate = jest.fn();
 let renderMode: 'before' | 'advanced' | 'champion' = 'before';
-
-jest.mock('react-router', () => ({
-  ...jest.requireActual('react-router'),
-  useParams: () => ({ gwId: '1', leagueId: '162' }),
-  useNavigate: () => mockNavigate,
-}));
 
 const league = {
   id: 162,
@@ -70,7 +61,6 @@ const bracket = () => [{
 }];
 
 beforeEach(() => {
-  mockNavigate.mockReset();
   global.fetch = jest.fn((input: RequestInfo | URL) => {
     const url = input.toString();
     const body = url.endsWith('/standings') ? standings : url.endsWith('/bracket') ? bracket() : league;
@@ -79,7 +69,8 @@ beforeEach(() => {
 });
 
 const renderLeague = async () => {
-  render(<GameWorldProvider gwId="1"><League /></GameWorldProvider>);
+  const router = createMemoryRouter(routes, { initialEntries: ['/1/162'] });
+  render(<RouterProvider router={router} />);
   await screen.findByRole('heading', { name: 'Champions League' });
 };
 
