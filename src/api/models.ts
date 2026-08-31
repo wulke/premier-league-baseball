@@ -420,6 +420,16 @@ const MLB_WORLD_SERIES_FORMAT: CompetitionFormat = {
   structure: 'KNOCKOUT', legs: 'ONE_LEG', winsToAdvance: 'Bo7', seeding: 'FIXED',
 };
 
+// @spec GWT-005 — live-template scheduling. The live configs predate schedulingConfig;
+// without one on every first-stage Division, LeagueFactory.start() leaves the GameWorld's
+// currentDate null (SCL-006), so /today always 422s (TODAY-002) and rapid-simulate stays
+// disabled (SCL-014). The 3-day league interval keeps the Today ±3-day window continuously
+// populated (weekly gaps would leave 3 empty days per round); the cup starts a month later
+// so the sequential DefaultWorlds start order (premier-league, then league-cup) passes
+// SCL-004's strictly-after gate on the already-seeded currentDate.
+const PL_SCHEDULING = { startDate: '2025-04-01', intervalDays: 3 };
+const LC_SCHEDULING = { startDate: '2025-05-01', intervalDays: 14 };
+
 const LeagueTemplates: Record<string, LeagueConfig> = {
   // --- live configs ---
   'premier-league': {
@@ -430,12 +440,14 @@ const LeagueTemplates: Record<string, LeagueConfig> = {
         name: GameWorldType.PremierLeague,
         defaultTeams: [...Array(44).keys()].slice(0, 20),
         format: STANDARD_LEAGUE_FORMAT,
+        schedulingConfig: PL_SCHEDULING,
         isTopTier: true,
       },
       {
         name: 'Championship',
         defaultTeams: [...Array(44).keys()].slice(20, 44),
         format: STANDARD_LEAGUE_FORMAT,
+        schedulingConfig: PL_SCHEDULING,
         isTopTier: false,
       },
     ] }],
@@ -448,6 +460,7 @@ const LeagueTemplates: Record<string, LeagueConfig> = {
         name: '1st Round',
         defaultTeams: [...Array(44).keys()],
         format: STANDARD_CUP_FORMAT,
+        schedulingConfig: LC_SCHEDULING,
         isTopTier: true,
       },
     ] }],

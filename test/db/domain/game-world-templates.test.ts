@@ -1,4 +1,4 @@
-// @spec GWT-001,GWT-002,GWT-003 — pickable old Champions League world acceptance
+// @spec GWT-001,GWT-002,GWT-003,GWT-005 — pickable old Champions League world acceptance
 import db from '../../../src/db/client';
 import { GameWorldFactory, LeagueFactory } from '../../../src/db/domain';
 import { GameFactory } from '../../../src/db/domain/game';
@@ -69,5 +69,39 @@ describe('pickable old Champions League game world (#87)', () => {
     expect(await db.models.SeasonResult.count({ where: { year: league.year } })).toBe(1);
     // the whole League is decided
     expect(await LeagueFactory(league.id).isSeasonComplete(league.year)).toBe(true);
+  }, 60000);
+});
+
+describe('live templates carry scheduling so a started world has a currentDate', () => {
+  beforeEach(async () => {
+    await db.sync({ force: true });
+  });
+
+  // @spec GWT-005 — the proving slice: build from the real PremierLeague bundle,
+  // start its Leagues in DefaultWorlds order (as the UI does, sequentially), and
+  // verify the SCL-006 seeding + dated fixtures that /today and rapid-simulate need.
+  it('seeds the GameWorld currentDate and dates every Game when the default world starts', async () => {
+    const bundle = useDefaultGameWorld(GameWorldType.PremierLeague);
+    const created = await GameWorldFactory().create(bundle);
+
+    for (const league of created.leagues) {
+      await LeagueFactory(league.id).start();
+    }
+
+    // SCL-006: currentDate bootstrapped to the earliest first-stage startDate
+    await expect(db.models.GameWorld.findByPk(created.id)).resolves.toMatchObject({
+      dataValues: { currentDate: '2025-04-01' },
+    });
+
+    // GWT-005: fixtures are dated, so the Today ±3-day window has something to match
+    const games = await db.models.Game.findAll();
+    expect(games.length).toBeGreaterThan(0);
+    expect(games.every((game: any) => game.dataValues.scheduledDate != null)).toBe(true);
+
+    // TODAY-002's 422 precondition is gone: /today resolves (to an array) for every started league
+    for (const league of created.leagues) {
+      const today = await LeagueFactory(league.id).getToday();
+      expect(Array.isArray(today)).toBe(true);
+    }
   }, 60000);
 });
