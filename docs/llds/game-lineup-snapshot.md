@@ -42,7 +42,7 @@ getLineup(teamId, { gameId?, gwId? }):
 | No active lineup exists to freeze, or no requested per-game lineup exists | Signal not found (404), matching #199's read convention. |
 | Target Game does not exist | Signal not found (404); a snapshot never creates an orphaned per-game lineup. |
 | Concurrent snapshot requests | The partial unique index is the final integrity guard; the loser re-reads and returns the established row. |
-| Player roster membership mutates after a snapshot | Not repaired here: #140 owns active-lineup repair on transfer, release, or injury. Rosters are static within a #138 season, so a snapshot is valid at freeze time. |
+| Player roster membership mutates after a snapshot | Not repaired here: `LineupFactory.repairActive()` (`docs/llds/contract-lifecycle.md`, #237) repairs only the *active* (gameId-less) Lineup on sign/release, never a frozen per-game snapshot. Rosters are static within a #138 season, so a snapshot is valid at freeze time. |
 
 ## Traceability
 

@@ -265,10 +265,10 @@ and active/per-game uniqueness. Manager editing and game snapshots remain later 
 ### Key Trade-offs
 - **Additive attributes, no stored OVR**: every read consumer (roster + detail) gets the flat-7 verbatim plus trivial read-time derivations; a stored/computed OVR is never introduced, so adding a rating later can't silently invalidate a tuning. A *display-only* OVR may be computed client-side, never carried by the API.
 - **Read-time derivation over storage**: `primaryPosition` (argmax), `age` (from `birthDate`), `positionCoverage` (threshold) are all computed at read — consistent with #59's no-stored-position decision; nothing derived is persisted.
-- **`Contract` as membership, `teamId` as cache**: roster reads join through active Contracts, so the moment #140 introduces multi-row history the read stays correct; `Player.teamId` is never the source of truth.
+- **`Contract` as membership, `teamId` as cache**: roster reads join through active Contracts, so now that #237 has introduced multi-row history the read stays correct; `Player.teamId` is never the source of truth.
 - **Top-level player route**: costs one extra route segment vs. nesting, buys correctness for free agents (nullable `teamId`) without a special-case URL.
 - **Pitches generated for every player**: `PlayerFactory` emits a 4-pitch repertoire for all players (inherited from #59's uniform schema); meaningless for fielders, so the UI hides the Pitch-repertoire tab for non-pitchers. The cleaner long-term fix — don't generate them for fielders — is engine/generation work ([#136](https://github.com/wulke/premier-league-baseball/issues/136)), out of scope here.
-- **No contract history / salary yet**: the `Contract` model carries no amount field and only one row per player exists today (no writer for transfers); the player-detail Overview shows team + term only. A contract-history view graduates when #140 lands — same deferral logic as the stats UI (#139: detail never renders an always-empty section).
+- **No contract history / salary yet**: the `Contract` model carries no amount field. #237 landed the transfer writes (multiple rows per player now exist), but a contract-history *view* was explicitly out of scope for that map too (`docs/llds/transfers-ui.md`); the player-detail Overview still shows team + term only — same deferral logic as the stats UI (#139: detail never renders an always-empty section).
 - **`positionCoverage` threshold (≥70) is a placeholder**, inherited from the roster-view decision; analytical calibration of "covers a position" over the 9-key map is generation/engine work ([#136](https://github.com/wulke/premier-league-baseball/issues/136)).
 
 ### Out of scope
@@ -276,7 +276,7 @@ and active/per-game uniqueness. Manager editing and game snapshots remain later 
 - "My Club" concept / managed-club ownership layer — [#137](https://github.com/wulke/premier-league-baseball/issues/137) (now its own active map).
 - Lineup management (batting order, positions, starter) — [#138](https://github.com/wulke/premier-league-baseball/issues/138).
 - Player stats UI surface (game/season/career) — [#139](https://github.com/wulke/premier-league-baseball/issues/139) (gated on a `PlayerGameStats` writer).
-- Transfers / contract-lifecycle / free-agency — [#140](https://github.com/wulke/premier-league-baseball/issues/140) (the roster-mutating writes that create contract history; also the home of any salary field and `jerseyNumber`).
+- Transfers / contract-lifecycle / free-agency — [#140](https://github.com/wulke/premier-league-baseball/issues/140) (the roster-mutating writes that create contract history; also the home of any salary field and `jerseyNumber`) — delivered by [#237](https://github.com/wulke/premier-league-baseball/issues/237). Salary/`jerseyNumber`/contract-history display remain unbuilt.
 
 ---
 
