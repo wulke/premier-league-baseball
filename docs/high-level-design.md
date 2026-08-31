@@ -891,10 +891,11 @@ per person:    { Natures[] }
   not a second learning stream.
 - **ageDiscountMeta** is a fixed, hidden per-person meta-modulator. Together with the attribute's
   aging profile, it sets that person's prime offset and decline acceleration.
-- **Natures** are fixed, named person-level dispositions. A Nature catalog declares the attribute
-  kinds each name affects and its fixed expression effect. At read time, a formula resolves all
-  applicable Natures for its input attribute; their effects compose multiplicatively in stable
-  catalog order. No applicable Nature resolves to multiplier `1`.
+- **Natures** are fixed, named person-level dispositions. A Nature catalog maps each name to
+  per-attribute-kind expression effects, so one Nature can explicitly raise one kind (`× > 1`) and
+  lower another (`× < 1`), Pokémon-style. At read time, a formula resolves all applicable Natures
+  for its input attribute; their effects compose multiplicatively in stable catalog order. No
+  applicable Nature resolves to multiplier `1`.
 
 This is a **person-attribute** contract. World inputs such as gear and weather remain flat and out
 of scope. Visible and hidden attributes use the same tuple: hidden attributes may feed gameplay

@@ -63,18 +63,18 @@ type NatureId = string;
 
 type NatureCatalogEntry = {
   id: NatureId;
-  // Selects the attribute kinds this named disposition affects.
-  appliesTo: (attributeKind: string) => boolean;
-  expressionMultiplier: number;       // fixed positive effect when applicable
+  // Absent means no-op (×1); one named Nature may raise one kind and lower another.
+  expressionMultiplierByAttributeKind: Readonly<Record<string, number>>;
 };
 ```
 
 Natures are selected when a person is generated and never changed by the earning loop. They are
 standalone named traits on the person, not anonymous values duplicated into each attribute. The
-catalog owns their presentation identity and applicability. Multiple applicable Natures compose as
-the product of their fixed multipliers in stable catalog order; no applicable Natures yields `1`.
-The number of Natures, names, attributes they affect, and multiplier values remain tuning/flavor
-decisions rather than a persistence choice.
+catalog owns their presentation identity and per-kind effects. A single Nature can explicitly
+carry both a positive target (`× > 1`) and a negative target (`× < 1`), as Pokémon Natures do.
+Multiple applicable Natures compose as the product of their fixed multipliers in stable catalog
+order; no applicable Natures yields `1`. The number of Natures, names, target kinds, and multiplier
+values remain tuning/flavor decisions rather than a persistence choice.
 
 ### Read policy and catalog entry
 
@@ -122,8 +122,10 @@ tuned here. A consumer must declare one catalog entry before it may read this st
 
 ```
 resolveNatures(personNatures, attributeKind):
-  applicable = NatureCatalog entries named by personNatures that apply to attributeKind
-  return product(applicable.expressionMultiplier in stable catalog order), or 1 when empty
+  effects = NatureCatalog entries named by personNatures
+    .map(entry => entry.expressionMultiplierByAttributeKind[attributeKind])
+    .filter(effect => effect is present)
+  return product(effects in stable catalog order), or 1 when empty
 ```
 
 This resolver makes a Nature's applicability visible and deterministic. It returns a multiplier;
@@ -195,8 +197,9 @@ expectation, or versus-league-line.
 | e7 | Salary needs career history while a game decision needs present performance | Salary selects its aggregate/unclamped catalog entry; the game consumer selects a capacity+form bounded entry. Neither writes a global effective rating. | F-IVEV-001 |
 | e8 | One outcome contributes to several people | The grader creates one attributable delta per `(person, attribute)` contribution. Each call writes only that person's state; cross-person effects are reads, never shared storage writes. | F-IVEV-003 |
 | e9 | A person has no applicable Nature for an attribute | `F-IVEV-004` returns `1`; the named trait is a no-op for that attribute, with no placeholder numeric value persisted in the attribute. | F-IVEV-004 |
-| e10 | Several named Natures apply to one attribute | `F-IVEV-004` composes their fixed effects multiplicatively in stable catalog order. The catalog, not attribute storage, owns the definition. | F-IVEV-004 |
-| e11 | A consumer has no catalog entry | It cannot make an IV/EV read. The missing policy is a design error to resolve before implementation, not a fallback to a global rating. | F-IVEV-001 |
+| e10 | One Nature has a positive and a negative target | Its catalog entry maps the positive kind to a multiplier above `1` and the negative kind to one below `1`; the same named Nature resolves independently for each requested attribute. | F-IVEV-004 |
+| e11 | Several named Natures apply to one attribute | `F-IVEV-004` composes their fixed effects multiplicatively in stable catalog order. The catalog, not attribute storage, owns the definition. | F-IVEV-004 |
+| e12 | A consumer has no catalog entry | It cannot make an IV/EV read. The missing policy is a design error to resolve before implementation, not a fallback to a global rating. | F-IVEV-001 |
 
 ## Dependency / Ownership Boundary
 
