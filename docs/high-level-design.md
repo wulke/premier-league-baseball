@@ -694,3 +694,116 @@ Runtime request flow (any migrated page, e.g. PlayerDetail):
   #232's resolution comment as optional future work, not part of this migration.
 - The lightweight prefetch-on-hover + in-memory-cache + skeleton patch — considered and
   explicitly rejected in favor of this loader-based architectural fix.
+
+# HLD: Lineup View — Defensive | Batting Tabs
+
+> Backed by [#225](https://github.com/wulke/premier-league-baseball/issues/225) — a single fully-resolved decision ticket (`/grill-me`, 2026-08-31), consolidated here in place of a wayfinder map since the destination and every architectural trade-off were already settled in one session with no fog left to chart. Sequenced after [HLD: Team Roster & Player Visibility](#hld-team-roster--player-visibility) (map #135) — this is a presentation redesign of the read-only Lineup tab that map shipped (#200), not a new read path.
+
+## Goal
+
+Redesign the existing read-only Lineup tab from two side-by-side panels (batting-order list +
+bench/bullpen pools) into a Football-Manager-style **Defensive | Batting** tabbed table, one row
+per starter, with bench and bullpen folded into the same table as tagged rows. Purely a
+presentation change over the data `GET /api/team/:teamId/lineup` already returns — no new backend
+surface, no write path.
+
+## Strategy
+
+- **Options (data source)**:
+  - Option A: New tabular read endpoint shaping rows server-side.
+  - Option B (chosen): Reshape the existing `TeamLineup` response (`{ starters, startingPitcherId,
+    bench, bullpen }`) entirely client-side.
+  - **Decision**: Option B (#225). Every field the tabular view needs — fielding position, batting
+    order, starter/bench/bullpen membership — already exists in the active-lineup response; this is
+    a presentation redesign, not a new read path.
+
+- **Options (defensive-tab rating source)**:
+  - Option A: Compute a new display rating for the tabbed view.
+  - Option B (chosen): Reuse the same positional rating `optimalFieldingAssignment`
+    (`src/db/domain/lineup.ts`) already reads off `Player.attributes.positions` to place each
+    starter, shown alongside the assigned position (e.g. `SS — 82`).
+  - **Decision**: Option B (#225). One rating, one source of truth — the number shown to the user is
+    exactly the number the generator used, not a second parallel computation that could drift from it.
+
+- **Options (bench/bullpen placement)**:
+  - Option A: Keep the current separate Pool panels below the tabs.
+  - Option B (chosen): Fold bench and bullpen into the same table as inline rows, tagged `BENCH` /
+    `BULLPEN`.
+  - **Decision**: Option B (#225). One table per tab reads closer to FM's reference layout than a
+    table-plus-list split, and removes a second visual pattern from the page for no loss of
+    information — the tag column carries what the separate-panel heading used to.
+
+- **Options (position-badge filter row)**:
+  - Option A: Add FM-style clickable position badges to filter the table.
+  - Option B (chosen): Deferred out of v1.
+  - **Decision**: Option B (#225). Baseball's 9-position-plus-DH set is small enough to scan
+    unfiltered; the filter row earns its keep on FM's much larger position taxonomy, not here.
+
+- **Options (overlap with the per-game Bullpen tab, #243)**:
+  - Option A: Share one row-rendering component/state between this read-only view and #243's
+    editable per-game Bullpen tab.
+  - Option B (chosen): Accept duplication — a bullpen reliever renders as a read-only tagged row
+    here and as a separate editable entry in #243's Bullpen tab.
+  - **Decision**: Option B (#225). The two tabs read/write different underlying objects (the active
+    template `Lineup` here vs. a per-game snapshot `Lineup` in #243); sharing a component across
+    that boundary would couple a read-only view's rendering to a write surface's validation and
+    save-state for a cosmetic row-shape saving that isn't worth the coupling.
+
+## Architecture
+
+### Components
+
+- **`src/ui/pages/team-lineup.tsx`** (MODIFIED): the two-panel layout (batting-order list + Pool
+  sections) is replaced by a **Defensive | Batting** tab pair, each rendering one row per starter
+  plus inline `BENCH`/`BULLPEN`-tagged rows, sourced from the same `TeamLineup` fetch this page
+  already makes. No new fetch, no new endpoint. (LLD: `docs/llds/lineup-view-ui.md` — extends the
+  existing LLD in place rather than a new file, since the endpoint contract and edge cases it
+  documents are unchanged.)
+- **`GET /api/team/:teamId/lineup`** (UNCHANGED): remains the sole data source; `TeamLineup`
+  (`src/api/models.ts`) is not extended.
+- **`optimalFieldingAssignment`** (`src/db/domain/lineup.ts`, UNCHANGED): read-only reused as the
+  rating source for the Defensive tab; no new backend logic.
+
+### Flow
+
+```
+user opens Team Hub → Lineup tab (unchanged route: /:gwId/team/:teamId/lineup)
+  → existing fetch: GET /api/team/:teamId/lineup (+ roster, for display names — unchanged)
+  → client reshapes the response into two tab views:
+      Defensive tab: one row per starter — player, fielding position, positional rating
+                      (Player.attributes.positions[position], the same value the generator used)
+                      + BENCH/BULLPEN-tagged rows appended
+      Batting tab:   existing battingOrder-sorted rows, unchanged from today's behavior
+                      + BENCH/BULLPEN-tagged rows appended
+  → every row still links to /:gwId/player/:playerId; no mutating control on either tab
+```
+
+### Key Trade-offs
+
+- **No new read path, but the defensive rating becomes a UI-layer read of `Player.attributes`**:
+  today's Lineup tab never surfaces raw attribute values to the client; this redesign does (one
+  positional rating per starter). Accepted because it's the same value already computed
+  server-side for lineup generation — just displayed, not newly computed — and because the LLD's
+  existing read-only/no-mutating-control constraint (EARS `LINEUI-004`) is otherwise unchanged.
+- **Accepted duplication with #243's Bullpen tab**: a relief pitcher appears as a read-only row
+  here and as a separately-rendered editable entry there, in exchange for keeping this view's
+  rendering decoupled from a write surface's validation/save-state.
+- **Position-badge filtering deferred**: costs nothing today (9-plus-DH scans fine unfiltered) but
+  means this Strategy option would need revisiting if a future map ever grows the position
+  taxonomy.
+
+### Out of scope
+
+- Editable "Picked" position/role assignment for the **template** (active) lineup — remains
+  undesigned, tracked separately in [#226](https://github.com/wulke/premier-league-baseball/issues/226)
+  (blocked on [#136](https://github.com/wulke/premier-league-baseball/issues/136)).
+- Per-game starting-pitcher / active-reliever designation — split out into its own follow-on,
+  [#243](https://github.com/wulke/premier-league-baseball/issues/243) (a third, editable "Bullpen"
+  tab on the same page, soft-blocked by this HLD's implementation).
+- Value/form/talent/appearances-style columns —
+  [#227](https://github.com/wulke/premier-league-baseball/issues/227), blocked on the
+  `PlayerGameStats` writer ([#216](https://github.com/wulke/premier-league-baseball/issues/216)/
+  [#217](https://github.com/wulke/premier-league-baseball/issues/217)), the player-stats UI query
+  framework ([#139](https://github.com/wulke/premier-league-baseball/issues/139)/
+  [#215](https://github.com/wulke/premier-league-baseball/issues/215)), and the transfer/contract
+  lifecycle design ([#140](https://github.com/wulke/premier-league-baseball/issues/140)).
