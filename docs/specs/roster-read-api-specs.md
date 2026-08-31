@@ -16,11 +16,17 @@ Backend requirements for the team roster read endpoint and its domain read
 | ROST-008 | WHEN composing a roster row THE system SHALL include the identity fields, a derived `primaryPosition`, and the flat-7 ratings verbatim, and SHALL NOT include a stored or computed OVR | [x] → #169 |
 | ROST-009 | WHEN deriving `positionCoverage` THE system SHALL return the set of positions whose rating meets the threshold, always including the primary position | [x] → #169 |
 | ROST-010 | WHEN returning a roster THE system SHALL return rows in `Player.id` order with no server-side sort or filter — sort and filter are the UI's responsibility | [x] → #169 |
+| ROST-011 | WHEN composing a roster row THE system SHALL include a `positions` field carrying the full 9-key fielding-rating map verbatim, alongside (not in place of) the derived `primaryPosition`/`positionCoverage` fields | [x] → #225 |
 
 `ROST-004` and `ROST-006` are Deferred, not Active — they record deliberate v1 gaps traceable to
 their owning future maps ([#140](https://github.com/wulke/premier-league-baseball/issues/140) and
 [#136](https://github.com/wulke/premier-league-baseball/issues/136) respectively); the anchored-on-Contract
 design makes the `ROST-004` filter a one-line seam when #140 lands.
+
+`ROST-011` was added by the Lineup View redesign
+([#225](https://github.com/wulke/premier-league-baseball/issues/225),
+[`lineup-view-ui.md`](../llds/lineup-view-ui.md)) — its Defensive tab needs a starter's rating
+*at their assigned position*, which need not be their `primaryPosition`.
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
@@ -31,3 +37,4 @@ design makes the `ROST-004` filter a one-line seam when #140 lands.
 - Sibling specs: `docs/specs/player-identity-specs.md`, `docs/specs/player-detail-read-api-specs.md`
 - Decision record: [#145](https://github.com/wulke/premier-league-baseball/issues/145)
 - Code: `src/api/endpoints.ts` (`GetTeamRoster`), `src/api/router.ts`, `src/api/handlers.ts` (`getTeamRoster`), `src/db/domain/team.ts` (`getRoster`), `src/api/models.ts` (`RosterPlayer`)
+- `ROST-011` consumer: `docs/specs/lineup-view-ui-specs.md` (`LINEUI-005`)

@@ -181,7 +181,7 @@ const TeamFactory = (id?: number): ITeam => {
       };
     },
 
-    // @spec ROST-001,ROST-003,ROST-005,ROST-007,ROST-008,ROST-009,ROST-010
+    // @spec ROST-001,ROST-003,ROST-005,ROST-007,ROST-008,ROST-009,ROST-010,ROST-011
     getRoster: async (): Promise<RosterPlayer[]> => {
       const team = await db.models.Team.findByPk(id);
       if (!team) throw new DomainError('Not found', 404);
@@ -213,6 +213,7 @@ const TeamFactory = (id?: number): ITeam => {
           age: gameWorld.dataValues.year - new Date(player.birthDate).getUTCFullYear(),
           primaryPosition: primary,
           positionCoverage,
+          positions: player.attributes.positions,
           contact: player.attributes.contact,
           power: player.attributes.power,
           armStrength: player.attributes.armStrength,

@@ -112,6 +112,7 @@ interface RosterPlayer {
   age: number;
   primaryPosition: PlayerPosition;
   positionCoverage: PlayerPosition[];
+  positions: Record<PlayerPosition, number>; // @spec ROST-011
   contact: number;
   power: number;
   armStrength: number;

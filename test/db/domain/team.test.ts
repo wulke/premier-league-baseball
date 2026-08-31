@@ -252,8 +252,8 @@ describe('TeamFactory', () => {
     }
   });
 
-  // @spec ROST-007,ROST-008,ROST-009
-  it('@spec ROST-007 @spec ROST-008 @spec ROST-009 reads Contract membership even when Player.teamId is null', async () => {
+  // @spec ROST-007,ROST-008,ROST-009,ROST-011
+  it('@spec ROST-007 @spec ROST-008 @spec ROST-009 @spec ROST-011 reads Contract membership even when Player.teamId is null', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2056 }).then(({ dataValues }) => dataValues);
     const team = await db.models.Team.create({ gameWorldId: gw.id, config: { name: 'Contract Club' } }).then(({ dataValues }) => dataValues);
     const player = await db.models.Player.create({
@@ -283,6 +283,7 @@ describe('TeamFactory', () => {
       age: 26,
       primaryPosition: 'Shortstop',
       positionCoverage: ['FirstBase', 'Shortstop'],
+      positions: { Pitcher: 10, Catcher: 10, FirstBase: 70, SecondBase: 10, ThirdBase: 10, Shortstop: 80, LeftField: 10, CenterField: 10, RightField: 10 },
       contact: 61,
       discipline: 67,
     })]);
