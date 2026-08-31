@@ -1,4 +1,4 @@
-// @spec TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005
+// @spec TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-006
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { render, screen, waitFor, within } from '@testing-library/react';
@@ -26,6 +26,7 @@ const feature = loadFeature(path.resolve(__dirname, '../features/league-today-ui
 let todayResponses: Record<string, TodayResponse> = {};
 let fetchCalls: string[] = [];
 let seasonInProgress = true;
+let worldCurrentDate: string | null = '2025-06-10';
 
 const game = (gameId: number, scheduledDate: string): MockGame => ({
   gameId,
@@ -42,7 +43,7 @@ const game = (gameId: number, scheduledDate: string): MockGame => ({
   status: 'SCHEDULED',
 });
 
-// @spec TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005
+// @spec TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-006
 const installFetch = () => {
   global.fetch = jest.fn((input: RequestInfo | URL) => {
     const url = typeof input === 'string' ? input : input.toString();
@@ -57,6 +58,7 @@ const installFetch = () => {
       return response({
         id: 1,
         year: 2025,
+        currentDate: worldCurrentDate,
         config: { name: 'Test World', inProgress: seasonInProgress },
         Leagues: [
           { id: 1, config: { name: 'National League' } },
@@ -86,6 +88,7 @@ beforeEach(() => {
   todayResponses = {};
   fetchCalls = [];
   seasonInProgress = true;
+  worldCurrentDate = '2025-06-10';
   installFetch();
 });
 
@@ -192,6 +195,30 @@ defineFeature(feature, (test) => {
     // @spec TODAYUI-005
     and('GET /api/league/1/today is not requested', () => {
       expect(fetchCalls).not.toContain('/api/league/1/today');
+    });
+  });
+
+  test('The GameWorld has no currentDate configured', ({ given, when, then, and }) => {
+    given('GameWorld 1 has an in-progress season with League 1 named "National League" and League 2 named "American League"', () => {});
+    // @spec TODAYUI-006
+    and('GameWorld 1 has no currentDate configured', () => {
+      worldCurrentDate = null;
+    });
+    when('the GameWorld 1 home page loads', renderGameWorld);
+
+    // @spec TODAYUI-006
+    then('no Today section is shown', async () => {
+      await waitFor(() => expect(screen.queryByTestId('today-section')).toBeNull());
+    });
+
+    // @spec TODAYUI-006
+    and('GET /api/league/1/today is not requested', () => {
+      expect(fetchCalls).not.toContain('/api/league/1/today');
+    });
+
+    // @spec TODAYUI-006
+    and('GET /api/league/2/today is not requested', () => {
+      expect(fetchCalls).not.toContain('/api/league/2/today');
     });
   });
 

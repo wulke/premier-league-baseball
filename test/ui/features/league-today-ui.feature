@@ -51,6 +51,16 @@ Feature: GameWorld Home "Today" Section
     Then no Today section is shown
     And GET /api/league/1/today is not requested
 
+  # ─── No currentDate Configured ────────────────────────────────────────────────
+
+  @spec:TODAYUI-006
+  Scenario: The GameWorld has no currentDate configured
+    Given GameWorld 1 has no currentDate configured
+    When the GameWorld 1 home page loads
+    Then no Today section is shown
+    And GET /api/league/1/today is not requested
+    And GET /api/league/2/today is not requested
+
   # ─── Fetch Failure Treated As Empty ──────────────────────────────────────────
 
   @spec:TODAYUI-002
