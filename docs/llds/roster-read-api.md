@@ -8,6 +8,8 @@
 
 Adds `GET /api/team/:teamId/roster` (+ optional `?gwId=`), backed by `TeamFactory(teamId).getRoster()` anchoring on **Contracts** (`Team → Contract → Player` join). v1 intentionally returns every Contract row (the active-date filter belongs to #140). Returns a **flat row, no envelope** — identity + derived `primaryPosition` + flat-7 ratings + a derived `positionCoverage` field (the corrigendum #147 graduated onto #145). Depends on the identity columns ([`player-identity.md`](./player-identity.md)) and the Contract DATE migration ([`player-detail-read-api.md`](./player-detail-read-api.md)). Does **not** cover player detail, any write, or UI.
 
+**Amendment (#225, [`lineup-view-ui.md`](./lineup-view-ui.md)):** `RosterPlayer` gains a `positions` field — the full 9-key rating map, served verbatim alongside the already-derived `primaryPosition`/`positionCoverage`. Needed because the Defensive-tab redesign shows each starter's rating *at their assigned* fielding position, which need not be their `primaryPosition`; only `getRoster()`'s existing `attributes.positions` read needs to reach the response, no new query.
+
 ## Interface / Data Model
 
 ```ts
@@ -29,6 +31,7 @@ interface RosterPlayer {
   age: number;                 // derived read-time from birthDate (not stored)
   primaryPosition: PlayerPosition;   // derived: argmax over attributes.positions (PATTR-001 ratified here)
   positionCoverage: PlayerPosition[]; // derived: fixed-threshold (≥70) set over the 9-key map (#147 corrigendum)
+  positions: Record<PlayerPosition, number>; // verbatim 9-key rating map (#225 amendment — ROST-011)
   contact: number; power: number; armStrength: number; accuracy: number;
   reaction: number; vision: number; discipline: number;   // flat-7 verbatim — NO derived OVR
 }
@@ -54,6 +57,7 @@ GET /api/team/:teamId/roster?gwId=…
         age       = derivedFrom(birthDate, gameWorldYear)
         primaryPosition = argmax(attributes.positions)   // first-listed enum on tie (PATTR-001)
         positionCoverage = positions filter (rating >= COVERAGE_THRESHOLD)        # ROST-006
+        positions = attributes.positions verbatim (all 9 keys, no filtering)      # ROST-011
       → flat array (unsorted: Player.id order; sort is the UI's job — #147)
 ```
 
@@ -62,6 +66,7 @@ GET /api/team/:teamId/roster?gwId=…
 - **Anchor on Contracts, not `Player.teamId`** — `Contract` is the membership source-of-truth (forward-proofs #140); `Player.teamId` is a denormalized cache. The read joins `Team → Contract → Player`.
 - **Flat row, no OVR** — the additive-attribute constraint (#145/#146): ratings are served verbatim, never rolled into a stored/computed OVR. `positionCoverage` is additive (a derived view over existing ratings), not a synthetic rating.
 - **Sort/filter deferred to the UI** (#147) — the API returns unsorted `Player.id` order; client-side sort/filter from the flat-7 + coverage needs no query params.
+- **`positions` served verbatim, not just the derived fields** (#225) — `primaryPosition`/`positionCoverage` alone can't answer "what's this player's rating *at the position they're assigned*," since an assigned position may differ from a player's primary one (e.g. a bench player's best position isn't necessarily where the Defensive tab would ever need to rate them, but a *starter's* assigned position commonly isn't their argmax). Serving the full map keeps that a client-side lookup instead of a second derived field per possible assignment.
 
 ## Edge Case Probe
 
@@ -73,6 +78,7 @@ GET /api/team/:teamId/roster?gwId=…
 | e4 | Multi-year / multi-row Contracts produce duplicate roster rows for one player | **Not filtered in v1.** Deliberate gap traceable to #140: no Contract year-filter exists because only one Contract per player is ever written. When #140 introduces multi-row history, add the `startDate≤cur≤endDate` active-contract filter here — the anchored-on-Contract design makes that a one-line seam, not a rework. | ROST-004 |
 | e5 | `primaryPosition` tie (two positions share the max rating) | First-listed enum order (the existing `primaryPosition()` reduce — PATTR-001 edge e1), **ratified here as the spec for all read consumers**. | ROST-005 |
 | e6 | `positionCoverage` threshold calibration | Fixed-threshold **rule** (`≥ COVERAGE_THRESHOLD`, placeholder `70`); primary always included. Analytical calibration of the threshold is generation/engine work → #136, out of scope here. | ROST-006 |
+| e7 | `positions` map consumer reads a key for a position the player has never been rated highly at | Every one of the 9 keys is always present (the generator always populates all 9 — see `player-attributes.md`); returned verbatim, no `undefined` case. | ROST-011 |
 
 ## Traceability
 
@@ -80,7 +86,7 @@ GET /api/team/:teamId/roster?gwId=…
 |---|---|
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-team-roster--player-visibility) |
 | **This LLD** | `docs/llds/roster-read-api.md` |
-| Sibling LLDs | `docs/llds/player-identity.md` (identity columns), `docs/llds/player-detail-read-api.md` (Contract DATE), `docs/llds/team-roster-ui.md` (consumer) |
+| Sibling LLDs | `docs/llds/player-identity.md` (identity columns), `docs/llds/player-detail-read-api.md` (Contract DATE), `docs/llds/team-roster-ui.md` (consumer), `docs/llds/lineup-view-ui.md` (consumer of the #225 `positions` amendment) |
 | EARS | `docs/specs/roster-read-api-specs.md` — `ROST-001`.. |
 | Code | `src/api/endpoints.ts` (`GetTeamRoster`), `src/api/router.ts`, `src/api/handlers.ts` (`getTeamRoster`), `src/db/domain/team.ts` (`getRoster`), `src/api/models.ts` (`RosterPlayer`) |
 | Decision record | [#145](https://github.com/wulke/premier-league-baseball/issues/145) |
