@@ -237,7 +237,9 @@ const TeamFactory = (id?: number): ITeam => {
           fieldingPosition: dataValues.fieldingPosition,
         })), { transaction });
 
-        // #140 owns repair when roster membership later changes; a #138-season roster is static at freeze time.
+        // A frozen per-game snapshot is intentionally never repaired by ContractFactory's
+        // LineupFactory.repairActive() (#237) — only the active (gameId-less) Lineup is;
+        // a #138-season roster is static at freeze time.
         await transaction.commit();
         return lineup.dataValues;
       } catch (error) {
