@@ -69,10 +69,11 @@ function defaultSeasonEnd(fromDate: Date, gameWorldYear: number): Date {   // XF
 }
 ```
 
-`generateRoster()`'s hardcoded `Date.UTC(year, 9, 31)` (`docs/llds/player-contracts-roster.md`)
-is refactored to call `SEASON_END_MONTH`/`SEASON_END_DAY` directly (its term always starts at
-season generation, never crosses the November boundary, so it does not need `defaultSeasonEnd`'s
-year-rollover branch).                                                     # XFER-021
+`PlayerFactory.generateRoster()` delegates its initial bulk mint to
+ContractFactory's `createInitialRosterContracts()` writer with its enclosing transaction. That
+ContractFactory-owned writer derives the term from `SEASON_END_MONTH`/`SEASON_END_DAY` directly
+(the term always starts at season generation, never crosses the November boundary, so it does not
+need `defaultSeasonEnd`'s year-rollover branch).                            # XFER-021
 
 ### Authorization seam
 
@@ -242,6 +243,11 @@ GameWorldFactory(gwId).getFreeAgents():
 - **`ContractFactory` anchored on `(teamId, playerId)`**, not on `Contract.id` — every write this
   map introduces is a team-initiated action against one target player, matching the API shape
   (`POST /api/team/:teamId/transfers/...`). There is no standalone `Contract` CRUD surface.
+- **Contract write ownership is complete.** The anchored Factory owns Sign/Release/Renew;
+  `createInitialRosterContracts()` owns initial-roster minting; and
+  `deleteForGameWorld()` owns the GameWorld-cascade deletion. Other domain factories may
+  orchestrate those writers inside their transactions but never mutate `db.models.Contract`
+  directly.
 - **`effectiveDate` is never client input.** Resolved server-side from `GameWorld.currentDate` and
   threaded in as an ancestor value (backend-standards §1), so the "must equal `currentDate`"
   invariant is satisfied by construction rather than validated against a caller-supplied date.

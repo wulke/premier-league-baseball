@@ -3,6 +3,7 @@ import { NewGameWorld, RosterPlayer } from "../../api/models";
 import db from '../client';
 import { DomainError } from './errors';
 import { LeagueFactory, TeamFactory, resolveCurrentContract, toRosterPlayer } from ".";
+import { deleteForGameWorld } from './contract';
 import { resolveMatchRules } from './lineup';
 
 interface IGameWorld {
@@ -190,16 +191,8 @@ const GameWorldFactory = (id?: number): IGameWorld => {
           await db.models.Lineup.destroy({ where: { id: { [Op.in]: lineupIds } }, transaction });
         }
 
-        const contractWhere = [
-          ...(playerIds.length > 0 ? [{ playerId: { [Op.in]: playerIds } }] : []),
-          ...(teamIds.length > 0 ? [{ teamId: { [Op.in]: teamIds } }] : []),
-        ];
-        if (contractWhere.length > 0) {
-          await db.models.Contract.destroy({
-            where: { [Op.or]: contractWhere },
-            transaction,
-          });
-        }
+        // @spec GWD-002 — ContractFactory owns the cascade's Contract mutation.
+        await deleteForGameWorld({ playerIds, teamIds }, { transaction });
 
         if (divisionIds.length > 0) {
           await db.models.SeasonResult.destroy({

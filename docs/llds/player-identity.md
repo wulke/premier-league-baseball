@@ -71,9 +71,9 @@ generateRoster(teamId, gwId, { compositionKey?, seed?, ...options }):
                    birthDate = randomDate(ageBand: 18..38, relativeTo gameWorldYear) # PID-004
     Player.create({ teamId, gameWorldId, attributes, ...identity })
 
-  for each player:                                 // Contract write — now uses DATE columns
-    Contract.create({ playerId, teamId,
-                      startDate: <year-03-01>, endDate: <year-10-31> })  # see player-detail-read-api.md
+  createInitialRosterContracts(teamId, players.map(p => p.id), year, { transaction })
+    // ContractFactory-owned bulk Contract write, using DATE columns:
+    // startDate: <year-03-01>, endDate: <year-10-31>  # see player-detail-read-api.md
 ```
 
 ### Key decisions embedded in this flow

@@ -2,7 +2,7 @@ import { Transaction } from 'sequelize';
 import { MatchRules, PlayerAttributes, PlayerDetail, PlayerPosition, PlayerRecord, RosterPlayer } from '../../api/models';
 import { DomainError } from './errors';
 import db from '../client';
-import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE, SEASON_END_DAY, SEASON_END_MONTH } from './contract';
+import { createInitialRosterContracts, MAX_ROSTER_SIZE, MIN_ROSTER_SIZE } from './contract';
 import { generateIdentity, mulberry32, resolveComposition } from './identity';
 import { LineupFactory } from './lineup';
 
@@ -151,15 +151,8 @@ const PlayerFactory = (playerId?: number): IPlayer => {
         }))
       , { transaction }).then((rows) => rows.map(({ dataValues }) => dataValues));
 
-      await db.models.Contract.bulkCreate(
-        players.map((player) => ({
-          playerId: player.id,
-          teamId,
-          startDate: new Date(Date.UTC(year, 2, 1)),
-          // @spec XFER-021 — reuses the same SEASON_END_MONTH/DAY anchor Sign/Renew derive from.
-          endDate: new Date(Date.UTC(year, SEASON_END_MONTH, SEASON_END_DAY)),
-        }))
-      , { transaction });
+      // @spec XFER-021 — ContractFactory-owned initial minting reuses the shared season-end anchor.
+      await createInitialRosterContracts(teamId, players.map((player) => player.id), year, { transaction });
 
       // @spec LIN-003
       await LineupFactory().generateActive(teamId, gameWorldId, players, { transaction, matchRules });
