@@ -76,14 +76,34 @@ const TeamLineupView = () => {
   // @spec LINEUI-014
   const cancelEdit = () => { setDraft([]); setSaveError(null); setEditing(false); };
   // @spec LINEUI-010,LINEUI-011,LINEUI-013 — occupied defensive slots are unavailable locally; server validates the full shape.
-  const updateDraft = (entryIndex: number, patch: Partial<DraftEntry>) => setDraft((current) => current.map((entry, index) => {
-    if (index !== entryIndex) return entry;
-    const next = { ...entry, ...patch };
-    if (patch.role && patch.role !== 'STARTER') return { ...next, battingOrder: null, fieldingPosition: null };
-    if (patch.role === 'STARTER' && entry.role !== 'STARTER') return { ...next, fieldingPosition: null, battingOrder: null };
-    if (patch.fieldingPosition === 'Pitcher') return { ...next, battingOrder: dhEnabled ? null : 9 };
+  const updateDraft = (entryIndex: number, patch: Partial<DraftEntry>) => setDraft((current) => {
+    const next = current.map((entry) => ({ ...entry }));
+    const entry = next[entryIndex];
+    if (!entry) return current;
+    const wasStarter = entry.role === 'STARTER';
+    Object.assign(entry, patch);
+    if (patch.role && patch.role !== 'STARTER') {
+      entry.battingOrder = null;
+      entry.fieldingPosition = null;
+      return next;
+    }
+    if (patch.role === 'STARTER' && !wasStarter) {
+      entry.fieldingPosition = null;
+      entry.battingOrder = null;
+    }
+    if (entry.role !== 'STARTER') return next;
+    if (entry.fieldingPosition === 'Pitcher') {
+      entry.battingOrder = dhEnabled ? null : 9;
+      return next;
+    }
+    // @spec LINEUI-011 — a new non-pitcher starter inherits an open batting slot;
+    // batting order is intentionally displayed as a derived, disabled control.
+    if (entry.fieldingPosition != null && entry.battingOrder == null) {
+      const occupiedOrders = new Set(next.filter((candidate, index) => index !== entryIndex && candidate.role === 'STARTER').map((candidate) => candidate.battingOrder));
+      entry.battingOrder = [...Array(9)].map((_, index) => index + 1).find((order) => !occupiedOrders.has(order)) ?? null;
+    }
     return next;
-  }));
+  });
   // @spec LINEUI-014 — submit only the assigned entries to #254's wholesale PUT endpoint.
   const saveLineup = async () => {
     if (!teamId) return;
@@ -94,7 +114,7 @@ const TeamLineupView = () => {
     const saved = await response.json().catch(() => null);
     if (saved && !Array.isArray(saved)) { setLineup(saved as TeamLineup); setDraft([]); setEditing(false); }
   };
-  const occupiedPositions = (self: number) => new Set(starters.filter((row) => row.entryIndex !== self).map((row) => row.fieldingPosition).filter(Boolean));
+  const occupiedPositions = (self: number) => new Set(starters.filter((row) => row.entryIndex !== self).map((row) => row.fieldingPosition));
 
   const renderRow = (row: LineupRow, tab: LineupTab) => {
     const isDh = row.fieldingPosition === null && row.role === 'STARTER';
@@ -126,7 +146,7 @@ const TeamLineupView = () => {
 // @spec LINEUI-010,LINEUI-011,LINEUI-013
 const DraftControls = ({ row, dhEnabled, occupied, onChange }: { row: LineupRow; dhEnabled: boolean; occupied: Set<PlayerPosition | null>; onChange: (index: number, patch: Partial<DraftEntry>) => void }) => <>
   <select aria-label={`Role for player ${row.playerId}`} data-testid={`role-picker-${row.playerId}`} value={row.role} onChange={(e) => onChange(row.entryIndex, { role: e.target.value as DraftRole })}>{(['STARTER', 'BENCH', 'BULLPEN', 'UNASSIGNED'] as DraftRole[]).map((role) => <option key={role} value={role}>{role}</option>)}</select>
-  {row.role === 'STARTER' && <><select aria-label={`Fielding position for player ${row.playerId}`} data-testid={`position-picker-${row.playerId}`} value={row.fieldingPosition ?? 'DH'} onChange={(e) => onChange(row.entryIndex, { fieldingPosition: e.target.value === 'DH' ? null : e.target.value as PlayerPosition })}><option value="">Choose position</option>{DEFENSIVE_TAB_ORDER.map((position) => <option key={position} value={position} disabled={occupied.has(position)}>{position}</option>)}{dhEnabled && <option value="DH" disabled={occupied.has(null)}>DH</option>}</select><select aria-label={`Batting slot for player ${row.playerId}`} data-testid={`batting-picker-${row.playerId}`} value={row.battingOrder ?? ''} disabled><option value="">—</option>{row.battingOrder != null && <option value={row.battingOrder}>{row.battingOrder}</option>}</select></>}
+  {row.role === 'STARTER' && <><select aria-label={`Fielding position for player ${row.playerId}`} data-testid={`position-picker-${row.playerId}`} value={row.fieldingPosition ?? (row.battingOrder != null ? 'DH' : '')} onChange={(e) => onChange(row.entryIndex, { fieldingPosition: e.target.value === 'DH' ? null : e.target.value as PlayerPosition })}><option value="">Choose position</option>{DEFENSIVE_TAB_ORDER.map((position) => <option key={position} value={position} disabled={occupied.has(position)}>{position}</option>)}{dhEnabled && <option value="DH" disabled={occupied.has(null)}>DH</option>}</select><select aria-label={`Batting slot for player ${row.playerId}`} data-testid={`batting-picker-${row.playerId}`} value={row.battingOrder ?? ''} disabled><option value="">—</option>{row.battingOrder != null && <option value={row.battingOrder}>{row.battingOrder}</option>}</select></>}
 </>;
 
 // @spec LINEUI-013
