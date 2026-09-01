@@ -77,7 +77,7 @@ enforcement as the only safety net.
    f. gameIds     = distinct gameId from DivisionSeasonGame.findAll({ where: { divisionSeasonId: divisionSeasonIds } })
 4. Delete children bottom-up (all writes inside t):
    a. PlayerGameStats.destroy({ where: { [Op.or]: [{ playerId: playerIds }, { gameId: gameIds }] } })
-   b. Contract.destroy({ where: { [Op.or]: [{ playerId: playerIds }, { teamId: teamIds }] } })
+   b. ContractFactory.deleteForGameWorld({ playerIds, teamIds }, { transaction })
    c. SeasonResult.destroy({ where: { divisionId: divisionIds } })
    d. DivisionSeasonGame.destroy({ where: { divisionSeasonId: divisionSeasonIds } })
    e. orphanGameIds = gameIds MINUS (gameId still referenced by any remaining DivisionSeasonGame row)
@@ -98,7 +98,7 @@ enforcement as the only safety net.
 | # | Condition | Handling | Spec |
 |---|---|---|---|
 | e1 | `gwId` does not correspond to an existing GameWorld | Throw before opening a transaction, with `statusCode = 404`; no rows are touched. | GWD-001 |
-| e2 | Happy path — GameWorld exists and has related Leagues/Teams/Players/Divisions/DivisionSeasons/Games/Contracts/PlayerGameStats/SeasonResults | All of it is deleted along with the GameWorld row itself; nothing related survives the commit. | GWD-002 |
+| e2 | Happy path — GameWorld exists and has related Leagues/Teams/Players/Divisions/DivisionSeasons/Games/Contracts/PlayerGameStats/SeasonResults | All of it is deleted along with the GameWorld row itself; `GameWorldFactory` delegates Contract deletion to the Contract-owned cascade writer within the same transaction, so nothing related survives the commit. | GWD-002 |
 | e3 | Any delete step fails partway through the cascade (constraint violation, DB error) | Roll back the entire transaction — GameWorld and all related rows remain exactly as before the call — and rethrow the original error. No partial cascades are ever persisted. | GWD-003 |
 | e4 | GameWorld has `config.inProgress === true` (active season) | No restriction — deleted the same as any other GameWorld. The confirmation modal (UI LLD) is the only guardrail; there is no additional backend business rule gating in-progress worlds. | GWD-004 |
 | e5 | A `Game` row is reachable via `DivisionSeasonGame` from more than one GameWorld's DivisionSeasons (theoretical — current domain logic never shares a Game across GameWorlds, but the association allows it) | Only delete a `Game` row once its `DivisionSeasonGame` references are fully removed *within this transaction*; a Game still referenced by a DivisionSeasonGame row belonging to another GameWorld is left intact. Defensive-only; not expected to trigger in practice. | GWD-002 |

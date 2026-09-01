@@ -23,7 +23,8 @@ deferred past this schema map (see HLD "Out of scope").
 
 - `PlayerFactory.generateRoster(teamId, gwId)` creates the initial roster
 - `TeamFactory.create()` calls `generateRoster()` immediately after the `Team` row exists
-- generated `Player.teamId` and issued `Contract.teamId` are written together at this call site
+- generated `Player.teamId` is written by `PlayerFactory`; the accompanying initial Contract rows
+  are minted by `ContractFactory.createInitialRosterContracts()` within the same transaction
 
 Roster-size enforcement beyond generation-by-construction and any runtime behavior tied to
 `Contract.endYear` remain out of scope.
@@ -94,12 +95,9 @@ generateRoster(teamId, gwId):
     player = Player.create({ teamId, gameWorldId: gwId, attributes })
     players.push(player)
 
-  for player in players:
-    Contract.create({
-      playerId: player.id, teamId,
-      startYear: GameWorld(gwId).year,
-      endYear: GameWorld(gwId).year,   // 1-year term — see Key Decision below
-    })
+  ContractFactory.createInitialRosterContracts(teamId, players.map(p => p.id), year, { transaction })
+    // ContractFactory owns the bulk Contract write and mints
+    // startDate = <year-03-01>, endDate = <year-10-31>
 
   return players
 ```
@@ -112,7 +110,7 @@ generateRoster(teamId, gwId):
   deliberate v1 simplification, not an oversight: low-level player-type/skew tuning (e.g. making a
   Pitcher-slotted player's `pitches`/`armStrength` roll higher) is planned as a later refinement pass
   once player-type details are worked out.
-- **1-year Contract term** (`endYear = startYear`): deliberately short so every generated roster's
+- **1-season Contract term** (`startDate = March 1`, `endDate = October 31` of the generated year): deliberately short so every generated roster's
   Contracts expire after the first season, forcing early exercise of Contract lifecycle/free-agency
   mechanics (deferred fog, not this map's concern) rather than letting rosters sit static for years
   before that gap is ever exercised.
