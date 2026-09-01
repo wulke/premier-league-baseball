@@ -70,7 +70,7 @@ function defaultSeasonEnd(fromDate: Date, gameWorldYear: number): Date {   // XF
 ```
 
 `PlayerFactory.generateRoster()` delegates its initial bulk mint to
-`ContractFactory.createInitialRosterContracts()` with its enclosing transaction. That
+ContractFactory's `createInitialRosterContracts()` writer with its enclosing transaction. That
 ContractFactory-owned writer derives the term from `SEASON_END_MONTH`/`SEASON_END_DAY` directly
 (the term always starts at season generation, never crosses the November boundary, so it does not
 need `defaultSeasonEnd`'s year-rollover branch).                            # XFER-021

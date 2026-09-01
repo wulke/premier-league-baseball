@@ -77,7 +77,7 @@ enforcement as the only safety net.
    f. gameIds     = distinct gameId from DivisionSeasonGame.findAll({ where: { divisionSeasonId: divisionSeasonIds } })
 4. Delete children bottom-up (all writes inside t):
    a. PlayerGameStats.destroy({ where: { [Op.or]: [{ playerId: playerIds }, { gameId: gameIds }] } })
-   b. ContractFactory.deleteForGameWorld({ playerIds, teamIds }, { transaction })
+   b. ContractFactory-owned `deleteForGameWorld({ playerIds, teamIds }, { transaction })`
    c. SeasonResult.destroy({ where: { divisionId: divisionIds } })
    d. DivisionSeasonGame.destroy({ where: { divisionSeasonId: divisionSeasonIds } })
    e. orphanGameIds = gameIds MINUS (gameId still referenced by any remaining DivisionSeasonGame row)

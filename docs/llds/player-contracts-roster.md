@@ -24,7 +24,7 @@ deferred past this schema map (see HLD "Out of scope").
 - `PlayerFactory.generateRoster(teamId, gwId)` creates the initial roster
 - `TeamFactory.create()` calls `generateRoster()` immediately after the `Team` row exists
 - generated `Player.teamId` is written by `PlayerFactory`; the accompanying initial Contract rows
-  are minted by `ContractFactory.createInitialRosterContracts()` within the same transaction
+  are minted by ContractFactory's `createInitialRosterContracts()` writer within the same transaction
 
 Roster-size enforcement beyond generation-by-construction and any runtime behavior tied to
 `Contract.endYear` remain out of scope.
@@ -95,7 +95,7 @@ generateRoster(teamId, gwId):
     player = Player.create({ teamId, gameWorldId: gwId, attributes })
     players.push(player)
 
-  ContractFactory.createInitialRosterContracts(teamId, players.map(p => p.id), year, { transaction })
+  createInitialRosterContracts(teamId, players.map(p => p.id), year, { transaction })
     // ContractFactory owns the bulk Contract write and mints
     // startDate = <year-03-01>, endDate = <year-10-31>
 

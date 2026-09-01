@@ -49,6 +49,10 @@ interface MutationContext {
   gameWorldId: number;
 }
 
+interface ContractWriteOptions {
+  transaction?: Transaction;
+}
+
 interface IContract {
   sign: (context: MutationContext & { endDate?: string }) => Promise<ContractRecord>;
   release: (context: MutationContext) => Promise<{ playerId: number; teamId: number }>;
@@ -64,6 +68,43 @@ const toContractRecord = (contract: any): ContractRecord => {
     startDate: isoDate(values.startDate),
     endDate: isoDate(values.endDate),
   };
+};
+
+// @spec XFER-021 — Contract-owned initial-roster writer. PlayerFactory orchestrates this
+// inside its existing Team creation transaction but never writes Contract rows itself.
+const createInitialRosterContracts = async (
+  teamId: number,
+  playerIds: number[],
+  gameWorldYear: number,
+  options: ContractWriteOptions = {},
+): Promise<any[]> => {
+  if (playerIds.length === 0) return [];
+  return db.models.Contract.bulkCreate(
+    playerIds.map((playerId) => ({
+      playerId,
+      teamId,
+      startDate: new Date(Date.UTC(gameWorldYear, 2, 1)),
+      endDate: new Date(Date.UTC(gameWorldYear, SEASON_END_MONTH, SEASON_END_DAY)),
+    })),
+    { transaction: options.transaction },
+  );
+};
+
+// @spec GWD-002 — Contract-owned cascade writer. GameWorldFactory supplies its already-scoped
+// child ids and transaction; this function owns the Contract destroy operation.
+const deleteForGameWorld = async (
+  { playerIds, teamIds }: { playerIds: number[]; teamIds: number[] },
+  options: ContractWriteOptions = {},
+): Promise<number> => {
+  const contractWhere = [
+    ...(playerIds.length > 0 ? [{ playerId: { [Op.in]: playerIds } }] : []),
+    ...(teamIds.length > 0 ? [{ teamId: { [Op.in]: teamIds } }] : []),
+  ];
+  if (contractWhere.length === 0) return 0;
+  return db.models.Contract.destroy({
+    where: { [Op.or]: contractWhere },
+    transaction: options.transaction,
+  });
 };
 
 // @spec XFER-001 is enforced by the caller (handlers.ts) before any of these are invoked —
@@ -227,6 +268,8 @@ const listForTeam = async (teamId: number, options: { transaction?: Transaction 
 
 export {
   ContractFactory,
+  createInitialRosterContracts,
+  deleteForGameWorld,
   listForTeam,
   MAX_ROSTER_SIZE,
   MIN_ROSTER_SIZE,
