@@ -125,6 +125,11 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
 | u7 | Manager promotes a bench player or demotes a starter | Swap the two fixed slot occupants; the displaced player takes the source slot, so no entry is unplaced. | LINEUI-010 |
 | u8 | Draft is invalid at Save | The PATCH validator returns an error; keep draft for correction, surface the message, and do not change the stored active lineup. | LINEUI-011, LWRITE-002 |
 | u9 | Non-managed team or pitcher/bullpen row | Do not render a selector or Save Lineup control for a non-managed team; never render selectors on `Pitcher` or `BULLPEN` entries. | LINEUI-004, LINEUI-009 |
+| u10 | Managed team enters edit mode | Copy the read-card entries into a local draft and append every current-roster player absent from it as `UNASSIGNED`; read-only rendering remains untouched until Edit is selected. | LINEUI-009, LINEUI-013 |
+| u11 | DH rule / pitcher batting slot | The current canonical lineup determines the applicable rule shape: include the DH position only when its starter exists. Pitcher order is always derived as 9 without DH and `null` with DH, never an editable input. | LINEUI-010, LINEUI-011 |
+| u12 | A draft role or position change conflicts with a starter slot | Disable occupied fielding-position options, so a duplicate position cannot be selected locally. Server validation remains authoritative for every other lineup shape and cap. | LINEUI-010, LINEUI-013 |
+| u13 | Wholesale save rejects | Keep the draft and edit mode, surface the 422 message, and make no read-card replacement. A successful PUT replaces the read card and exits edit mode. | LINEUI-014 |
+| u14 | Cancel or route changes | Cancel resets the draft from the loaded card; effect cleanup/navigation drops component state with no unsaved-changes guard. | LINEUI-014 |
 
 ## Traceability
 

@@ -1,4 +1,4 @@
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-013,LINEUI-014
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -25,7 +25,7 @@ const rosterPlayer = (id: number): RosterPlayer => ({
   positions: ALL_POSITIONS.reduce((map, position) => ({ ...map, [position]: RATING }), {} as Record<PlayerPosition, number>),
   contact: 60, power: 60, armStrength: 60, accuracy: 60, reaction: 60, vision: 60, discipline: 60,
 });
-const makeRoster = () => Array.from({ length: 13 }, (_, index) => rosterPlayer(index + 1));
+const makeRoster = () => Array.from({ length: 14 }, (_, index) => rosterPlayer(index + 1));
 const dhOff = (): TeamLineup => ({ starters: [
   { playerId: 1, battingOrder: 1, fieldingPosition: 'Catcher' }, { playerId: 2, battingOrder: 2, fieldingPosition: 'FirstBase' }, { playerId: 3, battingOrder: 3, fieldingPosition: 'SecondBase' },
   { playerId: 4, battingOrder: 4, fieldingPosition: 'ThirdBase' }, { playerId: 5, battingOrder: 5, fieldingPosition: 'Shortstop' }, { playerId: 6, battingOrder: 6, fieldingPosition: 'LeftField' },
@@ -40,7 +40,7 @@ const installFetch = () => {
     const url = input.toString();
     const response = (body: unknown) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
     if (url === '/api/team/10/lineup?gwId=1') return response(lineup);
-    if (url === '/api/team/10/lineup' && (init as RequestInit | undefined)?.method === 'PATCH') {
+    if (url === '/api/team/10/lineup' && (init as RequestInit | undefined)?.method === 'PUT') {
       return Promise.resolve(rejectLineupSave
         ? { ok: false, status: 422, json: () => Promise.resolve({ error: 'Starters must have batting orders 1 through 9 exactly once' }) }
         : { ok: true, status: 200, json: () => Promise.resolve(lineup) });
@@ -173,26 +173,27 @@ defineFeature(feature, (test) => {
     and('the row for the missing starter shows an em dash for its rating', () => expect(screen.getByTestId(`defensive-row-${MISSING_STARTER_ID}`)).toHaveTextContent('—'));
   });
 
-  test('A managed team swaps a bench player into a defensive starter slot and saves explicitly', ({ given, and, when, then }) => {
+  test('A managed team enters edit mode and assigns an unassigned player', ({ given, and, when, then }) => {
     given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
     given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
     given('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
-    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    and('GET /api/team/10/roster returns names and ratings including unassigned players', () => { roster = makeRoster(); });
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
-    and('the manager selects bench player 10 for the Catcher slot', async () => {
-      await screen.findByTestId('lineup-picker-Catcher');
-      fireEvent.change(screen.getByTestId('lineup-picker-Catcher'), { target: { value: '10' } });
+    then('an Edit lineup control is shown', async () => expect(await screen.findByRole('button', { name: 'Edit Lineup' })).toBeInTheDocument());
+    when('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    then('the unassigned bucket is shown', () => expect(screen.getByTestId('unassigned-bucket')).toHaveTextContent('Player 14'));
+    and('fielding position, derived batting slot, and role controls are shown', () => {
+      expect(screen.getByTestId('role-picker-1')).toBeInTheDocument();
+      expect(screen.getByTestId('position-picker-1')).toBeInTheDocument();
+      expect(screen.getByTestId('batting-picker-1')).toBeDisabled();
     });
-    // @spec LINEUI-010
-    then('the Catcher slot shows player 10 and the displaced player occupies the bench slot', () => {
-      expect(screen.getByTestId('defensive-row-10')).toHaveTextContent('Catcher');
-      expect(screen.getByTestId('bench-row-1')).toBeInTheDocument();
-    });
-    // @spec LINEUI-010
-    and('no lineup save request has been made', () => expect((global.fetch as jest.Mock).mock.calls.some(([url, options]) => url === '/api/team/10/lineup' && options?.method === 'PATCH')).toBe(false));
+    and('the pitcher batting slot is locked to 9', () => expect(screen.getByTestId('batting-picker-9')).toHaveValue('9'));
+    when('the manager assigns unassigned player 14 to the bench', () => fireEvent.change(screen.getByTestId('role-picker-14'), { target: { value: 'BENCH' } }));
+    then('player 14 leaves the unassigned bucket', () => expect(screen.queryByTestId('unassigned-row-14')).toBeNull());
+    and('no lineup save request has been made', () => expect((global.fetch as jest.Mock).mock.calls.some(([url, options]) => url === '/api/team/10/lineup' && options?.method === 'PUT')).toBe(false));
     when('the manager saves the lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save Lineup' })));
     // @spec LINEUI-009
-    then('the active lineup draft is sent to the save endpoint', async () => await waitFor(() => expect((global.fetch as jest.Mock).mock.calls.some(([url, options]) => url === '/api/team/10/lineup' && options?.method === 'PATCH')).toBe(true)));
+    then('the active lineup draft is sent to the save endpoint', async () => await waitFor(() => expect((global.fetch as jest.Mock).mock.calls.some(([url, options]) => url === '/api/team/10/lineup' && options?.method === 'PUT')).toBe(true)));
   });
 
   test('A non-managed team has no lineup editing controls', ({ given, and, when, then }) => {
@@ -212,8 +213,23 @@ defineFeature(feature, (test) => {
     and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
     and('PATCH /api/team/10/lineup rejects the lineup as invalid', () => { rejectLineupSave = true; });
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    and('the manager assigns unassigned player 14 to the bench', () => fireEvent.change(screen.getByTestId('role-picker-14'), { target: { value: 'BENCH' } }));
     and('the manager saves the lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save Lineup' })));
     // @spec LINEUI-011
     then('the lineup validation failure is shown', async () => await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Starters must have batting orders 1 through 9 exactly once')));
+    and('the draft remains in edit mode', () => expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument());
+  });
+
+  test('Cancelling an edit discards its draft', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings including unassigned players', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    and('the manager assigns unassigned player 14 to the bench', () => fireEvent.change(screen.getByTestId('role-picker-14'), { target: { value: 'BENCH' } }));
+    and('the manager cancels lineup editing', () => fireEvent.click(screen.getByRole('button', { name: 'Cancel' })));
+    then('the unassigned player is not assigned in the read-only lineup', () => expect(screen.queryByTestId('bench-row-14')).toBeNull());
   });
 });
