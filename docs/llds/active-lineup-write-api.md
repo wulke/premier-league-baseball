@@ -25,6 +25,7 @@ any `gameId` snapshot. Authentication is intentionally absent: the UI scopes con
 ```
 PATCH entries
   → resolve Team and active Lineup(gameId IS NULL), or 404
+  → load its current entry player IDs and verify submitted IDs are exactly that set and belong to Team
   → resolve the template's first League match rules (same source used at active-lineup creation)
   → validateLineup({ entries }, matchRules); on failure return 422 before writes
   → transaction: delete current active LineupEntry rows; bulk-create submitted entries; commit
@@ -37,6 +38,8 @@ PATCH entries
 |---|---|
 | Missing active lineup or team | 404; the write never constructs a template. |
 | Invalid duplicate, batting order, defensive coverage, DH, bench, or bullpen shape | Return 422 before the transaction begins; old entries remain intact. |
+| Foreign player ID, omitted active entry, or newly injected player ID | Return 422 before validation/write; this endpoint can only permute the existing active template. |
+| Bench or bullpen entry has a batting order or fielding position | Return 422; reserve slots do not carry starter assignments. |
 | Database failure after validation | Roll back the delete/create transaction so no partial active lineup survives. |
 | Submitted data names a per-game lineup | There is no gameId input; only the `gameId IS NULL` row is selected. |
 

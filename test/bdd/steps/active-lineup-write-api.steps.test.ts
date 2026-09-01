@@ -1,4 +1,4 @@
-// @spec LWRITE-001,LWRITE-002
+// @spec LWRITE-001,LWRITE-002,LWRITE-003
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import * as handlers from '../../../src/api/handlers';
@@ -10,6 +10,7 @@ let teamId = 10;
 let submitted: any[] = [];
 let response: { statusCode: number; error?: unknown } | undefined;
 let before: any[] = [];
+let foreignPlayerId: number | undefined;
 
 const storedEntries = async () => {
   const lineup = await db.models.Lineup.findOne({ where: { teamId, gameId: null } });
@@ -35,10 +36,19 @@ const createActiveLineup = async () => {
   before = await storedEntries();
 };
 
-beforeEach(async () => { await db.sync({ force: true }); teamId = 10; submitted = []; response = undefined; before = []; });
+beforeEach(async () => { await db.sync({ force: true }); teamId = 10; submitted = []; response = undefined; before = []; foreignPlayerId = undefined; });
 
 autoBindSteps(feature, [({ given, when, then, and }: any) => {
   given(/^Team (\d+) has a valid active lineup$/, async (id: string) => { teamId = Number(id); await createActiveLineup(); });
+  given(/^Team (\d+) has an eligible player outside Team (\d+)'s active lineup$/, async (foreignTeamId: string, activeTeamId: string) => {
+    const otherTeamId = Number(foreignTeamId);
+    await db.models.Team.create({ id: otherTeamId, gameWorldId: 1, config: { name: 'Other Club' } });
+    foreignPlayerId = await db.models.Player.create({
+      teamId: otherTeamId, gameWorldId: 1, givenName: 'Foreign', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date('2000-01-01'),
+      attributes: { contact: 50, power: 50, armStrength: 50, accuracy: 50, reaction: 50, vision: 50, discipline: 50, positions: Object.fromEntries(positions.map((position) => [position, 50])), pitches: [] },
+    }).then((row: any) => row.dataValues.id);
+    teamId = Number(activeTeamId);
+  });
   when('the client saves a valid active lineup with a bench player in a starter slot', async () => {
     const catcher = submitted.find((entry) => entry.fieldingPosition === 'Catcher');
     const bench = submitted.find((entry) => entry.role === 'BENCH');
@@ -48,6 +58,16 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
   when('the client saves an invalid active lineup with a duplicate player', async () => {
     submitted[1].playerId = submitted[0].playerId;
     try { await (handlers as any).updateTeamLineup(teamId, submitted); response = { statusCode: 200 }; }
+    catch (error) { response = { statusCode: (error as any).statusCode ?? 500, error }; }
+  });
+  when(/^the client saves Team (\d+)'s active lineup with Team (\d+)'s player$/, async (activeTeamId: string) => {
+    submitted[1].playerId = foreignPlayerId!;
+    try { await (handlers as any).updateTeamLineup(Number(activeTeamId), submitted); response = { statusCode: 200 }; }
+    catch (error) { response = { statusCode: (error as any).statusCode ?? 500, error }; }
+  });
+  when(/^the client saves Team (\d+)'s active lineup without a bench entry$/, async (activeTeamId: string) => {
+    submitted = submitted.filter((entry) => entry.role !== 'BENCH');
+    try { await (handlers as any).updateTeamLineup(Number(activeTeamId), submitted); response = { statusCode: 200 }; }
     catch (error) { response = { statusCode: (error as any).statusCode ?? 500, error }; }
   });
   then('the active lineup persists the submitted slot assignments', async () => expect(await storedEntries()).toEqual([...submitted].sort((left, right) => left.playerId - right.playerId)));
