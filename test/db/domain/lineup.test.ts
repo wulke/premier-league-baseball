@@ -1,4 +1,4 @@
-// @spec LIN-001,LIN-002,LIN-003,LIN-004,LIN-005,LIN-006
+// @spec LIN-001,LIN-002,LIN-003,LIN-004,LIN-005,LIN-006,LWRITE-004
 import db from '../../../src/db/client';
 import { PlayerAttributes } from '../../../src/api/models';
 import { LineupFactory, optimalFieldingAssignment, resolveMatchRules, startingPitcherId, validateLineup } from '../../../src/db/domain/lineup';
@@ -13,6 +13,15 @@ const attributes = (primary: typeof positions[number], rating = 90, control = 50
 
 describe('active lineup generation', () => {
   beforeEach(async () => { await db.sync({ force: true }); });
+
+  // @spec LWRITE-004
+  it('@spec LWRITE-004 rejects starter assignments on bench and bullpen entries', () => {
+    const entries = [
+      ...positions.map((fieldingPosition, index) => ({ playerId: index + 1, role: 'STARTER' as const, battingOrder: fieldingPosition === 'Pitcher' ? 9 : index, fieldingPosition })),
+      { playerId: 10, role: 'BENCH' as const, battingOrder: 10, fieldingPosition: null },
+    ];
+    expect(() => validateLineup({ entries }, { dhEnabled: false, benchSize: 1, bullpenSize: 0 })).toThrow('Bench and bullpen entries cannot have starter assignments');
+  });
 
   // @spec LIN-001
   it('@spec LIN-001 enforces active, game, player, and batting-order uniqueness', async () => {
