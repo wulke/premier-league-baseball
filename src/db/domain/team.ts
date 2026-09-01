@@ -14,6 +14,7 @@ interface ITeam {
   snapshotForGame: (gameId: number) => Promise<GameLineupSnapshot>;
   getLineup: (options?: { gameId?: number; gwId?: number }) => Promise<TeamLineup>;
   updateActiveLineup: (entries: ActiveLineupEntry[], matchRules: MatchRules) => Promise<TeamLineup>;
+  saveActiveLineup: (entries: ActiveLineupEntry[], matchRules: MatchRules) => Promise<TeamLineup>;
 };
 
 interface TeamCreateOptions {
@@ -303,6 +304,43 @@ const TeamFactory = (id?: number): ITeam => {
         .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
       if (players.length !== submittedPlayerIds.size || players.some((player: any) => player.teamId !== id || player.gameWorldId !== team.dataValues.gameWorldId)) {
         throw new DomainError('every lineup player must belong to the team', 422);
+      }
+      try {
+        validateLineup({ entries }, matchRules);
+      } catch (error) {
+        throw new DomainError((error as Error).message, 422);
+      }
+
+      const transaction = await db.transaction();
+      try {
+        await db.models.LineupEntry.destroy({ where: { lineupId: lineup.dataValues.id }, transaction });
+        await db.models.LineupEntry.bulkCreate(entries.map((entry) => ({ lineupId: lineup.dataValues.id, ...entry })), { transaction });
+        await transaction.commit();
+      } catch (error) {
+        await transaction.rollback();
+        throw error;
+      }
+      return TeamFactory(id).getLineup();
+    },
+
+    // @spec LEDIT-001,LEDIT-003,LEDIT-004 — the PUT contract replaces the active template
+    // with any valid current-roster selection. Unlike the legacy PATCH permutation write, it
+    // retains the Lineup row and deliberately does not inspect per-game snapshots.
+    saveActiveLineup: async (entries: ActiveLineupEntry[], matchRules: MatchRules): Promise<TeamLineup> => {
+      const team = await db.models.Team.findByPk(id);
+      if (!team) throw new DomainError('Not found', 404);
+      const lineup = await db.models.Lineup.findOne({ where: { teamId: id, gameId: null } });
+      if (!lineup) throw new DomainError('Not found', 404);
+      if (!Array.isArray(entries)) throw new DomainError('entries must be an array', 422);
+
+      const submittedPlayerIds = new Set<number>(entries.map((entry) => entry.playerId));
+      const players = submittedPlayerIds.size === 0 ? [] : await db.models.Player.findAll({
+        where: { id: { [Op.in]: [...submittedPlayerIds] } },
+      }).then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+      if (players.length !== submittedPlayerIds.size || players.some((player: any) => (
+        player.teamId !== id || player.gameWorldId !== team.dataValues.gameWorldId
+      ))) {
+        throw new DomainError("player is not on this team's roster", 422);
       }
       try {
         validateLineup({ entries }, matchRules);

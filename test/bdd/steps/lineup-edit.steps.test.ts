@@ -26,7 +26,7 @@ const save = async (teamId: number, proposed = entries) => {
   catch (error) { response = { statusCode: (error as any).statusCode ?? 500, error }; }
 };
 
-beforeEach(async () => { await db.sync({ force: true }); entries = []; before = []; lineupId = undefined; response = undefined; extraPlayerId = undefined; foreignPlayerId = undefined; });
+beforeEach(async () => { await db.sync({ force: true }); delete process.env.DEV_MODE; entries = []; before = []; lineupId = undefined; response = undefined; extraPlayerId = undefined; foreignPlayerId = undefined; });
 
 autoBindSteps(feature, [({ given, when, then, and }: any) => {
   given('managed Team 10 has a DH-on division and an active lineup', async () => {
@@ -51,10 +51,14 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
     await db.models.Team.create({ id: 11, gameWorldId: 1, config: { name: 'Other' } });
     foreignPlayerId = (await player(11, 99)).id;
   });
+  given('Team 10 is not the managed club in development mode', async () => {
+    await db.models.GameWorld.update({ managedTeamId: 11 }, { where: { id: 1 } });
+    process.env.DEV_MODE = 'true';
+  });
   when('the manager sends a PUT wholesale lineup save using another roster player', async () => {
     const bench = entries.find((entry) => entry.role === 'BENCH'); bench.playerId = extraPlayerId; await save(10);
   });
-  when('Team 11 attempts the wholesale lineup save', async () => { await save(11); });
+  when('Team 11 attempts the wholesale lineup save', async () => { await db.models.Team.create({ id: 11, gameWorldId: 1, config: { name: 'Other' } }); await save(11); });
   when("the manager saves Team 10's lineup with Team 11's player", async () => { entries[1].playerId = foreignPlayerId; await save(10); });
   when(/^the manager saves a lineup with an invalid (.*)$/, async (shape: string) => {
     if (shape === 'duplicate player') entries[1].playerId = entries[0].playerId;
@@ -65,7 +69,13 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
     if (shape === 'bullpen cap') entries.push({ playerId: extraPlayerId, role: 'BULLPEN', battingOrder: null, fieldingPosition: null });
     await save(10);
   });
-  then('the save returns the canonical TeamLineup card', () => expect(response).toMatchObject({ statusCode: 200, body: { startingPitcherId: entries[0].playerId, starters: expect.any(Array), bench: [{ playerId: extraPlayerId }], bullpen: expect.any(Array) } }));
+  then('the save returns the canonical TeamLineup card', () => {
+    expect(response?.statusCode).toBe(200);
+    expect(response?.body.startingPitcherId).toBe(entries[0].playerId);
+    expect(response?.body.starters).toHaveLength(10);
+    expect(response?.body.bench).toEqual([{ playerId: extraPlayerId }]);
+    expect(response?.body.bullpen).toHaveLength(1);
+  });
   then('the active Lineup row ID is unchanged', async () => expect((await db.models.Lineup.findOne({ where: { teamId: 10, gameId: null } }))?.dataValues.id).toBe(lineupId));
   then('the active lineup persists the submitted entries', async () => expect(await storedEntries()).toEqual([...entries].sort((a, b) => a.playerId - b.playerId)));
   then('the lineup save is rejected with 422', () => expect(response?.statusCode).toBe(422));

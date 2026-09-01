@@ -17,6 +17,13 @@ Feature: Wholesale active lineup save
     Then the lineup save is rejected with 422
     And the stored active lineup remains unchanged
 
+  @spec:LEDIT-002
+  Scenario: Development mode bypasses the managed-club identity gate
+    Given managed Team 10 has a DH-on division and an active lineup
+    And Team 10 is not the managed club in development mode
+    When the manager sends a PUT wholesale lineup save using another roster player
+    Then the save returns the canonical TeamLineup card
+
   @spec:LEDIT-003
   Scenario: A player from another roster is rejected semantically
     Given managed Team 10 has a DH-on division and an active lineup
