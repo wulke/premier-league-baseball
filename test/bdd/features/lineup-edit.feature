@@ -24,6 +24,14 @@ Feature: Wholesale active lineup save
     When the manager sends a PUT wholesale lineup save using another roster player
     Then the save returns the canonical TeamLineup card
 
+  @spec:LEDIT-001
+  Scenario: Unexpected entry fields cannot redirect a wholesale save
+    Given managed Team 10 has a DH-on division and an active lineup
+    And Team 11 has an empty active lineup
+    When the manager sends a wholesale save with another lineup ID in an entry
+    Then the save returns the canonical TeamLineup card
+    And Team 11's active lineup remains unchanged
+
   @spec:LEDIT-003
   Scenario: A player from another roster is rejected semantically
     Given managed Team 10 has a DH-on division and an active lineup

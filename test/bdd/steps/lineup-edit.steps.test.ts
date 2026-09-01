@@ -12,6 +12,7 @@ let lineupId: number | undefined;
 let response: { statusCode: number; body?: any; error?: any } | undefined;
 let extraPlayerId: number | undefined;
 let foreignPlayerId: number | undefined;
+let protectedLineupId: number | undefined;
 
 const storedEntries = async () => db.models.LineupEntry.findAll({ where: { lineupId } })
   .then((rows: any[]) => rows.map(({ dataValues }) => ({ playerId: dataValues.playerId, role: dataValues.role, battingOrder: dataValues.battingOrder, fieldingPosition: dataValues.fieldingPosition })).sort((a, b) => a.playerId - b.playerId));
@@ -26,7 +27,7 @@ const save = async (teamId: number, proposed = entries) => {
   catch (error) { response = { statusCode: (error as any).statusCode ?? 500, error }; }
 };
 
-beforeEach(async () => { await db.sync({ force: true }); delete process.env.DEV_MODE; entries = []; before = []; lineupId = undefined; response = undefined; extraPlayerId = undefined; foreignPlayerId = undefined; });
+beforeEach(async () => { await db.sync({ force: true }); delete process.env.DEV_MODE; entries = []; before = []; lineupId = undefined; response = undefined; extraPlayerId = undefined; foreignPlayerId = undefined; protectedLineupId = undefined; });
 
 autoBindSteps(feature, [({ given, when, then, and }: any) => {
   given('managed Team 10 has a DH-on division and an active lineup', async () => {
@@ -55,8 +56,17 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
     await db.models.GameWorld.update({ managedTeamId: 11 }, { where: { id: 1 } });
     process.env.DEV_MODE = 'true';
   });
+  given('Team 11 has an empty active lineup', async () => {
+    await db.models.Team.create({ id: 11, gameWorldId: 1, config: { name: 'Other' } });
+    protectedLineupId = (await db.models.Lineup.create({ teamId: 11, gameWorldId: 1 })).dataValues.id;
+  });
   when('the manager sends a PUT wholesale lineup save using another roster player', async () => {
     const bench = entries.find((entry) => entry.role === 'BENCH'); bench.playerId = extraPlayerId; await save(10);
+  });
+  when('the manager sends a wholesale save with another lineup ID in an entry', async () => {
+    const bench = entries.find((entry) => entry.role === 'BENCH'); bench.playerId = extraPlayerId;
+    entries[0].lineupId = protectedLineupId;
+    await save(10);
   });
   when('Team 11 attempts the wholesale lineup save', async () => { await db.models.Team.create({ id: 11, gameWorldId: 1, config: { name: 'Other' } }); await save(11); });
   when("the manager saves Team 10's lineup with Team 11's player", async () => { entries[1].playerId = foreignPlayerId; await save(10); });
@@ -80,5 +90,6 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
   then('the active lineup persists the submitted entries', async () => expect(await storedEntries()).toEqual([...entries].sort((a, b) => a.playerId - b.playerId)));
   then('the lineup save is rejected with 422', () => expect(response?.statusCode).toBe(422));
   then(/^the rejection says "(.*)"$/, (message: string) => expect(response?.error?.message).toBe(message));
+  and("Team 11's active lineup remains unchanged", async () => expect(await db.models.LineupEntry.count({ where: { lineupId: protectedLineupId } })).toBe(0));
   and('the stored active lineup remains unchanged', async () => expect(await storedEntries()).toEqual(before));
 }]);
