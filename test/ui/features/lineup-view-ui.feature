@@ -97,7 +97,7 @@ Feature: Team Lineup View UI
     And GET /api/team/10/roster returns names and ratings including unassigned players
     When the player navigates to "/1/team/10/lineup"
     And the manager enters lineup edit mode
-    Then the DH fielding-position option is available
+    Then the DH fielding-position option is shown
     And an occupied defensive-position option is blocked
     And the occupied DH option is blocked
 

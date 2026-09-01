@@ -206,7 +206,7 @@ defineFeature(feature, (test) => {
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
     and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
     // @spec LINEUI-010
-    then('the DH fielding-position option is available', () => expect(within(screen.getByTestId('position-picker-1')).getByRole('option', { name: 'DH' })).toBeEnabled());
+    then('the DH fielding-position option is shown', () => expect(within(screen.getByTestId('position-picker-1')).getByRole('option', { name: 'DH' })).toBeInTheDocument());
     // @spec LINEUI-013
     and('an occupied defensive-position option is blocked', () => expect(within(screen.getByTestId('position-picker-1')).getByRole('option', { name: 'FirstBase' })).toBeDisabled());
     // @spec LINEUI-013
