@@ -209,6 +209,24 @@ defineFeature(feature, (test) => {
     then('the DH fielding-position option is available', () => expect(within(screen.getByTestId('position-picker-1')).getByRole('option', { name: 'DH' })).toBeEnabled());
     // @spec LINEUI-013
     and('an occupied defensive-position option is blocked', () => expect(within(screen.getByTestId('position-picker-1')).getByRole('option', { name: 'FirstBase' })).toBeDisabled());
+    // @spec LINEUI-013
+    and('the occupied DH option is blocked', () => expect(within(screen.getByTestId('position-picker-1')).getByRole('option', { name: 'DH' })).toBeDisabled());
+  });
+
+  test('A promoted non-pitcher starter receives the vacated batting slot', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings including unassigned players', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    and('the manager moves player 2 to the bench', () => fireEvent.change(screen.getByTestId('role-picker-2'), { target: { value: 'BENCH' } }));
+    and('the manager promotes player 14 to starter at FirstBase', () => {
+      fireEvent.change(screen.getByTestId('role-picker-14'), { target: { value: 'STARTER' } });
+      fireEvent.change(screen.getByTestId('position-picker-14'), { target: { value: 'FirstBase' } });
+    });
+    // @spec LINEUI-011
+    then('player 14 has derived batting slot 2', () => expect(screen.getByTestId('batting-picker-14')).toHaveValue('2'));
   });
 
   test('A non-managed team has no lineup editing controls', ({ given, and, when, then }) => {

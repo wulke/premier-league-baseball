@@ -99,6 +99,18 @@ Feature: Team Lineup View UI
     And the manager enters lineup edit mode
     Then the DH fielding-position option is available
     And an occupied defensive-position option is blocked
+    And the occupied DH option is blocked
+
+  @spec:LINEUI-010 @spec:LINEUI-011 @spec:LINEUI-013
+  Scenario: A promoted non-pitcher starter receives the vacated batting slot
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings including unassigned players
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager moves player 2 to the bench
+    And the manager promotes player 14 to starter at FirstBase
+    Then player 14 has derived batting slot 2
 
   @spec:LINEUI-004 @spec:LINEUI-009
   Scenario: A non-managed team has no lineup editing controls
