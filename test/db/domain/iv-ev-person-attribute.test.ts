@@ -3,6 +3,7 @@ import {
   applyEarnedDelta,
   createAttributeState,
   createEarningPolicy,
+  createPersonNatures,
   readPersonAttribute,
   resolveAgeDiscount,
   resolveNatureMultiplier,
@@ -64,7 +65,7 @@ describe('Decoupled IV/EV person-attribute pattern', () => {
       ageDiscountMeta: AGE_META,
       maxFormEvents: 2,
     });
-    expect(['Explosive']).toEqual(expect.arrayContaining(['Explosive']));
+    expect(createPersonNatures(['Explosive'])).toEqual(['Explosive']);
     expect(state).not.toHaveProperty('nature');
   });
 

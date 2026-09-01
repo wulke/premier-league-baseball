@@ -1,7 +1,7 @@
 # LLD: Decoupled IV/EV Person-Attribute Pattern
 
 > Upstream: [HLD: Decoupled IV/EV Person-Attribute Pattern](../high-level-design.md#hld-decoupled-ivev-person-attribute-pattern) ·
-> Formula registry: [`docs/FORMULA-REGISTRY.md`](../FORMULA-REGISTRY.md) (`F-IVEV-001..004`, Draft) ·
+> Formula registry: [`docs/FORMULA-REGISTRY.md`](../FORMULA-REGISTRY.md) (`F-IVEV-001..004`, Implemented) ·
 > Decision record: [Map #178](https://github.com/wulke/premier-league-baseball/issues/178) →
 > [GO decision #209](https://github.com/wulke/premier-league-baseball/issues/209)
 
@@ -11,10 +11,11 @@ Defines the implementation-neutral component contract for a shared IV/EV pattern
 read policies, formula catalog boundaries, and event-delta application. It applies to every
 person-entity attribute (Player, Manager, Scout, Umpire, and future person-entities).
 
-It does **not** select a Sequelize representation, migrate `Player.attributes`, create entity
-attribute catalogs, tune constants, define a grader, or implement a first consumer. The current
-flat player ratings remain a separate, pre-pattern schema until a dedicated migration/storage
-slice adopts this contract.
+It implements a storage-independent domain module (`src/db/domain/iv-ev-person-attribute.ts`), but
+does **not** select a Sequelize representation, migrate `Player.attributes`, create entity
+attribute catalogs, tune production constants, define a grader, or implement a first consumer. The
+current flat player ratings remain a separate, pre-pattern schema until a dedicated
+migration/storage slice adopts this contract.
 
 ## Interface / Data Model
 
@@ -27,6 +28,7 @@ type PersonAttributeState = {
   ev: number;                         // signed, unfaded, unbounded career aggregate
   formWindow: readonly FormDelta[];   // newest bounded ring-buffer slice of the same delta stream
   ageDiscountMeta: AgeDiscountMeta;   // fixed hidden person-level modulator
+  appliedOutcomeIds: readonly string[]; // in-memory reference implementation of outcome idempotency
 };
 
 type FormDelta = {
@@ -35,13 +37,14 @@ type FormDelta = {
   occurredAt: Date;
 };
 
-/** Opaque here: one fixed axis jointly determines prime offset and acceleration. */
-type AgeDiscountMeta = unknown;
+/** One fixed axis jointly determines prime offset and acceleration. */
+type AgeDiscountMeta = { primeOffset: number; accelerationRate: number };
 
 type AttributeAgingProfile = {
-  id: string;
-  // Defines a convex, accelerating, decline-only family and a hard floor.
-  // Prime, floor, curvature, and all numerical values are tuning.
+  primeAge: number;
+  hardFloor: number;
+  yearlyRate: number;
+  curvature: number;
 };
 ```
 
@@ -52,7 +55,9 @@ ring-buffer rule as every other event.
 
 `FormDelta` expresses the logical ordering/idempotency input required from the future grader. The
 event system decides its identity, attribution, timing, and comparison mode; this LLD does not
-choose a table, queue, or transaction boundary for it.
+choose a production table, queue, or transaction boundary for it. The storage-independent module
+retains applied identities in memory; a future persistence slice replaces that reference ledger
+with durable uniqueness enforcement.
 
 ### Named person-level Natures
 
@@ -223,8 +228,8 @@ behind the pattern boundary rather than making today's `Player.attributes` JSON 
 | --- | --- |
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-decoupled-ivev-person-attribute-pattern) |
 | **This LLD** | `docs/llds/iv-ev-person-attribute-pattern.md` |
-| Formula registry | [`docs/FORMULA-REGISTRY.md`](../FORMULA-REGISTRY.md) — `F-IVEV-001..004` (Draft) |
+| Formula registry | [`docs/FORMULA-REGISTRY.md`](../FORMULA-REGISTRY.md) — `F-IVEV-001..004` (Implemented) |
 | EARS | [`docs/specs/iv-ev-person-attribute-specs.md`](../specs/iv-ev-person-attribute-specs.md) — `IVEV-001`..`IVEV-013` |
-| Tests | Next LID stage — Red tests follow EARS |
-| Code | Next LID stage — no implementation entry point selected |
+| Tests | `test/db/domain/iv-ev-person-attribute.test.ts` |
+| Code | `src/db/domain/iv-ev-person-attribute.ts` |
 | Decision record | [#178](https://github.com/wulke/premier-league-baseball/issues/178) → [#209](https://github.com/wulke/premier-league-baseball/issues/209) |
