@@ -84,7 +84,7 @@ const optimalFieldingAssignment = (fielders: Player[]): Array<{ player: Player; 
   }));
 };
 
-// @spec LIN-003,LIN-005,LIN-006
+// @spec LIN-003,LIN-005,LIN-006,LWRITE-004
 const validateLineup = (lineup: any, rules: MatchRules): void => {
   const entries: Entry[] = (lineup.LineupEntries ?? lineup.entries ?? []).map(valueOf);
   const starters = entries.filter((entry) => entry.role === 'STARTER');
@@ -97,6 +97,7 @@ const validateLineup = (lineup: any, rules: MatchRules): void => {
   if (dhEntries.length !== (rules.dhEnabled ? 1 : 0) || starters.length !== (rules.dhEnabled ? 10 : 9)) throw Error('DH starter count does not match match rules');
   const pitcher = starters.find((entry) => entry.fieldingPosition === 'Pitcher');
   if (!pitcher || (rules.dhEnabled ? pitcher.battingOrder != null : pitcher.battingOrder !== 9)) throw Error('Pitcher batting order does not match match rules');
+  if (entries.some((entry) => entry.role !== 'STARTER' && (entry.battingOrder != null || entry.fieldingPosition != null))) throw Error('Bench and bullpen entries cannot have starter assignments');
   if (entries.filter((entry) => entry.role === 'BENCH').length > rules.benchSize) throw Error('Bench exceeds match rule cap');
   if (entries.filter((entry) => entry.role === 'BULLPEN').length > rules.bullpenSize) throw Error('Bullpen exceeds match rule cap');
 };

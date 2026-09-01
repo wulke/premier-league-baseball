@@ -1,10 +1,11 @@
 import { Op, UniqueConstraintError } from 'sequelize';
-import { GameLineupSnapshot, MatchRules, RosterPlayer, TeamConfig, TeamLineup, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
+import { ActiveLineupEntry, GameLineupSnapshot, MatchRules, RosterPlayer, TeamConfig, TeamLineup, TeamSeasonCalendar, TeamSeasonGame } from "../../api/models";
 import db from '../client';
 import { listForTeam } from './contract';
 import { getKnockoutRoundLabel } from './knockout';
 import { PlayerFactory, resolveCurrentContract, toRosterPlayer } from './player';
 import { DomainError } from './errors';
+import { validateLineup } from './lineup';
 
 interface ITeam {
   create: (gwId: number, config: TeamConfig, options?: TeamCreateOptions) => any;
@@ -12,6 +13,7 @@ interface ITeam {
   getRoster: () => Promise<RosterPlayer[]>;
   snapshotForGame: (gameId: number) => Promise<GameLineupSnapshot>;
   getLineup: (options?: { gameId?: number; gwId?: number }) => Promise<TeamLineup>;
+  updateActiveLineup: (entries: ActiveLineupEntry[], matchRules: MatchRules) => Promise<TeamLineup>;
 };
 
 interface TeamCreateOptions {
@@ -279,6 +281,45 @@ const TeamFactory = (id?: number): ITeam => {
         .filter((entry: any) => entry.role === role)
         .map((entry: any) => ({ playerId: entry.playerId }));
       return { starters, startingPitcherId, bench: toPool('BENCH'), bullpen: toPool('BULLPEN') };
+    },
+
+    // @spec LWRITE-001,LWRITE-002,LWRITE-003 — validate before beginning destructive work, then
+    // replace only a complete permutation of the gameId-less template in one transaction.
+    // Per-game snapshots stay untouched.
+    updateActiveLineup: async (entries: ActiveLineupEntry[], matchRules: MatchRules): Promise<TeamLineup> => {
+      const team = await db.models.Team.findByPk(id);
+      if (!team) throw new DomainError('Not found', 404);
+      const lineup = await db.models.Lineup.findOne({ where: { teamId: id, gameId: null } });
+      if (!lineup) throw new DomainError('Not found', 404);
+      if (!Array.isArray(entries)) throw new DomainError('entries must be an array', 422);
+      const storedEntries = await db.models.LineupEntry.findAll({ where: { lineupId: lineup.dataValues.id } })
+        .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+      const storedPlayerIds = new Set<number>(storedEntries.map((entry: any) => entry.playerId));
+      const submittedPlayerIds = new Set<number>(entries.map((entry) => entry.playerId));
+      if (submittedPlayerIds.size !== storedPlayerIds.size || entries.length !== storedEntries.length || [...submittedPlayerIds].some((playerId) => !storedPlayerIds.has(playerId))) {
+        throw new DomainError('entries must be a complete permutation of the active lineup', 422);
+      }
+      const players = await db.models.Player.findAll({ where: { id: { [Op.in]: [...submittedPlayerIds] } } })
+        .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+      if (players.length !== submittedPlayerIds.size || players.some((player: any) => player.teamId !== id || player.gameWorldId !== team.dataValues.gameWorldId)) {
+        throw new DomainError('every lineup player must belong to the team', 422);
+      }
+      try {
+        validateLineup({ entries }, matchRules);
+      } catch (error) {
+        throw new DomainError((error as Error).message, 422);
+      }
+
+      const transaction = await db.transaction();
+      try {
+        await db.models.LineupEntry.destroy({ where: { lineupId: lineup.dataValues.id }, transaction });
+        await db.models.LineupEntry.bulkCreate(entries.map((entry) => ({ lineupId: lineup.dataValues.id, ...entry })), { transaction });
+        await transaction.commit();
+      } catch (error) {
+        await transaction.rollback();
+        throw error;
+      }
+      return TeamFactory(id).getLineup();
     },
   };
 };

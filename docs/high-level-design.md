@@ -701,11 +701,11 @@ Runtime request flow (any migrated page, e.g. PlayerDetail):
 
 ## Goal
 
-Redesign the existing read-only Lineup tab from two side-by-side panels (batting-order list +
+Redesign the existing Lineup tab from two side-by-side panels (batting-order list +
 bench/bullpen pools) into a Football-Manager-style **Defensive | Batting** tabbed table, one row
 per starter, with bench and bullpen folded into the same table as tagged rows. Purely a
-presentation change over the data `GET /api/team/:teamId/lineup` already returns — no new backend
-surface, no write path.
+presentation change over the data `GET /api/team/:teamId/lineup` already returns, with a managed
+team-only edit affordance for position-player starter and bench slots.
 
 ## Strategy
 
@@ -741,7 +741,15 @@ surface, no write path.
 
 - **Options (overlap with the per-game Bullpen tab, #243)**:
   - Option A: Share one row-rendering component/state between this read-only view and #243's
-    editable per-game Bullpen tab.
+  editable per-game Bullpen tab.
+
+- **Options (template edits)**:
+  - Option A: Persist each picker action immediately.
+  - Option B (chosen): Hold a client-side draft and submit the complete active entry set with an
+    explicit save.
+  - **Decision**: Option B (#249). Slot-fill swaps must remain coherent while a user makes several
+    changes, and the domain validator can reject an invalid completed card transactionally without
+    exposing partial server state.
   - Option B (chosen): Accept duplication — a bullpen reliever renders as a read-only tagged row
     here and as a separate editable entry in #243's Bullpen tab.
   - **Decision**: Option B (#225). The two tabs read/write different underlying objects (the active
@@ -756,11 +764,13 @@ surface, no write path.
 - **`src/ui/pages/team-lineup.tsx`** (MODIFIED): the two-panel layout (batting-order list + Pool
   sections) is replaced by a **Defensive | Batting** tab pair, each rendering one row per starter
   plus inline `BENCH`/`BULLPEN`-tagged rows, sourced from the same `TeamLineup` fetch this page
-  already makes. No new fetch, no new endpoint. (LLD: `docs/llds/lineup-view-ui.md` — extends the
-  existing LLD in place rather than a new file, since the endpoint contract and edge cases it
-  documents are unchanged.)
+  already makes. When the route's GameWorld identifies this team as managed, defensive and batting
+  position-player/bench rows add slot-fill pickers and an explicit Save Lineup action. (LLD:
+  `docs/llds/lineup-view-ui.md`.)
 - **`GET /api/team/:teamId/lineup`** (UNCHANGED): remains the sole data source; `TeamLineup`
   (`src/api/models.ts`) is not extended.
+- **`PATCH /api/team/:teamId/lineup`** (NEW): accepts the complete active-lineup entry set,
+  validates it under the active template's match rules, then replaces entries in one transaction.
 - **`optimalFieldingAssignment`** (`src/db/domain/lineup.ts`, UNCHANGED): read-only reused as the
   rating source for the Defensive tab; no new backend logic.
 
@@ -775,7 +785,9 @@ user opens Team Hub → Lineup tab (unchanged route: /:gwId/team/:teamId/lineup)
                       + BENCH/BULLPEN-tagged rows appended
       Batting tab:   existing battingOrder-sorted rows, unchanged from today's behavior
                       + BENCH/BULLPEN-tagged rows appended
-  → every row still links to /:gwId/player/:playerId; no mutating control on either tab
+  → managed team only: picker selection swaps occupants of the two fixed slots in local draft state
+  → Save Lineup PATCHes the full draft; server validates before replacing entries transactionally
+  → every row still links to /:gwId/player/:playerId; non-managed teams have no mutating control
 ```
 
 ### Key Trade-offs
@@ -794,9 +806,9 @@ user opens Team Hub → Lineup tab (unchanged route: /:gwId/team/:teamId/lineup)
 
 ### Out of scope
 
-- Editable "Picked" position/role assignment for the **template** (active) lineup — remains
-  undesigned, tracked separately in [#226](https://github.com/wulke/premier-league-baseball/issues/226)
-  (blocked on [#136](https://github.com/wulke/premier-league-baseball/issues/136)).
+- Pitcher/SP reassignment and bullpen-role composition. #249's template picker edits only
+  position-player starter and bench slots; [#243](https://github.com/wulke/premier-league-baseball/issues/243)
+  remains the per-game bullpen owner.
 - Per-game starting-pitcher / active-reliever designation — split out into its own follow-on,
   [#243](https://github.com/wulke/premier-league-baseball/issues/243) (a third, editable "Bullpen"
   tab on the same page, soft-blocked by this HLD's implementation).
