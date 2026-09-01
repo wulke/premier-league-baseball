@@ -91,3 +91,13 @@ Feature: Team Lineup View UI
     And GET /api/team/10/roster returns names and ratings for the active lineup
     When the player navigates to "/1/team/10/lineup"
     Then no mutating lineup controls are shown
+
+  @spec:LINEUI-011
+  Scenario: A rejected managed-team lineup save shows the validation failure
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    And PATCH /api/team/10/lineup rejects the lineup as invalid
+    When the player navigates to "/1/team/10/lineup"
+    And the manager saves the lineup
+    Then the lineup validation failure is shown

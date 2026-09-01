@@ -28,7 +28,7 @@ const createActiveLineup = async () => {
     attributes: { contact: 50, power: 50, armStrength: 50, accuracy: 50, reaction: 50, vision: 50, discipline: 50, positions: Object.fromEntries(positions.map((position) => [position, 50])), pitches: [] },
   }).then((row: any) => row.dataValues)));
   submitted = [
-    ...positions.map((position, index) => ({ playerId: players[index].id, role: 'STARTER', battingOrder: index + 1, fieldingPosition: position })),
+    ...positions.map((position, index) => ({ playerId: players[index].id, role: 'STARTER', battingOrder: position === 'Pitcher' ? 9 : index, fieldingPosition: position })),
     ...players.slice(9).map((player: any) => ({ playerId: player.id, role: 'BENCH', battingOrder: null, fieldingPosition: null })),
   ];
   await db.models.LineupEntry.bulkCreate(submitted.map((entry) => ({ lineupId: lineup.id, ...entry })));

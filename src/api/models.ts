@@ -135,6 +135,13 @@ interface TeamLineup {
   bullpen: Array<{ playerId: number }>;
 }
 
+interface ActiveLineupEntry {
+  playerId: number;
+  role: 'STARTER' | 'BENCH' | 'BULLPEN';
+  battingOrder: number | null;
+  fieldingPosition: PlayerPosition | null;
+}
+
 interface GameLineupSnapshot {
   id: number;
   teamId: number;
@@ -756,6 +763,7 @@ export {
   RosterPlayer,
   LineupStarter,
   TeamLineup,
+  ActiveLineupEntry,
   GameLineupSnapshot,
   PlayerDetail,
   DivisionStandings,

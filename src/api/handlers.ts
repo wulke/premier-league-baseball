@@ -1,7 +1,8 @@
 import { ContractFactory, DivisionFactory, GameFactory, GameWorldFactory, LeagueFactory, PlayerFactory, TeamFactory } from '../db/domain';
 import { DomainError } from '../db/domain/errors';
 import db from '../db/client';
-import { NewGameWorld, SchedulingConfig } from './models';
+import { ActiveLineupEntry, NewGameWorld, SchedulingConfig } from './models';
+import { resolveMatchRules } from '../db/domain/lineup';
 
 /* ! todo ! will we need to start splitting this by model? */
 
@@ -114,6 +115,14 @@ const getTeamLineup = async (teamId: number, gwId?: number, gameId?: number) => 
   return await TeamFactory(teamId).getLineup({ gwId, gameId });
 };
 
+// @spec LWRITE-001,LWRITE-002 — auth-free by design; managed-team scoping belongs to the UI.
+const updateTeamLineup = async (teamId: number, entries: ActiveLineupEntry[]) => {
+  const team = await db.models.Team.findByPk(teamId);
+  if (!team) throw new DomainError('Not found', 404);
+  const league = await db.models.League.findOne({ where: { gameWorldId: team.dataValues.gameWorldId }, order: [['id', 'ASC']] });
+  return TeamFactory(teamId).updateActiveLineup(entries, resolveMatchRules(league?.dataValues.config));
+};
+
 // @spec PDET-001,PDET-002,PDET-003,PDET-004,PDET-007,PDET-008,PDET-010,PDET-011
 const getPlayerDetail = async (playerId: number, gwId?: number) => {
   const player = await db.models.Player.findByPk(playerId);
@@ -190,6 +199,7 @@ export {
   getTeamSchedule,
   getTeamRoster,
   getTeamLineup,
+  updateTeamLineup,
   getPlayerDetail,
   newGameWorld,
   setManagedClub,

@@ -17,6 +17,7 @@ const RATING = 82;
 let lineup: TeamLineup;
 let roster: RosterPlayer[];
 let managedTeamId: number | null = null;
+let rejectLineupSave = false;
 
 const rosterPlayer = (id: number): RosterPlayer => ({
   id, givenName: `Player`, familyName: String(id), countryCode: 'US', bats: 'R', throws: 'R', age: 25,
@@ -35,10 +36,15 @@ const dhOn = (): TeamLineup => ({ ...dhOff(), starters: [...dhOff().starters.sli
 const MISSING_STARTER_ID = 5; // the Shortstop starter in dhOff()
 
 const installFetch = () => {
-  global.fetch = jest.fn((input: RequestInfo | URL) => {
+  global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = input.toString();
     const response = (body: unknown) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
     if (url === '/api/team/10/lineup?gwId=1') return response(lineup);
+    if (url === '/api/team/10/lineup' && (init as RequestInit | undefined)?.method === 'PATCH') {
+      return Promise.resolve(rejectLineupSave
+        ? { ok: false, status: 422, json: () => Promise.resolve({ error: 'Starters must have batting orders 1 through 9 exactly once' }) }
+        : { ok: true, status: 200, json: () => Promise.resolve(lineup) });
+    }
     if (url === '/api/team/10/roster') return response(roster);
     if (url === '/api/gameWorld/1') return response({ id: 1, year: 2025, config: { name: 'Test World', inProgress: true }, Leagues: [], managedTeamId });
     return response([]);
@@ -54,7 +60,7 @@ const renderAt = async (entry: string) => {
 
 const selectTab = (name: 'Defensive' | 'Batting') => fireEvent.click(screen.getByRole('tab', { name }));
 
-beforeEach(() => { lineup = dhOff(); roster = makeRoster(); managedTeamId = null; installFetch(); });
+beforeEach(() => { lineup = dhOff(); roster = makeRoster(); managedTeamId = null; rejectLineupSave = false; installFetch(); });
 afterEach(() => cleanup());
 
 defineFeature(feature, (test) => {
@@ -197,5 +203,17 @@ defineFeature(feature, (test) => {
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
     // @spec LINEUI-004,LINEUI-009
     then('no mutating lineup controls are shown', () => expect(screen.queryByRole('button', { name: /save lineup/i })).toBeNull());
+  });
+
+  test('A rejected managed-team lineup save shows the validation failure', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    and('PATCH /api/team/10/lineup rejects the lineup as invalid', () => { rejectLineupSave = true; });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager saves the lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save Lineup' })));
+    // @spec LINEUI-011
+    then('the lineup validation failure is shown', async () => await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Starters must have batting orders 1 through 9 exactly once')));
   });
 });
