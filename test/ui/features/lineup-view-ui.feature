@@ -72,17 +72,56 @@ Feature: Team Lineup View UI
     Then the row for the missing starter shows "Player #<id>" as its label
     And the row for the missing starter shows an em dash for its rating
 
-  @spec:LINEUI-009 @spec:LINEUI-010
-  Scenario: A managed team swaps a bench player into a defensive starter slot and saves explicitly
+  @spec:LINEUI-009 @spec:LINEUI-010 @spec:LINEUI-011 @spec:LINEUI-013
+  Scenario: A managed team enters edit mode and assigns an unassigned player
     Given GameWorld 1 has Team 10 as its managed club
     And GET /api/team/10/lineup returns a DH-off active lineup
-    And GET /api/team/10/roster returns names and ratings for the active lineup
+    And GET /api/team/10/roster returns names and ratings including unassigned players
     When the player navigates to "/1/team/10/lineup"
-    And the manager selects bench player 10 for the Catcher slot
-    Then the Catcher slot shows player 10 and the displaced player occupies the bench slot
+    Then an Edit lineup control is shown
+    When the manager enters lineup edit mode
+    Then the unassigned bucket is shown
+    And fielding position, derived batting slot, and role controls are shown
+    And the pitcher batting slot is locked to 9
+    When the manager assigns unassigned player 14 to the bench
+    Then player 14 leaves the unassigned bucket
     And no lineup save request has been made
     When the manager saves the lineup
     Then the active lineup draft is sent to the save endpoint
+    And the saved lineup returns to read-only mode
+
+  @spec:LINEUI-010 @spec:LINEUI-011 @spec:LINEUI-013
+  Scenario: Edit mode reflects DH rules and blocks an occupied defensive slot
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-on active lineup
+    And GET /api/team/10/roster returns names and ratings including unassigned players
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    Then the DH fielding-position option is shown
+    And an occupied defensive-position option is blocked
+    And the occupied DH option is blocked
+
+  @spec:LINEUI-010 @spec:LINEUI-011 @spec:LINEUI-013
+  Scenario: A promoted non-pitcher starter receives the vacated batting slot
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings including unassigned players
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager moves player 2 to the bench
+    And the manager promotes player 14 to starter at FirstBase
+    Then player 14 has derived batting slot 2
+
+  @spec:LINEUI-010 @spec:LINEUI-011 @spec:LINEUI-013
+  Scenario: A promoted DH receives the vacated batting slot
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-on active lineup
+    And GET /api/team/10/roster returns names and ratings including unassigned players
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager moves player 9 to the bench
+    And the manager promotes player 14 to starter at DH
+    Then player 14 has derived batting slot 9
 
   @spec:LINEUI-004 @spec:LINEUI-009
   Scenario: A non-managed team has no lineup editing controls
@@ -92,12 +131,26 @@ Feature: Team Lineup View UI
     When the player navigates to "/1/team/10/lineup"
     Then no mutating lineup controls are shown
 
-  @spec:LINEUI-011
+  @spec:LINEUI-014
   Scenario: A rejected managed-team lineup save shows the validation failure
     Given GameWorld 1 has Team 10 as its managed club
     And GET /api/team/10/lineup returns a DH-off active lineup
     And GET /api/team/10/roster returns names and ratings for the active lineup
     And PATCH /api/team/10/lineup rejects the lineup as invalid
     When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager assigns unassigned player 14 to the bench
     And the manager saves the lineup
     Then the lineup validation failure is shown
+    And the draft remains in edit mode
+
+  @spec:LINEUI-014
+  Scenario: Cancelling an edit discards its draft
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings including unassigned players
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager assigns unassigned player 14 to the bench
+    And the manager cancels lineup editing
+    Then the unassigned player is not assigned in the read-only lineup
