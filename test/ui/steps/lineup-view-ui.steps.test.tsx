@@ -194,6 +194,21 @@ defineFeature(feature, (test) => {
     when('the manager saves the lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save Lineup' })));
     // @spec LINEUI-009
     then('the active lineup draft is sent to the save endpoint', async () => await waitFor(() => expect((global.fetch as jest.Mock).mock.calls.some(([url, options]) => url === '/api/team/10/lineup' && options?.method === 'PUT')).toBe(true)));
+    // @spec LINEUI-014
+    and('the saved lineup returns to read-only mode', async () => await waitFor(() => expect(screen.getByRole('button', { name: 'Edit Lineup' })).toBeInTheDocument()));
+  });
+
+  test('Edit mode reflects DH rules and blocks an occupied defensive slot', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    and('GET /api/team/10/lineup returns a DH-on active lineup', () => { lineup = dhOn(); });
+    and('GET /api/team/10/roster returns names and ratings including unassigned players', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    // @spec LINEUI-010
+    then('the DH fielding-position option is available', () => expect(within(screen.getByTestId('position-picker-1')).getByRole('option', { name: 'DH' })).toBeEnabled());
+    // @spec LINEUI-013
+    and('an occupied defensive-position option is blocked', () => expect(within(screen.getByTestId('position-picker-1')).getByRole('option', { name: 'FirstBase' })).toBeDisabled());
   });
 
   test('A non-managed team has no lineup editing controls', ({ given, and, when, then }) => {

@@ -88,6 +88,17 @@ Feature: Team Lineup View UI
     And no lineup save request has been made
     When the manager saves the lineup
     Then the active lineup draft is sent to the save endpoint
+    And the saved lineup returns to read-only mode
+
+  @spec:LINEUI-010 @spec:LINEUI-011 @spec:LINEUI-013
+  Scenario: Edit mode reflects DH rules and blocks an occupied defensive slot
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-on active lineup
+    And GET /api/team/10/roster returns names and ratings including unassigned players
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    Then the DH fielding-position option is available
+    And an occupied defensive-position option is blocked
 
   @spec:LINEUI-004 @spec:LINEUI-009
   Scenario: A non-managed team has no lineup editing controls
