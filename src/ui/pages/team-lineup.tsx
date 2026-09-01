@@ -98,7 +98,8 @@ const TeamLineupView = () => {
     }
     // @spec LINEUI-011 — a new non-pitcher starter inherits an open batting slot;
     // batting order is intentionally displayed as a derived, disabled control.
-    if (entry.fieldingPosition != null && entry.battingOrder == null) {
+    const selectedNonPitcherPosition = patch.fieldingPosition === null || (typeof patch.fieldingPosition === 'string' && patch.fieldingPosition.length > 0);
+    if (selectedNonPitcherPosition && entry.battingOrder == null) {
       const occupiedOrders = new Set(next.filter((candidate, index) => index !== entryIndex && candidate.role === 'STARTER').map((candidate) => candidate.battingOrder));
       entry.battingOrder = [...Array(9)].map((_, index) => index + 1).find((order) => !occupiedOrders.has(order)) ?? null;
     }
