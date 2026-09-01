@@ -123,6 +123,20 @@ const updateTeamLineup = async (teamId: number, entries: ActiveLineupEntry[]) =>
   return TeamFactory(teamId).updateActiveLineup(entries, resolveMatchRules(league?.dataValues.config));
 };
 
+const resolveTeamMatchRules = async (teamId: number, gameWorldId: number, year: number) => {
+  const divisionSeason = await db.models.DivisionSeason.findOne({
+    where: { teamId, year },
+    include: [{ model: db.models.Division, include: [{ model: db.models.League, where: { gameWorldId } }] }],
+    order: [['divisionId', 'ASC']],
+  });
+  const division = divisionSeason?.dataValues.Division?.dataValues ?? divisionSeason?.dataValues.Division;
+  const league = division?.League?.dataValues ?? division?.League;
+  if (division && league) return resolveMatchRules(league.config, division.config);
+
+  const fallbackLeague = await db.models.League.findOne({ where: { gameWorldId }, order: [['id', 'ASC']] });
+  return resolveMatchRules(fallbackLeague?.dataValues.config);
+};
+
 // @spec PDET-001,PDET-002,PDET-003,PDET-004,PDET-007,PDET-008,PDET-010,PDET-011
 const getPlayerDetail = async (playerId: number, gwId?: number) => {
   const player = await db.models.Player.findByPk(playerId);
@@ -140,30 +154,48 @@ const getPlayerDetail = async (playerId: number, gwId?: number) => {
   });
 };
 
-// @spec XFER-001,XFER-010 — ancestor resolution (GameWorld) + the authorization seam,
-// shared by all three transfer-mutation handlers (backend-standards §1: cross-entity
-// resolution is explicit orchestration at this layer, not buried in the Factory).
-const resolveMutationContext = async (teamId: number) => {
+// @spec XFER-010,LEDIT-002 — common Team/GameWorld resolution and managed-club gate for
+// mutations. Date eligibility is intentionally a transfer-only policy below.
+const resolveManagedTeamContext = async (teamId: number) => {
   const team = await db.models.Team.findByPk(teamId);
   if (!team) throw new DomainError('Not found', 404);
 
   const gameWorld = await db.models.GameWorld.findByPk(team.dataValues.gameWorldId);
   if (!gameWorld) throw new DomainError('Not found', 404);
 
-  // @spec XFER-010 — read live (not cached at module load) so it can be toggled at runtime.
+  // @spec XFER-010,LEDIT-002 — read live (not cached at module load) so DEV_MODE can toggle.
   if (process.env.DEV_MODE !== 'true' && gameWorld.dataValues.managedTeamId !== teamId) {
     throw new DomainError('team is not managed by the player', 422);
   }
+  return {
+    team: team.dataValues,
+    gameWorld: gameWorld.dataValues,
+    gameWorldId: gameWorld.dataValues.id as number,
+    gameWorldYear: gameWorld.dataValues.year as number,
+  };
+};
+
+// @spec XFER-001,XFER-010 — transfer-specific date policy composed over the shared gate.
+const resolveMutationContext = async (teamId: number) => {
+  const context = await resolveManagedTeamContext(teamId);
   // @spec XFER-001
-  if (gameWorld.dataValues.currentDate == null) {
+  if (context.gameWorld.currentDate == null) {
     throw new DomainError('the GameWorld has no current date configured', 422);
   }
 
   return {
-    currentDate: gameWorld.dataValues.currentDate as string,
-    gameWorldYear: gameWorld.dataValues.year as number,
-    gameWorldId: gameWorld.dataValues.id as number,
+    currentDate: context.gameWorld.currentDate as string,
+    gameWorldYear: context.gameWorldYear,
+    gameWorldId: context.gameWorldId,
   };
+};
+
+// @spec LEDIT-001,LEDIT-002,LEDIT-003,LEDIT-004 — PUT intentionally uses the shared identity
+// gate but not resolveMutationContext(), because an active template is editable before season date.
+const saveTeamLineup = async (teamId: number, entries: ActiveLineupEntry[]) => {
+  const context = await resolveManagedTeamContext(teamId);
+  const rules = await resolveTeamMatchRules(teamId, context.gameWorldId, context.gameWorldYear);
+  return TeamFactory(teamId).saveActiveLineup(entries, rules);
 };
 
 // @spec XFER-002,XFER-003,XFER-007,XFER-012,XFER-013,XFER-020
@@ -200,6 +232,7 @@ export {
   getTeamRoster,
   getTeamLineup,
   updateTeamLineup,
+  saveTeamLineup,
   getPlayerDetail,
   newGameWorld,
   setManagedClub,

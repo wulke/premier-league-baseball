@@ -14,6 +14,7 @@ interface ITeam {
   snapshotForGame: (gameId: number) => Promise<GameLineupSnapshot>;
   getLineup: (options?: { gameId?: number; gwId?: number }) => Promise<TeamLineup>;
   updateActiveLineup: (entries: ActiveLineupEntry[], matchRules: MatchRules) => Promise<TeamLineup>;
+  saveActiveLineup: (entries: ActiveLineupEntry[], matchRules: MatchRules) => Promise<TeamLineup>;
 };
 
 interface TeamCreateOptions {
@@ -22,12 +23,67 @@ interface TeamCreateOptions {
   matchRules?: MatchRules;
 }
 
+interface ActiveLineupReplaceOptions { requirePermutation?: boolean; }
+
 let teamCreateQueue = Promise.resolve();
 
 const enqueueTeamCreate = async <T>(work: () => Promise<T>): Promise<T> => {
   const result = teamCreateQueue.then(work, work);
   teamCreateQueue = result.then(() => undefined, () => undefined);
   return result;
+};
+
+// @spec LWRITE-001,LWRITE-002,LWRITE-003,LEDIT-001,LEDIT-003,LEDIT-004 — both lineup
+// write verbs share the same validated, transactional replacement primitive. The explicit
+// projection is also an input boundary: request-only fields must not select another Lineup.
+const replaceActiveLineup = async (
+  teamId: number,
+  entries: ActiveLineupEntry[],
+  matchRules: MatchRules,
+  options: ActiveLineupReplaceOptions = {},
+): Promise<TeamLineup> => {
+  const team = await db.models.Team.findByPk(teamId);
+  if (!team) throw new DomainError('Not found', 404);
+  const lineup = await db.models.Lineup.findOne({ where: { teamId, gameId: null } });
+  if (!lineup) throw new DomainError('Not found', 404);
+  if (!Array.isArray(entries)) throw new DomainError('entries must be an array', 422);
+
+  const submittedPlayerIds = new Set<number>(entries.map((entry) => entry.playerId));
+  if (options.requirePermutation) {
+    const storedEntries = await db.models.LineupEntry.findAll({ where: { lineupId: lineup.dataValues.id } })
+      .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+    const storedPlayerIds = new Set<number>(storedEntries.map((entry: any) => entry.playerId));
+    if (submittedPlayerIds.size !== storedPlayerIds.size || entries.length !== storedEntries.length || [...submittedPlayerIds].some((playerId) => !storedPlayerIds.has(playerId))) {
+      throw new DomainError('entries must be a complete permutation of the active lineup', 422);
+    }
+  }
+
+  const players = submittedPlayerIds.size === 0 ? [] : await db.models.Player.findAll({
+    where: { id: { [Op.in]: [...submittedPlayerIds] } },
+  }).then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+  if (players.length !== submittedPlayerIds.size || players.some((player: any) => (
+    player.teamId !== teamId || player.gameWorldId !== team.dataValues.gameWorldId
+  ))) {
+    throw new DomainError(options.requirePermutation ? 'every lineup player must belong to the team' : "player is not on this team's roster", 422);
+  }
+  try {
+    validateLineup({ entries }, matchRules);
+  } catch (error) {
+    throw new DomainError((error as Error).message, 422);
+  }
+
+  const transaction = await db.transaction();
+  try {
+    await db.models.LineupEntry.destroy({ where: { lineupId: lineup.dataValues.id }, transaction });
+    await db.models.LineupEntry.bulkCreate(entries.map(({ playerId, role, battingOrder, fieldingPosition }) => ({
+      lineupId: lineup.dataValues.id, playerId, role, battingOrder, fieldingPosition,
+    })), { transaction });
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+  return TeamFactory(teamId).getLineup();
 };
 
 const TeamFactory = (id?: number): ITeam => {
@@ -287,39 +343,14 @@ const TeamFactory = (id?: number): ITeam => {
     // replace only a complete permutation of the gameId-less template in one transaction.
     // Per-game snapshots stay untouched.
     updateActiveLineup: async (entries: ActiveLineupEntry[], matchRules: MatchRules): Promise<TeamLineup> => {
-      const team = await db.models.Team.findByPk(id);
-      if (!team) throw new DomainError('Not found', 404);
-      const lineup = await db.models.Lineup.findOne({ where: { teamId: id, gameId: null } });
-      if (!lineup) throw new DomainError('Not found', 404);
-      if (!Array.isArray(entries)) throw new DomainError('entries must be an array', 422);
-      const storedEntries = await db.models.LineupEntry.findAll({ where: { lineupId: lineup.dataValues.id } })
-        .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
-      const storedPlayerIds = new Set<number>(storedEntries.map((entry: any) => entry.playerId));
-      const submittedPlayerIds = new Set<number>(entries.map((entry) => entry.playerId));
-      if (submittedPlayerIds.size !== storedPlayerIds.size || entries.length !== storedEntries.length || [...submittedPlayerIds].some((playerId) => !storedPlayerIds.has(playerId))) {
-        throw new DomainError('entries must be a complete permutation of the active lineup', 422);
-      }
-      const players = await db.models.Player.findAll({ where: { id: { [Op.in]: [...submittedPlayerIds] } } })
-        .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
-      if (players.length !== submittedPlayerIds.size || players.some((player: any) => player.teamId !== id || player.gameWorldId !== team.dataValues.gameWorldId)) {
-        throw new DomainError('every lineup player must belong to the team', 422);
-      }
-      try {
-        validateLineup({ entries }, matchRules);
-      } catch (error) {
-        throw new DomainError((error as Error).message, 422);
-      }
+      return replaceActiveLineup(id!, entries, matchRules, { requirePermutation: true });
+    },
 
-      const transaction = await db.transaction();
-      try {
-        await db.models.LineupEntry.destroy({ where: { lineupId: lineup.dataValues.id }, transaction });
-        await db.models.LineupEntry.bulkCreate(entries.map((entry) => ({ lineupId: lineup.dataValues.id, ...entry })), { transaction });
-        await transaction.commit();
-      } catch (error) {
-        await transaction.rollback();
-        throw error;
-      }
-      return TeamFactory(id).getLineup();
+    // @spec LEDIT-001,LEDIT-003,LEDIT-004 — the PUT contract replaces the active template
+    // with any valid current-roster selection. Unlike the legacy PATCH permutation write, it
+    // retains the Lineup row and deliberately does not inspect per-game snapshots.
+    saveActiveLineup: async (entries: ActiveLineupEntry[], matchRules: MatchRules): Promise<TeamLineup> => {
+      return replaceActiveLineup(id!, entries, matchRules);
     },
   };
 };

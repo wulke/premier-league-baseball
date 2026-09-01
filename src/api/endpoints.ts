@@ -16,6 +16,10 @@ const enum Endpoints {
   GetTeamLineup = '/api/team/:teamId/lineup',
   // @spec LWRITE-001,LWRITE-002
   UpdateTeamLineup = '/api/team/:teamId/lineup',
+  // PATCH above and PUT below intentionally share the path: PATCH is the constrained
+  // active-template permutation endpoint, while PUT is the wholesale managed save.
+  // @spec LEDIT-001,LEDIT-002,LEDIT-003,LEDIT-004
+  SaveTeamLineup = '/api/team/:teamId/lineup',
   // @spec PDET-001,PDET-002,PDET-003,PDET-004,PDET-007,PDET-008,PDET-010,PDET-011
   GetPlayerDetail = '/api/player/:playerId',
   NewGameWorld = '/api/gameWorld/new',
