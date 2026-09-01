@@ -1,4 +1,4 @@
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -16,6 +16,7 @@ const RATING = 82;
 
 let lineup: TeamLineup;
 let roster: RosterPlayer[];
+let managedTeamId: number | null = null;
 
 const rosterPlayer = (id: number): RosterPlayer => ({
   id, givenName: `Player`, familyName: String(id), countryCode: 'US', bats: 'R', throws: 'R', age: 25,
@@ -39,7 +40,7 @@ const installFetch = () => {
     const response = (body: unknown) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
     if (url === '/api/team/10/lineup?gwId=1') return response(lineup);
     if (url === '/api/team/10/roster') return response(roster);
-    if (url === '/api/gameWorld/1') return response({ id: 1, year: 2025, config: { name: 'Test World', inProgress: true }, Leagues: [] });
+    if (url === '/api/gameWorld/1') return response({ id: 1, year: 2025, config: { name: 'Test World', inProgress: true }, Leagues: [], managedTeamId });
     return response([]);
   }) as jest.Mock;
 };
@@ -53,7 +54,7 @@ const renderAt = async (entry: string) => {
 
 const selectTab = (name: 'Defensive' | 'Batting') => fireEvent.click(screen.getByRole('tab', { name }));
 
-beforeEach(() => { lineup = dhOff(); roster = makeRoster(); installFetch(); });
+beforeEach(() => { lineup = dhOff(); roster = makeRoster(); managedTeamId = null; installFetch(); });
 afterEach(() => cleanup());
 
 defineFeature(feature, (test) => {
@@ -164,5 +165,37 @@ defineFeature(feature, (test) => {
     });
     // @spec LINEUI-008
     and('the row for the missing starter shows an em dash for its rating', () => expect(screen.getByTestId(`defensive-row-${MISSING_STARTER_ID}`)).toHaveTextContent('—'));
+  });
+
+  test('A managed team swaps a bench player into a defensive starter slot and saves explicitly', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    given('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager selects bench player 10 for the Catcher slot', async () => {
+      await screen.findByTestId('lineup-picker-Catcher');
+      fireEvent.change(screen.getByTestId('lineup-picker-Catcher'), { target: { value: '10' } });
+    });
+    // @spec LINEUI-010
+    then('the Catcher slot shows player 10 and the displaced player occupies the bench slot', () => {
+      expect(screen.getByTestId('defensive-row-10')).toHaveTextContent('Catcher');
+      expect(screen.getByTestId('bench-row-1')).toBeInTheDocument();
+    });
+    // @spec LINEUI-010
+    and('no lineup save request has been made', () => expect((global.fetch as jest.Mock).mock.calls.some(([url, options]) => url === '/api/team/10/lineup' && options?.method === 'PATCH')).toBe(false));
+    when('the manager saves the lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save Lineup' })));
+    // @spec LINEUI-009
+    then('the active lineup draft is sent to the save endpoint', async () => await waitFor(() => expect((global.fetch as jest.Mock).mock.calls.some(([url, options]) => url === '/api/team/10/lineup' && options?.method === 'PATCH')).toBe(true)));
+  });
+
+  test('A non-managed team has no lineup editing controls', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 11 as its managed club', () => { managedTeamId = 11; });
+    given('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    // @spec LINEUI-004,LINEUI-009
+    then('no mutating lineup controls are shown', () => expect(screen.queryByRole('button', { name: /save lineup/i })).toBeNull());
   });
 });

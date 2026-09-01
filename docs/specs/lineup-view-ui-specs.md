@@ -8,11 +8,14 @@ lineup card from `GET /api/team/:teamId/lineup` and roster display identities.
 | LINEUI-001 | WHEN the team hub renders THE system SHALL provide a read-only Lineup tab at `/:gwId/team/:teamId/lineup` alongside Calendar and Roster. | [x] → #200 |
 | LINEUI-002 | WHEN an active lineup has DH disabled THE system SHALL render its nine batting starters in order 1 through 9, show each fielding position, and highlight the starting pitcher without rendering a DH row. | [x] → #200 |
 | LINEUI-003 | WHEN an active lineup has DH enabled THE system SHALL render batting starters in order 1 through 9, render the null-position starter as a DH row, and highlight the non-batting starting pitcher. | [x] → #200 |
-| LINEUI-004 | WHEN the active lineup renders THE system SHALL display bench and bullpen pools and SHALL link every starter, reserve, and pitcher row to `/:gwId/player/:playerId` without providing a mutating control. | [x] → #200 |
+| LINEUI-004 | WHEN the active lineup renders for a team other than `GameWorld.managedTeamId` THE system SHALL display bench and bullpen pools and SHALL link every starter, reserve, and pitcher row to `/:gwId/player/:playerId` without providing a mutating control. | [x] → #200, #249 |
 | LINEUI-005 | WHEN the Defensive tab renders THE system SHALL show one row per starter (nine, or ten when DH is enabled), each row displaying the player, their assigned fielding position, and their rating at that position (`RosterPlayer.positions[fieldingPosition]`, ROST-011). | [x] → #225 |
 | LINEUI-006 | WHEN the Lineup tab renders THE system SHALL provide Defensive and Batting tab views, defaulting to the Defensive tab, and switching between them SHALL NOT trigger a new network fetch. | [x] → #225 |
 | LINEUI-007 | WHEN either tab renders THE system SHALL append the bench players as `BENCH`-tagged rows and the bullpen players as `BULLPEN`-tagged rows after the starter rows, in API-returned order, with no fielding position or rating value shown on those rows. | [x] → #225 |
 | LINEUI-008 | IF a starter's positional rating is unavailable (the roster fetch failed, or the player is absent from the roster response) THE system SHALL render the rating as an em dash rather than omitting the row or throwing. | [x] → #225 |
+| LINEUI-009 | WHEN the active lineup renders for `GameWorld.managedTeamId` THE system SHALL render slot-fill player selectors and Save Lineup controls for position-player starter and bench rows only. | [x] → #249 |
+| LINEUI-010 | WHEN the manager selects an eligible player for an editable active-lineup slot THE client SHALL swap that player with the prior slot occupant in draft state without persisting either change until Save Lineup is clicked. | [x] → #249 |
+| LINEUI-011 | WHEN Save Lineup rejects the draft THE system SHALL retain the stored lineup and display the validation failure to the manager. | [x] → #249 |
 
 LINEUI-005 through LINEUI-008 formalize the Defensive \| Batting tabbed redesign
 ([#225](https://github.com/wulke/premier-league-baseball/issues/225)), which replaces the

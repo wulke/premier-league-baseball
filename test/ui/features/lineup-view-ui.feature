@@ -71,3 +71,23 @@ Feature: Team Lineup View UI
     When the player navigates to "/1/team/10/lineup"
     Then the row for the missing starter shows "Player #<id>" as its label
     And the row for the missing starter shows an em dash for its rating
+
+  @spec:LINEUI-009 @spec:LINEUI-010
+  Scenario: A managed team swaps a bench player into a defensive starter slot and saves explicitly
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager selects bench player 10 for the Catcher slot
+    Then the Catcher slot shows player 10 and the displaced player occupies the bench slot
+    And no lineup save request has been made
+    When the manager saves the lineup
+    Then the active lineup draft is sent to the save endpoint
+
+  @spec:LINEUI-004 @spec:LINEUI-009
+  Scenario: A non-managed team has no lineup editing controls
+    Given GameWorld 1 has Team 11 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    Then no mutating lineup controls are shown

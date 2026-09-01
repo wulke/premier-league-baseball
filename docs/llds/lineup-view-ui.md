@@ -4,7 +4,7 @@
 
 ## Scope
 
-Redesigns the existing read-only Lineup tab (`/:gwId/team/:teamId/lineup`) from a two-panel
+Redesigns the existing Lineup tab (`/:gwId/team/:teamId/lineup`) from a two-panel
 layout (batting-order card + separate Bench/Bullpen pool panels) into a **Defensive | Batting**
 tabbed table, one row per starter, with bench and bullpen folded into each tab as inline
 `BENCH`/`BULLPEN`-tagged rows. Covers only `src/ui/pages/team-lineup.tsx` and the one field this
@@ -14,7 +14,7 @@ redesign requires from the roster response. Does **not** cover:
   shape, auth-free access, and error handling of `GET /api/team/:teamId/lineup` and
   `GET /api/team/:teamId/roster` are unchanged and remain owned by
   [`lineup-read-api.md`](./lineup-read-api.md) / [`roster-read-api.md`](./roster-read-api.md).
-- Any write path (editable position/role assignment) — [#226](https://github.com/wulke/premier-league-baseball/issues/226), undesigned.
+- Pitcher/SP reassignment or bullpen-role composition — [#243](https://github.com/wulke/premier-league-baseball/issues/243) owns its per-game bullpen surface.
 - Per-game starting-pitcher / active-bullpen designation — [#243](https://github.com/wulke/premier-league-baseball/issues/243), its own LLD.
 - Value/form/talent/appearance columns — [#227](https://github.com/wulke/premier-league-baseball/issues/227), blocked.
 - A position-badge filter row — explicitly deferred out of v1 by the HLD; no spec exists for its absence.
@@ -55,6 +55,12 @@ const DEFENSIVE_TAB_ORDER: PlayerPosition[] = [
 ];
 ```
 
+For #249, the component also keeps `draft: ActiveLineupEntry[] | null`, initialized from the
+active read card. A slot is the entry's `{ role, battingOrder, fieldingPosition }`; selecting an
+eligible player swaps the two entries' `playerId` values and preserves both slot shapes. Eligible
+entries are `STARTER` rows other than the `Pitcher` row plus `BENCH` rows. `BULLPEN` rows and the
+starting-pitcher slot are never candidates or editable targets.
+
 ## Logic Flow
 
 ```
@@ -64,18 +70,22 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
   → index roster by playerId (unchanged)
   → build STARTER rows from lineup.starters (one per starter, 9 or 10 w/ DH)          # LINEUI-005
   → build BENCH rows from lineup.bench, BULLPEN rows from lineup.bullpen              # LINEUI-007
+  → read route-loader GameWorld; isManagedTeam = managedTeamId === Number(teamId)      # LINEUI-009
+  → initialize draft entries from active lineup and retain it only in component state   # LINEUI-010
   → activeTab state, default 'DEFENSIVE'                                              # LINEUI-006
   → IF activeTab === 'DEFENSIVE':
       STARTER rows sorted by DEFENSIVE_TAB_ORDER (fieldingPosition; DH slot sorts last)
       each STARTER row's positionRating = roster.get(playerId)?.positions[fieldingPosition] ?? null   # LINEUI-008
-      render: Tag | Player | Position | Rating
+      render: Tag | Player | Position | Rating | picker (managed editable rows only)
       append BENCH rows, then BULLPEN rows (Position/Rating columns blank)             # LINEUI-007
   → IF activeTab === 'BATTING':
       STARTER rows sorted by battingOrder (unchanged from pre-#225 behavior)
-      render: Tag | Order | Player | Position (DH label when fieldingPosition === null)  # LINEUI-002/003
+      render: Tag | Order | Player | Position (DH label when fieldingPosition === null) | picker (managed editable rows only)  # LINEUI-002/003
       append BENCH rows, then BULLPEN rows (Order/Position columns blank)               # LINEUI-007
-  → every row links to /:gwId/player/:playerId (unchanged)                             # LINEUI-004
-  → no mutating control on either tab (unchanged)                                      # LINEUI-004
+  → selecting a picker swaps playerIds in the selected and target slots; no fetch       # LINEUI-010
+  → Save Lineup PATCHes `{ entries: draft }`; successful save replaces read/draft state  # LINEUI-009
+  → rejected PATCH keeps draft and shows its error; server state is unchanged            # LINEUI-011
+  → every row links to /:gwId/player/:playerId; non-managed views have no controls      # LINEUI-004
 ```
 
 ### Key decisions embedded in this flow
@@ -112,6 +122,9 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
 | u4 | An ID from the lineup is absent from the roster map | Row is kept; player-link label falls back to `Player #ID` (unchanged); Defensive-tab rating renders as an em dash (no `positions` map available for that ID). | LINEUI-008 |
 | u5 | Bench or bullpen ordering changes upstream | Each returned pool renders as-is, in its `BENCH`/`BULLPEN` block appended after the starters, on both tabs — the API makes no ordering promise (unchanged). | LINEUI-007 |
 | u6 | User switches tabs | `activeTab` is local component state; switching re-renders the same fetched data with no refetch. Defaults to `DEFENSIVE` on initial render/navigation. | LINEUI-006 |
+| u7 | Manager promotes a bench player or demotes a starter | Swap the two fixed slot occupants; the displaced player takes the source slot, so no entry is unplaced. | LINEUI-010 |
+| u8 | Draft is invalid at Save | The PATCH validator returns an error; keep draft for correction, surface the message, and do not change the stored active lineup. | LINEUI-011, LWRITE-002 |
+| u9 | Non-managed team or pitcher/bullpen row | Do not render a selector or Save Lineup control for a non-managed team; never render selectors on `Pitcher` or `BULLPEN` entries. | LINEUI-004, LINEUI-009 |
 
 ## Traceability
 
@@ -120,7 +133,7 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-lineup-view--defensive--batting-tabs) |
 | **This LLD** | `docs/llds/lineup-view-ui.md` |
 | Sibling LLDs | `docs/llds/lineup-read-api.md` (lineup endpoint, unchanged), `docs/llds/roster-read-api.md` (`positions` amendment, ROST-011) |
-| EARS | `docs/specs/lineup-view-ui-specs.md` — `LINEUI-001`.. |
+| EARS | `docs/specs/lineup-view-ui-specs.md` — `LINEUI-001`..; `docs/specs/active-lineup-write-specs.md` — `LWRITE-001`.. |
 | Gherkin | `test/ui/features/lineup-view-ui.feature` |
 | Code | `src/ui/routes.tsx`, `src/ui/pages/team-hub.tsx`, `src/ui/pages/team-lineup.tsx`, `src/db/domain/team.ts` (`getRoster`), `src/api/models.ts` (`RosterPlayer`) |
 | Decision record | #138, #200 (original) · #225 (this redesign) |
