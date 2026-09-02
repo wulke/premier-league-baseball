@@ -1,4 +1,4 @@
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014,GBULL-006
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -18,6 +18,7 @@ let lineup: TeamLineup;
 let roster: RosterPlayer[];
 let managedTeamId: number | null = null;
 let rejectLineupSave = false;
+let nextGameLineup: { game: any; lineup: TeamLineup } | null = null;
 
 const rosterPlayer = (id: number): RosterPlayer => ({
   id, givenName: `Player`, familyName: String(id), countryCode: 'US', bats: 'R', throws: 'R', age: 25,
@@ -40,6 +41,8 @@ const installFetch = () => {
     const url = input.toString();
     const response = (body: unknown) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
     if (url === '/api/team/10/lineup?gwId=1') return response(lineup);
+    if (url === '/api/team/10/lineup/next-game?gwId=1') return response(nextGameLineup);
+    if (url === '/api/team/10/lineup/40' && (init as RequestInit | undefined)?.method === 'PATCH') return response(lineup);
     if (url === '/api/team/10/lineup' && (init as RequestInit | undefined)?.method === 'PUT') {
       return Promise.resolve(rejectLineupSave
         ? { ok: false, status: 422, json: () => Promise.resolve({ error: 'Starters must have batting orders 1 through 9 exactly once' }) }
@@ -58,9 +61,9 @@ const renderAt = async (entry: string) => {
   await waitFor(() => expect(screen.getByRole('tab', { name: 'Defensive' })).toBeInTheDocument());
 };
 
-const selectTab = (name: 'Defensive' | 'Batting') => fireEvent.click(screen.getByRole('tab', { name }));
+const selectTab = (name: 'Defensive' | 'Batting' | 'Bullpen') => fireEvent.click(screen.getByRole('tab', { name }));
 
-beforeEach(() => { lineup = dhOff(); roster = makeRoster(); managedTeamId = null; rejectLineupSave = false; installFetch(); });
+beforeEach(() => { lineup = dhOff(); roster = makeRoster(); managedTeamId = null; rejectLineupSave = false; nextGameLineup = null; installFetch(); });
 afterEach(() => cleanup());
 
 defineFeature(feature, (test) => {
@@ -289,5 +292,19 @@ defineFeature(feature, (test) => {
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
     // @spec LINEUI-012
     then('the invalid starter row shows a visible invalid indicator', async () => await waitFor(() => expect(screen.getByTestId(`defensive-row-${MISSING_STARTER_ID}`)).toHaveTextContent('Invalid')));
+  });
+
+  test("A managed team designates its next game's bullpen", ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    given('GET /api/team/10/lineup/next-game returns a scheduled game lineup', () => { nextGameLineup = { game: { id: 40, scheduledDate: '2025-04-05T00:00:00.000Z', status: 'SCHEDULED', opponentName: 'Rivertown' }, lineup: dhOff() }; });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the player opens the Bullpen tab', () => selectTab('Bullpen'));
+    // @spec GBULL-006
+    then('next-game starter, bullpen, and bench pickers are shown', async () => await waitFor(() => { expect(screen.getByRole('heading', { name: /next game: vs rivertown/i })).toBeInTheDocument(); expect(screen.getByRole('combobox', { name: /starting pitcher/i })).toBeInTheDocument(); expect(screen.getAllByRole('combobox', { name: /bench|bullpen/i })).not.toHaveLength(0); }));
+    when('the manager saves the game lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save game lineup' })));
+    // @spec GBULL-006
+    then('the game lineup draft is sent to the game save endpoint', async () => await waitFor(() => expect((global.fetch as jest.Mock).mock.calls.some(([url, options]) => url === '/api/team/10/lineup/40' && options?.method === 'PATCH')).toBe(true)));
   });
 });

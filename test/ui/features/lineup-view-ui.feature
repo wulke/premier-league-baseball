@@ -161,3 +161,14 @@ Feature: Team Lineup View UI
     And GET /api/team/10/roster returns names and ratings for the active lineup
     When the player navigates to "/1/team/10/lineup"
     Then the invalid starter row shows a visible invalid indicator
+
+  @spec:GBULL-006
+  Scenario: A managed team designates its next game's bullpen
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup/next-game returns a scheduled game lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the player opens the Bullpen tab
+    Then next-game starter, bullpen, and bench pickers are shown
+    When the manager saves the game lineup
+    Then the game lineup draft is sent to the game save endpoint

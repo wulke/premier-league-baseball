@@ -155,9 +155,24 @@ router.get(Endpoints.GetTeamLineup, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
+router.get(Endpoints.GetNextTeamGameLineup, async (req: any, res: any) => {
+  // @spec GBULL-001,GBULL-002
+  const gwId = req.query.gwId == null ? undefined : Number(req.query.gwId);
+  await handlers.getNextTeamGameLineup(Number(req.params.teamId), gwId)
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
 router.put(Endpoints.SaveTeamLineup, async (req: any, res: any) => {
   // @spec LEDIT-001,LEDIT-002,LEDIT-003,LEDIT-004
   await handlers.saveTeamLineup(Number(req.params.teamId), req.body?.entries)
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
+router.patch(Endpoints.SaveTeamGameLineup, async (req: any, res: any) => {
+  // @spec GBULL-003,GBULL-004,GBULL-005
+  await handlers.saveTeamGameLineup(Number(req.params.teamId), Number(req.params.gameId), req.body?.entries)
     .then((response) => res.send(response))
     .catch((error) => sendError(res, error));
 });

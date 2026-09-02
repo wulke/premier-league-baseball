@@ -20,7 +20,7 @@ const setup = async () => {
     attributes: { positions: Object.fromEntries(positions.map((position) => [position, 50])), pitches: [] },
   }).then((row: any) => row.dataValues)));
   await db.models.LineupEntry.bulkCreate([
-    ...positions.map((position, index) => ({ lineupId: lineup.id, playerId: players[index].id, role: 'STARTER', battingOrder: index + 1, fieldingPosition: position })),
+    ...positions.map((position, index) => ({ lineupId: lineup.id, playerId: players[index].id, role: 'STARTER', battingOrder: position === 'Pitcher' ? 9 : index, fieldingPosition: position })),
     { lineupId: lineup.id, playerId: players[9].id, role: 'BENCH', battingOrder: null, fieldingPosition: null },
     { lineupId: lineup.id, playerId: players[10].id, role: 'BENCH', battingOrder: null, fieldingPosition: null },
     { lineupId: lineup.id, playerId: players[11].id, role: 'BULLPEN', battingOrder: null, fieldingPosition: null },
@@ -55,6 +55,6 @@ autoBindSteps(feature, [({ given, when, then }: any) => {
   });
   then('Game 40 is returned with a per-game lineup snapshot', async () => { expect(response.body.game.id).toBe(40); await expect(db.models.Lineup.count({ where: { teamId: 10, gameId: 40 } })).resolves.toBe(1); });
   then('no next-game lineup is returned', () => expect(response.body).toBeNull());
-  then("Game 40's saved lineup contains the changed starter", () => expect(response.body.startingPitcherId).not.toBe(beforeSave.startingPitcherId));
+  then("Game 40's saved lineup contains the changed starter", () => { expect(response.statusCode).toBe(200); expect(response.body.startingPitcherId).not.toBe(beforeSave.startingPitcherId); });
   then('the save is rejected and Game 40\'s snapshot is unchanged', async () => { expect(response.statusCode).toBe(422); await expect(TeamFactory(10).getLineup({ gameId: 40 })).resolves.toEqual(beforeSave); });
 }]);

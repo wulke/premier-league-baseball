@@ -12,8 +12,11 @@ interface ITeam {
   getSchedule: (gwId: number, leagueId?: number) => Promise<TeamSeasonCalendar>;
   getRoster: () => Promise<RosterPlayer[]>;
   snapshotForGame: (gameId: number) => Promise<GameLineupSnapshot>;
+  getNextScheduledGame: () => Promise<any | null>;
+  getNextGameLineup: () => Promise<{ game: any; lineup: TeamLineup } | null>;
   getLineup: (options?: { gameId?: number; gwId?: number }) => Promise<TeamLineup>;
   saveActiveLineup: (entries: ActiveLineupEntry[], matchRules: MatchRules) => Promise<TeamLineup>;
+  saveGameLineup: (gameId: number, entries: ActiveLineupEntry[], matchRules: MatchRules) => Promise<TeamLineup>;
 };
 
 interface TeamCreateOptions {
@@ -71,6 +74,36 @@ const replaceActiveLineup = async (
     throw error;
   }
   return TeamFactory(teamId).getLineup();
+};
+
+// @spec GBULL-003,GBULL-004,GBULL-005 — a complete next-game replacement is validated before
+// its transaction starts, so an invalid or locked snapshot cannot be partially changed.
+const replaceGameLineup = async (teamId: number, gameId: number, entries: ActiveLineupEntry[], matchRules: MatchRules): Promise<TeamLineup> => {
+  const team = await db.models.Team.findByPk(teamId);
+  if (!team) throw new DomainError('Not found', 404);
+  const game = await db.models.Game.findByPk(gameId);
+  if (!game || (game.dataValues.homeTeam !== teamId && game.dataValues.awayTeam !== teamId)) throw new DomainError('Not found', 404);
+  if (game.dataValues.status !== 'SCHEDULED') throw new DomainError('game lineup is locked', 422);
+  if (!Array.isArray(entries)) throw new DomainError('entries must be an array', 422);
+  const lineup = await db.models.Lineup.findOne({ where: { teamId, gameId } });
+  if (!lineup) throw new DomainError('Not found', 404);
+
+  const submittedPlayerIds = new Set<number>(entries.map((entry) => entry.playerId));
+  const players = submittedPlayerIds.size === 0 ? [] : await db.models.Player.findAll({ where: { id: { [Op.in]: [...submittedPlayerIds] } } })
+    .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+  if (players.length !== submittedPlayerIds.size || players.some((player: any) => player.teamId !== teamId || player.gameWorldId !== team.dataValues.gameWorldId)) {
+    throw new DomainError("player is not on this team's roster", 422);
+  }
+  try { validateLineup({ entries }, matchRules); }
+  catch (error) { throw new DomainError((error as Error).message, 422); }
+
+  const transaction = await db.transaction();
+  try {
+    await db.models.LineupEntry.destroy({ where: { lineupId: lineup.dataValues.id }, transaction });
+    await db.models.LineupEntry.bulkCreate(entries.map(({ playerId, role, battingOrder, fieldingPosition }) => ({ lineupId: lineup.dataValues.id, playerId, role, battingOrder, fieldingPosition })), { transaction });
+    await transaction.commit();
+  } catch (error) { await transaction.rollback(); throw error; }
+  return TeamFactory(teamId).getLineup({ gameId });
 };
 
 const TeamFactory = (id?: number): ITeam => {
@@ -297,6 +330,26 @@ const TeamFactory = (id?: number): ITeam => {
       }
     },
 
+    // @spec GBULL-001 — one ordered lookup serves the next-game-only management surface.
+    getNextScheduledGame: async (): Promise<any | null> => {
+      const game = await db.models.Game.findOne({
+        where: { status: 'SCHEDULED', [Op.or]: [{ homeTeam: id }, { awayTeam: id }] },
+        order: [['scheduledDate', 'ASC'], ['id', 'ASC']],
+      });
+      return game?.dataValues ?? null;
+    },
+
+    // @spec GBULL-001,GBULL-002 — the first next-game read is the production path that
+    // materializes snapshotForGame; later reads retain the same frozen row.
+    getNextGameLineup: async (): Promise<{ game: any; lineup: TeamLineup } | null> => {
+      const game = await TeamFactory(id).getNextScheduledGame();
+      if (!game) return null;
+      await TeamFactory(id).snapshotForGame(game.id);
+      const opponentId = game.homeTeam === id ? game.awayTeam : game.homeTeam;
+      const opponent = await db.models.Team.findByPk(opponentId);
+      return { game: { ...game, opponentName: opponent?.dataValues?.config?.name ?? `Team ${opponentId}` }, lineup: await TeamFactory(id).getLineup({ gameId: game.id }) };
+    },
+
     // @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004,LSNAP-004,LEDIT-007
     getLineup: async ({ gameId, gwId }: { gameId?: number; gwId?: number } = {}): Promise<TeamLineup> => {
       const team = await db.models.Team.findByPk(id);
@@ -334,6 +387,11 @@ const TeamFactory = (id?: number): ITeam => {
     // not inspect per-game snapshots.
     saveActiveLineup: async (entries: ActiveLineupEntry[], matchRules: MatchRules): Promise<TeamLineup> => {
       return replaceActiveLineup(id!, entries, matchRules);
+    },
+
+    // @spec GBULL-003,GBULL-004,GBULL-005
+    saveGameLineup: async (gameId: number, entries: ActiveLineupEntry[], matchRules: MatchRules): Promise<TeamLineup> => {
+      return replaceGameLineup(id!, gameId, entries, matchRules);
     },
   };
 };
