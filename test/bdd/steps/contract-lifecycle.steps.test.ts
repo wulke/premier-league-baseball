@@ -1,4 +1,4 @@
-// @spec XFER-001..XFER-020,XFER-022,XFER-023
+// @spec XFER-001..XFER-020,XFER-022,XFER-023,LEDIT-005,LEDIT-006,LEDIT-007
 // Contract lifecycle (sign/release/renew/cutover-sweep/free-agents/roster-filter) acceptance bindings.
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
@@ -112,6 +112,15 @@ const registerSteps = ({ given, when, then }: any) => {
     if (!lineup) throw new Error('no active Lineup to seed');
     await db.models.LineupEntry.create({
       lineupId: lineup.dataValues.id, playerId: Number(playerId), role: 'BENCH', battingOrder: null, fieldingPosition: null,
+    });
+  });
+
+  given(/^Team (\d+) has an active Lineup containing only Player (\d+)$/, async (teamId: string, playerId: string) => {
+    const lineup = await db.models.Lineup.findOne({ where: { teamId: Number(teamId), gameId: null } });
+    if (!lineup) throw new Error('no active Lineup to seed');
+    await db.models.LineupEntry.destroy({ where: { lineupId: lineup.dataValues.id } });
+    await db.models.LineupEntry.create({
+      lineupId: lineup.dataValues.id, playerId: Number(playerId), role: 'STARTER', battingOrder: 9, fieldingPosition: 'Pitcher',
     });
   });
 
@@ -358,6 +367,11 @@ const registerSteps = ({ given, when, then }: any) => {
 
   then(/^Team (\d+)'s active Lineup no longer includes Player (\d+)$/, async (teamId: string, playerId: string) => {
     expect(await lineupIncludesPlayer(Number(teamId), Number(playerId))).toBe(false);
+  });
+
+  then(/^Team (\d+)'s active Lineup entry for Player (\d+) is invalid$/, async (teamId: string, playerId: string) => {
+    const lineup = await TeamFactory(Number(teamId)).getLineup();
+    expect(lineup.starters).toEqual(expect.arrayContaining([expect.objectContaining({ playerId: Number(playerId), valid: false })]));
   });
 
   then(/^Team (\d+)'s active Lineup is unchanged$/, async (teamId: string) => {

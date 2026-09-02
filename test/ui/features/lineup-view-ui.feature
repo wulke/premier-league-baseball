@@ -154,3 +154,10 @@ Feature: Team Lineup View UI
     And the manager assigns unassigned player 14 to the bench
     And the manager cancels lineup editing
     Then the unassigned player is not assigned in the read-only lineup
+
+  @spec:LINEUI-012
+  Scenario: An invalid read-mode lineup entry is visibly flagged
+    Given GET /api/team/10/lineup returns a lineup with an invalid starter
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    Then the invalid starter row shows a visible invalid indicator

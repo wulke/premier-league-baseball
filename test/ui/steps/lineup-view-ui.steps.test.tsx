@@ -1,4 +1,4 @@
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-013,LINEUI-014
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -9,7 +9,7 @@ const feature = loadFeature(path.resolve(__dirname, '../features/lineup-view-ui.
 
 type PlayerPosition = 'Pitcher' | 'Catcher' | 'FirstBase' | 'SecondBase' | 'ThirdBase' | 'Shortstop' | 'LeftField' | 'CenterField' | 'RightField';
 type RosterPlayer = { id: number; givenName: string; familyName: string; countryCode: string; bats: 'R'; throws: 'R'; age: number; primaryPosition: PlayerPosition; positionCoverage: PlayerPosition[]; positions: Record<PlayerPosition, number>; contact: number; power: number; armStrength: number; accuracy: number; reaction: number; vision: number; discipline: number };
-type TeamLineup = { starters: Array<{ playerId: number; battingOrder: number | null; fieldingPosition: PlayerPosition | null }>; startingPitcherId: number; bench: Array<{ playerId: number }>; bullpen: Array<{ playerId: number }> };
+type TeamLineup = { starters: Array<{ playerId: number; battingOrder: number | null; fieldingPosition: PlayerPosition | null; valid?: boolean }>; startingPitcherId: number; bench: Array<{ playerId: number; valid?: boolean }>; bullpen: Array<{ playerId: number; valid?: boolean }> };
 
 const ALL_POSITIONS: PlayerPosition[] = ['Pitcher', 'Catcher', 'FirstBase', 'SecondBase', 'ThirdBase', 'Shortstop', 'LeftField', 'CenterField', 'RightField'];
 const RATING = 82;
@@ -280,5 +280,13 @@ defineFeature(feature, (test) => {
     and('the manager assigns unassigned player 14 to the bench', () => fireEvent.change(screen.getByTestId('role-picker-14'), { target: { value: 'BENCH' } }));
     and('the manager cancels lineup editing', () => fireEvent.click(screen.getByRole('button', { name: 'Cancel' })));
     then('the unassigned player is not assigned in the read-only lineup', () => expect(screen.queryByTestId('bench-row-14')).toBeNull());
+  });
+
+  test('An invalid read-mode lineup entry is visibly flagged', ({ given, and, when, then }) => {
+    given('GET /api/team/10/lineup returns a lineup with an invalid starter', () => { lineup = { ...dhOff(), starters: dhOff().starters.map((entry) => entry.playerId === MISSING_STARTER_ID ? { ...entry, valid: false } : entry) }; });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    // @spec LINEUI-012
+    then('the invalid starter row shows a visible invalid indicator', async () => await waitFor(() => expect(screen.getByTestId(`defensive-row-${MISSING_STARTER_ID}`)).toHaveTextContent('Invalid')));
   });
 });

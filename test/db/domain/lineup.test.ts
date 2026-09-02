@@ -1,4 +1,4 @@
-// @spec LIN-001,LIN-002,LIN-003,LIN-004,LIN-005,LIN-006,LWRITE-004
+// @spec LIN-001,LIN-002,LIN-003,LIN-004,LIN-005,LIN-006,LWRITE-004,LEDIT-005,LEDIT-006,LEDIT-007
 import db from '../../../src/db/client';
 import { PlayerAttributes } from '../../../src/api/models';
 import { LineupFactory, optimalFieldingAssignment, resolveMatchRules, startingPitcherId, validateLineup } from '../../../src/db/domain/lineup';
@@ -98,5 +98,38 @@ describe('active lineup generation', () => {
     expect(entries.filter((entry: any) => entry.role === 'BENCH')).toHaveLength(0);
     expect(entries.filter((entry: any) => entry.role === 'BULLPEN')).toHaveLength(1);
     expect(() => validateLineup(hydrated, rules)).not.toThrow();
+  });
+
+  // @spec LEDIT-005
+  it('@spec LEDIT-005 preserves retained manual entries and places a signed player in the matching reserve pool', async () => {
+    const gw = await db.models.GameWorld.create({ config: {}, year: 2053 }).then((row) => row.dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gw.id, config: { name: 'Preserve Club' } }).then((row) => row.dataValues);
+    const retained = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('Pitcher'), givenName: 'Retained', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
+    const signed = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('Catcher'), givenName: 'Signed', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
+    const lineup = await db.models.Lineup.create({ teamId: team.id, gameWorldId: gw.id }).then((row) => row.dataValues);
+    await db.models.LineupEntry.create({ lineupId: lineup.id, playerId: retained.id, role: 'STARTER', battingOrder: 9, fieldingPosition: 'Pitcher' });
+
+    await LineupFactory().repairActive(team.id, gw.id);
+
+    const entries = await db.models.LineupEntry.findAll({ where: { lineupId: lineup.id } }).then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+    expect(entries).toEqual(expect.arrayContaining([
+      expect.objectContaining({ playerId: retained.id, role: 'STARTER', battingOrder: 9, fieldingPosition: 'Pitcher' }),
+      expect.objectContaining({ playerId: signed.id, role: 'BENCH', battingOrder: null, fieldingPosition: null }),
+    ]));
+  });
+
+  // @spec LEDIT-006,LEDIT-007
+  it('@spec LEDIT-006 @spec LEDIT-007 retains an unfillable departed starter as an invalid read-card entry', async () => {
+    const gw = await db.models.GameWorld.create({ config: {}, year: 2054 }).then((row) => row.dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gw.id, config: { name: 'Thin Club' } }).then((row) => row.dataValues);
+    const departed = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('Pitcher'), givenName: 'Departed', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
+    const lineup = await db.models.Lineup.create({ teamId: team.id, gameWorldId: gw.id }).then((row) => row.dataValues);
+    await db.models.LineupEntry.create({ lineupId: lineup.id, playerId: departed.id, role: 'STARTER', battingOrder: 9, fieldingPosition: 'Pitcher' });
+    await db.models.Player.update({ teamId: null }, { where: { id: departed.id } });
+
+    await expect(LineupFactory().repairActive(team.id, gw.id)).resolves.toBeDefined();
+    await expect(TeamFactory(team.id).getLineup()).resolves.toEqual(expect.objectContaining({
+      starters: [expect.objectContaining({ playerId: departed.id, valid: false })],
+    }));
   });
 });
