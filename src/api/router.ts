@@ -155,13 +155,6 @@ router.get(Endpoints.GetTeamLineup, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
-router.patch(Endpoints.UpdateTeamLineup, async (req: any, res: any) => {
-  // @spec LWRITE-001,LWRITE-002
-  await handlers.updateTeamLineup(Number(req.params.teamId), req.body?.entries)
-    .then((response) => res.send(response))
-    .catch((error) => sendError(res, error));
-});
-
 router.put(Endpoints.SaveTeamLineup, async (req: any, res: any) => {
   // @spec LEDIT-001,LEDIT-002,LEDIT-003,LEDIT-004
   await handlers.saveTeamLineup(Number(req.params.teamId), req.body?.entries)

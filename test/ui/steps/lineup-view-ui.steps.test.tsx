@@ -260,7 +260,7 @@ defineFeature(feature, (test) => {
     given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
     and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
     and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
-    and('PATCH /api/team/10/lineup rejects the lineup as invalid', () => { rejectLineupSave = true; });
+    and('PUT /api/team/10/lineup rejects the lineup as invalid', () => { rejectLineupSave = true; });
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
     and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
     and('the manager assigns unassigned player 14 to the bench', () => fireEvent.change(screen.getByTestId('role-picker-14'), { target: { value: 'BENCH' } }));

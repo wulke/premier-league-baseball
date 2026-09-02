@@ -136,7 +136,7 @@ Feature: Team Lineup View UI
     Given GameWorld 1 has Team 10 as its managed club
     And GET /api/team/10/lineup returns a DH-off active lineup
     And GET /api/team/10/roster returns names and ratings for the active lineup
-    And PATCH /api/team/10/lineup rejects the lineup as invalid
+    And PUT /api/team/10/lineup rejects the lineup as invalid
     When the player navigates to "/1/team/10/lineup"
     And the manager enters lineup edit mode
     And the manager assigns unassigned player 14 to the bench
