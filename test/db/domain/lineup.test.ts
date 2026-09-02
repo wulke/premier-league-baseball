@@ -130,6 +130,32 @@ describe('active lineup generation', () => {
     await expect(LineupFactory().repairActive(team.id, gw.id)).resolves.toBeDefined();
     await expect(TeamFactory(team.id).getLineup()).resolves.toEqual(expect.objectContaining({
       starters: [expect.objectContaining({ playerId: departed.id, valid: false })],
+      startingPitcherId: null,
     }));
+  });
+
+  // @spec LEDIT-005,LEDIT-006
+  it('@spec LEDIT-005 @spec LEDIT-006 fills the best feasible subset when replacements are fewer than departed fielders', async () => {
+    const gw = await db.models.GameWorld.create({ config: {}, year: 2055 }).then((row) => row.dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gw.id, config: { name: 'Partial Club' } }).then((row) => row.dataValues);
+    const pitcher = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('Pitcher'), givenName: 'Pitcher', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
+    const catcher = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('Catcher'), givenName: 'Catcher', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
+    const firstBase = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('FirstBase'), givenName: 'First', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
+    const replacement = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('Catcher', 99), givenName: 'Replacement', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
+    const lineup = await db.models.Lineup.create({ teamId: team.id, gameWorldId: gw.id }).then((row) => row.dataValues);
+    await db.models.LineupEntry.bulkCreate([
+      { lineupId: lineup.id, playerId: pitcher.id, role: 'STARTER', battingOrder: 9, fieldingPosition: 'Pitcher' },
+      { lineupId: lineup.id, playerId: catcher.id, role: 'STARTER', battingOrder: 1, fieldingPosition: 'Catcher' },
+      { lineupId: lineup.id, playerId: firstBase.id, role: 'STARTER', battingOrder: 2, fieldingPosition: 'FirstBase' },
+    ]);
+    await db.models.Player.update({ teamId: null }, { where: { id: [catcher.id, firstBase.id] } });
+
+    await LineupFactory().repairActive(team.id, gw.id);
+
+    const card = await TeamFactory(team.id).getLineup();
+    expect(card.starters.filter((entry) => entry.valid)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ playerId: replacement.id, fieldingPosition: 'Catcher' }),
+    ]));
+    expect(card.starters.filter((entry) => !entry.valid)).toHaveLength(1);
   });
 });
