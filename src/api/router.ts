@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 import * as handlers from './handlers';
 import { Endpoints } from './endpoints';
+import { NotificationFactory } from '../db/domain';
 
 const sendError = (res: any, error: any) => {
   console.error(error);
@@ -174,6 +175,30 @@ router.get(Endpoints.GetPlayerDetail, async (req: any, res: any) => {
   await handlers.getPlayerDetail(Number(req.params.playerId), gwId)
     .then((response) => res.send(response))
     .catch((error) => sendError(res, error));
+});
+
+router.get(Endpoints.GetGameWorldNotifications, async (req: any, res: any) => {
+  // @spec NOTIF-003,NOTIF-006,NOTIF-007
+  const since = req.query.since == null ? undefined : Number(req.query.since);
+  await handlers.getGameWorldNotifications(Number(req.params.gwId), since)
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
+router.get(Endpoints.StreamGameWorldNotifications, (req: any, res: any) => {
+  // @spec NOTIF-008,NOTIF-009 — bypasses the standard handlers.*().then(res.send)
+  // pattern: an SSE connection writes over time rather than resolving a single
+  // response body, so it's wired directly against NotificationFactory here.
+  const gwId = Number(req.params.gwId);
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  });
+  res.flushHeaders?.();
+
+  NotificationFactory().subscribe(gwId, res);
+  req.on('close', () => NotificationFactory().unsubscribe(gwId, res));
 });
 
 router.post(Endpoints.BatchSimulateGames, async (req: any, res: any) => {

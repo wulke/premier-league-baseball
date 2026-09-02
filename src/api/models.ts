@@ -172,6 +172,16 @@ interface PlayerDetail {
   contract: { team: { id: number; name: string }; startDate: string; endDate: string } | null;
 }
 
+// @spec NOTIF-007,NOTIF-010
+interface NotificationRow {
+  id: number;
+  gameWorldId: number;
+  teamId: number | null;
+  type: string;
+  payload: Record<string, any>;
+  createdAt: string | Date;
+}
+
 interface DivisionStandings {
   divisionId: number;
   divisionName: string;
@@ -767,6 +777,7 @@ export {
   ActiveLineupEntry,
   GameLineupSnapshot,
   PlayerDetail,
+  NotificationRow,
   DivisionStandings,
   BracketTeam,
   BracketGame,

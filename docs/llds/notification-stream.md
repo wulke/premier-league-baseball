@@ -117,6 +117,7 @@ NotificationFactory().notify(type, payload, { gameWorldId, teamId }):
 GET /api/gameWorld/:gwId/notifications?since=<id>
   → router → handlers.getGameWorldNotifications(gwId, since)
   → NotificationFactory().listSince(gwId, since)
+      IF since !== undefined AND Number.isNaN(since): return []             # NOTIF-003 (e4)
       Notification.findAll({ where: { gameWorldId, id: { [Op.gt]: since ?? 0 } }, order: [['id', 'ASC']] })  # NOTIF-006
   → raw array response (backend-standards §5)                                  # NOTIF-007
 
@@ -162,7 +163,7 @@ GET /api/gameWorld/:gwId/notifications/stream   (SSE)
 | e1 | `notify()` called with an unregistered `type` | `DomainError('unknown notification type', 400)` — this is a programmer error at a trigger site, not a runtime condition to swallow (distinct from a DB write failure). | NOTIF-002 |
 | e2 | `Notification.create` throws (DB error) | Logged via `console.error`, swallowed — `notify()` resolves normally, the triggering action (e.g. `simulate()`) is unaffected. | NOTIF-005 |
 | e3 | `GET .../notifications` called with no `?since=` | Returns every `Notification` row for that `gameWorldId`, oldest first — same "empty history" default as `roster-read-api`'s no-filter read. | NOTIF-003 |
-| e4 | `GET .../notifications?since=<id>` where `<id>` is not a valid number | Falls through to `Op.gt: NaN` per backend-standards §3 (no explicit param validation) — Sequelize/SQLite resolves this to zero matching rows, not a 500. | NOTIF-003 |
+| e4 | `GET .../notifications?since=<id>` where `<id>` is not a valid number | `listSince` explicitly returns `[]` before querying — **verified at implementation time that `Op.gt: NaN` does NOT fall through harmlessly** (SQLite raises `no such column: NaN`), so this is an explicit `Number.isNaN` guard, not the implicit-validation pattern backend-standards §3 describes for `findByPk`. Corrects the original LLD assumption. | NOTIF-003 |
 | e5 | `gwId` does not correspond to an existing `GameWorld` | Both endpoints return `[]` / an immediately-closed empty SSE stream rather than a 404 — a notification list for a nonexistent world is empty, not an error, consistent with `NOTIF-003`'s "no special-case" read. | NOTIF-006 |
 | e6 | SSE client disconnects (network drop, tab close) | `req.on('close', …)` fires `unsubscribe`, removing that `res` from the connection map — a `pushToOpenConnections` write to a stale connection never happens after this. | NOTIF-009 |
 | e7 | Two `notify()` calls for the same `GAME_RESULT` (home + away team scope) | Each is a **separate** `Notification` row (separate `teamId`) — not deduplicated. A world-wide viewer (no managed team) would see neither; only the managed team's row is delivered to their client-side filter (UI concern, see sibling LLD). | NOTIF-001 |
