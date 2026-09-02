@@ -1015,3 +1015,103 @@ storage decision for this pattern.
 - All tuning constants: `C`, event delta caps, form-window length, event granularity, Nature
   catalog effects, aging profile constants/primes/floors, and meta-modulator naming/ranges.
 - Any first simulation, scouting, salary, UI, or API consumer implementation.
+
+---
+
+# HLD: Client Notification & Alert Stream
+
+> Backed by [Map: Client Notification & Alert Stream Architecture](https://github.com/wulke/premier-league-baseball/issues/258) — a wayfinder planning map whose three resolved tickets (#259, #260, #261) are the source decisions for this HLD. This is a **generic infrastructure map**: it does not depend on [Map: Event, Grading & Reward Architecture](https://github.com/wulke/premier-league-baseball/issues/218) landing first, and it validates itself with one concrete trigger rather than building out every eventual notification type.
+
+## Goal
+
+Give a client watching a `GameWorld` a live feed of coarse-grained, user-facing occurrences — a trade finalized, a game result posted, a season completed — without polling. A new notification type registers itself via a runtime registry, fires through a small domain-layer API at its trigger site, persists to a durable envelope, and reaches the client live over SSE with REST-based catch-up on reconnect. This HLD defines the generic machinery and validates it end-to-end with one real trigger (`GameResultNotification`, off `GameFactory`'s existing completion path) and one minimal list UI; every other concrete notification type and any read/unread "mailbox" UX are future work built on top of this pattern.
+
+## Strategy
+
+- **Options (relationship to #218's event registry)**:
+  - Option A: Route notifications through #218's fine-grained event registry, treating a notification as just another event type.
+  - Option B (chosen): A separate, coarser concept with its own registry — no dependency on #218.
+  - **Decision**: Option B, resolved in [#259](https://github.com/wulke/premier-league-baseball/issues/259). #218's events are fine-grained, in-sim mechanical occurrences consumed by post-game batched grading; notifications are coarse-grained, fire-once, user-facing occurrences consumed live by a connected client. Different cadence, different consumer — forcing them through one pipe would couple unrelated things. A future reward-ledger write from #218's grading pass could itself become a notification *source* later, but that integration is not designed here.
+
+- **Options (type registration)**:
+  - Option A: Compile-time discriminated union of notification types.
+  - Option B (chosen): Runtime `registerNotificationType()` registry, mirroring #218's `registerEventType()` convention.
+  - **Decision**: Option B, resolved in [#260](https://github.com/wulke/premier-league-baseball/issues/260). A discriminated union would be less machinery for the single type this map validates with, but the runtime registry keeps the extension point consistent with the established #218 convention for future types.
+
+- **Options (durable envelope shape)**:
+  - Option A: Per-type tables, or an envelope that includes read state (`readAt`/`isRead`) up front.
+  - Option B (chosen): One generic envelope — `gameWorldId` (required), `teamId` (nullable), `type`, `payload` (JSON), `createdAt` — with no read state.
+  - **Decision**: Option B, resolved in #260. `gameWorldId` is the only per-instance identity concept in this codebase (no user/session model exists); `teamId` is nullable so a notification can be world-wide (season complete) or team-scoped (a game result affecting a managed team). Read state is deliberately omitted — it belongs to the future mailbox system (see Out of scope), and adding it later is a trivial additive migration.
+
+- **Options (transport)**:
+  - Option A: A new pub/sub dependency (e.g. Redis) or WebSockets for bidirectional channels.
+  - Option B (chosen): SSE for live delivery, one-way server→client; a REST "list since X" endpoint is the separate catch-up/backfill path on connect/reconnect; an in-memory `Map<gameWorldId, Response[]>` tracks open SSE connections, no server-side per-client cursor.
+  - **Decision**: Option B, resolved in #260. No new dependency, and the use case is one-way push — WebSockets' bidirectionality buys nothing here. The in-memory connection map assumes a single Express process; multi-instance delivery is out of scope (see Not yet specified below), consistent with the "least complexity, not a true pub/sub system" goal.
+
+- **Options (trigger call pattern)**:
+  - Option A: Post-commit hook/listener indirection (trigger sites emit an event, a separate dispatcher fires notifications).
+  - Option B (chosen): Direct domain-layer call — `NotificationFactory().notify(type, payload)` — at each trigger site.
+  - **Decision**: Option B, resolved in #260. Least complexity for the single current consumer (`GameFactory`'s completion path); flagged explicitly as a "way future problem" if trigger sites proliferate enough to need indirection, not a concern for this validation scope.
+
+- **Options (transaction behavior)**:
+  - Option A: Fire notifications after the triggering transaction commits (avoids coupling, but a rolled-back action can't easily suppress an already-sent notification).
+  - Option B (chosen): Write the notification inside the same DB transaction as the triggering domain action, but wrap that write so a failure is logged and swallowed, never propagated or rolled back into the critical action.
+  - **Decision**: Option B, resolved in #260. Mirrors #221's in-transaction precedent — a rolled-back action never produces a stray notification. The swallow-on-failure wrapper keeps the guarantee asymmetric: notifications must never block or fail the action they're attached to, since they are not a must-have.
+
+- **Options (module placement)**:
+  - Option A: Generic machinery and concrete notification types (`GameResultNotification`, etc.) co-located in one module.
+  - Option B (chosen): Generic machinery (registry, `NotificationFactory`, SSE wiring) in a new sibling `src/db/domain/notifications/`; concrete types registered from the domain module that triggers them (e.g. `GameResultNotification` registered from `game.ts`).
+  - **Decision**: Option B, resolved in [#261](https://github.com/wulke/premier-league-baseball/issues/261). Mirrors the #218/#221 module split already established in this codebase.
+
+- **Options (validation scope: trigger + UI)**:
+  - Option A: Validate with a `Trade`-finalized notification (closer to the original motivating example).
+  - Option B (chosen): Validate with `GameResultNotification`, fired off `GameFactory`'s existing game-completion path; minimal UI is a bare list ("last N notifications for this game world") from the REST catch-up endpoint, with new items appended live via SSE and filtered client-side to the managed team where `teamId` is set.
+  - **Decision**: Option B, resolved in #261. `Trade` has no domain model in this codebase yet (illustrative only), while game completion is a real, already-existing trigger point. It also naturally validates `teamId`-based filtering, since a game result always has two teams and only one may be the managed team. A bare list is chosen over a pure toast because it is the only shape that exercises both the persistence/backfill path and the live path in one component, proving the full integration rather than just the live half.
+
+## Architecture
+
+### Components
+
+- **`Notification`** (new Sequelize model): `id`, `gameWorldId` (FK, required), `teamId` (FK, nullable), `type`, `payload` (JSON), `createdAt`. No read-state column. See future `docs/llds/notifications.md`.
+- **`NotificationFactory`** (new, `src/db/domain/notifications/notification.ts`): owns the `Notification` model per §1 of the backend standards; exposes `registerNotificationType()` and `notify(type, payload)`; manages the in-memory SSE connection map and the "list since X" catch-up query.
+- **`GameResultNotification`** (new, registered from `src/db/domain/game.ts`): the one concrete notification type built by this map, fired from `GameFactory`'s existing completion path.
+- **API surface** (new, `src/api/`): `GET /api/gameWorld/:gwId/notifications` (REST catch-up, optionally filtered by `since`) and `GET /api/gameWorld/:gwId/notifications/stream` (SSE live tail) — both singular-camelCase, action-style per §5 of the backend standards.
+- **UI** (new, `src/ui/`): a minimal notification list component consuming both endpoints, filtered client-side to `managedTeamId` where a notification's `teamId` is set.
+
+### Flow
+
+```
+GameFactory completes a game (existing path)
+  → within the same DB transaction:
+       GameFactory writes game result as today
+       NotificationFactory().notify('GAME_RESULT', payload)
+         → writes Notification row (gameWorldId, teamId, type, payload, createdAt)
+         → on write failure: logged and swallowed, transaction still commits
+  → transaction commits
+  → NotificationFactory pushes the new row to any open SSE connections
+       for that gameWorldId (in-memory Map<gameWorldId, Response[]>)
+
+Client (already viewing a GameWorld):
+  on load  → GET /api/gameWorld/:gwId/notifications  (REST backfill)
+  on live  → EventSource to /api/gameWorld/:gwId/notifications/stream (SSE tail)
+  render   → bare list, both sources merged, filtered client-side to managedTeamId
+             where a notification's teamId is set
+```
+
+### Key Trade-offs
+
+- **In-memory-only SSE connections**: no durability, no reconnect state on the server — a client that reconnects gets caught up entirely via the REST backfill, not a resumed stream. This assumes a single Express process; multi-instance/clustering delivery is unaddressed (see Not yet specified).
+- **No guaranteed delivery**: swallowing a failed notification write, and having no per-client cursor tracking, means an SSE push can be missed (e.g. a client briefly disconnected) with no retry — acceptable because the REST catch-up path is always available on reconnect, and the user explicitly wants least complexity over reliability guarantees.
+- **Direct domain-call trigger pattern over hook/listener indirection**: simplest wiring for one trigger site today, at the cost of every future trigger site needing its own explicit `notify()` call rather than a general event bus — flagged as a "way future problem," not solved here.
+- **No read state in the envelope**: keeps this map's schema minimal, but means any consumer needing "unread count" today has nothing to query — deferred entirely to the future mailbox system.
+
+### Out of scope
+
+- **Mailbox UX (read/unread/delete)** — a separate, eventual system that will consume the `Notification` records this map produces; the envelope omits `readAt` now as a deliberately trivial additive migration for later.
+- **Notification UI polish (toast styling, real inbox page, badge counts)** — this map's UI stops at the bare-list component needed to validate the integration end-to-end; real UI/UX is a separate downstream effort, mirroring how #218 pushed Stats UI out to #139.
+- **Concrete `Trade` domain model** — doesn't exist in the codebase; out of scope here regardless of the notification pattern's design.
+- **Full pub/sub reliability guarantees** — guaranteed/at-least-once delivery is explicitly not a goal; least complexity was chosen over building "a true publish system."
+- **Concrete notification types beyond `GameResultNotification`** — trade-finalized (blocked on a `Trade` model), injury, season-complete, etc. The registry pattern is proven generic enough to accommodate them; they are not designed here.
+- **#218's reward-ledger as a future notification trigger source** — a grading pass producing a `RewardResult` could plausibly fire a notification distinct from the source `Event` that caused it; noted as a future integration point only, not designed.
+- **Scalability of the direct-domain-call trigger pattern** — revisit only if trigger sites proliferate enough that per-site `notify()` calls become unwieldy.
+- **Multi-instance/clustering delivery** — the in-memory connection map assumes a single Express process; revisit only if the app ever needs to scale beyond one instance.
