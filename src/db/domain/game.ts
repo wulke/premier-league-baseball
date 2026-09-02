@@ -6,8 +6,26 @@ import { resolveKnockoutGameCompletion } from './knockout-advancement';
 import { resolveRoundRobinGameCompletion } from './season-result';
 import { resolveCrossStageAdvancement } from './stage-advancement';
 import { resolveSimulationEngine, SimulateOptions } from './simulation/engine';
+import { NotificationFactory } from './notifications/notification';
+import { GAME_RESULT, GameResultPayload } from './notifications/game-result-notification';
 
 const toDateStr = (d: any): string => new Date(d).toISOString().slice(0, 10);
+
+// Same ancestor walk as simulate()'s scheduledDate guard, run unconditionally so a
+// GAME_RESULT notification can be scoped to the right GameWorld regardless of whether
+// the game had a scheduledDate. Returns null (never throws) when any link is missing —
+// a game unreachable from a GameWorld simply fires no notification.
+const resolveGameWorldId = async (gameId: number): Promise<number | null> => {
+  const dsg = await db.models.DivisionSeasonGame.findOne({ where: { gameId } });
+  if (!dsg) return null;
+  const ds = await db.models.DivisionSeason.findByPk(dsg.dataValues.divisionSeasonId);
+  if (!ds) return null;
+  const division = await db.models.Division.findByPk(ds.dataValues.divisionId);
+  if (!division) return null;
+  const league = await db.models.League.findByPk(division.dataValues.leagueId);
+  if (!league) return null;
+  return league.dataValues.gameWorldId ?? null;
+};
 
 // Same League -> Division -> DivisionSeason -> DivisionSeasonGame -> Game reachability
 // walk that simulateBatch performs; returns the raw Game dataValues reachable from
@@ -68,6 +86,10 @@ const GameFactory = (id?: number) => {
         throw new DomainError('the game cannot be simulated in its current status', 422);
       }
 
+      // Captured here when the scheduledDate branch below already walks the ancestor
+      // chain, so the NOTIF-001 trigger doesn't re-run the identical walk from scratch.
+      let resolvedGameWorldId: number | null = null;
+
       if (scheduledDate != null) {
         const dsg = await db.models.DivisionSeasonGame.findOne({ where: { gameId: id } });
         if (!dsg) {
@@ -85,6 +107,8 @@ const GameFactory = (id?: number) => {
         if (toDateStr(scheduledDate) > gameWorld.dataValues.currentDate) {
           throw new DomainError('the game is scheduled for a future date', 422);
         }
+
+        resolvedGameWorldId = gameWorld.dataValues.id;
       }
 
       // @spec SIM-016 score production delegated to the SimulationEngine strategy
@@ -105,6 +129,30 @@ const GameFactory = (id?: number) => {
       await resolveKnockoutGameCompletion(id!);
       await resolveRoundRobinGameCompletion(id!);
       await resolveCrossStageAdvancement(id!);
+
+      // @spec NOTIF-001 — fired after the guarded update above has already succeeded,
+      // so a game that didn't actually complete never produces a notification (see
+      // notification-stream.md's "Key decisions" on why this isn't a db.transaction()).
+      // resolvedGameWorldId is already known when the scheduledDate branch above ran
+      // its ancestor walk; only an unscheduled game needs the separate resolveGameWorldId
+      // walk here.
+      const gameWorldId = resolvedGameWorldId ?? await resolveGameWorldId(id!);
+      if (gameWorldId != null) {
+        const payload: GameResultPayload = {
+          gameId: id!,
+          homeTeamId: homeTeam,
+          awayTeamId: awayTeam,
+          homeTeamResult: updated!.dataValues.homeTeamResult,
+          awayTeamResult: updated!.dataValues.awayTeamResult,
+        };
+        // Each notify() call independently swallows its own write failure (NOTIF-005),
+        // so the two team-scoped notifications have no ordering dependency on each other.
+        await Promise.all([
+          NotificationFactory().notify(GAME_RESULT, payload, { gameWorldId, teamId: homeTeam }),
+          NotificationFactory().notify(GAME_RESULT, payload, { gameWorldId, teamId: awayTeam }),
+        ]);
+      }
+
       return updated!.dataValues;
     },
 

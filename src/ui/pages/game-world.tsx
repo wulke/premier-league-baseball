@@ -3,6 +3,7 @@ import { Endpoints } from '../../api/endpoints';
 import { useParams, useNavigate, useRevalidator, useRouteLoaderData } from 'react-router';
 import { getChampionDivisionId, getChampionTeamName } from '../champion';
 import { TeamSeasonGame } from '../../api/models';
+import { NotificationStream } from './notification-stream';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
 type LeagueSeasonSummary = {
@@ -166,6 +167,9 @@ const GameWorld = () => {
           Current year: {gw.year}
         </p>
       </div>
+
+      {/* @spec NOTIFUI-007 */}
+      <NotificationStream gwId={Number(gwId)} managedTeamId={gw.managedTeamId ?? null} />
 
       {/* Season Section */}
       <section style={{ marginBottom: '40px' }}>

@@ -1,4 +1,4 @@
-import { ContractFactory, DivisionFactory, GameFactory, GameWorldFactory, LeagueFactory, PlayerFactory, TeamFactory } from '../db/domain';
+import { ContractFactory, DivisionFactory, GameFactory, GameWorldFactory, LeagueFactory, NotificationFactory, PlayerFactory, TeamFactory } from '../db/domain';
 import { DomainError } from '../db/domain/errors';
 import db from '../db/client';
 import { ActiveLineupEntry, NewGameWorld, SchedulingConfig } from './models';
@@ -221,6 +221,11 @@ const getFreeAgents = async (gwId: number) => {
   return await GameWorldFactory(gwId).getFreeAgents();
 };
 
+// @spec NOTIF-003,NOTIF-006,NOTIF-007
+const getGameWorldNotifications = async (gwId: number, since?: number) => {
+  return await NotificationFactory().listSince(gwId, since);
+};
+
 export {
   getGameWorld,
   getGameWorlds,
@@ -247,4 +252,5 @@ export {
   releasePlayer,
   renewPlayer,
   getFreeAgents,
+  getGameWorldNotifications,
 };

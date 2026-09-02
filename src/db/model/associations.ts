@@ -9,6 +9,7 @@ const applyAssociations = (sequelize) => {
     League,
     Lineup,
     LineupEntry,
+    Notification,
     Player,
     PlayerGameStats,
     SeasonResult,
@@ -73,6 +74,12 @@ const applyAssociations = (sequelize) => {
   SeasonResult.belongsTo(Team, { foreignKey: 'championTeamId' });
   Division.hasMany(SeasonResult, { foreignKey: 'divisionId' });
   Team.hasMany(SeasonResult, { foreignKey: 'championTeamId' });
+  // Notification
+  // @spec NOTIF-010
+  Notification.belongsTo(GameWorld, { foreignKey: 'gameWorldId' });
+  Notification.belongsTo(Team, { foreignKey: 'teamId' });
+  GameWorld.hasMany(Notification, { foreignKey: 'gameWorldId' });
+  Team.hasMany(Notification, { foreignKey: 'teamId' });
 };
 
 export { applyAssociations };

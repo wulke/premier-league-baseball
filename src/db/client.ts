@@ -52,7 +52,8 @@ const modelDefinitions = [
   require('./model/division-season'),
   require('./model/game'),
   require('./model/division-season-game'),
-  require('./model/season-result')
+  require('./model/season-result'),
+  require('./model/notification')
 ];
 modelDefinitions.forEach((m) => m(sequelize));
 

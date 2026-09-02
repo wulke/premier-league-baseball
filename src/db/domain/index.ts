@@ -6,6 +6,7 @@ export * from './game-world';
 export * from './knockout-advancement';
 export * from './lineup';
 export * from './league';
+export * from './notifications/notification';
 export * from './player';
 export * from './simulation/engine';
 export * from './simulation/random-engine';

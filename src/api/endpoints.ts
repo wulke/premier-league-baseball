@@ -33,6 +33,10 @@ const enum Endpoints {
   RenewPlayer = '/api/team/:teamId/transfers/renew',
   // @spec XFER-009,XFER-023
   GetFreeAgents = '/api/gameWorld/:gwId/free-agents',
+  // @spec NOTIF-003,NOTIF-006,NOTIF-007
+  GetGameWorldNotifications = '/api/gameWorld/:gwId/notifications',
+  // @spec NOTIF-004,NOTIF-006,NOTIF-008,NOTIF-009
+  StreamGameWorldNotifications = '/api/gameWorld/:gwId/notifications/stream',
   BatchSimulateGames = '/api/gameWorld/:gwId/simulate',
   RapidSimulateSeason = '/api/gameWorld/:gwId/rapid-simulate',
   SimulateGame = '/api/game/:gameId/simulate',
