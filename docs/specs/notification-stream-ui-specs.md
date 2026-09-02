@@ -7,13 +7,13 @@ consuming `GET /api/gameWorld/:gwId/notifications` and
 
 | ID | Requirement | Status |
 |---|---|---|
-| NOTIFUI-001 | WHEN the `NotificationStream` component mounts THE system SHALL fetch `GET /api/gameWorld/:gwId/notifications` and populate the list from the response, defaulting to an empty list on a non-`ok` response or network failure | [ ] |
-| NOTIFUI-002 | WHEN the `NotificationStream` component mounts THE system SHALL open an `EventSource` to `GET /api/gameWorld/:gwId/notifications/stream` for the live tail | [ ] |
-| NOTIFUI-003 | WHEN an SSE message arrives on the open `EventSource` THE system SHALL parse it as a `NotificationRow` and append it to the displayed list | [ ] |
-| NOTIFUI-004 | WHEN the `NotificationStream` component unmounts THE system SHALL close its `EventSource` connection | [ ] |
-| NOTIFUI-005 | WHEN rendering the notification list THE system SHALL show a row IF its `teamId` is `null` (world-wide) OR its `teamId` equals the current `managedTeamId`, and SHALL NOT show a row scoped to any other team | [ ] |
-| NOTIFUI-006 | WHEN a displayed notification's `type` has no registered client-side renderer THE system SHALL render a raw fallback line (`type` + `JSON.stringify(payload)`) rather than throwing or dropping the row | [ ] |
-| NOTIFUI-007 | WHEN the GameWorld page renders THE system SHALL mount `NotificationStream` using the current route's `gwId` and `managedTeamId` | [ ] |
+| NOTIFUI-001 | WHEN the `NotificationStream` component mounts THE system SHALL fetch `GET /api/gameWorld/:gwId/notifications` and populate the list from the response, defaulting to an empty list on a non-`ok` response or network failure | [x] → #271 |
+| NOTIFUI-002 | WHEN the `NotificationStream` component mounts THE system SHALL open an `EventSource` to `GET /api/gameWorld/:gwId/notifications/stream` for the live tail | [x] → #271 |
+| NOTIFUI-003 | WHEN an SSE message arrives on the open `EventSource` THE system SHALL parse it as a `NotificationRow` and append it to the displayed list | [x] → #271 |
+| NOTIFUI-004 | WHEN the `NotificationStream` component unmounts THE system SHALL close its `EventSource` connection | [x] → #271 |
+| NOTIFUI-005 | WHEN rendering the notification list THE system SHALL show a row IF its `teamId` is `null` (world-wide) OR its `teamId` equals the current `managedTeamId`, and SHALL NOT show a row scoped to any other team | [x] → #271 |
+| NOTIFUI-006 | WHEN a displayed notification's `type` has no registered client-side renderer THE system SHALL render a raw fallback line (`type` + `JSON.stringify(payload)`) rather than throwing or dropping the row | [x] → #271 |
+| NOTIFUI-007 | WHEN the GameWorld page renders THE system SHALL mount `NotificationStream` using the current route's `gwId` and `managedTeamId` | [x] → #271 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
