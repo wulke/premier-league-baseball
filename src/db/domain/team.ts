@@ -13,7 +13,6 @@ interface ITeam {
   getRoster: () => Promise<RosterPlayer[]>;
   snapshotForGame: (gameId: number) => Promise<GameLineupSnapshot>;
   getLineup: (options?: { gameId?: number; gwId?: number }) => Promise<TeamLineup>;
-  updateActiveLineup: (entries: ActiveLineupEntry[], matchRules: MatchRules) => Promise<TeamLineup>;
   saveActiveLineup: (entries: ActiveLineupEntry[], matchRules: MatchRules) => Promise<TeamLineup>;
 };
 
@@ -23,8 +22,6 @@ interface TeamCreateOptions {
   matchRules?: MatchRules;
 }
 
-interface ActiveLineupReplaceOptions { requirePermutation?: boolean; }
-
 let teamCreateQueue = Promise.resolve();
 
 const enqueueTeamCreate = async <T>(work: () => Promise<T>): Promise<T> => {
@@ -33,14 +30,13 @@ const enqueueTeamCreate = async <T>(work: () => Promise<T>): Promise<T> => {
   return result;
 };
 
-// @spec LWRITE-001,LWRITE-002,LWRITE-003,LEDIT-001,LEDIT-003,LEDIT-004 — both lineup
-// write verbs share the same validated, transactional replacement primitive. The explicit
-// projection is also an input boundary: request-only fields must not select another Lineup.
+// @spec LEDIT-001,LEDIT-003,LEDIT-004 — the managed wholesale write uses this validated,
+// transactional replacement primitive. The explicit projection is also an input boundary:
+// request-only fields must not select another Lineup.
 const replaceActiveLineup = async (
   teamId: number,
   entries: ActiveLineupEntry[],
   matchRules: MatchRules,
-  options: ActiveLineupReplaceOptions = {},
 ): Promise<TeamLineup> => {
   const team = await db.models.Team.findByPk(teamId);
   if (!team) throw new DomainError('Not found', 404);
@@ -49,22 +45,13 @@ const replaceActiveLineup = async (
   if (!Array.isArray(entries)) throw new DomainError('entries must be an array', 422);
 
   const submittedPlayerIds = new Set<number>(entries.map((entry) => entry.playerId));
-  if (options.requirePermutation) {
-    const storedEntries = await db.models.LineupEntry.findAll({ where: { lineupId: lineup.dataValues.id } })
-      .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
-    const storedPlayerIds = new Set<number>(storedEntries.map((entry: any) => entry.playerId));
-    if (submittedPlayerIds.size !== storedPlayerIds.size || entries.length !== storedEntries.length || [...submittedPlayerIds].some((playerId) => !storedPlayerIds.has(playerId))) {
-      throw new DomainError('entries must be a complete permutation of the active lineup', 422);
-    }
-  }
-
   const players = submittedPlayerIds.size === 0 ? [] : await db.models.Player.findAll({
     where: { id: { [Op.in]: [...submittedPlayerIds] } },
   }).then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
   if (players.length !== submittedPlayerIds.size || players.some((player: any) => (
     player.teamId !== teamId || player.gameWorldId !== team.dataValues.gameWorldId
   ))) {
-    throw new DomainError(options.requirePermutation ? 'every lineup player must belong to the team' : "player is not on this team's roster", 422);
+    throw new DomainError("player is not on this team's roster", 422);
   }
   try {
     validateLineup({ entries }, matchRules);
@@ -342,16 +329,9 @@ const TeamFactory = (id?: number): ITeam => {
       return { starters, startingPitcherId, bench: toPool('BENCH'), bullpen: toPool('BULLPEN') };
     },
 
-    // @spec LWRITE-001,LWRITE-002,LWRITE-003 — validate before beginning destructive work, then
-    // replace only a complete permutation of the gameId-less template in one transaction.
-    // Per-game snapshots stay untouched.
-    updateActiveLineup: async (entries: ActiveLineupEntry[], matchRules: MatchRules): Promise<TeamLineup> => {
-      return replaceActiveLineup(id!, entries, matchRules, { requirePermutation: true });
-    },
-
     // @spec LEDIT-001,LEDIT-003,LEDIT-004 — the PUT contract replaces the active template
-    // with any valid current-roster selection. Unlike the legacy PATCH permutation write, it
-    // retains the Lineup row and deliberately does not inspect per-game snapshots.
+    // with any valid current-roster selection. It retains the Lineup row and deliberately does
+    // not inspect per-game snapshots.
     saveActiveLineup: async (entries: ActiveLineupEntry[], matchRules: MatchRules): Promise<TeamLineup> => {
       return replaceActiveLineup(id!, entries, matchRules);
     },

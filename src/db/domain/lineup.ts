@@ -103,7 +103,7 @@ const optimalFillableFieldingAssignment = (fielders: Player[], vacancies: readon
   return best;
 };
 
-// @spec LIN-003,LIN-005,LIN-006,LWRITE-004
+// @spec LIN-003,LIN-005,LIN-006,LEDIT-004
 const validateLineup = (lineup: any, rules: MatchRules): void => {
   const entries: Entry[] = (lineup.LineupEntries ?? lineup.entries ?? []).map(valueOf);
   const starters = entries.filter((entry) => entry.role === 'STARTER');

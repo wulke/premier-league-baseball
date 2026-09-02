@@ -83,8 +83,8 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
       render: Tag | Order | Player | Position (DH label when fieldingPosition === null) | picker (managed editable rows only)  # LINEUI-002/003
       append BENCH rows, then BULLPEN rows (Order/Position columns blank)               # LINEUI-007
   → selecting a picker swaps playerIds in the selected and target slots; no fetch       # LINEUI-010
-  → Save Lineup PATCHes `{ entries: draft }`; successful save replaces read/draft state  # LINEUI-009
-  → rejected PATCH keeps draft and shows its error; server state is unchanged            # LINEUI-011
+  → Save Lineup PUTs `{ entries: draft }`; successful save replaces read/draft state    # LINEUI-009
+  → rejected PUT keeps draft and shows its error; server state is unchanged              # LINEUI-011
   → every row links to /:gwId/player/:playerId; non-managed views have no controls      # LINEUI-004
 ```
 

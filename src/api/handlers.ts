@@ -115,14 +115,6 @@ const getTeamLineup = async (teamId: number, gwId?: number, gameId?: number) => 
   return await TeamFactory(teamId).getLineup({ gwId, gameId });
 };
 
-// @spec LWRITE-001,LWRITE-002 — auth-free by design; managed-team scoping belongs to the UI.
-const updateTeamLineup = async (teamId: number, entries: ActiveLineupEntry[]) => {
-  const team = await db.models.Team.findByPk(teamId);
-  if (!team) throw new DomainError('Not found', 404);
-  const league = await db.models.League.findOne({ where: { gameWorldId: team.dataValues.gameWorldId }, order: [['id', 'ASC']] });
-  return TeamFactory(teamId).updateActiveLineup(entries, resolveMatchRules(league?.dataValues.config));
-};
-
 const resolveTeamMatchRules = async (teamId: number, gameWorldId: number, year: number) => {
   const divisionSeason = await db.models.DivisionSeason.findOne({
     where: { teamId, year },
@@ -236,7 +228,6 @@ export {
   getTeamSchedule,
   getTeamRoster,
   getTeamLineup,
-  updateTeamLineup,
   saveTeamLineup,
   getPlayerDetail,
   newGameWorld,

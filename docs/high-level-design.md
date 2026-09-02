@@ -769,8 +769,8 @@ team-only edit affordance for position-player starter and bench slots.
   `docs/llds/lineup-view-ui.md`.)
 - **`GET /api/team/:teamId/lineup`** (UNCHANGED): remains the sole data source; `TeamLineup`
   (`src/api/models.ts`) is not extended.
-- **`PATCH /api/team/:teamId/lineup`** (NEW): accepts the complete active-lineup entry set,
-  validates it under the active template's match rules, then replaces entries in one transaction.
+- **`PUT /api/team/:teamId/lineup`**: accepts the complete active-lineup entry set for the managed
+  team, validates it under the applicable match rules, then replaces entries in one transaction.
 - **`optimalFieldingAssignment`** (`src/db/domain/lineup.ts`, UNCHANGED): read-only reused as the
   rating source for the Defensive tab; no new backend logic.
 
@@ -786,7 +786,7 @@ user opens Team Hub → Lineup tab (unchanged route: /:gwId/team/:teamId/lineup)
       Batting tab:   existing battingOrder-sorted rows, unchanged from today's behavior
                       + BENCH/BULLPEN-tagged rows appended
   → managed team only: picker selection swaps occupants of the two fixed slots in local draft state
-  → Save Lineup PATCHes the full draft; server validates before replacing entries transactionally
+  → Save Lineup PUTs the full draft; server validates before replacing entries transactionally
   → every row still links to /:gwId/player/:playerId; non-managed teams have no mutating control
 ```
 
