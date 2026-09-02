@@ -79,6 +79,7 @@ const applyAssociations = (sequelize) => {
   Notification.belongsTo(GameWorld, { foreignKey: 'gameWorldId' });
   Notification.belongsTo(Team, { foreignKey: 'teamId' });
   GameWorld.hasMany(Notification, { foreignKey: 'gameWorldId' });
+  Team.hasMany(Notification, { foreignKey: 'teamId' });
 };
 
 export { applyAssociations };

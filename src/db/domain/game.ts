@@ -86,6 +86,10 @@ const GameFactory = (id?: number) => {
         throw new DomainError('the game cannot be simulated in its current status', 422);
       }
 
+      // Captured here when the scheduledDate branch below already walks the ancestor
+      // chain, so the NOTIF-001 trigger doesn't re-run the identical walk from scratch.
+      let resolvedGameWorldId: number | null = null;
+
       if (scheduledDate != null) {
         const dsg = await db.models.DivisionSeasonGame.findOne({ where: { gameId: id } });
         if (!dsg) {
@@ -103,6 +107,8 @@ const GameFactory = (id?: number) => {
         if (toDateStr(scheduledDate) > gameWorld.dataValues.currentDate) {
           throw new DomainError('the game is scheduled for a future date', 422);
         }
+
+        resolvedGameWorldId = gameWorld.dataValues.id;
       }
 
       // @spec SIM-016 score production delegated to the SimulationEngine strategy
@@ -127,7 +133,10 @@ const GameFactory = (id?: number) => {
       // @spec NOTIF-001 — fired after the guarded update above has already succeeded,
       // so a game that didn't actually complete never produces a notification (see
       // notification-stream.md's "Key decisions" on why this isn't a db.transaction()).
-      const gameWorldId = await resolveGameWorldId(id!);
+      // resolvedGameWorldId is already known when the scheduledDate branch above ran
+      // its ancestor walk; only an unscheduled game needs the separate resolveGameWorldId
+      // walk here.
+      const gameWorldId = resolvedGameWorldId ?? await resolveGameWorldId(id!);
       if (gameWorldId != null) {
         const payload: GameResultPayload = {
           gameId: id!,
@@ -136,8 +145,12 @@ const GameFactory = (id?: number) => {
           homeTeamResult: updated!.dataValues.homeTeamResult,
           awayTeamResult: updated!.dataValues.awayTeamResult,
         };
-        await NotificationFactory().notify(GAME_RESULT, payload, { gameWorldId, teamId: homeTeam });
-        await NotificationFactory().notify(GAME_RESULT, payload, { gameWorldId, teamId: awayTeam });
+        // Each notify() call independently swallows its own write failure (NOTIF-005),
+        // so the two team-scoped notifications have no ordering dependency on each other.
+        await Promise.all([
+          NotificationFactory().notify(GAME_RESULT, payload, { gameWorldId, teamId: homeTeam }),
+          NotificationFactory().notify(GAME_RESULT, payload, { gameWorldId, teamId: awayTeam }),
+        ]);
       }
 
       return updated!.dataValues;
