@@ -131,7 +131,7 @@ interface LineupStarter {
 
 interface TeamLineup {
   starters: LineupStarter[];
-  startingPitcherId: number;
+  startingPitcherId: number | null;
   bench: Array<{ playerId: number; valid: boolean }>;
   bullpen: Array<{ playerId: number; valid: boolean }>;
 }

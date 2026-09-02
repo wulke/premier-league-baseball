@@ -333,8 +333,8 @@ const TeamFactory = (id?: number): ITeam => {
           fieldingPosition: entry.fieldingPosition,
           valid: currentPlayerIds.has(entry.playerId),
         }));
-      const startingPitcherId = starters.find((entry) => entry.fieldingPosition === 'Pitcher')?.playerId;
-      if (startingPitcherId == null) throw new DomainError('Not found', 404);
+      if (!starters.some((entry) => entry.fieldingPosition === 'Pitcher')) throw new DomainError('Not found', 404);
+      const startingPitcherId = starters.find((entry) => entry.fieldingPosition === 'Pitcher' && entry.valid)?.playerId ?? null;
 
       const toPool = (role: 'BENCH' | 'BULLPEN') => entries
         .filter((entry: any) => entry.role === role)

@@ -15,6 +15,11 @@ const pitchQuality = (player: Player) => mean(player.attributes.pitches.map((pit
 const pitcherScore = (player: Player) => ({ control: mean(player.attributes.pitches.map((pitch: any) => pitch.control)), velocity: mean(player.attributes.pitches.map((pitch: any) => pitch.velocity)) });
 const comparePitchers = (a: Player, b: Player) => pitcherScore(b).control - pitcherScore(a).control || pitcherScore(b).velocity - pitcherScore(a).velocity || a.id - b.id;
 const sortBatters = (players: Player[]) => [...players].sort((a, b) => battingScore(b) - battingScore(a) || a.id - b.id);
+const combinations = <T>(items: readonly T[], count: number): T[][] => {
+  if (count === 0) return [[]];
+  if (items.length < count) return [];
+  return items.flatMap((item, index) => combinations(items.slice(index + 1), count - 1).map((rest) => [item, ...rest]));
+};
 
 // @spec LIN-002
 const resolveMatchRules = (leagueConfig?: { matchRules?: Partial<MatchRules> }, divisionConfig?: { matchRules?: Partial<MatchRules> }): MatchRules => ({
@@ -82,6 +87,20 @@ const optimalFieldingAssignment = (fielders: Player[], fieldingPositions: readon
   return assignment.map((index, positionIndex) => ({
     player: fielders[index], position: fieldingPositions[positionIndex],
   }));
+};
+
+// @spec LEDIT-005 — use the existing assignment machinery for the largest feasible subset when
+// fewer roster players than departed fielders remain, choosing the highest combined rating.
+const optimalFillableFieldingAssignment = (fielders: Player[], vacancies: readonly Exclude<PlayerPosition, 'Pitcher'>[]) => {
+  const fillCount = Math.min(fielders.length, vacancies.length);
+  let best: Array<{ player: Player; position: Exclude<PlayerPosition, 'Pitcher'> }> = [];
+  let bestScore = -Infinity;
+  combinations(vacancies, fillCount).forEach((positions) => {
+    const assignment = optimalFieldingAssignment(fielders, positions);
+    const score = assignment.reduce((sum, { player, position }) => sum + player.attributes.positions[position], 0);
+    if (score > bestScore) { best = assignment; bestScore = score; }
+  });
+  return best;
 };
 
 // @spec LIN-003,LIN-005,LIN-006,LWRITE-004
@@ -175,8 +194,8 @@ const LineupFactory = () => ({
     ));
     const fielderPool = available.filter((player) => primaryPosition(player as any) !== 'Pitcher');
     const usableFielderPool = fielderPool.length >= fielderVacancies.length ? fielderPool : available;
-    if (fielderVacancies.length > 0 && usableFielderPool.length >= fielderVacancies.length) {
-      const assignments = optimalFieldingAssignment(usableFielderPool, fielderVacancies.map((entry) => entry.fieldingPosition));
+    if (fielderVacancies.length > 0 && usableFielderPool.length > 0) {
+      const assignments = optimalFillableFieldingAssignment(usableFielderPool, fielderVacancies.map((entry) => entry.fieldingPosition));
       assignments.forEach(({ player, position }) => {
         const vacancy = repaired.find((entry) => entry.role === 'STARTER' && entry.fieldingPosition === position && !currentPlayerIds.has(entry.playerId));
         if (vacancy) vacancy.playerId = player.id;
