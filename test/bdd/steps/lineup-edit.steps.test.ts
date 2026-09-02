@@ -83,7 +83,7 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
     expect(response?.statusCode).toBe(200);
     expect(response?.body.startingPitcherId).toBe(entries[0].playerId);
     expect(response?.body.starters).toHaveLength(10);
-    expect(response?.body.bench).toEqual([{ playerId: extraPlayerId }]);
+    expect(response?.body.bench).toEqual([{ playerId: extraPlayerId, valid: true }]);
     expect(response?.body.bullpen).toHaveLength(1);
   });
   then('the active Lineup row ID is unchanged', async () => expect((await db.models.Lineup.findOne({ where: { teamId: 10, gameId: null } }))?.dataValues.id).toBe(lineupId));

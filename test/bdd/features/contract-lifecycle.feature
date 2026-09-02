@@ -46,7 +46,7 @@ Feature: Contract Lifecycle (Sign / Release / Renew)
     Then the response is a 422 error
     And Player 100's contract with Team 11 is unchanged
 
-  @spec:XFER-012 @spec:XFER-013
+  @spec:XFER-012 @spec:XFER-013 @spec:LEDIT-005
   Scenario: Signing a free agent creates a Contract and updates team membership
     Given Team 10's roster is trimmed to exactly 9 Players
     And Player 100 is a free agent in GameWorld 1
@@ -70,7 +70,7 @@ Feature: Contract Lifecycle (Sign / Release / Renew)
     When Team 10 releases Player 100
     Then the response is a 422 error
 
-  @spec:XFER-014 @spec:XFER-017
+  @spec:XFER-014 @spec:XFER-017 @spec:LEDIT-005
   Scenario: Releasing a Player closes the contract early and frees the roster slot
     Given Player 100 has a Contract with Team 10 starting "2025-03-01" and ending "2025-10-31"
     And Player 100 is in Team 10's active Lineup
@@ -79,6 +79,14 @@ Feature: Contract Lifecycle (Sign / Release / Renew)
     And Player 100's Contract with Team 10 now ends "2025-05-31"
     And Player 100's teamId is null
     And Team 10's active Lineup no longer includes Player 100
+
+  @spec:LEDIT-006 @spec:LEDIT-007
+  Scenario: Releasing the only active starter preserves an invalid card instead of rolling back
+    Given Player 100 has a Contract with Team 10 covering "2025-06-01"
+    And Team 10 has an active Lineup containing only Player 100
+    When Team 10 releases Player 100
+    Then the response is 200
+    And Team 10's active Lineup entry for Player 100 is invalid
 
   @spec:XFER-015
   Scenario: Releasing a Player discards that team's queued renewal

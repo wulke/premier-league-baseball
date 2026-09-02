@@ -218,15 +218,19 @@ interface ILineupFactory {
 repairActive(teamId, gameWorldId, { transaction }):
   existing = Lineup.findOne({ where: { teamId, gameId: null }, transaction })
   if existing:
-    LineupEntry.destroy({ where: { lineupId: existing.id }, transaction })
-    Lineup.destroy({ where: { id: existing.id }, transaction })
+    retain entries whose players still belong to the team exactly as stored
+    replace only fillable departed starter positions using optimalFieldingAssignment on those positions
+    retain an unfillable departed starter entry so read projection can mark it invalid
+    append the signed player to BENCH or BULLPEN; remove departed reserve entries
+    return existing
   players = Team(teamId).getPlayers({ transaction })          // current roster AFTER the mutation just applied
-  return LineupFactory().generateActive(teamId, gameWorldId, players, { transaction })  // re-derives from scratch
+  return LineupFactory().generateActive(teamId, gameWorldId, players, { transaction })  // no card exists to preserve
 ```
 
-Deleting first then delegating to the existing (idempotent) `generateActive` reuses its whole
-optimal-assignment/DH/bench/bullpen algorithm unchanged rather than duplicating it — `repairActive`
-only adds the "clear what's there" step `generateActive` intentionally never does on its own.
+For an existing card, repair is a preserve-and-fill operation rather than a re-generation. It uses
+the same optimal fielding-assignment machinery only for departed free positions, which protects
+manual roles, batting order, and assignments of retained players. The no-card fallback still
+delegates to `generateActive`.
 
 ### Free-agent listing — `GET /api/gameWorld/:gwId/free-agents`
 
@@ -288,7 +292,7 @@ GameWorldFactory(gwId).getFreeAgents():
 | e9 | A `GameWorld` has multiple `Leagues`, each running its own `cutover()` | The reconcile sweep is `GameWorld`-wide and idempotent (it only writes where `Player.teamId` actually differs from the resolved current team), so a second League's cutover re-running it is a correctness no-op, not a bug. | XFER-008 |
 | e10 | `DEV_MODE` is set and a write targets a team with no `managedTeamId` set at all (`gw.managedTeamId === null`) | `assertManaged` returns immediately under `DEV_MODE` regardless of `managedTeamId`'s value — the bypass is unconditional identity-skipping, not a "matches null" special case. Every mutation invariant above still applies. | XFER-010 |
 | e11 | A write is attempted against a team the caller does not manage, with `DEV_MODE` unset | `DomainError('team is not managed by the player', 422)` before any `ContractFactory` call — no partial writes. | XFER-010 |
-| e12 | The active lineup, after Sign/Release, no longer has a valid 20–30-sized roster to draw from (e.g. Release drops a team below the fielding minimum) | **Not guarded by this LLD** — roster-size `[20, 30]` bounds are deliberately unvalidated everywhere (`PCON-005`, unchanged). `LineupFactory().repairActive()` is expected to throw its existing `optimalFieldingAssignment` "Roster cannot fill the eight non-pitcher positions" error if the pool is too thin; that error propagates and rolls back the whole mutation transaction rather than leaving a partially-mutated roster with a broken lineup. | XFER-011 |
+| e12 | The active lineup, after Sign/Release, no longer has a valid 20–30-sized roster to draw from (e.g. Release drops a team below the fielding minimum) | **Not guarded by this LLD** — roster-size `[20, 30]` bounds are deliberately unvalidated everywhere (`PCON-005`, unchanged). If an active card exists, `repairActive()` fills every feasible vacancy and leaves any remainder invalid so the transfer commits; an invalid Pitcher entry projects `startingPitcherId: null`. If no active card exists, `generateActive()` still propagates its "Roster cannot fill the eight non-pitcher positions" error and rolls back the mutation transaction (XFER-011). | XFER-011, LEDIT-005, LEDIT-006, LEDIT-007 |
 
 ## Traceability
 
