@@ -40,7 +40,9 @@ Lineup page Bullpen tab:
   → fetch next-game lineup alongside the active card and roster
   → render the next opponent/date and snapshot slots
   → for a managed team with a SCHEDULED game, per-slot select controls swap player IDs between
-    the SP, BENCH, and BULLPEN slots locally; submit the complete snapshot with PATCH
+    the SP, BENCH, and BULLPEN slots locally; SP/BULLPEN controls offer only roster players whose
+    `primaryPosition` is `Pitcher`, while BENCH controls offer non-pitchers; submit the complete
+    snapshot with PATCH
   → other teams and started/completed games render the snapshot read-only
 ```
 
@@ -59,6 +61,7 @@ current random-score `SimulationEngine`.
 | Game becomes `IN_PROGRESS` / `COMPLETED` | PATCH rejects before writing and UI has no controls. |
 | Invalid/partial replacement or roster outsider | 422 before the transaction; persisted snapshot is unchanged. |
 | Non-managed viewed club | Its snapshot remains visible, but only the UI hides selectors and Save. |
+| A fielder is selected for an SP or active-bullpen slot | It is not an eligible option. The current slot occupant remains available for legacy/invalid snapshot display. |
 
 ## Traceability
 

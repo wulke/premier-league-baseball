@@ -22,7 +22,7 @@ let nextGameLineup: { game: any; lineup: TeamLineup } | null = null;
 
 const rosterPlayer = (id: number): RosterPlayer => ({
   id, givenName: `Player`, familyName: String(id), countryCode: 'US', bats: 'R', throws: 'R', age: 25,
-  primaryPosition: 'Shortstop', positionCoverage: ['Shortstop'],
+  primaryPosition: ([9, 12, 13].includes(id) ? 'Pitcher' : 'Shortstop'), positionCoverage: [([9, 12, 13].includes(id) ? 'Pitcher' : 'Shortstop')],
   positions: ALL_POSITIONS.reduce((map, position) => ({ ...map, [position]: RATING }), {} as Record<PlayerPosition, number>),
   contact: 60, power: 60, armStrength: 60, accuracy: 60, reaction: 60, vision: 60, discipline: 60,
 });
@@ -303,6 +303,8 @@ defineFeature(feature, (test) => {
     and('the player opens the Bullpen tab', () => selectTab('Bullpen'));
     // @spec GBULL-006
     then('next-game starter, bullpen, and bench pickers are shown', async () => await waitFor(() => { expect(screen.getByRole('heading', { name: /next game: vs rivertown/i })).toBeInTheDocument(); expect(screen.getByRole('combobox', { name: /starting pitcher/i })).toBeInTheDocument(); expect(screen.getAllByRole('combobox', { name: /bench|bullpen/i })).not.toHaveLength(0); }));
+    // @spec GBULL-006
+    and('fielder options are excluded from pitcher slots', () => expect(within(screen.getByRole('combobox', { name: /starting pitcher/i })).queryByRole('option', { name: 'Player 1' })).toBeNull());
     when('the manager saves the game lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save game lineup' })));
     // @spec GBULL-006
     then('the game lineup draft is sent to the game save endpoint', async () => await waitFor(() => expect((global.fetch as jest.Mock).mock.calls.some(([url, options]) => url === '/api/team/10/lineup/40' && options?.method === 'PATCH')).toBe(true)));

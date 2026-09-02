@@ -186,7 +186,13 @@ const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, erro
   if (!game) return <section data-testid="bullpen-empty" style={panelStyle}>No next scheduled game.</section>;
   const slotRows = entries.map((entry, index) => ({ entry, index })).filter(({ entry }) => entry.role === 'BENCH' || entry.role === 'BULLPEN' || (entry.role === 'STARTER' && entry.fieldingPosition === 'Pitcher'));
   return <section data-testid="bullpen-game-lineup" style={panelStyle}><h2 style={headingStyle}>Next game: vs {game.game.opponentName} · {game.game.scheduledDate ? new Date(game.game.scheduledDate).toLocaleDateString() : 'Date TBD'}</h2>
-    {slotRows.map(({ entry, index }) => <div key={index} style={rowStyle}><span style={tagStyle}>{entry.role === 'STARTER' ? 'SP' : entry.role}</span><span style={{ flex: 1 }}><LineupPlayerLink playerId={entry.playerId} players={players} gwId={gwId} /></span>{editable && <select aria-label={`${entry.role === 'STARTER' ? 'Starting pitcher' : entry.role.toLowerCase()} slot ${index + 1}`} value={entry.playerId} onChange={(event) => onChange(index, Number(event.target.value))}>{roster.map((player) => <option key={player.id} value={player.id}>{player.givenName} {player.familyName}</option>)}</select>}</div>)}
+    {slotRows.map(({ entry, index }) => {
+      // @spec GBULL-006 — only pitchers can occupy the designated starter/active-reliever
+      // slots. Keep an existing legacy occupant visible even if its current roster profile is bad.
+      const pitcherSlot = entry.role === 'STARTER' || entry.role === 'BULLPEN';
+      const eligiblePlayers = roster.filter((player) => player.id === entry.playerId || (pitcherSlot ? player.primaryPosition === 'Pitcher' : player.primaryPosition !== 'Pitcher'));
+      return <div key={index} style={rowStyle}><span style={tagStyle}>{entry.role === 'STARTER' ? 'SP' : entry.role}</span><span style={{ flex: 1 }}><LineupPlayerLink playerId={entry.playerId} players={players} gwId={gwId} /></span>{editable && <select aria-label={`${entry.role === 'STARTER' ? 'Starting pitcher' : entry.role.toLowerCase()} slot ${index + 1}`} value={entry.playerId} onChange={(event) => onChange(index, Number(event.target.value))}>{eligiblePlayers.map((player) => <option key={player.id} value={player.id}>{player.givenName} {player.familyName}</option>)}</select>}</div>;
+    })}
     {editable && <button type="button" onClick={onSave}>Save game lineup</button>}{error && <span role="alert" style={{ color: '#a33', marginLeft: '10px' }}>{error}</span>}
   </section>;
 };

@@ -12,8 +12,8 @@ interface ITeam {
   getSchedule: (gwId: number, leagueId?: number) => Promise<TeamSeasonCalendar>;
   getRoster: () => Promise<RosterPlayer[]>;
   snapshotForGame: (gameId: number) => Promise<GameLineupSnapshot>;
-  getNextScheduledGame: () => Promise<any | null>;
-  getNextGameLineup: () => Promise<{ game: any; lineup: TeamLineup } | null>;
+  getNextScheduledGame: () => Promise<NextScheduledGame | null>;
+  getNextGameLineup: () => Promise<NextGameLineup | null>;
   getLineup: (options?: { gameId?: number; gwId?: number }) => Promise<TeamLineup>;
   saveActiveLineup: (entries: ActiveLineupEntry[], matchRules: MatchRules) => Promise<TeamLineup>;
   saveGameLineup: (gameId: number, entries: ActiveLineupEntry[], matchRules: MatchRules) => Promise<TeamLineup>;
@@ -23,6 +23,19 @@ interface TeamCreateOptions {
   compositionKey?: string;
   rosterSeed?: number;
   matchRules?: MatchRules;
+}
+
+interface NextScheduledGame {
+  id: number;
+  homeTeam: number;
+  awayTeam: number;
+  scheduledDate: Date | string | null;
+  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED';
+}
+
+interface NextGameLineup {
+  game: NextScheduledGame & { opponentName: string };
+  lineup: TeamLineup;
 }
 
 let teamCreateQueue = Promise.resolve();
@@ -331,17 +344,19 @@ const TeamFactory = (id?: number): ITeam => {
     },
 
     // @spec GBULL-001 — one ordered lookup serves the next-game-only management surface.
-    getNextScheduledGame: async (): Promise<any | null> => {
+    getNextScheduledGame: async (): Promise<NextScheduledGame | null> => {
       const game = await db.models.Game.findOne({
         where: { status: 'SCHEDULED', [Op.or]: [{ homeTeam: id }, { awayTeam: id }] },
         order: [['scheduledDate', 'ASC'], ['id', 'ASC']],
       });
-      return game?.dataValues ?? null;
+      if (!game) return null;
+      const { id: gameId, homeTeam, awayTeam, scheduledDate, status } = game.dataValues;
+      return { id: gameId, homeTeam, awayTeam, scheduledDate, status };
     },
 
     // @spec GBULL-001,GBULL-002 — the first next-game read is the production path that
     // materializes snapshotForGame; later reads retain the same frozen row.
-    getNextGameLineup: async (): Promise<{ game: any; lineup: TeamLineup } | null> => {
+    getNextGameLineup: async (): Promise<NextGameLineup | null> => {
       const game = await TeamFactory(id).getNextScheduledGame();
       if (!game) return null;
       await TeamFactory(id).snapshotForGame(game.id);
