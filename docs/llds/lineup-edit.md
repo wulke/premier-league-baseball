@@ -1,6 +1,6 @@
 # LLD: Wholesale Active Lineup Save
 
-> Upstream: #226 decision record · EARS: `docs/specs/lineup-edit-specs.md` (`LEDIT-001`..`LEDIT-004`) · complements the legacy constrained `PATCH` write from #249.
+> Upstream: #226 decision record · EARS: `docs/specs/lineup-edit-specs.md` (`LEDIT-001`..`LEDIT-004`). This PUT route is the sole active lineup write API; the legacy constrained PATCH route was retired by #272.
 
 ## Interface / Data Model
 

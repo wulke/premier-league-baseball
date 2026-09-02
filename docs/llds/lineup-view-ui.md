@@ -123,7 +123,7 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
 | u5 | Bench or bullpen ordering changes upstream | Each returned pool renders as-is, in its `BENCH`/`BULLPEN` block appended after the starters, on both tabs — the API makes no ordering promise (unchanged). | LINEUI-007 |
 | u6 | User switches tabs | `activeTab` is local component state; switching re-renders the same fetched data with no refetch. Defaults to `DEFENSIVE` on initial render/navigation. | LINEUI-006 |
 | u7 | Manager promotes a bench player or demotes a starter | Swap the two fixed slot occupants; the displaced player takes the source slot, so no entry is unplaced. | LINEUI-010 |
-| u8 | Draft is invalid at Save | The PATCH validator returns an error; keep draft for correction, surface the message, and do not change the stored active lineup. | LINEUI-011, LWRITE-002 |
+| u8 | Draft is invalid at Save | The PUT validator returns an error; keep draft for correction, surface the message, and do not change the stored active lineup. | LINEUI-011, LEDIT-004 |
 | u9 | Non-managed team or pitcher/bullpen row | Do not render a selector or Save Lineup control for a non-managed team; never render selectors on `Pitcher` or `BULLPEN` entries. | LINEUI-004, LINEUI-009 |
 | u10 | Managed team enters edit mode | Copy the read-card entries into a local draft and append every current-roster player absent from it as `UNASSIGNED`; read-only rendering remains untouched until Edit is selected. | LINEUI-009, LINEUI-013 |
 | u11 | DH rule / pitcher batting slot | The current canonical lineup determines the applicable rule shape: include the DH position only when its starter exists. Pitcher order is always derived as 9 without DH and `null` with DH, never an editable input. | LINEUI-010, LINEUI-011 |
@@ -138,7 +138,7 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-lineup-view--defensive--batting-tabs) |
 | **This LLD** | `docs/llds/lineup-view-ui.md` |
 | Sibling LLDs | `docs/llds/lineup-read-api.md` (lineup endpoint, unchanged), `docs/llds/roster-read-api.md` (`positions` amendment, ROST-011) |
-| EARS | `docs/specs/lineup-view-ui-specs.md` — `LINEUI-001`..; `docs/specs/active-lineup-write-specs.md` — `LWRITE-001`.. |
+| EARS | `docs/specs/lineup-view-ui-specs.md` — `LINEUI-001`..; `docs/specs/lineup-edit-specs.md` — `LEDIT-001`.. |
 | Gherkin | `test/ui/features/lineup-view-ui.feature` |
 | Code | `src/ui/routes.tsx`, `src/ui/pages/team-hub.tsx`, `src/ui/pages/team-lineup.tsx`, `src/db/domain/team.ts` (`getRoster`), `src/api/models.ts` (`RosterPlayer`) |
 | Decision record | #138, #200 (original) · #225 (this redesign) |
