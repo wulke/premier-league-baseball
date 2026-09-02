@@ -1,6 +1,7 @@
 // @spec XFER-001..XFER-020,XFER-022,XFER-023,LEDIT-005,LEDIT-006,LEDIT-007
 // Contract lifecycle (sign/release/renew/cutover-sweep/free-agents/roster-filter) acceptance bindings.
 import path from 'path';
+import { Op } from 'sequelize';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import * as handlers from '../../../src/api/handlers';
 import { LeagueFactory, PlayerFactory, TeamFactory } from '../../../src/db/domain';
@@ -119,6 +120,10 @@ const registerSteps = ({ given, when, then }: any) => {
     const lineup = await db.models.Lineup.findOne({ where: { teamId: Number(teamId), gameId: null } });
     if (!lineup) throw new Error('no active Lineup to seed');
     await db.models.LineupEntry.destroy({ where: { lineupId: lineup.dataValues.id } });
+    const otherPlayerIds = await db.models.Player.findAll({ where: { teamId: Number(teamId), id: { [Op.ne]: Number(playerId) } } })
+      .then((rows: any[]) => rows.map(({ dataValues }) => dataValues.id));
+    await db.models.Contract.destroy({ where: { playerId: otherPlayerIds } });
+    await db.models.Player.destroy({ where: { id: otherPlayerIds } });
     await db.models.LineupEntry.create({
       lineupId: lineup.dataValues.id, playerId: Number(playerId), role: 'STARTER', battingOrder: 9, fieldingPosition: 'Pitcher',
     });

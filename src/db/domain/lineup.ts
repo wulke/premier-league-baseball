@@ -26,9 +26,9 @@ const resolveMatchRules = (leagueConfig?: { matchRules?: Partial<MatchRules> }, 
 // Hungarian minimum-cost assignment on a rectangular 8-position x N-fielder matrix.
 // Negating ratings turns the maximum-weight fielding problem into minimum cost in O(8 * N²).
 // @spec LIN-004
-const optimalFieldingAssignment = (fielders: Player[]): Array<{ player: Player; position: Exclude<PlayerPosition, 'Pitcher'> }> => {
-  if (fielders.length < FIELDER_POSITIONS.length) throw Error('Roster cannot fill the eight non-pitcher positions');
-  const rowCount = FIELDER_POSITIONS.length;
+const optimalFieldingAssignment = (fielders: Player[], fieldingPositions: readonly Exclude<PlayerPosition, 'Pitcher'>[] = FIELDER_POSITIONS as Exclude<PlayerPosition, 'Pitcher'>[]): Array<{ player: Player; position: Exclude<PlayerPosition, 'Pitcher'> }> => {
+  if (fielders.length < fieldingPositions.length) throw Error('Roster cannot fill the eight non-pitcher positions');
+  const rowCount = fieldingPositions.length;
   const columnCount = fielders.length;
   const u = Array(rowCount + 1).fill(0);
   const v = Array(columnCount + 1).fill(0);
@@ -47,7 +47,7 @@ const optimalFieldingAssignment = (fielders: Player[]): Array<{ player: Player; 
       let nextColumn = 0;
       for (let candidate = 1; candidate <= columnCount; candidate += 1) {
         if (used[candidate]) continue;
-        const rating = fielders[candidate - 1].attributes.positions[FIELDER_POSITIONS[currentRow - 1]];
+        const rating = fielders[candidate - 1].attributes.positions[fieldingPositions[currentRow - 1]];
         const cost = 100 - rating - u[currentRow] - v[candidate];
         if (cost < minCost[candidate]) {
           minCost[candidate] = cost;
@@ -80,7 +80,7 @@ const optimalFieldingAssignment = (fielders: Player[]): Array<{ player: Player; 
     if (p[column] !== 0) assignment[p[column] - 1] = column - 1;
   }
   return assignment.map((index, positionIndex) => ({
-    player: fielders[index], position: FIELDER_POSITIONS[positionIndex] as Exclude<PlayerPosition, 'Pitcher'>,
+    player: fielders[index], position: fieldingPositions[positionIndex],
   }));
 };
 
@@ -151,20 +151,52 @@ const LineupFactory = () => ({
     return lineup.dataValues;
   },
 
-  // @spec XFER-011,XFER-013,XFER-017 — a forcing variant of generateActive(): that method
-  // is idempotent (returns the existing active Lineup untouched), so Sign/Release need this
-  // to clear the stale Lineup first, then re-derive from the roster as it stands *after*
-  // the mutation. Reuses generateActive()'s whole assignment/DH/bench/bullpen algorithm
-  // unchanged rather than duplicating it.
+  // @spec XFER-011,XFER-013,XFER-017,LEDIT-005,LEDIT-006 — transfer repair preserves the
+  // active card when present. Only departed starter slots are reassigned; an unfillable slot
+  // deliberately retains its departed entry for the read card's validity projection.
   repairActive: async (teamId: number, gameWorldId: number, options: RepairOptions = {}) => {
     const existing = await db.models.Lineup.findOne({ where: { teamId, gameId: null }, transaction: options.transaction });
-    if (existing) {
-      await db.models.LineupEntry.destroy({ where: { lineupId: existing.dataValues.id }, transaction: options.transaction });
-      await db.models.Lineup.destroy({ where: { id: existing.dataValues.id }, transaction: options.transaction });
-    }
     const players = await db.models.Player.findAll({ where: { teamId }, transaction: options.transaction })
       .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
-    return LineupFactory().generateActive(teamId, gameWorldId, players, options);
+    if (!existing) return LineupFactory().generateActive(teamId, gameWorldId, players, options);
+
+    const previousEntries: Entry[] = await db.models.LineupEntry.findAll({ where: { lineupId: existing.dataValues.id }, transaction: options.transaction })
+      .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+    const currentPlayerIds = new Set(players.map((player) => player.id));
+    const retained = previousEntries.filter((entry) => currentPlayerIds.has(entry.playerId));
+    const departed = previousEntries.filter((entry) => !currentPlayerIds.has(entry.playerId));
+    const retainedIds = new Set(retained.map((entry) => entry.playerId));
+    const available = players.filter((player) => !retainedIds.has(player.id));
+    const repaired = [...retained, ...departed.filter((entry) => entry.role === 'STARTER')];
+
+    const starterVacancies = departed.filter((entry) => entry.role === 'STARTER');
+    const fielderVacancies = starterVacancies.filter((entry): entry is Entry & { fieldingPosition: Exclude<PlayerPosition, 'Pitcher'> } => (
+      entry.fieldingPosition != null && entry.fieldingPosition !== 'Pitcher'
+    ));
+    const fielderPool = available.filter((player) => primaryPosition(player as any) !== 'Pitcher');
+    const usableFielderPool = fielderPool.length >= fielderVacancies.length ? fielderPool : available;
+    if (fielderVacancies.length > 0 && usableFielderPool.length >= fielderVacancies.length) {
+      const assignments = optimalFieldingAssignment(usableFielderPool, fielderVacancies.map((entry) => entry.fieldingPosition));
+      assignments.forEach(({ player, position }) => {
+        const vacancy = repaired.find((entry) => entry.role === 'STARTER' && entry.fieldingPosition === position && !currentPlayerIds.has(entry.playerId));
+        if (vacancy) vacancy.playerId = player.id;
+      });
+    }
+    const assignedIds = new Set(repaired.filter((entry) => currentPlayerIds.has(entry.playerId)).map((entry) => entry.playerId));
+    const pitcherVacancy = starterVacancies.find((entry) => entry.fieldingPosition === 'Pitcher');
+    if (pitcherVacancy) {
+      const pitcher = available.filter((player) => !assignedIds.has(player.id)).sort(comparePitchers)[0];
+      if (pitcher) pitcherVacancy.playerId = pitcher.id;
+    }
+
+    const previousPlayerIds = new Set(previousEntries.map((entry) => entry.playerId));
+    const selectedIds = new Set(repaired.filter((entry) => currentPlayerIds.has(entry.playerId)).map((entry) => entry.playerId));
+    players.filter((player) => !previousPlayerIds.has(player.id) && !selectedIds.has(player.id)).forEach((player) => {
+      repaired.push({ playerId: player.id, role: primaryPosition(player as any) === 'Pitcher' ? 'BULLPEN' : 'BENCH', battingOrder: null, fieldingPosition: null });
+    });
+    await db.models.LineupEntry.destroy({ where: { lineupId: existing.dataValues.id }, transaction: options.transaction });
+    await db.models.LineupEntry.bulkCreate(repaired.map(({ playerId, role, battingOrder, fieldingPosition }) => ({ lineupId: existing.dataValues.id, playerId, role, battingOrder, fieldingPosition })), { transaction: options.transaction });
+    return existing.dataValues;
   },
 });
 

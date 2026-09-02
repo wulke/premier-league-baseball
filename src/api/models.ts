@@ -126,13 +126,14 @@ interface LineupStarter {
   playerId: number;
   battingOrder: number | null;
   fieldingPosition: PlayerPosition | null;
+  valid: boolean;
 }
 
 interface TeamLineup {
   starters: LineupStarter[];
   startingPitcherId: number;
-  bench: Array<{ playerId: number }>;
-  bullpen: Array<{ playerId: number }>;
+  bench: Array<{ playerId: number; valid: boolean }>;
+  bullpen: Array<{ playerId: number; valid: boolean }>;
 }
 
 interface ActiveLineupEntry {

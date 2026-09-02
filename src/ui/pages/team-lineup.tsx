@@ -5,7 +5,7 @@ import { ActiveLineupEntry, PlayerPosition, RosterPlayer, TeamLineup } from '../
 
 type LineupTab = 'DEFENSIVE' | 'BATTING';
 type DraftRole = ActiveLineupEntry['role'] | 'UNASSIGNED';
-type DraftEntry = Omit<ActiveLineupEntry, 'role'> & { role: DraftRole };
+type DraftEntry = Omit<ActiveLineupEntry, 'role'> & { role: DraftRole; valid?: boolean };
 type LineupRow = DraftEntry & { entryIndex: number };
 
 const DEFENSIVE_TAB_ORDER: PlayerPosition[] = ['Pitcher', 'Catcher', 'FirstBase', 'SecondBase', 'ThirdBase', 'Shortstop', 'LeftField', 'CenterField', 'RightField'];
@@ -30,7 +30,7 @@ const LineupPlayerLink = ({ playerId, players, gwId }: { playerId: number; playe
   <Link to={`/${gwId}/player/${playerId}`} style={{ color: '#222', fontWeight: 650, textUnderlineOffset: '3px' }}>{playerName(playerId, players)}</Link>
 );
 
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-013,LINEUI-014
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014
 const TeamLineupView = () => {
   const { gwId, teamId } = useParams();
   const gameWorld = useRouteLoaderData('gwId') as any;
@@ -121,7 +121,8 @@ const TeamLineupView = () => {
     const isDh = row.fieldingPosition === null && row.role === 'STARTER';
     const rating = row.fieldingPosition ? players.get(row.playerId)?.positions[row.fieldingPosition] ?? '—' : '';
     const testId = row.role === 'STARTER' ? `${tab.toLowerCase()}-row-${tab === 'BATTING' ? row.battingOrder : row.playerId}` : `${row.role.toLowerCase()}-row-${row.playerId}`;
-    return <div key={row.entryIndex} data-testid={testId} style={rowStyle}>
+    return <div key={row.entryIndex} data-testid={testId} style={row.valid === false ? { ...rowStyle, background: '#fff0f0', color: '#a11' } : rowStyle}>
+      {!editing && row.valid === false && <span aria-label="Invalid lineup entry" style={{ color: '#b11', fontWeight: 800 }}>✕ Invalid</span>}
       {row.role !== 'STARTER' && <span style={tagStyle}>{row.role}</span>}
       {tab === 'BATTING' && row.role === 'STARTER' && <strong style={{ color: '#555', width: '24px' }}>{row.battingOrder ?? '—'}</strong>}
       <span data-testid={isDh ? 'dh-row' : undefined} style={{ flex: 1 }}><LineupPlayerLink playerId={row.playerId} players={players} gwId={gwId} /></span>

@@ -283,6 +283,7 @@ defineFeature(feature, (test) => {
   });
 
   test('An invalid read-mode lineup entry is visibly flagged', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
     given('GET /api/team/10/lineup returns a lineup with an invalid starter', () => { lineup = { ...dhOff(), starters: dhOff().starters.map((entry) => entry.playerId === MISSING_STARTER_ID ? { ...entry, valid: false } : entry) }; });
     and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));

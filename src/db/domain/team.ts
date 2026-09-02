@@ -310,7 +310,7 @@ const TeamFactory = (id?: number): ITeam => {
       }
     },
 
-    // @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004,LSNAP-004
+    // @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004,LSNAP-004,LEDIT-007
     getLineup: async ({ gameId, gwId }: { gameId?: number; gwId?: number } = {}): Promise<TeamLineup> => {
       const team = await db.models.Team.findByPk(id);
       if (!team || (gwId != null && team.dataValues.gameWorldId !== gwId)) {
@@ -322,6 +322,8 @@ const TeamFactory = (id?: number): ITeam => {
 
       const entries = await db.models.LineupEntry.findAll({ where: { lineupId: lineup.dataValues.id } })
         .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+      const currentPlayerIds = new Set(await db.models.Player.findAll({ where: { teamId: id } })
+        .then((rows: any[]) => rows.map(({ dataValues }) => dataValues.id)));
       const starters = entries
         .filter((entry: any) => entry.role === 'STARTER')
         .sort((a: any, b: any) => (a.battingOrder ?? Infinity) - (b.battingOrder ?? Infinity))
@@ -329,13 +331,14 @@ const TeamFactory = (id?: number): ITeam => {
           playerId: entry.playerId,
           battingOrder: entry.battingOrder,
           fieldingPosition: entry.fieldingPosition,
+          valid: currentPlayerIds.has(entry.playerId),
         }));
       const startingPitcherId = starters.find((entry) => entry.fieldingPosition === 'Pitcher')?.playerId;
       if (startingPitcherId == null) throw new DomainError('Not found', 404);
 
       const toPool = (role: 'BENCH' | 'BULLPEN') => entries
         .filter((entry: any) => entry.role === role)
-        .map((entry: any) => ({ playerId: entry.playerId }));
+        .map((entry: any) => ({ playerId: entry.playerId, valid: currentPlayerIds.has(entry.playerId) }));
       return { starters, startingPitcherId, bench: toPool('BENCH'), bullpen: toPool('BULLPEN') };
     },
 
