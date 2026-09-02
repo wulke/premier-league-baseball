@@ -2,7 +2,7 @@
 
 > Upstream: [HLD: Client Notification & Alert Stream](../high-level-design.md#hld-client-notification--alert-stream) ·
 > Backend sibling LLD: [`notification-stream.md`](./notification-stream.md) ·
-> EARS: `docs/specs/notification-stream-ui-specs.md` (`NOTIFUI-001`..) ·
+> EARS: `docs/specs/notification-stream-ui-specs.md` (`NOTIFUI-001`..`NOTIFUI-007`) ·
 > Decision record: [#261](https://github.com/wulke/premier-league-baseball/issues/261)
 
 ## Scope
@@ -38,7 +38,7 @@ type NotificationStreamState = {
 
 ```
 GameWorld page mounts (existing `/:gwId` route already renders here)
-  → NotificationStream mounts with gwId, managedTeamId (from route-loader data)
+  → NotificationStream mounts with gwId, managedTeamId (from route-loader data)  # NOTIFUI-007
   → on mount:
       fetch(Endpoints.GetGameWorldNotifications.replace(':gwId', gwId))    # NOTIFUI-001
         .then(r => r.ok ? r.json() : [])                                   // non-ok → [] (degrade, mirrors ROSTUI-002)

@@ -1,7 +1,7 @@
 # LLD: Notification Stream (Backend)
 
 > Upstream: [HLD: Client Notification & Alert Stream](../high-level-design.md#hld-client-notification--alert-stream) ·
-> EARS: `docs/specs/notification-stream-specs.md` (`NOTIF-001`..) ·
+> EARS: `docs/specs/notification-stream-specs.md` (`NOTIF-001`..`NOTIF-011`) ·
 > Decision record: [#259](https://github.com/wulke/premier-league-baseball/issues/259), [#260](https://github.com/wulke/premier-league-baseball/issues/260), [#261](https://github.com/wulke/premier-league-baseball/issues/261)
 
 ## Scope
@@ -18,6 +18,7 @@ delivery.
 
 ```ts
 // src/db/model/notification.ts — new model, owned exclusively by NotificationFactory (backend-standards §1)
+// NOTIF-010: envelope carries no read-state field (readAt/isRead)
 interface INotificationRow {
   id: number;
   gameWorldId: number;               // FK, required — Notification.gameWorldId
@@ -31,6 +32,8 @@ interface INotificationRow {
 type NotificationPayload<T = any> = T;
 const registerNotificationType = (type: string): void => { /* … */ };
 const isRegisteredNotificationType = (type: string): boolean => { /* … */ };
+// NOTIF-011: registerNotificationType('GAME_RESULT') runs at module load in
+// game-result-notification.ts (imported by game.ts), before any simulate() call can fire it
 
 // src/db/domain/notifications/notification.ts
 interface INotification {
