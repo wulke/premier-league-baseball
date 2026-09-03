@@ -22,7 +22,7 @@ Frontend requirements for the team hub page and its Roster tab
 
 - HLD: [`docs/high-level-design.md` — Team Roster & Player Visibility](../high-level-design.md#hld-team-roster--player-visibility)
 - LLD: `docs/llds/team-roster-ui.md`
-- Backend sibling specs: `docs/specs/roster-read-api-specs.md`
-- Sibling UI specs: `docs/specs/player-detail-ui-specs.md`
+- Backend sibling specs: `docs/specs/manager/roster-read-api-specs.md`
+- Sibling UI specs: `docs/specs/player/player-detail-ui-specs.md`
 - Decision record: [#149](https://github.com/wulke/premier-league-baseball/issues/149), [#147](https://github.com/wulke/premier-league-baseball/issues/147)
 - Code: `src/ui/routes.tsx` (nested team route), `src/ui/pages/team-hub.tsx`, `src/ui/pages/team-roster.tsx`

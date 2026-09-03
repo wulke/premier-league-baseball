@@ -17,6 +17,6 @@ Frontend requirements for the Today snapshot section on the GameWorld home page
 ## Traceability
 
 - LLD: `docs/llds/league-today-ui.md`
-- Backend sibling specs: `docs/specs/league-today-specs.md`
+- Backend sibling specs: `docs/specs/league/league-today-specs.md`
 - Decision record: [#101](https://github.com/wulke/premier-league-baseball/issues/101)
 - Code: `src/ui/pages/game-world.tsx`

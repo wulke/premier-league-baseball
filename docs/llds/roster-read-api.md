@@ -1,7 +1,7 @@
 # LLD: Roster Read API
 
 > Upstream: [HLD: Team Roster & Player Visibility](../high-level-design.md#hld-team-roster--player-visibility) ·
-> EARS: `docs/specs/roster-read-api-specs.md` (`ROST-001`..) ·
+> EARS: `docs/specs/manager/roster-read-api-specs.md` (`ROST-001`..) ·
 > Decision record: [#145 Roster read API](https://github.com/wulke/premier-league-baseball/issues/145)
 
 ## Scope
@@ -87,6 +87,6 @@ GET /api/team/:teamId/roster?gwId=…
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-team-roster--player-visibility) |
 | **This LLD** | `docs/llds/roster-read-api.md` |
 | Sibling LLDs | `docs/llds/player-identity.md` (identity columns), `docs/llds/player-detail-read-api.md` (Contract DATE), `docs/llds/team-roster-ui.md` (consumer), `docs/llds/lineup-view-ui.md` (consumer of the #225 `positions` amendment) |
-| EARS | `docs/specs/roster-read-api-specs.md` — `ROST-001`.. |
+| EARS | `docs/specs/manager/roster-read-api-specs.md` — `ROST-001`.. |
 | Code | `src/api/endpoints.ts` (`GetTeamRoster`), `src/api/router.ts`, `src/api/handlers.ts` (`getTeamRoster`), `src/db/domain/team.ts` (`getRoster`), `src/api/models.ts` (`RosterPlayer`) |
 | Decision record | [#145](https://github.com/wulke/premier-league-baseball/issues/145) |

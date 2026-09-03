@@ -4,7 +4,7 @@
 > [HLD: App Shell — Left Nav Rail](../high-level-design.md#hld-app-shell--left-nav-rail).
 > Implements the shell decision from UI Direction map
 > [#10 (Page-by-page layout plan)](https://github.com/wulke/premier-league-baseball/issues/10).
-> EARS: [`docs/specs/app-shell-ui-specs.md`](../specs/app-shell-ui-specs.md)
+> EARS: [`docs/specs/shell/app-shell-ui-specs.md`](../specs/app-shell-ui-specs.md)
 > (`SHELL-001`…`SHELL-0NN` for shell behaviour; relocated batch-simulate behaviour keeps
 > `SIMUI-009`…`SIMUI-018`; the deferred chip graduates `SIMUI-006`/`SIMUI-007`).
 > Gherkin: `test/ui/features/app-shell-ui.feature` (shell scenarios) + edits to
@@ -236,7 +236,7 @@ intent.
 | Source decision | [Map #2 (UI Direction)](https://github.com/wulke/premier-league-baseball/issues/2) · [ticket #10 (Page-by-page layout plan)](https://github.com/wulke/premier-league-baseball/issues/10) |
 | **This LLD** | `docs/llds/app-shell-ui.md` |
 | Sibling LLD (batch origin) | [`docs/llds/simulate-game-ui.md`](./simulate-game-ui.md) (Flow B — `AppHeader` batch state machine, relocated here) |
-| EARS | `docs/specs/app-shell-ui-specs.md` — `SHELL-001`… (NEW) · `SIMUI-006/007` (graduate) · `SIMUI-009`…`SIMUI-018` (relocated, IDs stable) |
+| EARS | `docs/specs/shell/app-shell-ui-specs.md` — `SHELL-001`… (NEW) · `SIMUI-006/007` (graduate) · `SIMUI-009`…`SIMUI-018` (relocated, IDs stable) |
 | Gherkin | `test/ui/features/app-shell-ui.feature` (shell scenarios + re-homed current-date chip scenarios) · `test/ui/features/simulate-game-ui.feature` (batch/cross-flow scenarios) |
 | Step defs | `test/ui/steps/app-shell-ui.steps.test.tsx` (NEW) · `test/ui/steps/simulate-game-ui.steps.test.tsx` (EDIT — `AppHeader` mount → `NavRail` mount; location-aware router mock per s5) |
 | Code entry points | `src/ui/components/app-shell.tsx` (NEW) · `src/ui/components/nav-rail.tsx` (NEW) · `src/ui/components/batch-simulate-control.tsx` (NEW) · `src/ui/context/game-world-context.tsx` (EDIT — s2 guard) · `src/ui/routes.tsx` (EDIT) · `src/ui/pages/{home,game-world,league,team-calendar}.tsx` (EDIT — drop headers) · `src/ui/components/app-header.tsx` (DELETE) |

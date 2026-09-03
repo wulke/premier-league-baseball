@@ -1,7 +1,7 @@
 # LLD: Full-Season UI (Bracket View, Champion Banner, Team Calendar Unification)
 
 > Upstream: [HLD: Full Season Simulation](../high-level-design.md#hld-full-season-simulation-league--league-cup) ·
-> EARS: `docs/specs/full-season-ui-specs.md` (`UI-001`.., `LIFE-001`) ·
+> EARS: `docs/specs/game-world/full-season-ui-specs.md` (`UI-001`.., `LIFE-001`) ·
 > Decision records: [#34](https://github.com/wulke/premier-league-baseball/issues/34) (lifecycle semantics),
 > [#35](https://github.com/wulke/premier-league-baseball/issues/35) (UI flow mapping),
 > [#39](https://github.com/wulke/premier-league-baseball/issues/39) (bracket UI),
@@ -184,6 +184,6 @@ IF a division has no games at all: render existing "No bracket yet — season no
 |---|---|
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-full-season-simulation-league--league-cup) |
 | **This LLD** | `docs/llds/full-season-ui.md` |
-| EARS | `docs/specs/full-season-ui-specs.md` — `UI-001`.., `LIFE-001` |
+| EARS | `docs/specs/game-world/full-season-ui-specs.md` — `UI-001`.., `LIFE-001` |
 | Code | `src/ui/pages/league.tsx` (`BracketView`, champion banner, division branch), `src/ui/pages/game-world.tsx` (Season block), `src/ui/routes.tsx` (calendar route), `src/db/domain/team.ts` (`getSchedule`, unchanged) |
 | Decision records | [#34](https://github.com/wulke/premier-league-baseball/issues/34), [#35](https://github.com/wulke/premier-league-baseball/issues/35), [#39](https://github.com/wulke/premier-league-baseball/issues/39), [#40](https://github.com/wulke/premier-league-baseball/issues/40) |

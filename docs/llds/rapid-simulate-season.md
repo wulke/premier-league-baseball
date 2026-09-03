@@ -1,6 +1,6 @@
 # LLD: Rapid Simulate Season (`GameFactory.rapidSimulateSeason`)
 
-> EARS: `docs/specs/rapid-simulate-season-specs.md` (`RSS-001`…`RSS-008`) ·
+> EARS: `docs/specs/game-world/rapid-simulate-season-specs.md` (`RSS-001`…`RSS-008`) ·
 > UI LLD (sibling): [`rapid-simulate-season-ui.md`](./rapid-simulate-season-ui.md) ·
 > Gherkin: `test/bdd/features/rapid-simulate-season.feature`
 
@@ -158,7 +158,7 @@ the minimum future date instead of filtered against a fixed `endDate`.
 |---|---|
 | **This LLD** | `docs/llds/rapid-simulate-season.md` |
 | UI LLD (sibling) | `docs/llds/rapid-simulate-season-ui.md` |
-| EARS | `docs/specs/rapid-simulate-season-specs.md` — `RSS-001`…`RSS-008` |
+| EARS | `docs/specs/game-world/rapid-simulate-season-specs.md` — `RSS-001`…`RSS-008` |
 | Gherkin | `test/bdd/features/rapid-simulate-season.feature` |
 | Tests | `test/db/domain/game.test.ts`, `test/db/domain/game-world.test.ts` (new cases) |
 | Code | `src/db/domain/game.ts` (`GameFactory.rapidSimulateSeason`), `src/db/domain/game-world.ts` (`GameWorldFactory.advanceCurrentDate`), `src/api/handlers.ts` (`rapidSimulateSeason`, `getGameWorld` MODIFIED), `src/api/router.ts`, `src/api/endpoints.ts` |

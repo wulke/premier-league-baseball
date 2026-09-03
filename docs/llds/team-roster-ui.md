@@ -2,7 +2,7 @@
 
 > Upstream: [HLD: Team Roster & Player Visibility](../high-level-design.md#hld-team-roster--player-visibility) ·
 > Backend sibling LLD: [`roster-read-api.md`](./roster-read-api.md) ·
-> EARS: `docs/specs/team-roster-ui-specs.md` (`ROSTUI-001`..) ·
+> EARS: `docs/specs/manager/team-roster-ui-specs.md` (`ROSTUI-001`..) ·
 > Decision record: [#149 Team hub & entry points](https://github.com/wulke/premier-league-baseball/issues/149), [#147 Roster view UI](https://github.com/wulke/premier-league-baseball/issues/147) (prototype: branch `prototype/147-roster-view-ui`)
 
 ## Scope
@@ -87,7 +87,7 @@ League standings (src/ui/pages/league.tsx) — team row click
 | Backend sibling LLD | `docs/llds/roster-read-api.md` |
 | **This LLD** | `docs/llds/team-roster-ui.md` |
 | Sibling UI LLD | `docs/llds/player-detail-ui.md` (roster row links here) |
-| EARS | `docs/specs/team-roster-ui-specs.md` — `ROSTUI-001`.. |
+| EARS | `docs/specs/manager/team-roster-ui-specs.md` — `ROSTUI-001`.. |
 | Gherkin | `test/ui/features/team-roster-ui.feature` |
 | Code | `src/ui/routes.tsx` (nested team route), `src/ui/pages/team-hub.tsx`, `src/ui/pages/team-roster.tsx` |
 | Decision record | [#149](https://github.com/wulke/premier-league-baseball/issues/149), [#147](https://github.com/wulke/premier-league-baseball/issues/147) |

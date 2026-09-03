@@ -1,6 +1,6 @@
 # LLD: Per-Game Lineup Snapshot
 
-> Upstream: [`lineup-generation.md`](./lineup-generation.md) · EARS: `docs/specs/game-lineup-snapshot-specs.md` (`LSNAP-001`..`LSNAP-005`) · Decision record: #138 / issue #201.
+> Upstream: [`lineup-generation.md`](./lineup-generation.md) · EARS: `docs/specs/game-simulation/game-lineup-snapshot-specs.md` (`LSNAP-001`..`LSNAP-005`) · Decision record: #138 / issue #201.
 
 ## Interface / Data Model
 
@@ -50,6 +50,6 @@ getLineup(teamId, { gameId?, gwId? }):
 
 | Layer | Artifact |
 |---|---|
-| EARS | `docs/specs/game-lineup-snapshot-specs.md` |
+| EARS | `docs/specs/game-simulation/game-lineup-snapshot-specs.md` |
 | Tests | `test/bdd/features/game-lineup-snapshot.feature`, `test/bdd/steps/game-lineup-snapshot.steps.test.ts` |
 | Code | `src/api/models.ts`, `src/db/domain/team.ts`, `src/api/endpoints.ts`, `src/api/handlers.ts`, `src/api/router.ts` |

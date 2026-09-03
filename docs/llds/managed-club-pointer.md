@@ -1,6 +1,6 @@
 # LLD: Managed Club Pointer
 
-> EARS: `docs/specs/managed-club-specs.md` (`MCLB-001`–`MCLB-005`) ·
+> EARS: `docs/specs/manager/managed-club-specs.md` (`MCLB-001`–`MCLB-005`) ·
 > Parent: [#137 My Club concept](https://github.com/wulke/premier-league-baseball/issues/137) ·
 > Delivery: [#152](https://github.com/wulke/premier-league-baseball/issues/152)
 
@@ -49,6 +49,6 @@ backfill, so rows created before this feature retain `managedTeamId = null` (unc
 | Layer | Artifact |
 |---|---|
 | **This LLD** | `docs/llds/managed-club-pointer.md` |
-| EARS | `docs/specs/managed-club-specs.md` — `MCLB-001`–`MCLB-005` |
+| EARS | `docs/specs/manager/managed-club-specs.md` — `MCLB-001`–`MCLB-005` |
 | Tests | `test/bdd/features/managed-club.feature`, `test/bdd/steps/managed-club.steps.test.ts` |
 | Code | GameWorld model/migration, `GameWorldFactory.setManagedClub`, managed-club handler and route |

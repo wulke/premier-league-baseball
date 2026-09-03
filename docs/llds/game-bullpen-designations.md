@@ -1,6 +1,6 @@
 # LLD: Next-Game Bullpen Designations
 
-> Upstream: #243 · Existing snapshot primitive: [`game-lineup-snapshot.md`](./game-lineup-snapshot.md) · EARS: `docs/specs/game-bullpen-designations-specs.md` (`GBULL-001`..`GBULL-006`).
+> Upstream: #243 · Existing snapshot primitive: [`game-lineup-snapshot.md`](./game-lineup-snapshot.md) · EARS: `docs/specs/manager/game-bullpen-designations-specs.md` (`GBULL-001`..`GBULL-006`).
 
 ## Interface / Data Model
 
@@ -68,7 +68,7 @@ current random-score `SimulationEngine`.
 
 | Layer | Artifact |
 |---|---|
-| EARS | `docs/specs/game-bullpen-designations-specs.md` |
+| EARS | `docs/specs/manager/game-bullpen-designations-specs.md` |
 | Backend Gherkin | `test/bdd/features/game-bullpen-designations.feature` |
 | UI Gherkin | `test/ui/features/game-bullpen-designations.feature` |
 | Code | `src/db/domain/team.ts`, `src/api/{endpoints,handlers,router}.ts`, `src/ui/pages/team-lineup.tsx` |

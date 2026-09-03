@@ -18,7 +18,7 @@ creation (`src/db/model/`, `src/db/domain/player.ts`, `src/db/domain/team.ts`).
 
 `PCON-006` and `PCON-007` were originally Deferred, recording obligations for a future transfers map
 to pick up (`docs/llds/player-contracts-roster.md`'s Edge Case Probe e3/e6). [#237](https://github.com/wulke/premier-league-baseball/issues/237)
-is that map: `docs/specs/contract-lifecycle-specs.md`'s `XFER-013`/`XFER-017` implement the
+is that map: `docs/specs/player/contract-lifecycle-specs.md`'s `XFER-013`/`XFER-017` implement the
 `Player.teamId`↔`Contract` sync `PCON-007` called for, and `XFER-006`/`XFER-022`/`XFER-023` implement
 the read-side free-agency observation `PCON-006` called for — both rows are marked Implemented here.
 

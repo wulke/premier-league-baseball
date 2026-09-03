@@ -20,7 +20,7 @@ Frontend requirements for the world-scoped Transfers page and the Release/Renew 
 
 - HLD: `docs/high-level-design.md` — no dedicated HLD section exists yet for Transfers; [#237](https://github.com/wulke/premier-league-baseball/issues/237)'s resolved grill-me decision record stands in for it.
 - LLD: `docs/llds/transfers-ui.md`
-- Backend sibling specs: `docs/specs/contract-lifecycle-specs.md`
-- Sibling UI specs: `docs/specs/team-roster-ui-specs.md` (release/renew rows amend this), `docs/specs/managed-club-ui-specs.md` (nav-rail fog trio amended)
+- Backend sibling specs: `docs/specs/player/contract-lifecycle-specs.md`
+- Sibling UI specs: `docs/specs/manager/team-roster-ui-specs.md` (release/renew rows amend this), `docs/specs/manager/managed-club-ui-specs.md` (nav-rail fog trio amended)
 - Decision record: [#140](https://github.com/wulke/premier-league-baseball/issues/140), [#237](https://github.com/wulke/premier-league-baseball/issues/237)
 - Code: `src/ui/pages/transfers.tsx` (new), `src/ui/pages/team-roster.tsx` (release/renew actions), `src/ui/components/nav-rail.tsx` (Transfers link), `src/ui/routes.tsx`, `src/api/endpoints.ts` (`GetFreeAgents`, `SignPlayer`, `ReleasePlayer`, `RenewPlayer`)

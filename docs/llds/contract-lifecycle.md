@@ -1,7 +1,7 @@
 # LLD: Contract Lifecycle (Sign / Release / Renew)
 
 > Upstream: [#237 Design: Transfers & contract-lifecycle LLD + EARS](https://github.com/wulke/premier-league-baseball/issues/237) resolved grill-me decision record ·
-> EARS: `docs/specs/contract-lifecycle-specs.md` (`XFER-001`..) ·
+> EARS: `docs/specs/player/contract-lifecycle-specs.md` (`XFER-001`..) ·
 > Decision record: [#140 grill-me: Transfers / contract-lifecycle / free-agency](https://github.com/wulke/premier-league-baseball/issues/140), [#237](https://github.com/wulke/premier-league-baseball/issues/237)
 > Amends: `docs/llds/player-contracts-roster.md` (PCON-006/007 activation), `docs/llds/roster-read-api.md` (ROST-004 closure), `docs/llds/player-detail-read-api.md` (no change — already anchors on `resolveCurrentContract`)
 
@@ -302,7 +302,7 @@ GameWorldFactory(gwId).getFreeAgents():
 | **This LLD** | `docs/llds/contract-lifecycle.md` |
 | Sibling LLD | `docs/llds/transfers-ui.md` (consumer) |
 | Amends | `docs/llds/player-contracts-roster.md` (PCON-006/007 activation), `docs/llds/roster-read-api.md` (ROST-004 closure) |
-| EARS | `docs/specs/contract-lifecycle-specs.md` — `XFER-001`.. |
+| EARS | `docs/specs/player/contract-lifecycle-specs.md` — `XFER-001`.. |
 | Gherkin | `test/bdd/features/contract-lifecycle.feature` |
 | Code | `src/db/domain/contract.ts` (`ContractFactory`, `listForTeam`, `SEASON_END_MONTH/DAY`, `defaultSeasonEnd`, `reconcileTeamMemberships`), `src/db/domain/player.ts` (`toRosterPlayer` extraction), `src/db/domain/team.ts` (`getRoster` now reads via `ContractFactory`'s `listForTeam` instead of the `Team↔Contract` association, and filters to each player's current row), `src/db/domain/league.ts` (`cutover` sweep hook), `src/db/domain/game-world.ts` (`getFreeAgents`), `src/db/domain/lineup.ts` (`repairActive`, new), `src/api/endpoints.ts`, `src/api/router.ts`, `src/api/handlers.ts` (`signPlayer`, `releasePlayer`, `renewPlayer`, `getFreeAgents`, `assertManaged`) |
 | Decision record | [#140](https://github.com/wulke/premier-league-baseball/issues/140), [#237](https://github.com/wulke/premier-league-baseball/issues/237) |

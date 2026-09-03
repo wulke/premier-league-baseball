@@ -3,7 +3,7 @@
 > Map: [#137 — "My Club" concept](https://github.com/wulke/premier-league-baseball/issues/137) ·
 > Delivery: [#153](https://github.com/wulke/premier-league-baseball/issues/153) ·
 > Backend sibling LLD: [`managed-club-pointer.md`](./managed-club-pointer.md) ·
-> EARS: `docs/specs/managed-club-ui-specs.md` (`MCLUI-001`..`MCLUI-006`) ·
+> EARS: `docs/specs/manager/managed-club-ui-specs.md` (`MCLUI-001`..`MCLUI-006`) ·
 > HLD: [`high-level-design.md` — App Shell fog trio](../high-level-design.md)
 
 ## Scope
@@ -107,7 +107,7 @@ NavRail (src/ui/components/nav-rail.tsx):
 | Map | [#137](https://github.com/wulke/premier-league-baseball/issues/137) |
 | **This LLD** | `docs/llds/managed-club-ui.md` |
 | Backend sibling LLD | `docs/llds/managed-club-pointer.md` |
-| EARS | `docs/specs/managed-club-ui-specs.md` — `MCLUI-001`..`MCLUI-006` |
+| EARS | `docs/specs/manager/managed-club-ui-specs.md` — `MCLUI-001`..`MCLUI-006` |
 | Gherkin | `test/ui/features/managed-club-ui.feature` |
 | Code | `src/ui/pages/team-hub.tsx`, `src/ui/components/nav-rail.tsx` |
 | Delivery | [#153](https://github.com/wulke/premier-league-baseball/issues/153) |

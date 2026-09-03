@@ -1,7 +1,7 @@
 # LLD: Notification Stream (Backend)
 
 > Upstream: [HLD: Client Notification & Alert Stream](../high-level-design.md#hld-client-notification--alert-stream) ·
-> EARS: `docs/specs/notification-stream-specs.md` (`NOTIF-001`..`NOTIF-011`) ·
+> EARS: `docs/specs/notifications/notification-stream-specs.md` (`NOTIF-001`..`NOTIF-011`) ·
 > Decision record: [#259](https://github.com/wulke/premier-league-baseball/issues/259), [#260](https://github.com/wulke/premier-league-baseball/issues/260), [#261](https://github.com/wulke/premier-league-baseball/issues/261)
 
 ## Scope
@@ -176,7 +176,7 @@ GET /api/gameWorld/:gwId/notifications/stream   (SSE)
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-client-notification--alert-stream) |
 | **This LLD** | `docs/llds/notification-stream.md` |
 | Sibling LLDs | `docs/llds/notification-stream-ui.md` (consumer) |
-| EARS | `docs/specs/notification-stream-specs.md` — `NOTIF-001`.. |
+| EARS | `docs/specs/notifications/notification-stream-specs.md` — `NOTIF-001`.. |
 | Gherkin | `test/bdd/features/notification-stream.feature` |
 | Code | `src/db/model/notification.ts`, `src/db/model/associations.ts`, `src/db/domain/notifications/{registry,notification,game-result-notification}.ts`, `src/db/domain/game.ts` (trigger call), `src/api/endpoints.ts`, `src/api/router.ts`, `src/api/handlers.ts`, `src/api/models.ts` (`NotificationRow`) |
 | Decision record | [#259](https://github.com/wulke/premier-league-baseball/issues/259), [#260](https://github.com/wulke/premier-league-baseball/issues/260), [#261](https://github.com/wulke/premier-league-baseball/issues/261) |

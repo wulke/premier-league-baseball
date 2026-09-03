@@ -21,7 +21,7 @@ Backend requirements for the team roster read endpoint and its domain read
 `ROST-004` was Deferred, recording a deliberate v1 gap traceable to the transfers map
 ([#140](https://github.com/wulke/premier-league-baseball/issues/140)); the anchored-on-Contract
 design made it a one-line seam. [#237](https://github.com/wulke/premier-league-baseball/issues/237)
-is that map — `docs/specs/contract-lifecycle-specs.md`'s `XFER-022` supersedes this row, implementing
+is that map — `docs/specs/player/contract-lifecycle-specs.md`'s `XFER-022` supersedes this row, implementing
 the concrete filter via the existing `resolveCurrentContract` helper.
 
 `ROST-006` remains Deferred — it records a v1 gap traceable to the engine/generation map
@@ -38,7 +38,7 @@ the concrete filter via the existing `resolveCurrentContract` helper.
 
 - HLD: [`docs/high-level-design.md` — Team Roster & Player Visibility](../high-level-design.md#hld-team-roster--player-visibility)
 - LLD: `docs/llds/roster-read-api.md`
-- Sibling specs: `docs/specs/player-identity-specs.md`, `docs/specs/player-detail-read-api-specs.md`
+- Sibling specs: `docs/specs/player/player-identity-specs.md`, `docs/specs/player/player-detail-read-api-specs.md`
 - Decision record: [#145](https://github.com/wulke/premier-league-baseball/issues/145)
 - Code: `src/api/endpoints.ts` (`GetTeamRoster`), `src/api/router.ts`, `src/api/handlers.ts` (`getTeamRoster`), `src/db/domain/team.ts` (`getRoster`), `src/api/models.ts` (`RosterPlayer`)
-- `ROST-011` consumer: `docs/specs/lineup-view-ui-specs.md` (`LINEUI-005`)
+- `ROST-011` consumer: `docs/specs/manager/lineup-view-ui-specs.md` (`LINEUI-005`)

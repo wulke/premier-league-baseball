@@ -1,14 +1,25 @@
 const enum Endpoints {
+  // @spec MCLB-002,RSS-007
   GetGameWorld = '/api/gameWorld/:gwId',
+  // @spec GWD-001,GWD-002,GWD-003,GWD-004
   DeleteGameWorld = '/api/gameWorld/:gwId',
+  // @spec GWA-001,GWA-002
   GetGameWorlds = '/api/gameWorld',
+  // @spec API-001,API-002,API-003,API-004
   GetLeagueBracket = '/api/league/:leagueId/bracket',
+  // @spec LRD-003,LRD-004,LRD-005
   GetLeagueStandings = '/api/league/:leagueId/standings',
+  // @spec TODAY-001,TODAY-002,TODAY-003,TODAY-004,TODAY-005,TODAY-006,TODAY-007
   GetLeagueToday = '/api/league/:leagueId/today',
+  // @spec LRD-001,LRD-002
   GetLeague = '/api/league/:leagueId',
+  // @spec SCL-015
   LeagueSeasonCutover = '/api/league/:leagueId/season/cutover',
+  // @spec SCL-016
   LeagueSeasonStart = '/api/league/:leagueId/season/start',
+  // @spec SCL-017
   UpdateDivisionSchedulingConfig = '/api/division/:divisionId/config',
+  // @spec TSCH-001,TSCH-002,TSCH-003,TSCH-004
   GetTeamSchedule = '/api/team/:teamId/calendar',
   // @spec ROST-001,ROST-002,ROST-003,ROST-005,ROST-007,ROST-008,ROST-009,ROST-010
   GetTeamRoster = '/api/team/:teamId/roster',
@@ -22,6 +33,7 @@ const enum Endpoints {
   SaveTeamGameLineup = '/api/team/:teamId/lineup/:gameId',
   // @spec PDET-001,PDET-002,PDET-003,PDET-004,PDET-007,PDET-008,PDET-010,PDET-011
   GetPlayerDetail = '/api/player/:playerId',
+  // @spec GWA-003,GWA-004,GWA-005
   NewGameWorld = '/api/gameWorld/new',
   // @spec MCLB-003,MCLB-004,MCLB-005
   SetManagedClub = '/api/gameWorld/:gwId/managed-club',
@@ -37,8 +49,11 @@ const enum Endpoints {
   GetGameWorldNotifications = '/api/gameWorld/:gwId/notifications',
   // @spec NOTIF-004,NOTIF-006,NOTIF-008,NOTIF-009
   StreamGameWorldNotifications = '/api/gameWorld/:gwId/notifications/stream',
+  // @spec SIM-008,SIM-009,SIM-010,SIM-011,SIM-012,SIM-013,SIM-014,SIM-015
   BatchSimulateGames = '/api/gameWorld/:gwId/simulate',
+  // @spec RSS-001,RSS-002,RSS-003,RSS-004,RSS-005,RSS-006,RSS-007
   RapidSimulateSeason = '/api/gameWorld/:gwId/rapid-simulate',
+  // @spec SIM-001,SIM-002,SIM-003,SIM-004,SIM-005,SIM-006,SIM-007
   SimulateGame = '/api/game/:gameId/simulate',
   // ViewGame = '/api/game/:gameId/view
   // PlayGame = '/api/game/:gameId/play

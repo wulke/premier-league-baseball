@@ -2,7 +2,7 @@
 
 > Upstream: [HLD: Team Roster & Player Visibility](../high-level-design.md#hld-team-roster--player-visibility) ·
 > Backend sibling LLD: [`player-detail-read-api.md`](./player-detail-read-api.md) ·
-> EARS: `docs/specs/player-detail-ui-specs.md` (`PDETUI-001`..) ·
+> EARS: `docs/specs/player/player-detail-ui-specs.md` (`PDETUI-001`..) ·
 > Gherkin: `test/ui/features/player-detail-ui.feature` ·
 > Decision record: [#148 Player detail UI](https://github.com/wulke/premier-league-baseball/issues/148) (prototype: branch `prototype/148-player-detail-ui`)
 
@@ -91,7 +91,7 @@ Roster row click (team-roster-ui.md) → navigate(`/${gwId}/player/${playerId}`)
 | Backend sibling LLD | `docs/llds/player-detail-read-api.md` |
 | **This LLD** | `docs/llds/player-detail-ui.md` |
 | Sibling UI LLD | `docs/llds/team-roster-ui.md` (links here) |
-| EARS | `docs/specs/player-detail-ui-specs.md` — `PDETUI-001`.. |
+| EARS | `docs/specs/player/player-detail-ui-specs.md` — `PDETUI-001`.. |
 | Gherkin | `test/ui/features/player-detail-ui.feature` |
 | Code | `src/ui/routes.tsx` (`player/:playerId`), `src/ui/pages/player-detail.tsx` |
 | Decision record | [#148](https://github.com/wulke/premier-league-baseball/issues/148) |

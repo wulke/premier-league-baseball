@@ -1,7 +1,7 @@
 # LLD: GameWorld Deletion UI (`Home` page, `ConfirmDeleteModal`)
 
 > Backend LLD (sibling): [`game-world-deletion.md`](./game-world-deletion.md) ·
-> EARS: `docs/specs/game-world-deletion-ui-specs.md` (`GWDUI-001`…`GWDUI-007`) ·
+> EARS: `docs/specs/game-world/game-world-deletion-ui-specs.md` (`GWDUI-001`…`GWDUI-007`) ·
 > Gherkin: `test/ui/features/game-world-deletion-ui.feature`
 
 ## Scope
@@ -100,6 +100,6 @@ Fetch uses the existing `Endpoints.GetGameWorld` constant (`/api/gameWorld/:gwId
 |---|---|
 | Backend LLD (sibling) | `docs/llds/game-world-deletion.md` |
 | **This LLD** | `docs/llds/game-world-deletion-ui.md` |
-| EARS | `docs/specs/game-world-deletion-ui-specs.md` — `GWDUI-001`…`GWDUI-007` |
+| EARS | `docs/specs/game-world/game-world-deletion-ui-specs.md` — `GWDUI-001`…`GWDUI-007` |
 | Gherkin | `test/ui/features/game-world-deletion-ui.feature` |
 | Code entry points | `src/ui/pages/home.tsx` (MODIFIED), `src/ui/components/confirm-delete-modal.tsx` (NEW) |

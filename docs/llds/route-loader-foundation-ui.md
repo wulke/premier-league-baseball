@@ -1,7 +1,7 @@
 # LLD: Route-Loader Foundation (routes.tsx, GameWorldProvider → `:gwId` loader, test harness)
 
 > Upstream: [HLD: Route-Loader Data Migration](../high-level-design.md#hld-route-loader-data-migration) ·
-> EARS: `docs/specs/route-loader-foundation-ui-specs.md` (`RLDRUI-001`..) ·
+> EARS: `docs/specs/shell/route-loader-foundation-ui-specs.md` (`RLDRUI-001`..) ·
 > Decision record: [#229 (map)](https://github.com/wulke/premier-league-baseball/issues/229) ·
 > [#230 (GameWorldProvider → loader)](https://github.com/wulke/premier-league-baseball/issues/230) ·
 > [#231 (blocking vs. defer)](https://github.com/wulke/premier-league-baseball/issues/231) ·
@@ -246,7 +246,7 @@ semantics, zero new mechanism, and it needs no `:teamId`-route loader of its own
 | **This LLD** | `docs/llds/route-loader-foundation-ui.md` |
 | Sibling LLDs (later batches) | `docs/llds/route-loader-leaf-pages-ui.md` (Batch 1, TBD) · `docs/llds/route-loader-team-calendar-ui.md` (Batch 2, TBD) · `docs/llds/route-loader-team-lineup-ui.md` (Batch 3, TBD) · `docs/llds/route-loader-fanout-ui.md` (Batch 4, TBD) · `docs/llds/route-loader-home-ui.md` (Batch 5, TBD) |
 | Prior LLD this supersedes (Flow C) | [`docs/llds/simulate-game-ui.md`](./simulate-game-ui.md) (Flow C — `GameWorldProvider` context; superseded by the `gwId` loader here) |
-| EARS | `docs/specs/route-loader-foundation-ui-specs.md` — `RLDRUI-001`..`RLDRUI-006` (NEW) |
+| EARS | `docs/specs/shell/route-loader-foundation-ui-specs.md` — `RLDRUI-001`..`RLDRUI-006` (NEW) |
 | Gherkin | `test/ui/features/app-shell-ui.feature`, `simulate-game-ui.feature`, `rapid-simulate-season-ui.feature` (existing scenarios re-bound to the new harness; no new player-facing behavior, so no new scenarios) |
 | Step defs | `test/ui/steps/app-shell-ui.steps.test.tsx`, `player-detail-ui.steps.test.tsx`, `managed-club-ui.steps.test.tsx`, `lineup-view-ui.steps.test.tsx`, `team-roster-ui.steps.test.tsx` (EDIT — u7) · `simulate-game-ui.steps.test.tsx`, `rapid-simulate-season-ui.steps.test.tsx` (EDIT — u8, largest conversion) |
 | Code entry points | `src/ui/routes.tsx` (EDIT) · `src/ui/app.tsx` (EDIT) · `src/ui/context/game-world-context.tsx` (DELETE) · `src/ui/components/{app-shell,nav-rail,batch-simulate-control,rapid-simulate-control}.tsx` (EDIT) · `src/ui/pages/{game-world,team-hub,team-calendar}.tsx` (EDIT — context read/invalidate call sites only) |

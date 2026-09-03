@@ -1,7 +1,7 @@
 # LLD: Rapid Simulate Season UI (`AppHeader`)
 
 > Backend LLD (sibling): [`rapid-simulate-season.md`](./rapid-simulate-season.md) ·
-> EARS: `docs/specs/rapid-simulate-season-ui-specs.md` (`RSSUI-001`…`RSSUI-006`) ·
+> EARS: `docs/specs/game-world/rapid-simulate-season-ui-specs.md` (`RSSUI-001`…`RSSUI-006`) ·
 > Gherkin: `test/ui/features/rapid-simulate-season-ui.feature`
 
 ## Scope
@@ -88,6 +88,6 @@ No new props on `AppHeader` — `devToolsEnabled` is read off the existing `gw` 
 |---|---|
 | Backend LLD (sibling) | `docs/llds/rapid-simulate-season.md` |
 | **This LLD** | `docs/llds/rapid-simulate-season-ui.md` |
-| EARS | `docs/specs/rapid-simulate-season-ui-specs.md` — `RSSUI-001`…`RSSUI-006` |
+| EARS | `docs/specs/game-world/rapid-simulate-season-ui-specs.md` — `RSSUI-001`…`RSSUI-006` |
 | Gherkin | `test/ui/features/rapid-simulate-season-ui.feature` |
 | Code entry points | `src/ui/components/app-header.tsx` (MODIFIED) |

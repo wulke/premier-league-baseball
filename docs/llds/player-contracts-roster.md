@@ -1,7 +1,7 @@
 # LLD: Contract Schema & Roster Generation
 
 > Upstream: [HLD: Players, Attributes, Stats & Contracts](../high-level-design.md#hld-players-attributes-stats--contracts) ·
-> EARS: `docs/specs/player-contracts-specs.md` (`PCON-001`..) ·
+> EARS: `docs/specs/player/player-contracts-specs.md` (`PCON-001`..) ·
 > Decision record: [#63 Design Contract schema + roster size + expiry/free-agency rules](https://github.com/wulke/premier-league-baseball/issues/63), [#64 Design roster-generation algorithm at Team creation](https://github.com/wulke/premier-league-baseball/issues/64)
 
 ## Scope
@@ -141,6 +141,6 @@ generateRoster(teamId, gwId):
 |---|---|
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-players-attributes-stats--contracts) |
 | **This LLD** | `docs/llds/player-contracts-roster.md` |
-| EARS | `docs/specs/player-contracts-specs.md` — `PCON-001`.. |
+| EARS | `docs/specs/player/player-contracts-specs.md` — `PCON-001`.. |
 | Code | `src/db/model/contract.ts` (`Contract`), `src/db/model/associations.ts`, `src/db/domain/contract.ts` (`MIN_ROSTER_SIZE`, `MAX_ROSTER_SIZE`), `src/db/domain/player.ts` (`generateRoster`), `src/db/domain/team.ts` (`TeamFactory.create()` hook) |
 | Decision record | [#63](https://github.com/wulke/premier-league-baseball/issues/63), [#64](https://github.com/wulke/premier-league-baseball/issues/64) |

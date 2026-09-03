@@ -1,6 +1,6 @@
 # LLD: Wholesale Active Lineup Save
 
-> Upstream: #226 decision record · EARS: `docs/specs/lineup-edit-specs.md` (`LEDIT-001`..`LEDIT-004`). This PUT route is the sole active lineup write API; the legacy constrained PATCH route was retired by #272.
+> Upstream: #226 decision record · EARS: `docs/specs/manager/lineup-edit-specs.md` (`LEDIT-001`..`LEDIT-004`). This PUT route is the sole active lineup write API; the legacy constrained PATCH route was retired by #272.
 
 ## Interface / Data Model
 
@@ -71,7 +71,7 @@ for a player no longer on the team.
 
 | Layer | Artifact |
 |---|---|
-| EARS | `docs/specs/lineup-edit-specs.md` |
+| EARS | `docs/specs/manager/lineup-edit-specs.md` |
 | Gherkin | `test/bdd/features/lineup-edit.feature` |
 | Steps | `test/bdd/steps/lineup-edit.steps.test.ts` |
 | Code | `src/api/endpoints.ts`, `src/api/router.ts`, `src/api/handlers.ts`, `src/db/domain/team.ts` |

@@ -1,6 +1,6 @@
 # LLD: Season Calendar Lifecycle
 
-> EARS: `docs/specs/season-calendar-lifecycle-specs.md` (`SCL-001`…`SCL-017`) ·
+> EARS: `docs/specs/league/season-calendar-lifecycle-specs.md` (`SCL-001`…`SCL-017`) ·
 > Gherkin: `test/bdd/features/season-calendar-lifecycle.feature` (all scenarios bound in #124)
 > Origin: issue #114, settled via `/grill-me`
 
@@ -240,6 +240,6 @@ remain the same after the target year is resolved.
 | Layer | Artifact |
 |---|---|
 | **This LLD** | `docs/llds/season-calendar-lifecycle.md` |
-| EARS | `docs/specs/season-calendar-lifecycle-specs.md` — `SCL-001`…`SCL-017` |
+| EARS | `docs/specs/league/season-calendar-lifecycle-specs.md` — `SCL-001`…`SCL-017` |
 | Gherkin | `test/bdd/features/season-calendar-lifecycle.feature` (new) |
 | Code | `src/db/model/league.ts` and `src/db/migrations/league-year-status.ts` (League lifecycle schema/backfill), `src/db/domain/league.ts` (`cutover`/`start` and derived `config.inProgress`), `src/db/domain/division.ts` (CUTOVER-gated scheduling config update), `src/db/domain/team.ts` (per-League `getSchedule` years), `src/db/domain/game.ts` (all-League batch reachability), `src/db/domain/game-world.ts`, `src/index.ts`, `src/api/models.ts` (`TeamSeasonGame`/`TeamSeasonCalendar`), `src/api/endpoints.ts`, `src/api/handlers.ts`, `src/api/router.ts`, and `src/ui/components/batch-simulate-control.tsx` (unchanged `canBatch` guard after the AppHeader relocation) |

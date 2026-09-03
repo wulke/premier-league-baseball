@@ -65,7 +65,7 @@ Format: `ID | Requirement | Status`
 - **Requirement**: `[WHEN] [IF] THE <SYSTEM> SHALL <RESULT>`.
 - **Status**: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.
 #### EARS Template
-Path: `docs/specs/[feature-name]-specs.md`
+Path: `docs/specs/[category]/[feature-name]-specs.md` (categories: `game-world`, `league`, `player`, `manager`, `game-simulation`, `notifications`, `shell`)
 Format: `ID | Description | Status`
 ```markdown
 # Specs: [Feature Name]
@@ -89,7 +89,7 @@ This project pairs formal EARS requirements with executable Gherkin (jest-cucumb
 - **Cardinality**: one EARS row → many Gherkin scenarios. The happy path and each guard/error branch map to scenarios; each distinct guard typically gets its own ID.
 - **`@spec` as a Gherkin tag**: tag each `Scenario` with `@spec:[ID]` (colon, no space — Gherkin tags cannot contain whitespace) so the binding is first-class Gherkin metadata (jest-cucumber can filter on tags). A scenario covering multiple requirements takes multiple tags, e.g. `@spec:SIM-012 @spec:SIM-013`. This is the same token style used in code comments — one convention across the whole arrow.
 - **Locations** (kept separate, linked by ID only — never collocated):
-  - EARS tables → `docs/specs/[feature]-specs.md`
+  - EARS tables → `docs/specs/[category]/[feature]-specs.md`
   - Gherkin features → `test/bdd/features/[feature].feature` (backend) and `test/ui/features/[feature].feature` (UI)
 - **One canonical copy per feature**: a `.feature` file is inherently implementation-agnostic; the binding to code lives in its step definitions. Do not maintain a parallel "agnostic" copy of a `.feature` — that creates a silent drift bug.
 
@@ -100,7 +100,7 @@ This project pairs formal EARS requirements with executable Gherkin (jest-cucumb
 
 ### Example (feature prefix `SIM-`)
 
-`docs/specs/simulate-game-specs.md` (EARS):
+`docs/specs/game-simulation/simulate-game-specs.md` (EARS):
 ```
 | SIM-001 | WHEN the player simulates a SCHEDULED game by id IF scheduledDate ≤ GameWorld currentDate THE system SHALL set status COMPLETED and populate both results | [ ] |
 ```

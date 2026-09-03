@@ -2,7 +2,7 @@
 
 > Upstream: [HLD: Client Notification & Alert Stream](../high-level-design.md#hld-client-notification--alert-stream) ·
 > Backend sibling LLD: [`notification-stream.md`](./notification-stream.md) ·
-> EARS: `docs/specs/notification-stream-ui-specs.md` (`NOTIFUI-001`..`NOTIFUI-007`) ·
+> EARS: `docs/specs/notifications/notification-stream-ui-specs.md` (`NOTIFUI-001`..`NOTIFUI-007`) ·
 > Decision record: [#261](https://github.com/wulke/premier-league-baseball/issues/261)
 
 ## Scope
@@ -91,7 +91,7 @@ GameWorld page mounts (existing `/:gwId` route already renders here)
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-client-notification--alert-stream) |
 | Backend sibling LLD | `docs/llds/notification-stream.md` |
 | **This LLD** | `docs/llds/notification-stream-ui.md` |
-| EARS | `docs/specs/notification-stream-ui-specs.md` — `NOTIFUI-001`.. |
+| EARS | `docs/specs/notifications/notification-stream-ui-specs.md` — `NOTIFUI-001`.. |
 | Gherkin | `test/ui/features/notification-stream-ui.feature` |
 | Code | `src/ui/pages/notification-stream.tsx`, `src/ui/pages/game-world.tsx` (mount point) |
 | Decision record | [#261](https://github.com/wulke/premier-league-baseball/issues/261) |

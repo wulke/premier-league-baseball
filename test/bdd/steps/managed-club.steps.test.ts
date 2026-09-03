@@ -1,3 +1,4 @@
+// @spec MCLB-001..MCLB-005 (managed-club acceptance)
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import db from '../../../src/db/client';

@@ -2,7 +2,7 @@
 
 > Upstream: [#237 Design: Transfers & contract-lifecycle LLD + EARS](https://github.com/wulke/premier-league-baseball/issues/237) resolved grill-me decision record ·
 > Backend sibling LLD: [`contract-lifecycle.md`](./contract-lifecycle.md) ·
-> EARS: `docs/specs/transfers-ui-specs.md` (`XFERUI-001`..) ·
+> EARS: `docs/specs/manager/transfers-ui-specs.md` (`XFERUI-001`..) ·
 > Decision record: [#140 grill-me: Transfers / contract-lifecycle / free-agency](https://github.com/wulke/premier-league-baseball/issues/140), [#237](https://github.com/wulke/premier-league-baseball/issues/237)
 > Amends: `docs/llds/team-roster-ui.md` (adds release/renew row actions), `src/ui/components/nav-rail.tsx` (un-dims the Transfers fog item)
 
@@ -132,7 +132,7 @@ Team Roster view (own managed club) — Release/Renew click
 | **This LLD** | `docs/llds/transfers-ui.md` |
 | Backend sibling LLD | `docs/llds/contract-lifecycle.md` |
 | Amends | `docs/llds/team-roster-ui.md` (release/renew row actions), `docs/llds/app-shell-ui.md`/`docs/llds/managed-club-ui.md` (nav-rail fog trio) |
-| EARS | `docs/specs/transfers-ui-specs.md` — `XFERUI-001`.. |
+| EARS | `docs/specs/manager/transfers-ui-specs.md` — `XFERUI-001`.. |
 | Gherkin | `test/ui/features/transfers-ui.feature` |
 | Code | `src/ui/pages/transfers.tsx` (new), `src/ui/pages/team-roster.tsx` (release/renew actions), `src/ui/components/nav-rail.tsx` (Transfers link), `src/ui/routes.tsx`, `src/api/endpoints.ts` (`GetFreeAgents`, `SignPlayer`, `ReleasePlayer`, `RenewPlayer`) |
 | Decision record | [#140](https://github.com/wulke/premier-league-baseball/issues/140), [#237](https://github.com/wulke/premier-league-baseball/issues/237) |

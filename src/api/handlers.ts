@@ -20,18 +20,17 @@ const getGameWorld = async (id: number) => {
   return { ...gameWorld, devToolsEnabled: process.env.ENABLE_DEV_TOOLS === 'true' };
 };
 
+// @spec GWA-001,GWA-002
 const getGameWorlds = async () => {
-  const gameWorlds = await GameWorldFactory().find();
-  console.debug(gameWorlds);
-  return gameWorlds;
+  return await GameWorldFactory().find();
 };
 
+// @spec LRD-001,LRD-002
 const getLeague = async (id: number) => {
-  const league = await LeagueFactory(id).get();
-  console.debug(league);
-  return league;
+  return await LeagueFactory(id).get();
 };
 
+// @spec LRD-003,LRD-004,LRD-005
 const getLeagueStandings = async (leagueId: number) => {
   return await LeagueFactory(leagueId).getStandings();
 };
@@ -46,10 +45,9 @@ const getLeagueBracket = async (leagueId: number) => {
   return await LeagueFactory(leagueId).getBracket();
 };
 
+// @spec GWA-003,GWA-004,GWA-005
 const newGameWorld = async (config: NewGameWorld) => {
-  const newGameWorld = await GameWorldFactory().create(config);
-  console.debug(newGameWorld);
-  return newGameWorld;
+  return await GameWorldFactory().create(config);
 };
 
 // @spec MCLB-003,MCLB-004,MCLB-005
@@ -97,6 +95,7 @@ const rapidSimulateSeason = async (gwId: number) => {
   return await GameFactory().rapidSimulateSeason(gwId);
 };
 
+// @spec TSCH-001,TSCH-002,TSCH-003,TSCH-004
 const getTeamSchedule = async (teamId: number, gwId: number, leagueId?: number) => {
   return await TeamFactory(teamId).getSchedule(gwId, leagueId);
 };

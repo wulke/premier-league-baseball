@@ -80,6 +80,6 @@ No domain/scheduler code changes — every step after `create` is an already-imp
 
 - HLD: [`docs/high-level-design.md`](../high-level-design.md) — competition-config + full-season simulation
 - Upstream decisions: [Map #78](https://github.com/wulke/premier-league-baseball/issues/78) → [#87](https://github.com/wulke/premier-league-baseball/issues/87); config seam from [#85](https://github.com/wulke/premier-league-baseball/issues/85); run-path from MSS-001..009 ([`multi-stage-season-specs.md`](./multi-stage-season-specs.md)); config shape from CFG-001..017 ([`competition-format-specs.md`](./competition-format-specs.md))
-- EARS: `docs/specs/game-world-templates-specs.md` (GWT-001..004, this slice)
+- EARS: `docs/specs/game-world/game-world-templates-specs.md` (GWT-001..004, this slice)
 - Gherkin: `test/ui/features/game-world-templates-ui.feature` (UI pickability); backend assertion is a jest unit test (no new backend Gherkin — exercises existing endpoints)
 - Code: `src/api/models.ts` (enum + pool + `DefaultWorlds`), `src/ui/pages/home.tsx` (template selector + dynamic summary), `test/db/domain/game-world-templates.test.ts`, `test/ui/steps/game-world-templates-ui.steps.test.tsx`

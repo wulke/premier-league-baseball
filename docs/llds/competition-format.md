@@ -1,7 +1,7 @@
 # LLD: Competition Format Config (`CompetitionFormat`)
 
 > Upstream: [HLD: Full Season Simulation](../high-level-design.md#hld-full-season-simulation-league--league-cup) ·
-> EARS: `docs/specs/competition-format-specs.md` (`CFG-001`..) ·
+> EARS: `docs/specs/league/competition-format-specs.md` (`CFG-001`..) ·
 > Decision record: [#36 Define a reusable competition/league config pattern](https://github.com/wulke/premier-league-baseball/issues/36)
 
 ## Scope
@@ -96,7 +96,7 @@ champion-producing division in their final (and only) stage.
 |---|---|
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-full-season-simulation-league--league-cup) |
 | **This LLD** | `docs/llds/competition-format.md` |
-| EARS | `docs/specs/competition-format-specs.md` — `CFG-001`.. |
+| EARS | `docs/specs/league/competition-format-specs.md` — `CFG-001`.. |
 | Code | `src/api/models.ts` (`CompetitionFormat`, `STANDARD_LEAGUE_FORMAT`, `STANDARD_CUP_FORMAT`, `validateLeagueConfig`, `LeagueConfig`, `DivisionConfig`, `LeagueTemplates`) |
 | Decision record | [#36](https://github.com/wulke/premier-league-baseball/issues/36) |
 

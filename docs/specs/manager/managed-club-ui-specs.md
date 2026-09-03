@@ -17,7 +17,7 @@ Frontend requirements for claiming/resigning the managed club and wiring the nav
 `MCLUI-005`'s original text additionally said "Transfers SHALL remain dimmed in both states" — true
 through [#153](https://github.com/wulke/premier-league-baseball/issues/153), when no Transfers surface
 existed. [#237](https://github.com/wulke/premier-league-baseball/issues/237) supersedes that clause:
-`docs/specs/transfers-ui-specs.md`'s `XFERUI-001` now lights "Transfers" as a link once a club is
+`docs/specs/manager/transfers-ui-specs.md`'s `XFERUI-001` now lights "Transfers" as a link once a club is
 claimed, same as "My Club"/"Roster" (`MCLUI-004`). `MCLUI-005` above is trimmed to only the
 unclaimed-state guarantee, which is still true unchanged.
 
@@ -27,7 +27,7 @@ unclaimed-state guarantee, which is still true unchanged.
 
 - Map: [#137 — "My Club" concept (managed-club ownership layer)](https://github.com/wulke/premier-league-baseball/issues/137)
 - Delivery: [#153](https://github.com/wulke/premier-league-baseball/issues/153)
-- Backend sibling specs: `docs/specs/managed-club-specs.md` (`MCLB-001`..`MCLB-005`)
+- Backend sibling specs: `docs/specs/manager/managed-club-specs.md` (`MCLB-001`..`MCLB-005`)
 - LLD: `docs/llds/managed-club-ui.md`
 - Tests: `test/ui/features/managed-club-ui.feature`, `test/ui/steps/managed-club-ui.steps.test.tsx`
 - Code: `src/ui/pages/team-hub.tsx`, `src/ui/components/nav-rail.tsx`

@@ -1,7 +1,7 @@
 # LLD: Multi-stage season UI surfacing
 
 > Upstream: [`multi-stage-season.md`](./multi-stage-season.md) (run path) ·
-> EARS: `docs/specs/multi-stage-season-ui-specs.md` (`MSUI-001`..`MSUI-003`) ·
+> EARS: `docs/specs/league/multi-stage-season-ui-specs.md` (`MSUI-001`..`MSUI-003`) ·
 > Decision record: [Map #78](https://github.com/wulke/premier-league-baseball/issues/78) → [#87](https://github.com/wulke/premier-league-baseball/issues/87) → [#162](https://github.com/wulke/premier-league-baseball/issues/162)
 
 ## Scope
@@ -58,7 +58,7 @@ legacy/partial response omits the stage metadata. Champion lookup first selects 
 | Layer | Artifact |
 |---|---|
 | LLD | `docs/llds/multi-stage-season-ui.md` |
-| EARS | `docs/specs/multi-stage-season-ui-specs.md` |
+| EARS | `docs/specs/league/multi-stage-season-ui-specs.md` |
 | Gherkin | `test/ui/features/multi-stage-season-ui.feature` |
 | Steps | `test/ui/steps/multi-stage-season-ui.steps.test.tsx` |
 | Code | `src/ui/pages/league.tsx`, `src/ui/champion.ts` |

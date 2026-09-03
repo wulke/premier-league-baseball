@@ -1,6 +1,6 @@
 # LLD: GameWorld Season Transition (`GameWorldFactory.newSeason`)
 
-> EARS: `docs/specs/game-world-season-transition-specs.md` (`GWS-001`) ·
+> EARS: `docs/specs/game-world/game-world-season-transition-specs.md` (`GWS-001`) ·
 > Decision record: [#37 Fix: GameWorldFactory.newSeason() swallows errors instead of rethrowing](https://github.com/wulke/premier-league-baseball/issues/37)
 
 ## Scope
@@ -56,7 +56,7 @@ is that the returned promise rejects with that error. The caller must not receiv
 | Layer | Artifact |
 |---|---|
 | **This LLD** | `docs/llds/game-world-season-transition.md` |
-| EARS | `docs/specs/game-world-season-transition-specs.md` — `GWS-001` |
+| EARS | `docs/specs/game-world/game-world-season-transition-specs.md` — `GWS-001` |
 | Tests | `test/db/domain/game-world.test.ts` |
 | Code | `src/db/domain/game-world.ts` (`GameWorldFactory.newSeason`) |
 | Decision record | [#37](https://github.com/wulke/premier-league-baseball/issues/37) |

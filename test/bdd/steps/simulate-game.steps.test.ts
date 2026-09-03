@@ -1,3 +1,4 @@
+// @spec SIM-001..SIM-015 (simulate-game + batch-simulate acceptance)
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import { simulateGame, simulateBatchGames as simulateBatchGamesHandler } from '../../../src/api/handlers';

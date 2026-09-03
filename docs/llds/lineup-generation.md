@@ -1,6 +1,6 @@
 # LLD: Lineup Schema & Active-Lineup Generation
 
-> Upstream: [HLD: Players, Attributes, Stats & Contracts](../high-level-design.md) · EARS: `docs/specs/lineup-specs.md` (`LIN-001`..`LIN-006`) · Decision record: #138 / issue #198.
+> Upstream: [HLD: Players, Attributes, Stats & Contracts](../high-level-design.md) · EARS: `docs/specs/manager/lineup-specs.md` (`LIN-001`..`LIN-006`) · Decision record: #138 / issue #198.
 
 ## Interface / Data Model
 
@@ -43,6 +43,6 @@ generateActive(team, players, matchRules):
 
 | Layer | Artifact |
 |---|---|
-| EARS | `docs/specs/lineup-specs.md` |
+| EARS | `docs/specs/manager/lineup-specs.md` |
 | Tests | `test/db/domain/lineup.test.ts` |
 | Code | `src/db/model/lineup*.ts`, `src/db/domain/lineup.ts`, roster/team creation hooks |

@@ -1,6 +1,6 @@
 # LLD: Lineup Read API
 
-> Upstream: [`lineup-generation.md`](./lineup-generation.md) · EARS: `docs/specs/lineup-read-api-specs.md` (`LREAD-001`..`LREAD-004`) · Decision record: #138 / issue #199.
+> Upstream: [`lineup-generation.md`](./lineup-generation.md) · EARS: `docs/specs/manager/lineup-read-api-specs.md` (`LREAD-001`..`LREAD-004`) · Decision record: #138 / issue #199.
 
 ## Interface / Data Model
 
@@ -55,6 +55,6 @@ GET /api/team/:teamId/lineup?gameId=…&gwId=…
 
 | Layer | Artifact |
 |---|---|
-| EARS | `docs/specs/lineup-read-api-specs.md` |
+| EARS | `docs/specs/manager/lineup-read-api-specs.md` |
 | Tests | `test/bdd/features/lineup-read-api.feature`, `test/bdd/steps/lineup-read-api.steps.test.ts` |
 | Code | `src/api/models.ts`, `src/db/domain/team.ts`, `src/api/endpoints.ts`, `src/api/handlers.ts`, `src/api/router.ts` |

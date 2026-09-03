@@ -10,6 +10,7 @@ const sendError = (res: any, error: any) => {
 };
 
 router.get(Endpoints.GetGameWorld, async (req: any, res: any) => {
+  // @spec MCLB-002,RSS-007
   await handlers.getGameWorld(Number(req.params.gwId))
     .then((response) => {
       res.send(response);
@@ -18,6 +19,7 @@ router.get(Endpoints.GetGameWorld, async (req: any, res: any) => {
 });
 
 router.delete(Endpoints.DeleteGameWorld, async (req: any, res: any) => {
+  // @spec GWD-001,GWD-002,GWD-003,GWD-004
   await handlers.deleteGameWorld(Number(req.params.gwId))
     .then((response) => {
       res.send(response);
@@ -26,6 +28,7 @@ router.delete(Endpoints.DeleteGameWorld, async (req: any, res: any) => {
 });
 
 router.get(Endpoints.GetGameWorlds, async (req: any, res: any) => {
+  // @spec GWA-001,GWA-002
   await handlers.getGameWorlds()
     .then((response) => {
       res.send(response);
@@ -34,6 +37,7 @@ router.get(Endpoints.GetGameWorlds, async (req: any, res: any) => {
 });
 
 router.get(Endpoints.GetLeagueStandings, async (req: any, res: any) => {
+  // @spec LRD-003,LRD-004,LRD-005
   await handlers.getLeagueStandings(Number(req.params.leagueId))
     .then((response) => res.send(response))
     .catch((error) => sendError(res, error));
@@ -47,12 +51,14 @@ router.get(Endpoints.GetLeagueToday, async (req: any, res: any) => {
 });
 
 router.get(Endpoints.GetLeagueBracket, async (req: any, res: any) => {
+  // @spec API-001,API-002,API-003,API-004
   await handlers.getLeagueBracket(Number(req.params.leagueId))
     .then((response) => res.send(response))
     .catch((error) => sendError(res, error));
 });
 
 router.get(Endpoints.GetLeague, async (req: any, res: any) => {
+  // @spec LRD-001,LRD-002
   await handlers.getLeague(Number(req.params.leagueId))
     .then((response) => {
       res.send(response);
@@ -61,7 +67,7 @@ router.get(Endpoints.GetLeague, async (req: any, res: any) => {
 });
 
 router.post(Endpoints.NewGameWorld, async (req: any, res: any) => {
-  console.debug(req.body);
+  // @spec GWA-003,GWA-004,GWA-005
   await handlers.newGameWorld({
     name: req.body.name,
     leagues: req.body.leagues,
@@ -129,6 +135,7 @@ router.patch(Endpoints.UpdateDivisionSchedulingConfig, async (req: any, res: any
 });
 
 router.get(Endpoints.GetTeamSchedule, async (req: any, res: any) => {
+  // @spec TSCH-001,TSCH-002,TSCH-003,TSCH-004
   const teamId = Number(req.params.teamId);
   const gwId = Number(req.query.gwId);
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : undefined;
@@ -210,19 +217,21 @@ router.get(Endpoints.StreamGameWorldNotifications, (req: any, res: any) => {
 });
 
 router.post(Endpoints.BatchSimulateGames, async (req: any, res: any) => {
+  // @spec SIM-008,SIM-009,SIM-010,SIM-011,SIM-012,SIM-013,SIM-014,SIM-015
   await handlers.simulateBatchGames(Number(req.params.gwId), req.body?.endDate)
     .then((response) => res.send(response))
     .catch((error) => sendError(res, error));
 });
 
 router.post(Endpoints.RapidSimulateSeason, async (req: any, res: any) => {
-  // @spec RSS-007 route wiring for the dev-only rapid-simulate endpoint.
+  // @spec RSS-001,RSS-002,RSS-003,RSS-004,RSS-005,RSS-006,RSS-007 — route wiring for the dev-only rapid-simulate endpoint.
   await handlers.rapidSimulateSeason(Number(req.params.gwId))
     .then((response) => res.send(response))
     .catch((error) => sendError(res, error));
 });
 
 router.post(Endpoints.SimulateGame, async (req: any, res: any) => {
+  // @spec SIM-001,SIM-002,SIM-003,SIM-004,SIM-005,SIM-006,SIM-007
   await handlers.simulateGame(Number(req.params.gameId))
     .then((response) => {
       res.send(response);

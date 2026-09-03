@@ -2,7 +2,7 @@
 
 > Upstream: [HLD: Full Season Simulation](../high-level-design.md#hld-full-season-simulation-league--league-cup) ·
 > Config LLD: [`competition-format.md`](./competition-format.md) (#79 Stage model, #80 `TOP_N_PER_DIVISION` seeding, #81 champion generalization) ·
-> EARS: `docs/specs/multi-stage-season-specs.md` (`MSS-001`..) ·
+> EARS: `docs/specs/league/multi-stage-season-specs.md` (`MSS-001`..) ·
 > Decision record: [Map #78](https://github.com/wulke/premier-league-baseball/issues/78) → ticket [#87](https://github.com/wulke/premier-league-baseball/issues/87)
 
 ## Scope
@@ -180,7 +180,7 @@ advanceStageIfReady(leagueId, year):                     # idempotent
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-full-season-simulation-league--league-cup) |
 | **This LLD** | `docs/llds/multi-stage-season.md` |
 | Config LLD | [`competition-format.md`](./competition-format.md) (#79–#95 additive surface) |
-| EARS | `docs/specs/multi-stage-season-specs.md` — `MSS-001`.. (next step) |
+| EARS | `docs/specs/league/multi-stage-season-specs.md` — `MSS-001`.. (next step) |
 | Gherkin | `test/bdd/features/multi-stage-season.feature` + step defs (Tests step) |
 | Code | `src/db/domain/division.ts` (`getSeedTeamIdsForDivision`, `newSeason`), `src/db/domain/league.ts` (`create`, `start`), `src/db/domain/stage-advancement.ts` (new), `src/db/domain/season-result.ts` (`recordSeasonChampionIfMissing` gate), `src/db/domain/game.ts` (completion hook) |
 | Decision record | [Map #78](https://github.com/wulke/premier-league-baseball/issues/78) → [#87](https://github.com/wulke/premier-league-baseball/issues/87) |

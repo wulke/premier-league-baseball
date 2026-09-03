@@ -1,7 +1,7 @@
 # LLD: Player Detail Read API & Contract DATE Migration
 
 > Upstream: [HLD: Team Roster & Player Visibility](../high-level-design.md#hld-team-roster--player-visibility) ·
-> EARS: `docs/specs/player-detail-read-api-specs.md` (`PDET-001`..) ·
+> EARS: `docs/specs/player/player-detail-read-api-specs.md` (`PDET-001`..) ·
 > Decision record: [#146 Player detail read API](https://github.com/wulke/premier-league-baseball/issues/146)
 
 ## Scope
@@ -111,6 +111,6 @@ GET /api/player/:playerId?gwId=…
 | **This LLD** | `docs/llds/player-detail-read-api.md` |
 | Amends | `docs/llds/player-contracts-roster.md` (Contract INT→DATE) |
 | Sibling LLDs | `docs/llds/player-identity.md` (writes the new DATE columns), `docs/llds/roster-read-api.md` (joins on them), `docs/llds/player-detail-ui.md` (consumer) |
-| EARS | `docs/specs/player-detail-read-api-specs.md` — `PDET-001`.. |
+| EARS | `docs/specs/player/player-detail-read-api-specs.md` — `PDET-001`.. |
 | Code | `src/db/model/contract.ts` (DATE), `src/api/endpoints.ts` (`GetPlayerDetail`), `src/api/router.ts`, `src/api/handlers.ts` (`getPlayerDetail`), `src/db/domain/player.ts` (anchored `PlayerFactory` + `getDetail` + `resolveCurrentContract`), `src/api/models.ts` (`PlayerDetail`) |
 | Decision record | [#146](https://github.com/wulke/premier-league-baseball/issues/146) |

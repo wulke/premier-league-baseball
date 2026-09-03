@@ -1,3 +1,4 @@
+// @spec GWD-001..GWD-004 (game-world-deletion acceptance)
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import db from '../../../src/db/client';

@@ -1,6 +1,6 @@
 # LLD: Team Lineup View UI
 
-> Upstream: [HLD: Lineup View — Defensive | Batting Tabs](../high-level-design.md#hld-lineup-view--defensive--batting-tabs) (extends [HLD: Players, Attributes, Stats & Contracts](../high-level-design.md#hld-players-attributes-stats--contracts)) · Backend sibling: [`lineup-read-api.md`](./lineup-read-api.md), [`roster-read-api.md`](./roster-read-api.md) (amended — see below) · EARS: `docs/specs/lineup-view-ui-specs.md` (`LINEUI-001`..) · Decision record: #138 / #200 (original) · #225 (this redesign).
+> Upstream: [HLD: Lineup View — Defensive | Batting Tabs](../high-level-design.md#hld-lineup-view--defensive--batting-tabs) (extends [HLD: Players, Attributes, Stats & Contracts](../high-level-design.md#hld-players-attributes-stats--contracts)) · Backend sibling: [`lineup-read-api.md`](./lineup-read-api.md), [`roster-read-api.md`](./roster-read-api.md) (amended — see below) · EARS: `docs/specs/manager/lineup-view-ui-specs.md` (`LINEUI-001`..) · Decision record: #138 / #200 (original) · #225 (this redesign).
 
 ## Scope
 
@@ -138,7 +138,7 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-lineup-view--defensive--batting-tabs) |
 | **This LLD** | `docs/llds/lineup-view-ui.md` |
 | Sibling LLDs | `docs/llds/lineup-read-api.md` (lineup endpoint, unchanged), `docs/llds/roster-read-api.md` (`positions` amendment, ROST-011) |
-| EARS | `docs/specs/lineup-view-ui-specs.md` — `LINEUI-001`..; `docs/specs/lineup-edit-specs.md` — `LEDIT-001`.. |
+| EARS | `docs/specs/manager/lineup-view-ui-specs.md` — `LINEUI-001`..; `docs/specs/manager/lineup-edit-specs.md` — `LEDIT-001`.. |
 | Gherkin | `test/ui/features/lineup-view-ui.feature` |
 | Code | `src/ui/routes.tsx`, `src/ui/pages/team-hub.tsx`, `src/ui/pages/team-lineup.tsx`, `src/db/domain/team.ts` (`getRoster`), `src/api/models.ts` (`RosterPlayer`) |
 | Decision record | #138, #200 (original) · #225 (this redesign) |

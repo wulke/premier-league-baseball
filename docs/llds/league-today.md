@@ -1,7 +1,7 @@
 # LLD: League "Today" Snapshot API (`GetLeagueToday`)
 
 > Upstream: [HLD: Full Season Simulation](../high-level-design.md#hld-full-season-simulation-league--league-cup) ·
-> EARS: `docs/specs/league-today-specs.md` (`TODAY-001`..) ·
+> EARS: `docs/specs/league/league-today-specs.md` (`TODAY-001`..) ·
 > UI sibling: [`league-today-ui.md`](./league-today-ui.md) ·
 > Decision record: [#101](https://github.com/wulke/premier-league-baseball/issues/101), resolved via `/grill-me`
 
@@ -119,7 +119,7 @@ read path is expensive enough to justify one.
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-full-season-simulation-league--league-cup) |
 | **This LLD** | `docs/llds/league-today.md` |
 | UI sibling LLD | `docs/llds/league-today-ui.md` |
-| EARS | `docs/specs/league-today-specs.md` — `TODAY-001`.. |
+| EARS | `docs/specs/league/league-today-specs.md` — `TODAY-001`.. |
 | Gherkin | `test/bdd/features/league-today.feature` |
 | Code | `src/api/endpoints.ts` (`GetLeagueToday`), `src/api/handlers.ts` (`getLeagueToday`), `src/db/domain/league.ts` (`LeagueFactory.getToday`) |
 | Decision record | [#101](https://github.com/wulke/premier-league-baseball/issues/101) |

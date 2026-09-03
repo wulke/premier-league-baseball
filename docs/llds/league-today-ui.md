@@ -1,7 +1,7 @@
 # LLD: GameWorld Home "Today" Section (`game-world.tsx`)
 
 > Backend LLD (sibling): [`league-today.md`](./league-today.md) ·
-> EARS: `docs/specs/league-today-ui-specs.md` (`TODAYUI-001`..`TODAYUI-006`) ·
+> EARS: `docs/specs/league/league-today-ui-specs.md` (`TODAYUI-001`..`TODAYUI-006`) ·
 > Gherkin: `test/ui/features/league-today-ui.feature` ·
 > Decision record: [#101](https://github.com/wulke/premier-league-baseball/issues/101), resolved via `/grill-me`
 
@@ -85,7 +85,7 @@ empty message).
 |---|---|
 | Backend sibling LLD | `docs/llds/league-today.md` |
 | **This LLD** | `docs/llds/league-today-ui.md` |
-| EARS | `docs/specs/league-today-ui-specs.md` — `TODAYUI-001`..`TODAYUI-005` |
+| EARS | `docs/specs/league/league-today-ui-specs.md` — `TODAYUI-001`..`TODAYUI-005` |
 | Gherkin | `test/ui/features/league-today-ui.feature` |
 | Code | `src/ui/pages/game-world.tsx` |
 | Decision record | [#101](https://github.com/wulke/premier-league-baseball/issues/101) |

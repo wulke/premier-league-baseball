@@ -33,6 +33,6 @@ new layout and are not superseded, only realized differently — see
 
 - HLD: [`docs/high-level-design.md` — Lineup View — Defensive | Batting Tabs](../high-level-design.md#hld-lineup-view--defensive--batting-tabs)
 - LLD: `docs/llds/lineup-view-ui.md`
-- Backend sibling specs: `docs/specs/lineup-read-api-specs.md`, `docs/specs/roster-read-api-specs.md` (`ROST-011`)
+- Backend sibling specs: `docs/specs/manager/lineup-read-api-specs.md`, `docs/specs/manager/roster-read-api-specs.md` (`ROST-011`)
 - Decision record: #138, #200 (original) · [#225](https://github.com/wulke/premier-league-baseball/issues/225) (this redesign)
 - Code: `src/ui/routes.tsx`, `src/ui/pages/team-hub.tsx`, `src/ui/pages/team-lineup.tsx`

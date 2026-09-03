@@ -1,7 +1,7 @@
 # LLD: Bracket State API (`GetLeagueBracket`)
 
 > Upstream: [HLD: Full Season Simulation](../high-level-design.md#hld-full-season-simulation-league--league-cup) ·
-> EARS: `docs/specs/bracket-api-specs.md` (`API-001`..) ·
+> EARS: `docs/specs/league/bracket-api-specs.md` (`API-001`..) ·
 > Decision record: [#41 Design API endpoints for bracket state exposure](https://github.com/wulke/premier-league-baseball/issues/41) ·
 > Depends on: `docs/llds/knockout-bracket.md` (data shape), `docs/llds/full-season-ui.md` (`BracketView` render-shape contract, #39)
 
@@ -162,6 +162,6 @@ to justify coupling an invalidation strategy to the round-advancement hook (`kno
 |---|---|
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-full-season-simulation-league--league-cup) |
 | **This LLD** | `docs/llds/bracket-api.md` |
-| EARS | `docs/specs/bracket-api-specs.md` — `API-001`.. |
+| EARS | `docs/specs/league/bracket-api-specs.md` — `API-001`.. |
 | Code | `src/api/endpoints.ts` (`GetLeagueBracket`), `src/api/handlers.ts` (`getLeagueBracket`), `src/db/domain/league.ts` (`LeagueFactory.getBracket`), `src/db/domain/division.ts` (`DivisionFactory.getBracket`) |
 | Decision record | [#41](https://github.com/wulke/premier-league-baseball/issues/41) |

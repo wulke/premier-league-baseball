@@ -1,7 +1,7 @@
 # LLD: Player Identity Model & Generation
 
 > Upstream: [HLD: Team Roster & Player Visibility](../high-level-design.md#hld-team-roster--player-visibility) ·
-> EARS: `docs/specs/player-identity-specs.md` (`PID-001`..) ·
+> EARS: `docs/specs/player/player-identity-specs.md` (`PID-001`..) ·
 > Decision record: [#141 Player identity model & field set](https://github.com/wulke/premier-league-baseball/issues/141), [#142 Name/country generation approaches](https://github.com/wulke/premier-league-baseball/issues/142), [#143 Identity generation](https://github.com/wulke/premier-league-baseball/issues/143)
 
 ## Scope
@@ -102,6 +102,6 @@ generateRoster(teamId, gwId, { compositionKey?, seed?, ...options }):
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-team-roster--player-visibility) |
 | **This LLD** | `docs/llds/player-identity.md` |
 | Sibling LLD | `docs/llds/player-detail-read-api.md` (Contract DATE migration consumed here) |
-| EARS | `docs/specs/player-identity-specs.md` — `PID-001`.. |
+| EARS | `docs/specs/player/player-identity-specs.md` — `PID-001`.. |
 | Code | `src/db/model/player.ts` (6 columns), `src/db/domain/identity.ts` (pools + `generateIdentity`), `src/db/domain/player.ts` (`generateRoster` extension) |
 | Decision record | [#141](https://github.com/wulke/premier-league-baseball/issues/141), [#142](https://github.com/wulke/premier-league-baseball/issues/142), [#143](https://github.com/wulke/premier-league-baseball/issues/143) |

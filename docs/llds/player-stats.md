@@ -1,7 +1,7 @@
 # LLD: Player Stats Schema (`PlayerGameStats`)
 
 > Upstream: [HLD: Players, Attributes, Stats & Contracts](../high-level-design.md#hld-players-attributes-stats--contracts) ·
-> EARS: `docs/specs/player-stats-specs.md` (`PSTAT-001`..) ·
+> EARS: `docs/specs/player/player-stats-specs.md` (`PSTAT-001`..) ·
 > Decision record: [#61 Research standard baseball stat categories](https://github.com/wulke/premier-league-baseball/issues/61), [#62 Design season/career Player stats schema + write-timing plan](https://github.com/wulke/premier-league-baseball/issues/62)
 
 ## Scope
@@ -93,6 +93,6 @@ Game completes with real per-player events (future SimulationEngine capability)
 |---|---|
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-players-attributes-stats--contracts) |
 | **This LLD** | `docs/llds/player-stats.md` |
-| EARS | `docs/specs/player-stats-specs.md` — `PSTAT-001`.. |
+| EARS | `docs/specs/player/player-stats-specs.md` — `PSTAT-001`.. |
 | Code | `src/db/model/player-game-stats.ts`, `src/db/model/associations.ts` |
 | Decision record | [#61](https://github.com/wulke/premier-league-baseball/issues/61), [#62](https://github.com/wulke/premier-league-baseball/issues/62) |

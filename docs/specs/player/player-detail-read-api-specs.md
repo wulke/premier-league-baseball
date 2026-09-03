@@ -23,7 +23,7 @@ read, current-Contract resolution, and the `Contract` integer-year → DATE migr
 production Contract writers now own every Contract write and prevent overlapping current membership
 by construction; the read retains its defensive first-match posture for malformed legacy/test data.
 `PDET-009` amends PCON-008's column-type clause; the PCON-008 row in
-`docs/specs/player-contracts-specs.md` is cascaded to the DATE form when the migration lands (stage 5).
+`docs/specs/player/player-contracts-specs.md` is cascaded to the DATE form when the migration lands (stage 5).
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
@@ -31,6 +31,6 @@ by construction; the read retains its defensive first-match posture for malforme
 
 - HLD: [`docs/high-level-design.md` — Team Roster & Player Visibility](../high-level-design.md#hld-team-roster--player-visibility)
 - LLD: `docs/llds/player-detail-read-api.md` (amends `docs/llds/player-contracts-roster.md`)
-- Sibling specs: `docs/specs/player-identity-specs.md`, `docs/specs/roster-read-api-specs.md`, `docs/specs/player-contracts-specs.md` (PCON-008 amended by PDET-009)
+- Sibling specs: `docs/specs/player/player-identity-specs.md`, `docs/specs/manager/roster-read-api-specs.md`, `docs/specs/player/player-contracts-specs.md` (PCON-008 amended by PDET-009)
 - Decision record: [#146](https://github.com/wulke/premier-league-baseball/issues/146)
 - Code: `src/db/model/contract.ts` (DATE), `src/api/endpoints.ts` (`GetPlayerDetail`), `src/api/router.ts`, `src/api/handlers.ts` (`getPlayerDetail`), `src/db/domain/player.ts` (anchored `PlayerFactory` + `getDetail` + `resolveCurrentContract`), `src/api/models.ts` (`PlayerDetail`)

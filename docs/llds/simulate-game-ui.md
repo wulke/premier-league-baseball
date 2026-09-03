@@ -14,7 +14,7 @@
 >
 > Upstream: [HLD](../high-level-design.md) · Proposal:
 > [`docs/architecture/design/simulate-game-ui-proposal.md`](../architecture/design/simulate-game-ui-proposal.md)
-> · EARS: [`docs/specs/simulate-game-ui-specs.md`](../specs/simulate-game-ui-specs.md)
+> · EARS: [`docs/specs/game-simulation/simulate-game-ui-specs.md`](../specs/simulate-game-ui-specs.md)
 > (`SIMUI-001`…`SIMUI-028`) · Gherkin: `test/ui/features/simulate-game-ui.feature`
 > (28 scenarios, one `@spec:SIMUI-###` tag each) · Backend LLD:
 > [`game-simulation.md`](./game-simulation.md)
@@ -204,7 +204,7 @@ surface something the proposal does not address.
 | Use-case design | [`docs/architecture/design/simulate-game-ui-proposal.md`](../architecture/design/simulate-game-ui-proposal.md) |
 | **This LLD** | `docs/llds/simulate-game-ui.md` |
 | Backend LLD (sibling) | [`docs/llds/game-simulation.md`](./game-simulation.md) |
-| EARS | `docs/specs/simulate-game-ui-specs.md` — `SIMUI-001`…`SIMUI-028` |
+| EARS | `docs/specs/game-simulation/simulate-game-ui-specs.md` — `SIMUI-001`…`SIMUI-028` |
 | Gherkin | `test/ui/features/simulate-game-ui.feature` (28 scenarios, one `@spec:SIMUI-###` tag per scenario; the `@future` Advance-Date scenario is untagged/out-of-scope) |
 | Step defs | `test/ui/steps/simulate-game-ui.steps.test.ts` — to be created by [#22](https://github.com/wulke/premier-league-baseball/issues/22) |
 | Code entry points | `src/ui/context/game-world-context.tsx` — [#23](https://github.com/wulke/premier-league-baseball/issues/23) (SIMUI-001…005) · `src/ui/components/app-header.tsx` — [#24](https://github.com/wulke/premier-league-baseball/issues/24) (SIMUI-006…018) · `src/ui/pages/team-calendar.tsx` — [#25](https://github.com/wulke/premier-league-baseball/issues/25) (SIMUI-019…028) |

@@ -12,7 +12,7 @@
 > arrow). Upstream: *HLD: Simulation Engine Strategy Seam* in
 > [`docs/high-level-design.md`](../high-level-design.md).
 >
-> Upstream: [HLD: Simulate Game](../high-level-design.md) · EARS: `docs/specs/simulate-game-specs.md`
+> Upstream: [HLD: Simulate Game](../high-level-design.md) · EARS: `docs/specs/game-simulation/simulate-game-specs.md`
 > (`SIM-001`..`SIM-015`) · PRD: `docs/architecture/prd/simulate-game-plan.md` ·
 > Gherkin: `test/bdd/features/simulate-game.feature`
 
@@ -271,7 +271,7 @@ Each row ties a condition to its handling and the EARS id that pins it.
 |---|---|
 | HLD | [`docs/high-level-design.md`](../high-level-design.md) |
 | **This LLD** | `docs/llds/game-simulation.md` |
-| EARS | `docs/specs/simulate-game-specs.md` — `SIM-001`..`SIM-015`, plus `SIM-016`..`SIM-018` (engine seam, #190) |
+| EARS | `docs/specs/game-simulation/simulate-game-specs.md` — `SIM-001`..`SIM-015`, plus `SIM-016`..`SIM-018` (engine seam, #190) |
 | Gherkin | `test/bdd/features/simulate-game.feature` (22 scenarios, one `@spec:SIM-###` tag per scenario; #190 adds engine-seam scenarios) |
 | Step defs | `test/bdd/steps/simulate-game.steps.test.ts` |
 | Code | `src/db/domain/game.ts` (`GameFactory.simulate`, `simulateBatch`), `src/db/domain/simulation/` (`engine.ts`, `seed.ts`, `random-engine.ts` — #190), `src/db/domain/game-world.ts` (`currentDate`), `src/db/domain/errors.ts` (`DomainError`), `src/api/handlers.ts` (`simulateGame`, `simulateBatchGames`) |

@@ -1,6 +1,6 @@
 # LLD: GameWorld Deletion (`GameWorldFactory.delete`)
 
-> EARS: `docs/specs/game-world-deletion-specs.md` (`GWD-001`…`GWD-004`) ·
+> EARS: `docs/specs/game-world/game-world-deletion-specs.md` (`GWD-001`…`GWD-004`) ·
 > UI LLD (sibling): [`game-world-deletion-ui.md`](./game-world-deletion-ui.md) ·
 > Gherkin: `test/bdd/features/game-world-deletion.feature`
 
@@ -113,7 +113,7 @@ enforcement as the only safety net.
 |---|---|
 | **This LLD** | `docs/llds/game-world-deletion.md` |
 | UI LLD (sibling) | `docs/llds/game-world-deletion-ui.md` |
-| EARS | `docs/specs/game-world-deletion-specs.md` — `GWD-001`…`GWD-004` |
+| EARS | `docs/specs/game-world/game-world-deletion-specs.md` — `GWD-001`…`GWD-004` |
 | Gherkin | `test/bdd/features/game-world-deletion.feature` |
 | Tests | `test/db/domain/game-world.test.ts` (new cases) |
 | Code | `src/db/domain/game-world.ts` (`GameWorldFactory.delete`), `src/api/handlers.ts` (`deleteGameWorld`), `src/api/router.ts`, `src/api/endpoints.ts` |

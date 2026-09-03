@@ -1,7 +1,7 @@
 # LLD: Knockout Bracket Round-Advancement (`DivisionFactory` — `KNOCKOUT`)
 
 > Upstream: [HLD: Full Season Simulation](../high-level-design.md#hld-full-season-simulation-league--league-cup) ·
-> EARS: `docs/specs/league-cup-specs.md` (`CUP-001`..) ·
+> EARS: `docs/specs/league/league-cup-specs.md` (`CUP-001`..) ·
 > Decision records: [#33 Design knockout bracket round-advancement logic](https://github.com/wulke/premier-league-baseball/issues/33),
 > [#43 Bracket generation must reduce the field to a power of 2](https://github.com/wulke/premier-league-baseball/issues/43) ·
 > Depends on: `docs/llds/competition-format.md` (`CompetitionFormat.tiebreak`/`seeding`)
@@ -224,6 +224,6 @@ overtime winner leads that leg's score by ≥ 1 — making both the leg (non-dra
 |---|---|
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-full-season-simulation-league--league-cup) |
 | **This LLD** | `docs/llds/knockout-bracket.md` |
-| EARS | `docs/specs/league-cup-specs.md` — `CUP-001`.. |
+| EARS | `docs/specs/league/league-cup-specs.md` — `CUP-001`.. |
 | Code | `src/db/domain/division.ts` (`DivisionFactory` — `newSeason`, `KNOCKOUT` branch), `src/db/domain/game.ts` (completion hook), `src/db/domain/knockout-advancement.ts` (round-advancement + tiebreak orchestration), new `SeasonResult` model |
 | Decision records | [#33](https://github.com/wulke/premier-league-baseball/issues/33), [#43](https://github.com/wulke/premier-league-baseball/issues/43) |
