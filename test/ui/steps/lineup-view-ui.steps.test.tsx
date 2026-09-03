@@ -305,6 +305,8 @@ defineFeature(feature, (test) => {
     then('next-game starter, bullpen, and bench pickers are shown', async () => await waitFor(() => { expect(screen.getByRole('heading', { name: /next game: vs rivertown/i })).toBeInTheDocument(); expect(screen.getByRole('combobox', { name: /starting pitcher/i })).toBeInTheDocument(); expect(screen.getAllByRole('combobox', { name: /bench|bullpen/i })).not.toHaveLength(0); }));
     // @spec GBULL-006
     and('fielder options are excluded from pitcher slots', () => expect(within(screen.getByRole('combobox', { name: /starting pitcher/i })).queryByRole('option', { name: 'Player 1' })).toBeNull());
+    // @spec GBULL-006
+    and('defensive starters are excluded from bench slots', () => expect(within(screen.getByRole('combobox', { name: /bench slot 10/i })).queryByRole('option', { name: 'Player 1' })).toBeNull());
     when('the manager saves the game lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save game lineup' })));
     // @spec GBULL-006
     then('the game lineup draft is sent to the game save endpoint', async () => await waitFor(() => expect((global.fetch as jest.Mock).mock.calls.some(([url, options]) => url === '/api/team/10/lineup/40' && options?.method === 'PATCH')).toBe(true)));

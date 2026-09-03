@@ -171,5 +171,6 @@ Feature: Team Lineup View UI
     And the player opens the Bullpen tab
     Then next-game starter, bullpen, and bench pickers are shown
     And fielder options are excluded from pitcher slots
+    And defensive starters are excluded from bench slots
     When the manager saves the game lineup
     Then the game lineup draft is sent to the game save endpoint
