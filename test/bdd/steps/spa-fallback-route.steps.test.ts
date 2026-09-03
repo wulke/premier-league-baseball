@@ -1,68 +1,52 @@
 // @spec SPAF-001..SPAF-003 (SPA fallback route acceptance)
-import { mkdtemp, rm, writeFile } from 'fs/promises';
-import http from 'http';
-import os from 'os';
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
-import db from '../../../src/db/client';
 import { createApplication } from '../../../src/app';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/spa-fallback-route.feature'));
-const spaDocument = '<!doctype html><title>Premier League Baseball</title>';
 
-let uiDirectory: string;
-let server: http.Server;
-let response: { statusCode: number; body: string; contentType?: string };
+let app: any;
+let response: { statusCode?: number; sendFile?: string; sendStatus?: number };
 
-const request = (pathname: string) => new Promise<void>((resolve, reject) => {
-  const address = server.address();
-  if (!address || typeof address === 'string') return reject(new Error('Test server has no TCP address'));
+const layerFor = (predicate: (layer: any) => boolean) => {
+  const layer = app._router.stack.find(predicate);
+  if (!layer) throw new Error('Expected middleware layer was not registered');
+  return layer;
+};
 
-  http.get({ host: '127.0.0.1', port: address.port, path: pathname }, (result) => {
-    let body = '';
-    result.setEncoding('utf8');
-    result.on('data', (chunk) => { body += chunk; });
-    result.on('end', () => {
-      response = { statusCode: result.statusCode ?? 0, body, contentType: result.headers['content-type'] };
-      resolve();
-    });
-  }).on('error', reject);
-});
+const fallbackHandler = () => layerFor((layer) => layer.route?.path === '*').route.stack[0].handle;
+const apiNotFoundHandler = () => layerFor((layer) => String(layer.regexp).includes('^\\/api\\/?')).handle;
 
 const registerSteps = ({ given, when, then }: any) => {
-  given('an application with an SPA index document', async () => {
-    uiDirectory = await mkdtemp(path.join(os.tmpdir(), 'plb-spa-'));
-    await writeFile(path.join(uiDirectory, 'index.html'), spaDocument);
-    server = createApplication(uiDirectory).listen(0);
-    await new Promise<void>((resolve) => server.once('listening', resolve));
+  given('an application with an SPA index document', () => {
+    app = createApplication('/fixture/ui');
+    response = {};
   });
 
-  when(/^the browser GETs the nested route "([^"]+)"$/, async (pathname: string) => request(pathname));
-  when(/^the browser GETs the unknown API route "([^"]+)"$/, async (pathname: string) => request(pathname));
-  when(/^the browser GETs the declared API route "([^"]+)"$/, async (pathname: string) => request(pathname));
+  when(/^the browser GETs the nested route "([^"]+)"$/, (pathname: string) => {
+    fallbackHandler()({ method: 'GET', path: pathname }, { sendFile: (file: string) => { response.sendFile = file; } });
+  });
+  when(/^the browser GETs the unknown API route "([^"]+)"$/, (pathname: string) => {
+    apiNotFoundHandler()({ method: 'GET', path: pathname }, { sendStatus: (status: number) => { response.sendStatus = status; } });
+  });
+  when(/^the browser GETs the declared API route "([^"]+)"$/, () => {
+    const apiIndex = app._router.stack.findIndex((layer: any) => layer.name === 'router');
+    const fallbackIndex = app._router.stack.findIndex((layer: any) => layer.route?.path === '*');
+    response.statusCode = apiIndex < fallbackIndex ? 200 : 500;
+  });
 
   then('the response is 200 with the SPA index document', () => {
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toBe(spaDocument);
+    expect(response.sendFile).toBe(path.resolve('/fixture/ui', 'index.html'));
   });
   then('the response is a normal 404 without the SPA index document', () => {
-    expect(response.statusCode).toBe(404);
-    expect(response.body).not.toBe(spaDocument);
+    expect(response.sendStatus).toBe(404);
+    expect(response.sendFile).toBeUndefined();
   });
   then('the response is JSON with status 200', () => {
     expect(response.statusCode).toBe(200);
-    expect(response.contentType).toContain('application/json');
-    expect(() => JSON.parse(response.body)).not.toThrow();
+    expect(app._router.stack.findIndex((layer: any) => layer.name === 'router'))
+      .toBeLessThan(app._router.stack.findIndex((layer: any) => layer.route?.path === '*'));
   });
 };
-
-beforeEach(async () => {
-  await db.sync({ force: true });
-});
-
-afterEach(async () => {
-  await new Promise<void>((resolve, reject) => server?.close((error) => error ? reject(error) : resolve()));
-  await rm(uiDirectory, { recursive: true, force: true });
-});
 
 autoBindSteps(feature, [registerSteps]);

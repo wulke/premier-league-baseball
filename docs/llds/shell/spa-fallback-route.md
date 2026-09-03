@@ -29,4 +29,4 @@ acceptance suite can provide an isolated `index.html` fixture.
 ## Traceability
 
 `SPAF-001`..`SPAF-003` are verified by `test/bdd/features/spa-fallback-route.feature` and its
-HTTP-level step bindings.
+middleware-level step bindings.
