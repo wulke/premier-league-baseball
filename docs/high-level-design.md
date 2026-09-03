@@ -152,9 +152,9 @@ Introduce **Players** as a first-class concept — real players belonging to Tea
 
 ### Components
 
-- **`Player`** (new Sequelize model): `id`, `teamId` (FK, nullable), `gameWorldId` (FK), `attributes` (JSON — scalar ratings + `positions` affinity map + `pitches` repertoire, see `docs/llds/player-attributes.md`).
-- **`PlayerGameStats`** (new Sequelize model): `id`, `playerId` (FK), `gameId` (FK), Core batting + Core pitching columns, see `docs/llds/player-stats.md`. No writers in this map — schema only.
-- **`Contract`** (new Sequelize model): `id`, `playerId` (FK), `teamId` (FK), `startYear`, `endYear`, see `docs/llds/player-contracts-roster.md`.
+- **`Player`** (new Sequelize model): `id`, `teamId` (FK, nullable), `gameWorldId` (FK), `attributes` (JSON — scalar ratings + `positions` affinity map + `pitches` repertoire, see `docs/llds/player/player-attributes.md`).
+- **`PlayerGameStats`** (new Sequelize model): `id`, `playerId` (FK), `gameId` (FK), Core batting + Core pitching columns, see `docs/llds/player/player-stats.md`. No writers in this map — schema only.
+- **`Contract`** (new Sequelize model): `id`, `playerId` (FK), `teamId` (FK), `startYear`, `endYear`, see `docs/llds/player/player-contracts-roster.md`.
 - **`PlayerFactory`** (new, `src/db/domain/player.ts` — domain layer only, not built by this planning map): generates a randomized roster + starting Contracts, called by `TeamFactory.create()` (`src/db/domain/team.ts`).
 
 ### Flow
@@ -225,12 +225,12 @@ Make rosters and players **real, visible, explorable surfaces** — read/visibil
 ## Architecture
 
 ### Components
-- **`Player` model change**: six new typed identity columns (`givenName`, `familyName`, `countryCode`, `bats`, `throws`, `birthDate`), `allowNull:false`. (See `docs/llds/player-identity.md` — to be produced.)
-- **`Contract` model change**: `startYear`/`endYear` INT → `startDate`/`endDate` DATE, per #146. Adds `resolveCurrentContract(playerId, currentDate)` in the Player domain — the row whose `[startDate, endDate]` contains `GameWorld.currentDate` (→ `year` fallback); no match → `contract: null`. (See `docs/llds/player-detail-read-api.md`.)
+- **`Player` model change**: six new typed identity columns (`givenName`, `familyName`, `countryCode`, `bats`, `throws`, `birthDate`), `allowNull:false`. (See `docs/llds/player/player-identity.md` — to be produced.)
+- **`Contract` model change**: `startYear`/`endYear` INT → `startDate`/`endDate` DATE, per #146. Adds `resolveCurrentContract(playerId, currentDate)` in the Player domain — the row whose `[startDate, endDate]` contains `GameWorld.currentDate` (→ `year` fallback); no match → `contract: null`. (See `docs/llds/player/player-detail-read-api.md`.)
 - **`PlayerFactory` (`src/db/domain/player.ts`)**: gains **identity generation** (extends `generateRoster` — country draw → name draw, independent bats/throws, `birthDate` in 18–38 band, seeded RNG; curated pools in a co-located module, not a Factory) and a **`getDetail(playerId, gwId?)`** read (identity + full `attributes` verbatim + current contract). Conforms to the domain-ownership boundary in `backend-standards.md` §1.
 - **`TeamFactory` (`src/db/domain/team.ts`)**: gains **`getRoster(teamId)`** read anchoring on active Contracts (`Team → Contract → Player`), returning flat rows (identity + derived `primaryPosition` + flat-7 ratings; no OVR).
-- **API**: two read endpoints — `GET /api/team/:teamId/roster` (+ optional `?gwId=`, validated in handler) and `GET /api/player/:playerId` (+ optional `?gwId=`). Raw, unwrapped success shape; `{ error }` on failure; `200` for everything (per `backend-standards.md` §3/§5). (See `docs/llds/roster-read-api.md`, `docs/llds/player-detail-read-api.md`.)
-- **Frontend**: **team hub page** (`/:gwId/team/:teamId`, Calendar + Roster tabs), **roster view** (flat table, positions-coverage cell as organizer, 7 tinted rating columns, client-side sort/filter), **player detail** (FM-style page tabs: Overview / Positions / Pitch repertoire — pitchers only). Aesthetic = the shipping app's inline-style, light, dense look. (See `docs/llds/team-roster-ui.md`, `docs/llds/player-detail-ui.md`.)
+- **API**: two read endpoints — `GET /api/team/:teamId/roster` (+ optional `?gwId=`, validated in handler) and `GET /api/player/:playerId` (+ optional `?gwId=`). Raw, unwrapped success shape; `{ error }` on failure; `200` for everything (per `backend-standards.md` §3/§5). (See `docs/llds/manager/roster-read-api.md`, `docs/llds/player/player-detail-read-api.md`.)
+- **Frontend**: **team hub page** (`/:gwId/team/:teamId`, Calendar + Roster tabs), **roster view** (flat table, positions-coverage cell as organizer, 7 tinted rating columns, client-side sort/filter), **player detail** (FM-style page tabs: Overview / Positions / Pitch repertoire — pitchers only). Aesthetic = the shipping app's inline-style, light, dense look. (See `docs/llds/manager/team-roster-ui.md`, `docs/llds/player/player-detail-ui.md`.)
 
 ### Flow
 ```
@@ -268,7 +268,7 @@ and active/per-game uniqueness. Manager editing and game snapshots remain later 
 - **`Contract` as membership, `teamId` as cache**: roster reads join through active Contracts, so now that #237 has introduced multi-row history the read stays correct; `Player.teamId` is never the source of truth.
 - **Top-level player route**: costs one extra route segment vs. nesting, buys correctness for free agents (nullable `teamId`) without a special-case URL.
 - **Pitches generated for every player**: `PlayerFactory` emits a 4-pitch repertoire for all players (inherited from #59's uniform schema); meaningless for fielders, so the UI hides the Pitch-repertoire tab for non-pitchers. The cleaner long-term fix — don't generate them for fielders — is engine/generation work ([#136](https://github.com/wulke/premier-league-baseball/issues/136)), out of scope here.
-- **No contract history / salary yet**: the `Contract` model carries no amount field. #237 landed the transfer writes (multiple rows per player now exist), but a contract-history *view* was explicitly out of scope for that map too (`docs/llds/transfers-ui.md`); the player-detail Overview still shows team + term only — same deferral logic as the stats UI (#139: detail never renders an always-empty section).
+- **No contract history / salary yet**: the `Contract` model carries no amount field. #237 landed the transfer writes (multiple rows per player now exist), but a contract-history *view* was explicitly out of scope for that map too (`docs/llds/manager/transfers-ui.md`); the player-detail Overview still shows team + term only — same deferral logic as the stats UI (#139: detail never renders an always-empty section).
 - **`positionCoverage` threshold (≥70) is a placeholder**, inherited from the roster-view decision; analytical calibration of "covers a position" over the 9-key map is generation/engine work ([#136](https://github.com/wulke/premier-league-baseball/issues/136)).
 
 ### Out of scope
@@ -766,7 +766,7 @@ team-only edit affordance for position-player starter and bench slots.
   plus inline `BENCH`/`BULLPEN`-tagged rows, sourced from the same `TeamLineup` fetch this page
   already makes. When the route's GameWorld identifies this team as managed, defensive and batting
   position-player/bench rows add slot-fill pickers and an explicit Save Lineup action. (LLD:
-  `docs/llds/lineup-view-ui.md`.)
+  `docs/llds/manager/lineup-view-ui.md`.)
 - **`GET /api/team/:teamId/lineup`** (UNCHANGED): remains the sole data source; `TeamLineup`
   (`src/api/models.ts`) is not extended.
 - **`PUT /api/team/:teamId/lineup`**: accepts the complete active-lineup entry set for the managed

@@ -28,6 +28,6 @@ bootstrapping, the derived `GameWorld.config.inProgress`, and the per-League fix
 
 ## Traceability
 
-- LLD: `docs/llds/season-calendar-lifecycle.md`
+- LLD: `docs/llds/league/season-calendar-lifecycle.md`
 - Gherkin: `test/bdd/features/season-calendar-lifecycle.feature` (new)
 - Code: `src/db/model/league.ts`, `src/db/domain/league.ts`, `src/db/domain/division.ts`, `src/db/domain/game-world.ts`, `src/db/domain/team.ts`, `src/api/models.ts`, `src/api/endpoints.ts`, `src/api/handlers.ts`, `src/api/router.ts`

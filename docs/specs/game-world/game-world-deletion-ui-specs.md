@@ -17,7 +17,7 @@ confirmation modal.
 
 ## Traceability
 
-- LLD: `docs/llds/game-world-deletion-ui.md`
-- Backend LLD (sibling): `docs/llds/game-world-deletion.md`
+- LLD: `docs/llds/game-world/game-world-deletion-ui.md`
+- Backend LLD (sibling): `docs/llds/game-world/game-world-deletion.md`
 - Gherkin: `test/ui/features/game-world-deletion-ui.feature`
 - Code: `src/ui/pages/home.tsx` (MODIFIED), `src/ui/components/confirm-delete-modal.tsx` (NEW)

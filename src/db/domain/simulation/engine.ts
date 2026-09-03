@@ -3,7 +3,7 @@ import { RandomSimulationEngine } from './random-engine';
 // @spec SIM-016 SimulationEngine strategy seam — GameFactory delegates score
 // production here (#190). The engine owns *what the score is*, never
 // *whether/how it is written*: guards, the batch transaction, and completion
-// hooks stay in GameFactory (docs/llds/game-simulation.md — "Simulation
+// hooks stay in GameFactory (docs/llds/game-simulation/game-simulation.md — "Simulation
 // engine seam").
 
 export interface SimulationContext {

@@ -22,7 +22,7 @@ Handles the bulk simulation of games to allow efficient season progression.
 Ensures the system can transition between active play and post-season review.
 *   **Key Requirements:**
     *   Implement real `isSeasonComplete()` logic in `DivisionFactory` and `LeagueFactory`.
-    *   ~~Create a formal "End of Season" state.~~ **Amended** — [Map: Simulate a full season (League + League Cup) MVP](https://github.com/wulke/premier-league-baseball/issues/32)'s [#34](https://github.com/wulke/premier-league-baseball/issues/34) decided against a persisted GameWorld-level gate: season-complete is computed live from per-competition `isSeasonComplete`/`SeasonResult` checks. See `docs/llds/full-season-ui.md`.
+    *   ~~Create a formal "End of Season" state.~~ **Amended** — [Map: Simulate a full season (League + League Cup) MVP](https://github.com/wulke/premier-league-baseball/issues/32)'s [#34](https://github.com/wulke/premier-league-baseball/issues/34) decided against a persisted GameWorld-level gate: season-complete is computed live from per-competition `isSeasonComplete`/`SeasonResult` checks. See `docs/llds/game-world/full-season-ui.md`.
     *   Gate `newSeason()` calls to ensure prior seasons are finalized. *(Deferred — `newSeason()` looping into a second season is out of scope for the single-season MVP; see Epic 7.)*
 
 ## Epic 4: The Manager’s Dashboard (Simulation UI)
@@ -45,7 +45,7 @@ for the design detail this extension summarizes.
 
 ## Epic 5: Reusable Competition Format
 Replaces the ad hoc, conflated `GameFormula[]` config with a typed `CompetitionFormat`.
-*   **Detailed Design:** `docs/llds/competition-format.md`
+*   **Detailed Design:** `docs/llds/league/competition-format.md`
 *   **Key Requirements:**
     *   Discriminated-union `CompetitionFormat` (`structure`: `ROUND_ROBIN` | `KNOCKOUT`) replacing `GameFormula[]`.
     *   Named shared constants (`STANDARD_LEAGUE_FORMAT`, `STANDARD_CUP_FORMAT`) replacing hand-authored inline arrays.
@@ -53,17 +53,17 @@ Replaces the ad hoc, conflated `GameFormula[]` config with a typed `CompetitionF
 
 ## Epic 6: Knockout Bracket Simulation
 Takes the League Cup from "seeds round 1 and stops" to a fully simulatable knockout tournament.
-*   **Detailed Design:** `docs/llds/knockout-bracket.md`
+*   **Detailed Design:** `docs/llds/league/knockout-bracket.md`
 *   **Key Requirements:**
-    *   Power-of-2 field reduction with front-loaded byes at bracket generation (`docs/llds/knockout-bracket.md`).
+    *   Power-of-2 field reduction with front-loaded byes at bracket generation (`docs/llds/league/knockout-bracket.md`).
     *   Round-advancement hooked into the shared game-completion path (single + batch simulate).
     *   Three `tiebreak` modes (`AGGREGATE_SCORE`, `OVERTIME`, `ANOTHER_GAME_W_OVERTIME`) for level `TWO_LEG` ties.
     *   New `SeasonResult` table recording the champion for both `KNOCKOUT` and top-tier `ROUND_ROBIN` divisions.
-    *   New `GET /api/league/:leagueId/bracket` endpoint (`docs/llds/bracket-api.md`) exposing bracket state.
+    *   New `GET /api/league/:leagueId/bracket` endpoint (`docs/llds/league/bracket-api.md`) exposing bracket state.
 
 ## Epic 7: Full-Season UI
 Extends the single-competition simulation UI to a full, decided two-competition season.
-*   **Detailed Design:** `docs/llds/full-season-ui.md`
+*   **Detailed Design:** `docs/llds/game-world/full-season-ui.md`
 *   **Key Requirements:**
     *   `BracketView` component (round-grouped, byes grouped, series expand-on-click) as the `KNOCKOUT` counterpart to `StandingsTable`.
     *   Competition-agnostic champion banner on the League identity block, reading `SeasonResult`.
@@ -80,4 +80,4 @@ divisions; looping `newSeason()` into a second season; a multi-season "new seaso
 Before implementing these epics, the following data model changes identified in the [Simulate a Game Use Case](../design/simulate-game-proposal.md) are required:
 1.  **Game Model:** Add `status` (`ENUM('SCHEDULED', 'IN_PROGRESS', 'COMPLETED')`).
 2.  **GameWorld Model:** Add `currentDate` (`DATEONLY`).
-3.  **New `SeasonResult` model:** `divisionId`, `year`, `championTeamId` (nullable) — see `docs/llds/knockout-bracket.md`.
+3.  **New `SeasonResult` model:** `divisionId`, `year`, `championTeamId` (nullable) — see `docs/llds/league/knockout-bracket.md`.

@@ -48,7 +48,7 @@ its own).
 ## Traceability
 
 - HLD: `docs/high-level-design.md` — no dedicated HLD section exists yet for Transfers; [#237](https://github.com/wulke/premier-league-baseball/issues/237)'s resolved grill-me decision record stands in for it.
-- LLD: `docs/llds/contract-lifecycle.md`
+- LLD: `docs/llds/player/contract-lifecycle.md`
 - Sibling specs: `docs/specs/manager/transfers-ui-specs.md` (UI consumer), `docs/specs/player/player-contracts-specs.md` (PCON-006/007 activated), `docs/specs/manager/roster-read-api-specs.md` (ROST-004 superseded), `docs/specs/player/player-detail-read-api-specs.md` (shares `resolveCurrentContract`)
 - Decision record: [#140](https://github.com/wulke/premier-league-baseball/issues/140), [#237](https://github.com/wulke/premier-league-baseball/issues/237)
 - Code: `src/db/domain/contract.ts` (`ContractFactory`, `SEASON_END_MONTH`/`SEASON_END_DAY`, `defaultSeasonEnd`, `reconcileTeamMemberships`), `src/db/domain/player.ts` (`toRosterPlayer` extraction), `src/db/domain/team.ts` (`getRoster` filter), `src/db/domain/league.ts` (`cutover` sweep hook), `src/db/domain/game-world.ts` (`getFreeAgents`), `src/db/domain/lineup.ts` (`repairActive`), `src/api/endpoints.ts`, `src/api/router.ts`, `src/api/handlers.ts` (`signPlayer`, `releasePlayer`, `renewPlayer`, `getFreeAgents`, `assertManaged`)

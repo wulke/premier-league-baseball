@@ -1,4 +1,4 @@
-// @spec RLDRUI-001,RLDRUI-002,RLDRUI-004,RLDRUI-006 (LLD: docs/llds/route-loader-foundation-ui.md)
+// @spec RLDRUI-001,RLDRUI-002,RLDRUI-004,RLDRUI-006 (LLD: docs/llds/shell/route-loader-foundation-ui.md)
 import React from 'react';
 import { createRoutesFromElements, Navigate, Route, type LoaderFunctionArgs, type RouteObject } from 'react-router';
 import { GameWorld, Home, League, PlayerDetail, TeamCalendar, TeamHub, TeamLineupView, TeamRoster, Transfers } from './pages';

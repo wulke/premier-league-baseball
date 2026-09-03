@@ -1,6 +1,6 @@
 # Specs: Route-Loader Foundation
 
-UI requirements for **Batch 0** of the route-loader migration (`docs/llds/route-loader-foundation-ui.md`):
+UI requirements for **Batch 0** of the route-loader migration (`docs/llds/shell/route-loader-foundation-ui.md`):
 the shared `RouteObject[]` route configuration, the `gw` loader that lands on the `:gwId` route, and
 `useRevalidator()` replacing `GameWorldProvider`'s `invalidate()`/`refreshToken`. This supersedes
 `GameWorldProvider` (`src/ui/context/game-world-context.tsx`, **deleted**) and amends the specs that
@@ -32,7 +32,7 @@ tracked by their own batch LLDs/specs (Batches 1–5, `docs/llds/route-loader-<b
 
 ## Traceability
 
-- LLD: [`docs/llds/route-loader-foundation-ui.md`](../llds/route-loader-foundation-ui.md)
+- LLD: [`docs/llds/shell/route-loader-foundation-ui.md`](../llds/route-loader-foundation-ui.md)
 - HLD: [`docs/high-level-design.md` — "HLD: Route-Loader Data Migration"](../high-level-design.md#hld-route-loader-data-migration)
 - Source decision: [Map #229](https://github.com/wulke/premier-league-baseball/issues/229) · [#230](https://github.com/wulke/premier-league-baseball/issues/230) · [#231](https://github.com/wulke/premier-league-baseball/issues/231) · [#233](https://github.com/wulke/premier-league-baseball/issues/233) · [#235 (Batch 0)](https://github.com/wulke/premier-league-baseball/issues/235)
 - **Superseded specs (mechanism only, player-visible behavior unchanged; cascade to `[~]`/reworded status at Code stage, not here):**
@@ -40,7 +40,7 @@ tracked by their own batch LLDs/specs (Batches 1–5, `docs/llds/route-loader-<b
   - [`simulate-game-ui-specs.md`](./simulate-game-ui-specs.md) SIMUI-027 (`refreshToken`-keyed TeamCalendar re-fetch) → RLDRUI-005.
   - [`app-shell-ui-specs.md`](./app-shell-ui-specs.md) SIMUI-015/SIMUI-018 (`invalidate()` call/no-call on batch success/failure) → RLDRUI-003.
 - **Unaffected specs (same file, no mechanism change this batch):** SIMUI-019…026, SIMUI-028 (per-row `GameRow` simulate; untouched by the loader swap) remain governed by `simulate-game-ui-specs.md`. SHELL-001, SHELL-004…010, SIMUI-006/007, SIMUI-009…014, SIMUI-016/017 (`app-shell-ui-specs.md`) are unaffected — only their `gw`/`invalidate` data source changes, not their behavior.
-- **Gherkin:** no new feature file — existing scenarios in `test/ui/features/app-shell-ui.feature` and `test/ui/features/simulate-game-ui.feature` are re-bound to the new harness (`docs/llds/route-loader-foundation-ui.md` u7/u8) with no wording change, since no player-visible behavior changes in this batch.
+- **Gherkin:** no new feature file — existing scenarios in `test/ui/features/app-shell-ui.feature` and `test/ui/features/simulate-game-ui.feature` are re-bound to the new harness (`docs/llds/shell/route-loader-foundation-ui.md` u7/u8) with no wording change, since no player-visible behavior changes in this batch.
 - **Step definitions:** `test/ui/steps/app-shell-ui.steps.test.tsx`, `player-detail-ui.steps.test.tsx`, `managed-club-ui.steps.test.tsx`, `lineup-view-ui.steps.test.tsx`, `team-roster-ui.steps.test.tsx` (harness swap only) · `simulate-game-ui.steps.test.tsx`, `rapid-simulate-season-ui.steps.test.tsx` (harness swap + drop the `react-router` mock) — RLDRUI-006.
 - **Code entry points:**
   - `src/ui/routes.tsx` (`gwLoader`, `RouteObject[]` export) — RLDRUI-001, RLDRUI-002, RLDRUI-004, RLDRUI-006

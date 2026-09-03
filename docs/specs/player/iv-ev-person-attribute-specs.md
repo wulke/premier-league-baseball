@@ -1,7 +1,7 @@
 # Specs: Decoupled IV/EV Person-Attribute Pattern
 
 Implementation-neutral requirements for the shared person-attribute pattern defined in
-[`docs/llds/iv-ev-person-attribute-pattern.md`](../llds/iv-ev-person-attribute-pattern.md).
+[`docs/llds/player/iv-ev-person-attribute-pattern.md`](../llds/iv-ev-person-attribute-pattern.md).
 These requirements do not authorize a Sequelize migration or the grader/event system; their future
 tests first exercise the pattern through a storage-independent domain contract.
 
@@ -26,7 +26,7 @@ tests first exercise the pattern through a storage-independent domain contract.
 ## Traceability
 
 - HLD: [`docs/high-level-design.md` — Decoupled IV/EV Person-Attribute Pattern](../high-level-design.md#hld-decoupled-ivev-person-attribute-pattern)
-- LLD: [`docs/llds/iv-ev-person-attribute-pattern.md`](../llds/iv-ev-person-attribute-pattern.md)
+- LLD: [`docs/llds/player/iv-ev-person-attribute-pattern.md`](../llds/iv-ev-person-attribute-pattern.md)
 - Formula registry: [`docs/FORMULA-REGISTRY.md`](../FORMULA-REGISTRY.md) — `F-IVEV-001..004` (Implemented)
 - Tests: `test/db/domain/iv-ev-person-attribute.test.ts`, tagged `@spec IVEV-*`
 - Code: `src/db/domain/iv-ev-person-attribute.ts`

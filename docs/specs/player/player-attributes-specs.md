@@ -12,7 +12,7 @@ Backend requirements for the `Player` model and its `attributes` JSON shape (`sr
 
 ## Traceability
 
-- LLD: `docs/llds/player-attributes.md`
+- LLD: `docs/llds/player/player-attributes.md`
 - Decision record: [#60](https://github.com/wulke/premier-league-baseball/issues/60)
 - Tests: `test/db/domain/player.test.ts`
 - Code: `src/db/model/player.ts`, `src/db/model/associations.ts`, `src/api/models.ts`, `src/db/domain/player.ts`

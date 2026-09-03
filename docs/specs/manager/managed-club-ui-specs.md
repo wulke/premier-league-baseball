@@ -28,6 +28,6 @@ unclaimed-state guarantee, which is still true unchanged.
 - Map: [#137 — "My Club" concept (managed-club ownership layer)](https://github.com/wulke/premier-league-baseball/issues/137)
 - Delivery: [#153](https://github.com/wulke/premier-league-baseball/issues/153)
 - Backend sibling specs: `docs/specs/manager/managed-club-specs.md` (`MCLB-001`..`MCLB-005`)
-- LLD: `docs/llds/managed-club-ui.md`
+- LLD: `docs/llds/manager/managed-club-ui.md`
 - Tests: `test/ui/features/managed-club-ui.feature`, `test/ui/steps/managed-club-ui.steps.test.tsx`
 - Code: `src/ui/pages/team-hub.tsx`, `src/ui/components/nav-rail.tsx`

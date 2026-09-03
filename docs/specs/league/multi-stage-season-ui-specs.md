@@ -13,7 +13,7 @@ League and GameWorld screens. No new routes or pages are introduced.
 
 ## Traceability
 
-- LLD: `docs/llds/multi-stage-season-ui.md`
+- LLD: `docs/llds/league/multi-stage-season-ui.md`
 - Gherkin: `test/ui/features/multi-stage-season-ui.feature`
 - Steps: `test/ui/steps/multi-stage-season-ui.steps.test.tsx`
 - Code: `src/ui/pages/league.tsx`, `src/ui/champion.ts`

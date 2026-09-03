@@ -14,6 +14,6 @@ Backend requirements for the League-level bracket-state endpoint (`GET /api/leag
 
 ## Traceability
 
-- LLD: `docs/llds/bracket-api.md`
+- LLD: `docs/llds/league/bracket-api.md`
 - Decision record: [#41](https://github.com/wulke/premier-league-baseball/issues/41)
 - Code: `src/api/endpoints.ts` (`GetLeagueBracket`), `src/api/handlers.ts` (`getLeagueBracket`), `src/db/domain/league.ts` (`LeagueFactory.getBracket`), `src/db/domain/division.ts` (`DivisionFactory.getBracket`)

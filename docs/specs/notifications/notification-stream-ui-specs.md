@@ -20,7 +20,7 @@ consuming `GET /api/gameWorld/:gwId/notifications` and
 ## Traceability
 
 - HLD: [`docs/high-level-design.md` — Client Notification & Alert Stream](../high-level-design.md#hld-client-notification--alert-stream)
-- LLD: `docs/llds/notification-stream-ui.md`
+- LLD: `docs/llds/notifications/notification-stream-ui.md`
 - Backend sibling specs: `docs/specs/notifications/notification-stream-specs.md`
 - Decision record: [#261](https://github.com/wulke/premier-league-baseball/issues/261)
 - Code: `src/ui/pages/notification-stream.tsx`, `src/ui/pages/game-world.tsx` (mount point)

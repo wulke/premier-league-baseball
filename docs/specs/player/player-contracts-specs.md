@@ -17,7 +17,7 @@ creation (`src/db/model/`, `src/db/domain/player.ts`, `src/db/domain/team.ts`).
 | PCON-010 | WHEN roster generation needs headcount bounds THE system SHALL export `MIN_ROSTER_SIZE = 20` and `MAX_ROSTER_SIZE = 30` as named constants | [x] → #73 |
 
 `PCON-006` and `PCON-007` were originally Deferred, recording obligations for a future transfers map
-to pick up (`docs/llds/player-contracts-roster.md`'s Edge Case Probe e3/e6). [#237](https://github.com/wulke/premier-league-baseball/issues/237)
+to pick up (`docs/llds/player/player-contracts-roster.md`'s Edge Case Probe e3/e6). [#237](https://github.com/wulke/premier-league-baseball/issues/237)
 is that map: `docs/specs/player/contract-lifecycle-specs.md`'s `XFER-013`/`XFER-017` implement the
 `Player.teamId`↔`Contract` sync `PCON-007` called for, and `XFER-006`/`XFER-022`/`XFER-023` implement
 the read-side free-agency observation `PCON-006` called for — both rows are marked Implemented here.
@@ -26,6 +26,6 @@ the read-side free-agency observation `PCON-006` called for — both rows are ma
 
 ## Traceability
 
-- LLD: `docs/llds/player-contracts-roster.md`
+- LLD: `docs/llds/player/player-contracts-roster.md`
 - Decision record: [#63](https://github.com/wulke/premier-league-baseball/issues/63), [#64](https://github.com/wulke/premier-league-baseball/issues/64)
 - Code: `src/db/model/contract.ts`, `src/db/model/associations.ts`, `src/db/domain/contract.ts`, `src/db/domain/player.ts`, `src/db/domain/team.ts`

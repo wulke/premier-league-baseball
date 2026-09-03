@@ -12,7 +12,7 @@ build Roster/Player UI — both are future work once this schema lands (see "Out
 ## Epic 1: Player Model & Attribute Schema
 Introduces `Player` as a first-class table, replacing the current no-roster state (`Team` is just an
 `id`/`config`/`gameWorldId` row today).
-*   **Detailed Design:** `docs/llds/player-attributes.md`
+*   **Detailed Design:** `docs/llds/player/player-attributes.md`
 *   **Key Requirements:**
     *   New `Player` model: `teamId` (FK, nullable = free agent), `gameWorldId` (FK, scoped per-world), `attributes` (JSON).
     *   Flat, non-role-conditioned `attributes` shape: shared scalar ratings (`contact`/`power`/`armStrength`/`accuracy`/`reaction`/`vision`/`discipline`).
@@ -21,7 +21,7 @@ Introduces `Player` as a first-class table, replacing the current no-roster stat
 
 ## Epic 2: Player Stats Schema
 Establishes the storage grain for Player stats without wiring any writer yet.
-*   **Detailed Design:** `docs/llds/player-stats.md`
+*   **Detailed Design:** `docs/llds/player/player-stats.md`
 *   **Key Requirements:**
     *   New `PlayerGameStats` model — single game-grain table, one row per `(playerId, gameId)`.
     *   Core batting columns (`AB/H/R/RBI/HR/BB/SO`) and Core pitching columns (`GS/IP/H/BB/SO/ER`) only; fielding and Common tiers deferred.
@@ -31,7 +31,7 @@ Establishes the storage grain for Player stats without wiring any writer yet.
 
 ## Epic 3: Contract Schema & Roster Constraints
 Binds Players to Teams with a term, and defines roster size bounds.
-*   **Detailed Design:** `docs/llds/player-contracts-roster.md`
+*   **Detailed Design:** `docs/llds/player/player-contracts-roster.md`
 *   **Key Requirements:**
     *   New `Contract` model: `playerId`/`teamId` FK + `startYear`/`endYear` only — no `value`/salary field in v1.
     *   Flat roster size constraint: min 20 / max 30 Players per Team, no per-position minimums.
@@ -39,7 +39,7 @@ Binds Players to Teams with a term, and defines roster size bounds.
 
 ## Epic 4: Initial Roster Generation
 Generates a randomized, valid roster (with starting Contracts) at Team creation.
-*   **Detailed Design:** `docs/llds/player-contracts-roster.md`
+*   **Detailed Design:** `docs/llds/player/player-contracts-roster.md`
 *   **Key Requirements:**
     *   New `PlayerFactory` (`src/db/domain/player.ts`), called by `TeamFactory.create()` (`src/db/domain/team.ts`).
     *   Roster headcount randomized within [20, 30]; positions allocated proportionally (~40% Pitcher, remainder across 8 fielding positions) rather than a hardcoded template.
@@ -56,6 +56,6 @@ Roster/Player UI. All parked for future wayfinder maps once this schema exists.
 ## Infrastructure Prerequisite
 
 Before implementing these epics, three new Sequelize models are required (no changes to existing models):
-1.  **New `Player` model:** `teamId` (FK, nullable), `gameWorldId` (FK), `attributes` (JSON) — see `docs/llds/player-attributes.md`.
-2.  **New `PlayerGameStats` model:** `playerId` (FK), `gameId` (FK), Core batting/pitching columns — see `docs/llds/player-stats.md`.
-3.  **New `Contract` model:** `playerId` (FK), `teamId` (FK), `startYear`, `endYear` — see `docs/llds/player-contracts-roster.md`.
+1.  **New `Player` model:** `teamId` (FK, nullable), `gameWorldId` (FK), `attributes` (JSON) — see `docs/llds/player/player-attributes.md`.
+2.  **New `PlayerGameStats` model:** `playerId` (FK), `gameId` (FK), Core batting/pitching columns — see `docs/llds/player/player-stats.md`.
+3.  **New `Contract` model:** `playerId` (FK), `teamId` (FK), `startYear`, `endYear` — see `docs/llds/player/player-contracts-roster.md`.

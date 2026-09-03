@@ -28,6 +28,6 @@ Backend requirements for the `CompetitionFormat` config type and its resolution 
 
 ## Traceability
 
-- LLD: `docs/llds/competition-format.md`
+- LLD: `docs/llds/league/competition-format.md`
 - Decision record: [#36](https://github.com/wulke/premier-league-baseball/issues/36)
 - Code: `src/api/models.ts` (`CompetitionFormat`, `STANDARD_LEAGUE_FORMAT`, `STANDARD_CUP_FORMAT`, `validateLeagueConfig`, `LeagueConfig`, `DivisionConfig`, `Stage`, `SeedingSelection`, `SwissTier`, `LeagueTemplates`, `TeamPools`, `DefaultWorlds`)

@@ -1,5 +1,5 @@
 // @spec RLDRUI-001,RLDRUI-002,RLDRUI-003,RLDRUI-005
-// Acceptance bindings for the route-loader foundation (docs/llds/route-loader-foundation-ui.md):
+// Acceptance bindings for the route-loader foundation (docs/llds/shell/route-loader-foundation-ui.md):
 // the gw loader shared via the :gwId route, and revalidate() replacing invalidate() at the
 // batch-simulate call site. Rendered through the real route tree (createMemoryRouter), same
 // harness pattern as every other UI acceptance file post route-loader migration (map #229).

@@ -19,7 +19,7 @@ Backend requirements for `GameFactory().rapidSimulateSeason(gwId)`,
 
 ## Traceability
 
-- LLD: `docs/llds/rapid-simulate-season.md`
+- LLD: `docs/llds/game-world/rapid-simulate-season.md`
 - Gherkin: `test/bdd/features/rapid-simulate-season.feature`
 - Tests: `test/db/domain/game.test.ts`, `test/db/domain/game-world.test.ts` (new cases)
 - Code: `src/db/domain/game.ts` (`GameFactory.rapidSimulateSeason`), `src/db/domain/game-world.ts` (`GameWorldFactory.advanceCurrentDate`), `src/api/handlers.ts`, `src/api/router.ts`, `src/api/endpoints.ts`

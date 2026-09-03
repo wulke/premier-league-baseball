@@ -17,7 +17,7 @@ Backend requirements for the League-level rolling-window snapshot endpoint
 
 ## Traceability
 
-- LLD: `docs/llds/league-today.md`
+- LLD: `docs/llds/league/league-today.md`
 - UI sibling specs: `docs/specs/league/league-today-ui-specs.md`
 - Decision record: [#101](https://github.com/wulke/premier-league-baseball/issues/101)
 - Code: `src/api/endpoints.ts` (`GetLeagueToday`), `src/api/handlers.ts` (`getLeagueToday`), `src/db/domain/league.ts` (`LeagueFactory.getToday`)

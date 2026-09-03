@@ -5,7 +5,7 @@ import { deriveGameSeed } from '../../../src/db/domain/simulation/seed';
 
 // @spec SIM-016..SIM-018 (simulation engine seam — unit level)
 // Gherkin pairing: test/bdd/features/simulate-game.feature (domain-direct steps).
-// See docs/llds/game-simulation.md — "Simulation engine seam" and e13..e17.
+// See docs/llds/game-simulation/game-simulation.md — "Simulation engine seam" and e13..e17.
 
 describe('simulation engine seam', () => {
   beforeAll(async () => {

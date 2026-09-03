@@ -14,7 +14,7 @@ Backend requirements for selecting, reading, and clearing the Team managed in a 
 
 ## Traceability
 
-- LLD: `docs/llds/managed-club-pointer.md`
+- LLD: `docs/llds/manager/managed-club-pointer.md`
 - Decision record: [#152](https://github.com/wulke/premier-league-baseball/issues/152)
 - Tests: `test/bdd/features/managed-club.feature`, `test/bdd/steps/managed-club.steps.test.ts`
 - Code: `src/db/model/game-world.ts`, `src/db/migrations/managed-club-pointer.ts`, `src/db/domain/game-world.ts`, `src/api/handlers.ts`, `src/api/router.ts`

@@ -30,7 +30,7 @@ UI: `src/ui/pages/home.tsx`.
 ## Traceability
 
 - HLD: [`docs/high-level-design.md` — "HLD: Game-world templates (pickable old Champions League)"](../high-level-design.md)
-- LLD: [`docs/llds/game-world-templates.md`](../llds/game-world-templates.md)
+- LLD: [`docs/llds/game-world/game-world-templates.md`](../llds/game-world-templates.md)
 - Upstream decisions: [Map #78](https://github.com/wulke/premier-league-baseball/issues/78) → [#87](https://github.com/wulke/premier-league-baseball/issues/87); config seam [#85](https://github.com/wulke/premier-league-baseball/issues/85); run-path `MSS-001..009` ([`multi-stage-season-specs.md`](./multi-stage-season-specs.md)); config shape `CFG-001..017` ([`competition-format-specs.md`](./competition-format-specs.md)); multi-stage render `MSUI-001..003` ([`multi-stage-season-ui-specs.md`](./multi-stage-season-ui-specs.md))
 - Gherkin: `test/ui/features/game-world-templates-ui.feature` (GWT-004); backend proving slice is a jest test (no new backend Gherkin — exercises existing endpoints)
 - Code: `src/api/models.ts` (GWT-001, GWT-002), `src/ui/pages/home.tsx` (GWT-004), run-path reuse `src/db/domain/*` (GWT-003)

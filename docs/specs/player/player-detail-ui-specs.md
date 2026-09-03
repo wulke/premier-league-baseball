@@ -20,7 +20,7 @@ Frontend requirements for the player detail page and its FM-style page tabs
 ## Traceability
 
 - HLD: [`docs/high-level-design.md` — Team Roster & Player Visibility](../high-level-design.md#hld-team-roster--player-visibility)
-- LLD: `docs/llds/player-detail-ui.md`
+- LLD: `docs/llds/player/player-detail-ui.md`
 - Backend sibling specs: `docs/specs/player/player-detail-read-api-specs.md`
 - Sibling UI specs: `docs/specs/manager/team-roster-ui-specs.md`
 - Decision record: [#148](https://github.com/wulke/premier-league-baseball/issues/148)

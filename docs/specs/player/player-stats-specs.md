@@ -17,6 +17,6 @@ requirements; they apply once a future map wires real per-player game events int
 
 ## Traceability
 
-- LLD: `docs/llds/player-stats.md`
+- LLD: `docs/llds/player/player-stats.md`
 - Decision record: [#61](https://github.com/wulke/premier-league-baseball/issues/61), [#62](https://github.com/wulke/premier-league-baseball/issues/62)
 - Code: `src/db/model/player-game-stats.ts`, `src/db/model/associations.ts`

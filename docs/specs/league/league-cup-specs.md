@@ -23,6 +23,6 @@ hook shared with `src/db/domain/game.ts`).
 
 ## Traceability
 
-- LLD: `docs/llds/knockout-bracket.md`
+- LLD: `docs/llds/league/knockout-bracket.md`
 - Decision records: [#33](https://github.com/wulke/premier-league-baseball/issues/33), [#43](https://github.com/wulke/premier-league-baseball/issues/43)
 - Code: `src/db/domain/division.ts` (`DivisionFactory` — `newSeason`, `KNOCKOUT` branch), `src/db/domain/game.ts` (completion hook), new `SeasonResult` model

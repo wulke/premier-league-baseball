@@ -10,7 +10,7 @@ Backend requirements for `GameWorldFactory(id).newSeason()` season rollover beha
 
 ## Traceability
 
-- LLD: `docs/llds/game-world-season-transition.md`
+- LLD: `docs/llds/game-world/game-world-season-transition.md`
 - Decision record: [#37](https://github.com/wulke/premier-league-baseball/issues/37)
 - Tests: `test/db/domain/game-world.test.ts`
 - Code: `src/db/domain/game-world.ts` (`GameWorldFactory.newSeason`)

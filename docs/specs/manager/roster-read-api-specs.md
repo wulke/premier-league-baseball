@@ -37,7 +37,7 @@ the concrete filter via the existing `resolveCurrentContract` helper.
 ## Traceability
 
 - HLD: [`docs/high-level-design.md` — Team Roster & Player Visibility](../high-level-design.md#hld-team-roster--player-visibility)
-- LLD: `docs/llds/roster-read-api.md`
+- LLD: `docs/llds/manager/roster-read-api.md`
 - Sibling specs: `docs/specs/player/player-identity-specs.md`, `docs/specs/player/player-detail-read-api-specs.md`
 - Decision record: [#145](https://github.com/wulke/premier-league-baseball/issues/145)
 - Code: `src/api/endpoints.ts` (`GetTeamRoster`), `src/api/router.ts`, `src/api/handlers.ts` (`getTeamRoster`), `src/db/domain/team.ts` (`getRoster`), `src/api/models.ts` (`RosterPlayer`)

@@ -268,7 +268,7 @@ const GameFactory = (id?: number) => {
     // current date's batch and advancing currentDate to the next distinct scheduledDate
     // among remaining non-COMPLETED games, until none remain. Built entirely on
     // simulateBatch (unchanged) + GameWorldFactory.advanceCurrentDate; never calls
-    // newSeason. See docs/llds/rapid-simulate-season.md.
+    // newSeason. See docs/llds/game-world/rapid-simulate-season.md.
     rapidSimulateSeason: async (gwId: number) => {
       // RSS-001: load the GameWorld; reject 404 before simulating anything.
       const gameWorld = await db.models.GameWorld.findByPk(gwId);

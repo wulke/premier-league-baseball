@@ -29,8 +29,8 @@ gate), `src/db/domain/game.ts` (completion hook).
 ## Traceability
 
 - HLD: [`docs/high-level-design.md`](../high-level-design.md#hld-full-season-simulation-league--league-cup)
-- LLD: [`docs/llds/multi-stage-season.md`](../llds/multi-stage-season.md)
-- Config LLD: [`docs/llds/competition-format.md`](../llds/competition-format.md) (#79–#95 additive surface)
+- LLD: [`docs/llds/league/multi-stage-season.md`](../llds/multi-stage-season.md)
+- Config LLD: [`docs/llds/league/competition-format.md`](../llds/competition-format.md) (#79–#95 additive surface)
 - Gherkin: `test/bdd/features/multi-stage-season.feature`
 - Decision records: [Map #78](https://github.com/wulke/premier-league-baseball/issues/78) → [#87](https://github.com/wulke/premier-league-baseball/issues/87); #79, #80, #81
 - Code: `src/db/domain/division.ts`, `src/db/domain/league.ts`, `src/db/domain/stage-advancement.ts` (new), `src/db/domain/season-result.ts`, `src/db/domain/game.ts`

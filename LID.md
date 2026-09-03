@@ -45,7 +45,7 @@ Short description of the objective.
 - **Logic Flow**: Sequential steps or pseudocode.
 - **Edge Case Probe**: Explicitly list potential failures and how they are handled.
 #### LLD Template
-Path: `docs/llds/[component-name].md`
+Path: `docs/llds/[category]/[component-name].md` (categories: `game-world`, `league`, `player`, `manager`, `game-simulation`, `notifications`, `shell` — mirrors `docs/specs/`)
 ```markdown
 # LLD: [Component Name]
 

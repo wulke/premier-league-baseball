@@ -25,7 +25,7 @@ the `GameResultNotification` validation trigger (`src/db/model/notification.ts`,
 ## Traceability
 
 - HLD: [`docs/high-level-design.md` — Client Notification & Alert Stream](../high-level-design.md#hld-client-notification--alert-stream)
-- LLD: `docs/llds/notification-stream.md`
+- LLD: `docs/llds/notifications/notification-stream.md`
 - Sibling specs: `docs/specs/notifications/notification-stream-ui-specs.md`
 - Decision record: [#259](https://github.com/wulke/premier-league-baseball/issues/259), [#260](https://github.com/wulke/premier-league-baseball/issues/260), [#261](https://github.com/wulke/premier-league-baseball/issues/261)
 - Code: `src/db/model/notification.ts`, `src/db/model/associations.ts`, `src/db/domain/notifications/{registry,notification,game-result-notification}.ts`, `src/db/domain/game.ts` (trigger call), `src/api/endpoints.ts`, `src/api/router.ts`, `src/api/handlers.ts`, `src/api/models.ts` (`NotificationRow`)

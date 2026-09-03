@@ -14,7 +14,7 @@ endpoint.
 
 ## Traceability
 
-- LLD: `docs/llds/game-world-deletion.md`
+- LLD: `docs/llds/game-world/game-world-deletion.md`
 - Gherkin: `test/bdd/features/game-world-deletion.feature`
 - Tests: `test/db/domain/game-world.test.ts` (new cases)
 - Code: `src/db/domain/game-world.ts` (`GameWorldFactory.delete`), `src/api/handlers.ts` (`deleteGameWorld`), `src/api/router.ts`, `src/api/endpoints.ts`

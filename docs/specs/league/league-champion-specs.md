@@ -16,6 +16,6 @@ recording that champion in `SeasonResult` through the shared game-completion pat
 
 ## Traceability
 
-- LLD: `docs/llds/competition-format.md`, `docs/llds/knockout-bracket.md`
+- LLD: `docs/llds/league/competition-format.md`, `docs/llds/league/knockout-bracket.md`
 - Decision record: [#40](https://github.com/wulke/premier-league-baseball/issues/40)
 - Code: `src/api/models.ts`, `src/db/domain/game.ts`, `src/db/domain/season-result.ts`

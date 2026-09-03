@@ -32,6 +32,6 @@ disabling or retire the requirement.
 
 ## Traceability
 
-- LLD: `docs/llds/full-season-ui.md`
+- LLD: `docs/llds/game-world/full-season-ui.md`
 - Decision records: [#34](https://github.com/wulke/premier-league-baseball/issues/34), [#35](https://github.com/wulke/premier-league-baseball/issues/35), [#39](https://github.com/wulke/premier-league-baseball/issues/39), [#40](https://github.com/wulke/premier-league-baseball/issues/40)
 - Code: `src/ui/pages/league.tsx`, `src/ui/pages/game-world.tsx`, `src/ui/routes.tsx`, `src/db/domain/team.ts` (`getSchedule`, unchanged)

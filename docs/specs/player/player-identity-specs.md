@@ -25,6 +25,6 @@ closed out of scope); it records the migration posture, not a behavior to implem
 ## Traceability
 
 - HLD: [`docs/high-level-design.md` — Team Roster & Player Visibility](../high-level-design.md#hld-team-roster--player-visibility)
-- LLD: `docs/llds/player-identity.md`
+- LLD: `docs/llds/player/player-identity.md`
 - Decision record: [#141](https://github.com/wulke/premier-league-baseball/issues/141), [#142](https://github.com/wulke/premier-league-baseball/issues/142), [#143](https://github.com/wulke/premier-league-baseball/issues/143)
 - Code: `src/db/model/player.ts` (6 columns), `src/db/domain/identity.ts` (pools + `generateIdentity`), `src/db/domain/player.ts` (`generateRoster` extension)

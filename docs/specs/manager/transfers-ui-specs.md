@@ -19,7 +19,7 @@ Frontend requirements for the world-scoped Transfers page and the Release/Renew 
 ## Traceability
 
 - HLD: `docs/high-level-design.md` — no dedicated HLD section exists yet for Transfers; [#237](https://github.com/wulke/premier-league-baseball/issues/237)'s resolved grill-me decision record stands in for it.
-- LLD: `docs/llds/transfers-ui.md`
+- LLD: `docs/llds/manager/transfers-ui.md`
 - Backend sibling specs: `docs/specs/player/contract-lifecycle-specs.md`
 - Sibling UI specs: `docs/specs/manager/team-roster-ui-specs.md` (release/renew rows amend this), `docs/specs/manager/managed-club-ui-specs.md` (nav-rail fog trio amended)
 - Decision record: [#140](https://github.com/wulke/premier-league-baseball/issues/140), [#237](https://github.com/wulke/premier-league-baseball/issues/237)

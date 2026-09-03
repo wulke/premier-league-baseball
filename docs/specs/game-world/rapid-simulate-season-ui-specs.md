@@ -17,7 +17,7 @@ alongside the player-facing `BatchSimulateControl`.
 
 ## Traceability
 
-- Backend LLD (sibling): `docs/llds/rapid-simulate-season.md`
-- LLD: `docs/llds/rapid-simulate-season-ui.md`
+- Backend LLD (sibling): `docs/llds/game-world/rapid-simulate-season.md`
+- LLD: `docs/llds/game-world/rapid-simulate-season-ui.md`
 - Gherkin: `test/ui/features/rapid-simulate-season-ui.feature`
 - Code: `src/ui/components/rapid-simulate-control.tsx` (NEW), wired in `src/ui/components/nav-rail.tsx`; cross-lock via `disabled`/`onBusyChange` on `BatchSimulateControl` + `RapidSimulateControl` (RSSUI-006)

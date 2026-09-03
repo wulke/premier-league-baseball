@@ -50,7 +50,7 @@ mechanism they named is deleted; superseded by RLDRUI-003 in
 
 ## Traceability
 
-- LLD: [`docs/llds/app-shell-ui.md`](../llds/app-shell-ui.md)
+- LLD: [`docs/llds/shell/app-shell-ui.md`](../llds/app-shell-ui.md)
 - HLD: [`docs/high-level-design.md` — "HLD: App Shell — Left Nav Rail"](../high-level-design.md)
 - Source decision: [Map #2 (UI Direction)](https://github.com/wulke/premier-league-baseball/issues/2) / [#10 (Page-by-page layout plan)](https://github.com/wulke/premier-league-baseball/issues/10)
 - **Retired provider specs:** SIMUI-001…SIMUI-005 (formerly in [`simulate-game-ui-specs.md`](./simulate-game-ui-specs.md)) and SIMUI-015/018 (above) are retired as of map #229 — `GameWorldProvider` is deleted; gw now comes from the `:gwId` route's loader. See [`route-loader-foundation-ui-specs.md`](./route-loader-foundation-ui-specs.md) (RLDRUI-001…006) for the current mechanism.

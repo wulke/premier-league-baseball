@@ -9,7 +9,7 @@ import { recordSeasonChampionIfMissing } from './season-result';
 // Knockout round-advancement, tiebreak resolution, and champion recording. Lives in its own
 // module so the shared game-completion path (`game.ts`) can call into it without creating a
 // circular import with `division.ts` (which imports `GameFactory`). See
-// `docs/llds/knockout-bracket.md` (Round-advancement / Tiebreak modes / Implementation notes).
+// `docs/llds/league/knockout-bracket.md` (Round-advancement / Tiebreak modes / Implementation notes).
 
 const MAX_SLOT = Number.MAX_SAFE_INTEGER;
 
