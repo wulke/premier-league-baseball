@@ -115,6 +115,16 @@ const getTeamLineup = async (teamId: number, gwId?: number, gameId?: number) => 
   return await TeamFactory(teamId).getLineup({ gwId, gameId });
 };
 
+// @spec GBULL-001,GBULL-002 — this read intentionally has no managed-team gate; the pointer is
+// UI-only and all existing API reads remain symmetric.
+const getNextTeamGameLineup = async (teamId: number, gwId?: number) => {
+  if (gwId != null) {
+    const team = await db.models.Team.findByPk(teamId);
+    if (!team || team.dataValues.gameWorldId !== gwId) throw new DomainError('Not found', 404);
+  }
+  return TeamFactory(teamId).getNextGameLineup();
+};
+
 const resolveTeamMatchRules = async (teamId: number, gameWorldId: number, year: number) => {
   const divisionSeason = await db.models.DivisionSeason.findOne({
     where: { teamId, year },
@@ -190,6 +200,17 @@ const saveTeamLineup = async (teamId: number, entries: ActiveLineupEntry[]) => {
   return TeamFactory(teamId).saveActiveLineup(entries, rules);
 };
 
+// @spec GBULL-003,GBULL-004,GBULL-005 — unlike the active-template PUT, this game-scoped PATCH
+// deliberately does not apply managedTeamId as a server-side access boundary.
+const saveTeamGameLineup = async (teamId: number, gameId: number, entries: ActiveLineupEntry[]) => {
+  const team = await db.models.Team.findByPk(teamId);
+  if (!team) throw new DomainError('Not found', 404);
+  const gameWorld = await db.models.GameWorld.findByPk(team.dataValues.gameWorldId);
+  if (!gameWorld) throw new DomainError('Not found', 404);
+  const rules = await resolveTeamMatchRules(teamId, gameWorld.dataValues.id, gameWorld.dataValues.year);
+  return TeamFactory(teamId).saveGameLineup(gameId, entries, rules);
+};
+
 // @spec XFER-002,XFER-003,XFER-007,XFER-012,XFER-013,XFER-020
 const signPlayer = async (teamId: number, playerId: number, endDate?: string) => {
   const context = await resolveMutationContext(teamId);
@@ -228,7 +249,9 @@ export {
   getTeamSchedule,
   getTeamRoster,
   getTeamLineup,
+  getNextTeamGameLineup,
   saveTeamLineup,
+  saveTeamGameLineup,
   getPlayerDetail,
   newGameWorld,
   setManagedClub,

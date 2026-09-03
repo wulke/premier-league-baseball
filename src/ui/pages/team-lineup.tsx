@@ -3,10 +3,11 @@ import { Link, useParams, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { ActiveLineupEntry, PlayerPosition, RosterPlayer, TeamLineup } from '../../api/models';
 
-type LineupTab = 'DEFENSIVE' | 'BATTING';
+type LineupTab = 'DEFENSIVE' | 'BATTING' | 'BULLPEN';
 type DraftRole = ActiveLineupEntry['role'] | 'UNASSIGNED';
 type DraftEntry = Omit<ActiveLineupEntry, 'role'> & { role: DraftRole; valid?: boolean };
 type LineupRow = DraftEntry & { entryIndex: number };
+type NextGameLineup = { game: { id: number; scheduledDate: string | null; status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED'; opponentName: string }; lineup: TeamLineup };
 
 const DEFENSIVE_TAB_ORDER: PlayerPosition[] = ['Pitcher', 'Catcher', 'FirstBase', 'SecondBase', 'ThirdBase', 'Shortstop', 'LeftField', 'CenterField', 'RightField'];
 
@@ -20,6 +21,13 @@ const toDraft = (lineup: TeamLineup, roster: RosterPlayer[]): DraftEntry[] => {
   const assigned = new Set(entries.map((entry) => entry.playerId));
   return [...entries, ...roster.filter((player) => !assigned.has(player.id)).map((player) => ({ playerId: player.id, role: 'UNASSIGNED' as const, battingOrder: null, fieldingPosition: null }))];
 };
+
+// @spec GBULL-006 — the game snapshot is a complete lineup replacement, not a partial bullpen patch.
+const toGameEntries = (lineup: TeamLineup): ActiveLineupEntry[] => [
+  ...lineup.starters.map((entry) => ({ playerId: entry.playerId, role: 'STARTER' as const, battingOrder: entry.battingOrder, fieldingPosition: entry.fieldingPosition })),
+  ...lineup.bench.map((entry) => ({ playerId: entry.playerId, role: 'BENCH' as const, battingOrder: null, fieldingPosition: null })),
+  ...lineup.bullpen.map((entry) => ({ playerId: entry.playerId, role: 'BULLPEN' as const, battingOrder: null, fieldingPosition: null })),
+];
 
 const playerName = (playerId: number, players: Map<number, RosterPlayer>) => {
   const player = players.get(playerId);
@@ -41,21 +49,28 @@ const TeamLineupView = () => {
   const [editing, setEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<LineupTab>('DEFENSIVE');
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [nextGame, setNextGame] = useState<NextGameLineup | null>(null);
+  const [gameDraft, setGameDraft] = useState<ActiveLineupEntry[]>([]);
+  const [gameSaveError, setGameSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!teamId || !gwId) return;
     let mounted = true;
-    setLineup(null); setDraft([]); setRoster([]); setEditing(false); setSaveError(null);
+    setLineup(null); setDraft([]); setRoster([]); setEditing(false); setSaveError(null); setNextGame(null); setGameDraft([]); setGameSaveError(null);
     Promise.all([
       fetch(`${Endpoints.GetTeamLineup.replace(':teamId', teamId)}?gwId=${encodeURIComponent(gwId)}`, { method: 'GET', mode: 'cors', headers: { 'Content-Type': 'application/json' } }).then((r) => r.ok ? r.json() : null).catch(() => null),
       fetch(Endpoints.GetTeamRoster.replace(':teamId', teamId), { method: 'GET', mode: 'cors', headers: { 'Content-Type': 'application/json' } }).then((r) => r.ok ? r.json() : []).catch(() => []),
-    ]).then(([nextLineup, nextRoster]) => {
+      fetch(`${Endpoints.GetNextTeamGameLineup.replace(':teamId', teamId)}?gwId=${encodeURIComponent(gwId)}`, { method: 'GET', mode: 'cors', headers: { 'Content-Type': 'application/json' } }).then((r) => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([nextLineup, nextRoster, nextGameResponse]) => {
       if (!mounted) return;
       const safeRoster = Array.isArray(nextRoster) ? nextRoster as RosterPlayer[] : [];
       setRoster(safeRoster);
       const safeLineup = nextLineup && !Array.isArray(nextLineup) ? nextLineup as TeamLineup : null;
       setLineup(safeLineup);
       setDraft(safeLineup ? toDraft(safeLineup, safeRoster) : []);
+      const safeNextGame = nextGameResponse && !Array.isArray(nextGameResponse) && nextGameResponse.game && nextGameResponse.lineup ? nextGameResponse as NextGameLineup : null;
+      setNextGame(safeNextGame);
+      setGameDraft(safeNextGame ? toGameEntries(safeNextGame.lineup) : []);
     });
     return () => { mounted = false; };
   }, [gwId, teamId]);
@@ -115,6 +130,26 @@ const TeamLineupView = () => {
     const saved = await response.json().catch(() => null);
     if (saved && !Array.isArray(saved)) { setLineup(saved as TeamLineup); setDraft([]); setEditing(false); }
   };
+  // @spec GBULL-006 — a chosen player swaps with their current snapshot slot, preserving a
+  // complete unique entry set whenever both players are already represented in the snapshot.
+  const updateGameSlot = (entryIndex: number, playerId: number) => setGameDraft((current) => {
+    const next = current.map((entry) => ({ ...entry }));
+    const target = next[entryIndex];
+    if (!target || target.playerId === playerId) return current;
+    const source = next.find((entry, index) => index !== entryIndex && entry.playerId === playerId);
+    if (source) source.playerId = target.playerId;
+    target.playerId = playerId;
+    return next;
+  });
+  // @spec GBULL-006
+  const saveGameLineup = async () => {
+    if (!teamId || !nextGame) return;
+    setGameSaveError(null);
+    const response = await fetch(Endpoints.SaveTeamGameLineup.replace(':teamId', teamId).replace(':gameId', String(nextGame.game.id)), { method: 'PATCH', mode: 'cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entries: gameDraft }) }).catch(() => null);
+    if (!response || !response.ok) { const body = response ? await response.json().catch(() => ({})) : {}; setGameSaveError(body?.error ?? 'Unable to save game lineup'); return; }
+    const saved = await response.json().catch(() => null);
+    if (saved && !Array.isArray(saved)) { const updated = { ...nextGame, lineup: saved as TeamLineup }; setNextGame(updated); setGameDraft(toGameEntries(updated.lineup)); }
+  };
   const occupiedPositions = (self: number) => new Set(starters.filter((row) => row.entryIndex !== self).map((row) => row.fieldingPosition));
 
   const renderRow = (row: LineupRow, tab: LineupTab) => {
@@ -138,11 +173,32 @@ const TeamLineupView = () => {
         {!editing ? <button type="button" onClick={enterEdit}>Edit Lineup</button> : <><button type="button" onClick={saveLineup}>Save Lineup</button><button type="button" onClick={cancelEdit}>Cancel</button></>}
         {saveError && <span role="alert" style={{ color: '#a33', fontSize: '0.82rem' }}>{saveError}</span>}
       </div>}
-      <div role="tablist" style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>{(['DEFENSIVE', 'BATTING'] as LineupTab[]).map((tab) => <button key={tab} role="tab" aria-selected={activeTab === tab} data-testid={`tab-${tab.toLowerCase()}`} onClick={() => setActiveTab(tab)} style={tabStyle(activeTab === tab)}>{tab === 'DEFENSIVE' ? 'Defensive' : 'Batting'}</button>)}</div>
+      <div role="tablist" style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>{(['DEFENSIVE', 'BATTING', 'BULLPEN'] as LineupTab[]).map((tab) => <button key={tab} role="tab" aria-selected={activeTab === tab} data-testid={`tab-${tab.toLowerCase()}`} onClick={() => setActiveTab(tab)} style={tabStyle(activeTab === tab)}>{tab === 'DEFENSIVE' ? 'Defensive' : tab === 'BATTING' ? 'Batting' : 'Bullpen'}</button>)}</div>
       {activeTab === 'DEFENSIVE' && <section data-testid="defensive-table" aria-label="Defensive lineup" style={panelStyle}>{defensiveRows.map((row) => renderRow(row, 'DEFENSIVE'))}{reserves.map((row) => renderRow(row, 'DEFENSIVE'))}{editing && <UnassignedBucket rows={unassigned} renderRow={renderRow} />}</section>}
       {activeTab === 'BATTING' && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(230px, 0.55fr)', gap: '18px', alignItems: 'start' }}><section data-testid="batting-table" aria-label="Batting order" style={panelStyle}>{battingRows.map((row) => renderRow(row, 'BATTING'))}{reserves.map((row) => renderRow(row, 'BATTING'))}{editing && <UnassignedBucket rows={unassigned} renderRow={renderRow} />}</section>{startingPitcher && <section data-testid="starting-pitcher" style={{ ...panelStyle, borderColor: '#71896e', background: '#f1f6ef' }}><h2 style={headingStyle}>Starting pitcher</h2><LineupPlayerLink playerId={startingPitcher.playerId} players={players} gwId={gwId} /></section>}</div>}
+      {activeTab === 'BULLPEN' && <GameBullpenPanel game={nextGame} entries={gameDraft} players={players} roster={roster} gwId={gwId} editable={isManagedTeam && nextGame?.game.status === 'SCHEDULED'} error={gameSaveError} onChange={updateGameSlot} onSave={saveGameLineup} />}
     </>}
   </main>;
+};
+
+// @spec GBULL-006
+const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, error, onChange, onSave }: { game: NextGameLineup | null; entries: ActiveLineupEntry[]; players: Map<number, RosterPlayer>; roster: RosterPlayer[]; gwId?: string; editable: boolean; error: string | null; onChange: (index: number, playerId: number) => void; onSave: () => void }) => {
+  if (!game) return <section data-testid="bullpen-empty" style={panelStyle}>No next scheduled game.</section>;
+  const slotRows = entries.map((entry, index) => ({ entry, index })).filter(({ entry }) => entry.role === 'BENCH' || entry.role === 'BULLPEN' || (entry.role === 'STARTER' && entry.fieldingPosition === 'Pitcher'));
+  const benchPlayerIds = new Set(entries.filter((entry) => entry.role === 'BENCH').map((entry) => entry.playerId));
+  const defensiveStarterIds = new Set(entries.filter((entry) => entry.role === 'STARTER' && entry.fieldingPosition !== 'Pitcher').map((entry) => entry.playerId));
+  return <section data-testid="bullpen-game-lineup" style={panelStyle}><h2 style={headingStyle}>Next game: vs {game.game.opponentName} · {game.game.scheduledDate ? new Date(game.game.scheduledDate).toLocaleDateString() : 'Date TBD'}</h2>
+    {slotRows.map(({ entry, index }) => {
+      // @spec GBULL-006 — only pitchers can occupy the designated starter/active-reliever
+      // slots. Keep an existing legacy occupant visible even if its current roster profile is bad.
+      const pitcherSlot = entry.role === 'STARTER' || entry.role === 'BULLPEN';
+      const eligiblePlayers = roster.filter((player) => player.id === entry.playerId || (pitcherSlot
+        ? player.primaryPosition === 'Pitcher' && !defensiveStarterIds.has(player.id)
+        : player.primaryPosition !== 'Pitcher' && benchPlayerIds.has(player.id)));
+      return <div key={index} style={rowStyle}><span style={tagStyle}>{entry.role === 'STARTER' ? 'SP' : entry.role}</span><span style={{ flex: 1 }}><LineupPlayerLink playerId={entry.playerId} players={players} gwId={gwId} /></span>{editable && <select aria-label={`${entry.role === 'STARTER' ? 'Starting pitcher' : entry.role.toLowerCase()} slot ${index + 1}`} value={entry.playerId} onChange={(event) => onChange(index, Number(event.target.value))}>{eligiblePlayers.map((player) => <option key={player.id} value={player.id}>{player.givenName} {player.familyName}</option>)}</select>}</div>;
+    })}
+    {editable && <button type="button" onClick={onSave}>Save game lineup</button>}{error && <span role="alert" style={{ color: '#a33', marginLeft: '10px' }}>{error}</span>}
+  </section>;
 };
 
 // @spec LINEUI-010,LINEUI-011,LINEUI-013
