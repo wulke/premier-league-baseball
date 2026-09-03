@@ -1,4 +1,4 @@
-// @spec LSNAP-001,LSNAP-002,LSNAP-003,LSNAP-004,LSNAP-005
+// @spec LSNAP-001,LSNAP-002,LSNAP-003,LSNAP-004,LSNAP-005,LEDIT-008
 // Per-game lineup snapshot acceptance bindings.
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
@@ -53,6 +53,12 @@ autoBindSteps(feature, [({ given, when, then }: any) => {
     await db.models.LineupEntry.bulkCreate(overrideEntries);
     existingLineup = { id: lineup.id, entries: overrideEntries };
   });
+  // @spec LEDIT-008
+  given(/^Team (\d+)'s active lineup has a player no longer on its roster$/, async (teamId: string) => {
+    const active = await db.models.Lineup.findOne({ where: { teamId: Number(teamId), gameId: null } }).then((row: any) => row.dataValues);
+    const entry = await db.models.LineupEntry.findOne({ where: { lineupId: active.id } }).then((row: any) => row.dataValues);
+    await db.models.Player.update({ teamId: null }, { where: { id: entry.playerId } });
+  });
   when(/^Team (\d+) snapshots its lineup for Game (\d+)$/, async (teamId: string, gameId: string) => {
     activeAtSnapshot = await (handlers as any).getTeamLineup(Number(teamId));
     await db.models.Game.findOrCreate({ where: { id: Number(gameId) }, defaults: { homeTeam: Number(teamId), awayTeam: Number(teamId) } });
@@ -60,6 +66,12 @@ autoBindSteps(feature, [({ given, when, then }: any) => {
   });
   when(/^Team (\d+) attempts to snapshot missing Game (\d+)$/, async (teamId: string, gameId: string) => {
     try { snapshotResponse = { statusCode: 200, body: await (TeamFactory(Number(teamId)) as any).snapshotForGame(Number(gameId)) }; }
+    catch (error) { snapshotResponse = { statusCode: error instanceof DomainError ? error.statusCode : (error as any)?.statusCode ?? 500, error }; }
+  });
+  // @spec LEDIT-008
+  when(/^the client requests Team (\d+)'s next-game lineup for Game (\d+)$/, async (teamId: string, gameId: string) => {
+    await db.models.Game.create({ id: Number(gameId), homeTeam: Number(teamId), awayTeam: Number(teamId), status: 'SCHEDULED' });
+    try { snapshotResponse = { statusCode: 200, body: await (handlers as any).getNextTeamGameLineup(Number(teamId)) }; }
     catch (error) { snapshotResponse = { statusCode: error instanceof DomainError ? error.statusCode : (error as any)?.statusCode ?? 500, error }; }
   });
   when(/^the client reads Team (\d+)'s lineup for Game (\d+)$/, async (teamId: string, gameId: string) => capture(Number(teamId), Number(gameId)));
@@ -82,5 +94,12 @@ autoBindSteps(feature, [({ given, when, then }: any) => {
   then('the snapshot response indicates the Game was not found', async () => {
     expect(snapshotResponse?.statusCode).toBe(404);
     await expect(db.models.Lineup.count({ where: { teamId: 10, gameId: 44 } })).resolves.toBe(0);
+  });
+  // @spec LEDIT-008
+  then('the snapshot response is rejected with 422', () => expect(snapshotResponse?.statusCode).toBe(422));
+  // @spec LEDIT-008
+  then(/^no per-game lineup exists for Game (\d+)$/, async (gameId: string) => {
+    await expect(db.models.Lineup.count({ where: { teamId: 10, gameId: Number(gameId) } })).resolves.toBe(0);
+    await expect(db.models.LineupEntry.count()).resolves.toBe(11);
   });
 }]);

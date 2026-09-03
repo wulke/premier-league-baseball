@@ -301,7 +301,7 @@ const TeamFactory = (id?: number): ITeam => {
         .map(toRosterPlayer(year));
     },
 
-    // @spec LSNAP-001,LSNAP-002,LSNAP-003,LSNAP-005
+    // @spec LSNAP-001,LSNAP-002,LSNAP-003,LSNAP-005,LEDIT-008
     snapshotForGame: async (gameId: number): Promise<GameLineupSnapshot> => {
       const team = await db.models.Team.findByPk(id);
       if (!team) throw new DomainError('Not found', 404);
@@ -319,6 +319,13 @@ const TeamFactory = (id?: number): ITeam => {
         const active = await db.models.Lineup.findOne({ where: { teamId: id, gameId: null }, transaction });
         if (!active) throw new DomainError('Not found', 404);
         const entries = await db.models.LineupEntry.findAll({ where: { lineupId: active.dataValues.id }, transaction });
+        // @spec LEDIT-008 — repairActive deliberately permits an unfillable departed entry on
+        // the active template. It remains readable for repair, but may never become game input.
+        const currentPlayerIds = new Set(await db.models.Player.findAll({ where: { teamId: id }, transaction })
+          .then((rows: any[]) => rows.map(({ dataValues }) => dataValues.id)));
+        if (entries.some(({ dataValues }: any) => !currentPlayerIds.has(dataValues.playerId))) {
+          throw new DomainError("active lineup contains a player not on this team's roster", 422);
+        }
         const lineup = await db.models.Lineup.create({ teamId: id, gameWorldId: team.dataValues.gameWorldId, gameId }, { transaction });
         await db.models.LineupEntry.bulkCreate(entries.map(({ dataValues }: any) => ({
           lineupId: lineup.dataValues.id,

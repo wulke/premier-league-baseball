@@ -9,5 +9,6 @@
 | LEDIT-005 | WHEN Sign or Release repairs an existing active Lineup THE system SHALL preserve every retained player's entry verbatim, place a signed player in BENCH or BULLPEN, and fill every departed starter vacancy that the remaining roster can fill. | [x] → #256 |
 | LEDIT-006 | WHEN Release leaves an existing active Lineup vacancy that no remaining roster player can fill THE system SHALL complete the transfer, retain the unfilled departed entry, and mark that entry invalid rather than rolling back the mutation. | [x] → #256 |
 | LEDIT-007 | WHEN the system returns a `TeamLineup` card THE system SHALL include `valid: boolean` on every STARTER, BENCH, and BULLPEN entry, indicating whether that entry's player remains on the team's current roster; IF the Pitcher entry is invalid THE system SHALL return `startingPitcherId: null`. | [x] → #256 |
+| LEDIT-008 | WHEN `snapshotForGame(gameId)` freezes an active Lineup IF any active entry's player is no longer on that Team's current roster THE system SHALL reject the snapshot with 422 and SHALL create no per-game Lineup or LineupEntry rows. | [x] → #257 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
