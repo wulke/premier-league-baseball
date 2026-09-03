@@ -1,52 +1,46 @@
 // @spec SPAF-001..SPAF-003 (SPA fallback route acceptance)
+import { mkdtemp, rm, writeFile } from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
+import request, { type Response } from 'supertest';
 import { createApplication } from '../../../src/app';
+import db from '../../../src/db/client';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/spa-fallback-route.feature'));
+const spaDocument = '<!doctype html><title>Premier League Baseball</title>';
 
-let app: any;
-let response: { statusCode?: number; sendFile?: string; sendStatus?: number };
-
-const layerFor = (predicate: (layer: any) => boolean) => {
-  const layer = app._router.stack.find(predicate);
-  if (!layer) throw new Error('Expected middleware layer was not registered');
-  return layer;
-};
-
-const fallbackHandler = () => layerFor((layer) => layer.route?.path === '*').route.stack[0].handle;
-const apiNotFoundHandler = () => layerFor((layer) => String(layer.regexp).includes('^\\/api\\/?')).handle;
+let uiDirectory: string;
+let app: ReturnType<typeof createApplication>;
+let response: Response;
 
 const registerSteps = ({ given, when, then }: any) => {
-  given('an application with an SPA index document', () => {
-    app = createApplication('/fixture/ui');
-    response = {};
+  given('an application with an SPA index document', async () => {
+    uiDirectory = await mkdtemp(path.join(os.tmpdir(), 'plb-spa-'));
+    await writeFile(path.join(uiDirectory, 'index.html'), spaDocument);
+    app = createApplication(uiDirectory);
   });
 
-  when(/^the browser GETs the nested route "([^"]+)"$/, (pathname: string) => {
-    fallbackHandler()({ method: 'GET', path: pathname }, { sendFile: (file: string) => { response.sendFile = file; } });
-  });
-  when(/^the browser GETs the unknown API route "([^"]+)"$/, (pathname: string) => {
-    apiNotFoundHandler()({ method: 'GET', path: pathname }, { sendStatus: (status: number) => { response.sendStatus = status; } });
-  });
-  when(/^the browser GETs the declared API route "([^"]+)"$/, () => {
-    const apiIndex = app._router.stack.findIndex((layer: any) => layer.name === 'router');
-    const fallbackIndex = app._router.stack.findIndex((layer: any) => layer.route?.path === '*');
-    response.statusCode = apiIndex < fallbackIndex ? 200 : 500;
-  });
+  when(/^the browser GETs the nested route "([^"]+)"$/, async (pathname: string) => { response = await request(app).get(pathname); });
+  when(/^the browser GETs the unknown API route "([^"]+)"$/, async (pathname: string) => { response = await request(app).get(pathname); });
+  when(/^the browser GETs the declared API route "([^"]+)"$/, async (pathname: string) => { response = await request(app).get(pathname); });
 
   then('the response is 200 with the SPA index document', () => {
-    expect(response.sendFile).toBe(path.resolve('/fixture/ui', 'index.html'));
+    expect(response.status).toBe(200);
+    expect(response.text).toBe(spaDocument);
   });
   then('the response is a normal 404 without the SPA index document', () => {
-    expect(response.sendStatus).toBe(404);
-    expect(response.sendFile).toBeUndefined();
+    expect(response.status).toBe(404);
+    expect(response.text).not.toBe(spaDocument);
   });
   then('the response is JSON with status 200', () => {
-    expect(response.statusCode).toBe(200);
-    expect(app._router.stack.findIndex((layer: any) => layer.name === 'router'))
-      .toBeLessThan(app._router.stack.findIndex((layer: any) => layer.route?.path === '*'));
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('application/json');
+    expect(Array.isArray(response.body)).toBe(true);
   });
 };
+
+beforeEach(async () => { await db.sync({ force: true }); });
+afterEach(async () => { await rm(uiDirectory, { recursive: true, force: true }); });
 
 autoBindSteps(feature, [registerSteps]);
