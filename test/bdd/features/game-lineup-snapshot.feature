@@ -37,3 +37,10 @@ Feature: Per-game lineup snapshot
   Scenario: A snapshot cannot target a missing Game
     When Team 10 attempts to snapshot missing Game 44
     Then the snapshot response indicates the Game was not found
+
+  @spec:LEDIT-008
+  Scenario: An invalid active lineup cannot be frozen for the next game
+    Given Team 10's active lineup has a player no longer on its roster
+    When the client requests Team 10's next-game lineup for Game 45
+    Then the snapshot response is rejected with 422
+    And no per-game lineup exists for Game 45

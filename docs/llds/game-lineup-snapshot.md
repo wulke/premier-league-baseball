@@ -24,6 +24,7 @@ snapshotForGame(teamId, gameId):
   → resolve Game or 404
   → resolve existing Lineup(teamId, gameId); return it unchanged when present
   → resolve active Lineup(teamId, gameId IS NULL) or 404
+  → verify every active LineupEntry still names a current Team player; reject invalid active at 422
   → transactionally create Lineup(teamId, gameWorldId, gameId)
   → clone every active LineupEntry assignment verbatim into the new lineup
 
@@ -43,6 +44,7 @@ getLineup(teamId, { gameId?, gwId? }):
 | Target Game does not exist | Signal not found (404); a snapshot never creates an orphaned per-game lineup. |
 | Concurrent snapshot requests | The partial unique index is the final integrity guard; the loser re-reads and returns the established row. |
 | Player roster membership mutates after a snapshot | Not repaired here: `LineupFactory.repairActive()` (`docs/llds/contract-lifecycle.md`, #237) repairs only the *active* (gameId-less) Lineup on sign/release, never a frozen per-game snapshot. Rosters are static within a #138 season, so a snapshot is valid at freeze time. |
+| Active lineup contains a player no longer on the Team roster | Refuse the snapshot with `DomainError(..., 422)` before creating the per-game Lineup or any entries. This is the server-side freeze backstop for tolerant active-lineup repair (`LEDIT-008`, #257). |
 
 ## Traceability
 
