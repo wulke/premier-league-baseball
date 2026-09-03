@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { RosterPlayer } from '../../api/models';
+import { Button, Input, Table, Td, Th, Tr } from './ui';
 
 type SortKey = 'name' | 'age' | 'primaryPosition';
 type SortDirection = 'asc' | 'desc';
@@ -74,46 +75,46 @@ const RosterTable = ({ players, gwId, testIdPrefix, actions }: RosterTableProps)
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: '16px', marginBottom: '16px' }}>
         <label style={{ fontSize: '0.8rem', color: '#666' }}>
           Filter
-          <input
+          <Input
             aria-label={`Filter ${testIdPrefix}`}
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            style={{ marginLeft: '7px', padding: '5px 7px', border: '1px solid #ccc', borderRadius: '3px', fontSize: '0.8rem' }}
+            style={{ width: 'auto', display: 'inline-block', marginLeft: '7px', padding: '5px 7px', borderRadius: '3px', fontSize: '0.8rem' }}
           />
         </label>
       </div>
       <div style={{ overflowX: 'auto' }}>
-        <table data-testid={`${testIdPrefix}-table`} style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+        <Table data-testid={`${testIdPrefix}-table`} style={{ fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
           <thead>
             <tr style={{ borderBottom: '2px solid #222' }}>
-              <th style={{ textAlign: 'left', padding: '6px 8px' }}><button type="button" onClick={() => changeSort('name')} style={sortButtonStyle}>Player</button></th>
-              <th style={{ textAlign: 'center', padding: '6px 8px' }}><button type="button" onClick={() => changeSort('age')} style={sortButtonStyle}>Age</button></th>
-              <th style={{ textAlign: 'left', padding: '6px 8px' }}><button type="button" onClick={() => changeSort('primaryPosition')} style={sortButtonStyle}>Coverage</button></th>
-              <th style={{ textAlign: 'center', padding: '6px 8px' }}>B/T</th>
-              {ratings.map((rating) => <th key={rating.key} data-testid={`rating-header-${rating.key}`} style={{ textAlign: 'center', padding: '6px 5px', fontSize: '0.7rem', color: '#555' }}>{rating.label}</th>)}
-              {actions && actions.length > 0 && <th style={{ padding: '6px 8px' }} />}
+              <Th align="left"><Button intent="ghost" onClick={() => changeSort('name')} style={sortButtonStyle}>Player</Button></Th>
+              <Th><Button intent="ghost" onClick={() => changeSort('age')} style={sortButtonStyle}>Age</Button></Th>
+              <Th align="left"><Button intent="ghost" onClick={() => changeSort('primaryPosition')} style={sortButtonStyle}>Coverage</Button></Th>
+              <Th>B/T</Th>
+              {ratings.map((rating) => <Th key={rating.key} data-testid={`rating-header-${rating.key}`} style={{ fontSize: '0.7rem', color: '#555', textTransform: 'none', letterSpacing: 'normal' }}>{rating.label}</Th>)}
+              {actions && actions.length > 0 && <Th />}
             </tr>
           </thead>
           <tbody>
             {visiblePlayers.map((player) => (
-              <tr key={player.id} data-testid={`${testIdPrefix}-row-${player.id}`} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={{ padding: '8px' }}>
+              <Tr key={player.id} data-testid={`${testIdPrefix}-row-${player.id}`}>
+                <Td align="left">
                   {gwId
                     ? <Link to={`/${gwId}/player/${player.id}`} style={{ color: '#222', fontWeight: 600, textUnderlineOffset: '3px' }}>{playerName(player)}</Link>
                     : playerName(player)}
-                </td>
-                <td style={{ padding: '8px', textAlign: 'center', color: '#555' }}>{player.age}</td>
-                <td data-testid={`position-coverage-${player.id}`} style={{ padding: '8px' }}>
+                </Td>
+                <Td style={{ color: '#555' }}>{player.age}</Td>
+                <Td align="left" data-testid={`position-coverage-${player.id}`}>
                   {player.positionCoverage.map((position) => position === player.primaryPosition
                     ? <strong key={position} data-testid={`position-primary-${player.id}`} style={{ fontWeight: 700 }}>{position}</strong>
                     : <span key={position} data-testid={`position-secondary-${player.id}-${position}`} style={{ color: '#888', marginLeft: '6px' }}>{position}</span>)}
-                </td>
-                <td style={{ padding: '8px', textAlign: 'center', color: '#666' }}>{player.bats}/{player.throws}</td>
-                {ratings.map((rating) => <td key={rating.key} data-testid={`rating-${player.id}-${rating.key}`} style={{ padding: '8px 5px', textAlign: 'center', fontWeight: 700, background: ratingTint(player[rating.key]) }}>{player[rating.key]}</td>)}
+                </Td>
+                <Td style={{ color: '#666' }}>{player.bats}/{player.throws}</Td>
+                {ratings.map((rating) => <Td key={rating.key} data-testid={`rating-${player.id}-${rating.key}`} style={{ padding: '8px 5px', fontWeight: 700, background: ratingTint(player[rating.key]) }}>{player[rating.key]}</Td>)}
                 {actions && actions.length > 0 && (
-                  <td style={{ padding: '8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <Td align="right" style={{ whiteSpace: 'nowrap' }}>
                     {actions.map((action) => (
-                      <button
+                      <Button
                         key={action.testId}
                         type="button"
                         data-testid={`${action.testId}-${player.id}`}
@@ -121,14 +122,14 @@ const RosterTable = ({ players, gwId, testIdPrefix, actions }: RosterTableProps)
                         style={actionButtonStyle}
                       >
                         {action.label}
-                      </button>
+                      </Button>
                     ))}
-                  </td>
+                  </Td>
                 )}
-              </tr>
+              </Tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </div>
     </div>
   );
@@ -136,10 +137,7 @@ const RosterTable = ({ players, gwId, testIdPrefix, actions }: RosterTableProps)
 
 const sortButtonStyle: React.CSSProperties = {
   padding: 0,
-  border: 'none',
-  background: 'none',
   color: '#555',
-  cursor: 'pointer',
   fontSize: '0.7rem',
   fontWeight: 700,
   textTransform: 'uppercase',
@@ -149,10 +147,8 @@ const sortButtonStyle: React.CSSProperties = {
 const actionButtonStyle: React.CSSProperties = {
   marginLeft: '6px',
   padding: '3px 9px',
-  border: '1px solid #ccc',
   borderRadius: '4px',
   background: '#fff',
-  cursor: 'pointer',
   fontSize: '0.7rem',
   fontWeight: 700,
   textTransform: 'uppercase',

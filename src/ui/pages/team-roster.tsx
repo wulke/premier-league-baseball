@@ -3,6 +3,7 @@ import { useParams, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { RosterPlayer } from '../../api/models';
 import { RosterTable } from '../components/roster-table';
+import { PageContainer } from '../components/ui';
 
 // @spec ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-008,ROSTUI-009,XFERUI-005
 const TeamRoster = () => {
@@ -43,7 +44,7 @@ const TeamRoster = () => {
   };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 24px 48px' }}>
+    <PageContainer style={{ maxWidth: '1200px', padding: '24px 24px 48px' }}>
       <h1 style={{ margin: '0 0 16px', fontSize: '1.35rem', fontWeight: 700 }}>Roster</h1>
       <RosterTable
         players={players}
@@ -54,7 +55,7 @@ const TeamRoster = () => {
           { testId: 'renew-action', label: 'Renew', onClick: (playerId) => postTransferAction(Endpoints.RenewPlayer, playerId) },
         ] : undefined}
       />
-    </div>
+    </PageContainer>
   );
 };
 

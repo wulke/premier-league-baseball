@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { TeamSeasonCalendar, TeamSeasonGame } from '../../api/models';
+import { Button, ErrorText, PageContainer, SectionLabel } from '../components/ui';
 
 type CalendarFilter = 'all' | 'scheduled' | 'played';
 type SimulateRowStatus = 'idle' | 'loading' | 'error';
@@ -88,21 +89,14 @@ const GameRow = ({
     }
 
     return (
-      <button
+      <Button
+        intent="secondary"
         data-testid={`simulate-${game.gameId}`}
         onClick={onSimulate}
-        style={{
-          padding: '4px 12px',
-          border: '1px solid #ccc',
-          borderRadius: '4px',
-          background: '#fff',
-          cursor: 'pointer',
-          fontSize: '0.78rem',
-          fontWeight: 600,
-        }}
+        style={{ padding: '4px 12px', fontSize: '0.78rem' }}
       >
         Simulate
-      </button>
+      </Button>
     );
   };
 
@@ -269,7 +263,7 @@ const TeamCalendar = () => {
   const total = (calendar?.games ?? []).length;
 
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
+    <PageContainer>
 
       {/* Team identity */}
       <div style={{ marginBottom: '28px' }}>
@@ -300,9 +294,9 @@ const TeamCalendar = () => {
           alignItems: 'center',
           fontSize: '0.85rem',
         }}>
-          <span style={{ fontWeight: 600, color: '#555', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <SectionLabel as="span" style={{ color: '#555' }}>
             Filter
-          </span>
+          </SectionLabel>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ color: '#666' }}>Status</span>
@@ -332,12 +326,13 @@ const TeamCalendar = () => {
           )}
 
           {(statusFilter !== 'all' || divisionFilter !== 'all') && (
-            <button
+            <Button
+              intent="ghost"
               onClick={() => { setStatusFilter('all'); setDivisionFilter('all'); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: '0.8rem', padding: 0, marginLeft: 'auto' }}
+              style={{ color: '#888', fontSize: '0.8rem', marginLeft: 'auto' }}
             >
               Clear filters
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -349,13 +344,10 @@ const TeamCalendar = () => {
 
       {!isLoading && error && (
         <div style={{ border: '1px solid #fcc', background: '#fff8f8', borderRadius: '6px', padding: '16px' }}>
-          <p style={{ margin: '0 0 10px', color: '#c00', fontSize: '0.9rem' }}>{error}</p>
-          <button
-            onClick={() => setRetryToken((v) => v + 1)}
-            style={{ padding: '6px 14px', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
-          >
+          <ErrorText style={{ display: 'block', marginBottom: '10px', fontSize: '0.9rem' }}>{error}</ErrorText>
+          <Button intent="secondary" onClick={() => setRetryToken((v) => v + 1)} style={{ padding: '6px 14px', fontSize: '0.85rem' }}>
             Retry
-          </button>
+          </Button>
         </div>
       )}
 
@@ -368,21 +360,12 @@ const TeamCalendar = () => {
       {/* Games grouped by month */}
       {!isLoading && !error && groupedGames.map(([label, games]) => (
         <div key={label} style={{ marginBottom: '28px' }}>
-          <h3 style={{
-            margin: '0 0 6px',
-            fontSize: '0.78rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.07em',
-            color: '#888',
-            fontWeight: 600,
-            borderBottom: '1px solid #eee',
-            paddingBottom: '6px',
-          }}>
+          <SectionLabel style={{ borderBottom: '1px solid #eee', paddingBottom: '6px' }}>
             {label}
             <span style={{ marginLeft: '8px', fontWeight: 400, color: '#bbb' }}>
               {games.length} game{games.length !== 1 ? 's' : ''}
             </span>
-          </h3>
+          </SectionLabel>
           {games.map((game) => (
             <GameRow
               key={game.gameId}
@@ -394,7 +377,7 @@ const TeamCalendar = () => {
           ))}
         </div>
       ))}
-    </div>
+    </PageContainer>
   );
 };
 

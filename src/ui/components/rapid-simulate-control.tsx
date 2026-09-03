@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import { useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
+import { Button, ErrorText, IconButton } from './ui';
 
 type RapidStatus = 'idle' | 'submitting' | 'success' | 'error';
 type RapidResult = { daysAdvanced: number; simulated: unknown[]; skipped: unknown[] };
@@ -19,11 +20,6 @@ type RapidSimulateControlProps = {
   onBusyChange?: (busy: boolean) => void;
 };
 
-const devBtn: React.CSSProperties = {
-  background: '#fff8e1',
-  color: '#7a4d00',
-  border: '1px dashed #b8860b',
-};
 const summaryStyle: React.CSSProperties = { fontSize: '0.85rem', color: '#3a7d4d', fontWeight: 600 };
 
 // @spec RSSUI-001..RSSUI-006
@@ -82,9 +78,9 @@ const RapidSimulateControl = ({ disabled = false, onBusyChange }: RapidSimulateC
   switch (rapidStatus) {
     case 'submitting':
       return (
-        <button data-testid="rapid-simulate-season" disabled style={{ ...devBtn, opacity: 0.6, cursor: 'default' }}>
+        <Button intent="dev" data-testid="rapid-simulate-season" disabled style={{ borderStyle: 'dashed' }}>
           DEV · Simulating season…
-        </button>
+        </Button>
       );
     case 'success':
       return (
@@ -92,41 +88,38 @@ const RapidSimulateControl = ({ disabled = false, onBusyChange }: RapidSimulateC
           <span style={summaryStyle}>
             {rapidResult?.daysAdvanced ?? 0} days advanced · {rapidResult?.simulated.length ?? 0} simulated · {rapidResult?.skipped.length ?? 0} skipped
           </span>
-          <button
+          <IconButton
             onClick={() => transition('idle')}
-            style={{ padding: '4px 8px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#555' }}
+            style={{ padding: '4px 8px', color: '#555' }}
             aria-label="Dismiss rapid simulation summary"
           >
             ×
-          </button>
+          </IconButton>
         </div>
       );
     case 'error':
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span role="alert" style={{ color: '#c00', fontSize: '0.85rem' }}>
+          <ErrorText role="alert">
             {rapidError ?? 'Rapid simulation failed'}
-          </span>
-          <button
-            onClick={runRapidSimulate}
-            disabled={controlsBusy}
-            style={{ padding: '6px 14px', border: '1px dashed #b8860b', borderRadius: '4px', cursor: controlsBusy ? 'default' : 'pointer', fontSize: '0.85rem', background: '#fff8e1' }}
-          >
+          </ErrorText>
+          <Button intent="dev" size="sm" onClick={runRapidSimulate} disabled={controlsBusy}>
             Retry
-          </button>
+          </Button>
         </div>
       );
     case 'idle':
     default:
       return (
-        <button
+        <Button
+          intent="dev"
           data-testid="rapid-simulate-season"
           onClick={runRapidSimulate}
           disabled={controlsBusy}
-          style={{ ...devBtn, ...(controlsBusy ? { opacity: 0.6, cursor: 'default' } : {}) }}
+          style={{ borderStyle: 'dashed' }}
         >
           <small style={{ marginRight: '6px', fontWeight: 700 }}>DEV</small>Rapid Simulate Season
-        </button>
+        </Button>
       );
   }
 };

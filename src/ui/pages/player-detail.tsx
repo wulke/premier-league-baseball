@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { PlayerDetail as PlayerDetailRecord, PlayerPosition } from '../../api/models';
+import { Card, PageContainer } from '../components/ui';
 
 type Tab = 'overview' | 'positions' | 'pitches';
 type PositionView = 'field' | 'bars' | 'pills';
@@ -29,7 +30,7 @@ const affinityTint = (rating: number) => {
 const displayName = (player: PlayerDetailRecord) => `${player.givenName} ${player.familyName}`;
 const countryFlag = (countryCode: string) => String.fromCodePoint(...countryCode.toUpperCase().split('').map((letter) => 127397 + letter.charCodeAt(0)));
 
-const Panel = ({ children }: { children: React.ReactNode }) => <section style={{ border: '1px solid #ddd', borderRadius: '6px', padding: '16px', background: '#fff' }}>{children}</section>;
+const Panel = ({ children }: { children: React.ReactNode }) => <Card as="section" style={{ borderColor: '#ddd', padding: '16px', background: '#fff' }}>{children}</Card>;
 
 const Overview = ({ player }: { player: PlayerDetailRecord }) => {
   const [showOvr, setShowOvr] = useState(false);
@@ -93,11 +94,11 @@ const PlayerDetail = () => {
   if (!player) return <main data-testid="player-not-found" style={{ padding: '24px' }}><h1>Player not found</h1><p>This player is unavailable in this game world.</p></main>;
   const pitchable = player.primaryPosition === 'Pitcher';
   const tabs: Array<[Tab, string]> = [['overview', 'Overview'], ['positions', 'Positions'], ...(pitchable ? [['pitches', 'Pitch repertoire'] as [Tab, string]] : [])];
-  return <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '24px 24px 48px' }}>
+  return <PageContainer as="main" style={{ maxWidth: '1000px', padding: '24px 24px 48px' }}>
     <header data-testid="player-masthead" style={{ borderBottom: '1px solid #ddd', paddingBottom: '16px', marginBottom: '16px' }}><div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}><h1 style={{ margin: 0, fontSize: '1.65rem' }}>{displayName(player)}</h1><span data-testid="primary-position-badge" style={{ ...chipStyle, background: affinityTint(player.positions[player.primaryPosition]), borderColor: '#466c4b', color: '#132717' }}>{positionLabels[player.primaryPosition]}</span>{player.contract ? <Link to={`/${gwId}/team/${player.contract.team.id}`}>{player.contract.team.name}</Link> : <span data-testid="free-agent-chip" style={chipStyle}>Free Agent</span>}</div><p style={{ margin: '8px 0 0', color: '#666' }}>{countryFlag(player.countryCode)} {player.countryCode} · Bats {player.bats} / Throws {player.throws} · Age {player.age} ({player.birthDate})</p></header>
     <nav aria-label="Player detail tabs" style={{ display: 'flex', gap: '4px', borderBottom: '1px solid #ddd', marginBottom: '20px' }}>{tabs.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)} style={{ padding: '9px 13px', border: 'none', borderBottom: tab === key ? '3px solid #222' : '3px solid transparent', background: 'none', cursor: 'pointer', fontWeight: tab === key ? 700 : 400 }}>{label}</button>)}</nav>
     {tab === 'overview' && <Overview player={player} />}{tab === 'positions' && <Positions player={player} />}{tab === 'pitches' && pitchable && <Pitches player={player} />}
-  </main>;
+  </PageContainer>;
 };
 
 export { PlayerDetail };
