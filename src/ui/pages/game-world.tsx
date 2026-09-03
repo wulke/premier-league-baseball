@@ -4,6 +4,7 @@ import { useParams, useNavigate, useRevalidator, useRouteLoaderData } from 'reac
 import { getChampionDivisionId, getChampionTeamName } from '../champion';
 import { TeamSeasonGame } from '../../api/models';
 import { NotificationStream } from './notification-stream';
+import { Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
 type LeagueSeasonSummary = {
@@ -154,7 +155,7 @@ const GameWorld = () => {
   const leaguesWithTodayGames = leagueTodaySummary.filter((league) => league.games.length > 0);
 
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
+    <PageContainer>
 
       {/* Game World Identity */}
       <div style={{ marginBottom: '36px' }}>
@@ -173,22 +174,11 @@ const GameWorld = () => {
 
       {/* Season Section */}
       <section style={{ marginBottom: '40px' }}>
-        <h2 style={{
-          margin: '0 0 12px',
-          fontSize: '0.75rem',
-          textTransform: 'uppercase',
-          letterSpacing: '0.07em',
-          color: '#888',
-          fontWeight: 600,
-        }}>
+        <SectionLabel style={{ marginBottom: '12px' }}>
           Season
-        </h2>
+        </SectionLabel>
 
-        <div style={{
-          border: '1px solid #ccc',
-          borderRadius: '6px',
-          padding: '20px',
-        }}>
+        <Card style={{ padding: '20px' }}>
           {gw.config?.inProgress ? (
             <>
               <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '6px' }}>
@@ -208,21 +198,9 @@ const GameWorld = () => {
               </p>
 
               {startSeasonStatus === 'idle' && (
-                <button
-                  onClick={() => setStartSeasonStatus('confirming')}
-                  style={{
-                    padding: '9px 20px',
-                    background: '#000',
-                    color: '#fff',
-                    border: '1px solid #000',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '0.9rem',
-                  }}
-                >
+                <Button intent="primary" onClick={() => setStartSeasonStatus('confirming')} style={{ padding: '9px 20px', fontSize: '0.9rem' }}>
                   Start Season {nextYear}
-                </button>
+                </Button>
               )}
 
               {startSeasonStatus === 'confirming' && (
@@ -231,34 +209,12 @@ const GameWorld = () => {
                     Start Season {nextYear}? This will create division season entries and schedule all games.
                   </p>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                      onClick={startNewSeason}
-                      style={{
-                        padding: '8px 18px',
-                        background: '#000',
-                        color: '#fff',
-                        border: '1px solid #000',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        fontSize: '0.85rem',
-                      }}
-                    >
+                    <Button intent="primary" onClick={startNewSeason}>
                       Confirm
-                    </button>
-                    <button
-                      onClick={() => setStartSeasonStatus('idle')}
-                      style={{
-                        padding: '8px 16px',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px',
-                        background: '#fff',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                      }}
-                    >
+                    </Button>
+                    <Button intent="secondary" onClick={() => setStartSeasonStatus('idle')}>
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -271,42 +227,25 @@ const GameWorld = () => {
 
               {startSeasonStatus === 'error' && (
                 <div>
-                  <p style={{ margin: '0 0 12px', color: '#c00', fontSize: '0.9rem' }}>
+                  <ErrorText style={{ display: 'block', marginBottom: '12px', fontSize: '0.9rem' }}>
                     {startSeasonError}
-                  </p>
-                  <button
-                    onClick={() => setStartSeasonStatus('confirming')}
-                    style={{
-                      padding: '8px 16px',
-                      border: '1px solid #ccc',
-                      borderRadius: '4px',
-                      background: '#fff',
-                      cursor: 'pointer',
-                      fontSize: '0.85rem',
-                    }}
-                  >
+                  </ErrorText>
+                  <Button intent="secondary" onClick={() => setStartSeasonStatus('confirming')}>
                     Retry
-                  </button>
+                  </Button>
                 </div>
               )}
             </>
           )}
-        </div>
+        </Card>
       </section>
 
       {/* @spec TODAYUI-003,TODAYUI-004,TODAYUI-005 */}
       {leaguesWithTodayGames.length > 0 && (
         <section data-testid="today-section" style={{ marginBottom: '40px' }}>
-          <h2 style={{
-            margin: '0 0 12px',
-            fontSize: '0.75rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.07em',
-            color: '#888',
-            fontWeight: 600,
-          }}>
+          <SectionLabel style={{ marginBottom: '12px' }}>
             Today
-          </h2>
+          </SectionLabel>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {leaguesWithTodayGames.map((league) => (
@@ -314,7 +253,7 @@ const GameWorld = () => {
                 <h3 style={{ margin: '0 0 8px', fontSize: '0.95rem', fontWeight: 700 }}>
                   {league.leagueName}
                 </h3>
-                <div style={{ border: '1px solid #ccc', borderRadius: '6px' }}>
+                <Card style={{ borderRadius: '6px' }}>
                   {league.games.map((game) => (
                     <div
                       key={game.gameId}
@@ -333,7 +272,7 @@ const GameWorld = () => {
                       </div>
                     </div>
                   ))}
-                </div>
+                </Card>
               </div>
             ))}
           </div>
@@ -342,27 +281,18 @@ const GameWorld = () => {
 
       {/* Leagues Section */}
       <section>
-        <h2 style={{
-          margin: '0 0 12px',
-          fontSize: '0.75rem',
-          textTransform: 'uppercase',
-          letterSpacing: '0.07em',
-          color: '#888',
-          fontWeight: 600,
-        }}>
+        <SectionLabel style={{ marginBottom: '12px' }}>
           Leagues
-        </h2>
+        </SectionLabel>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {leagues.map((league) => (
-            <div
+            <Card
               key={league.id}
+              interactive
               onClick={() => navigate(`/${gwId}/${league.id}`)}
               style={{
-                border: '1px solid #ccc',
-                borderRadius: '6px',
                 padding: '16px 20px',
-                cursor: 'pointer',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -379,11 +309,11 @@ const GameWorld = () => {
                 )}
               </div>
               <span style={{ color: '#aaa', fontSize: '1rem' }}>→</span>
-            </div>
+            </Card>
           ))}
         </div>
       </section>
-    </div>
+    </PageContainer>
   );
 };
 

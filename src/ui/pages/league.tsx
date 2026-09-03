@@ -4,6 +4,7 @@ import { BracketRound, BracketTie, DivisionStandings, LeagueDivisionBracket, Tea
 import { useNavigate, useParams } from 'react-router';
 import { Collapsible } from 'radix-ui';
 import { formatLeagueChampionBanner, getChampionBracket, getChampionTeamName } from '../champion';
+import { Badge, Button, Card, PageContainer, SectionLabel, Table, Td, Th, Tr } from '../components/ui';
 
 const StandingsTable = ({
   standings,
@@ -12,39 +13,25 @@ const StandingsTable = ({
   standings: TeamStanding[];
   onTeamClick: (teamId: number) => void;
 }) => (
-  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+  <Table>
     <thead>
       <tr style={{ borderBottom: '2px solid #000' }}>
         {['Pos', 'Team', 'P', 'W', 'D', 'L', 'RF', 'RA', 'RD', 'Pts'].map((h) => (
-          <th
-            key={h}
-            style={{
-              textAlign: h === 'Team' ? 'left' : 'center',
-              padding: '6px 8px',
-              fontWeight: 600,
-              fontSize: '0.75rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              color: '#555',
-            }}
-          >
+          <Th key={h} style={{ textAlign: h === 'Team' ? 'left' : 'center' }}>
             {h}
-          </th>
+          </Th>
         ))}
       </tr>
     </thead>
     <tbody>
       {standings.map((row, i) => (
-        <tr key={row.teamId} style={{ borderBottom: '1px solid #eee' }}>
-          <td style={{ textAlign: 'center', padding: '8px', color: '#888', fontSize: '0.8rem' }}>{i + 1}</td>
-          <td style={{ padding: '8px' }}>
-            <button
+        <Tr key={row.teamId}>
+          <Td style={{ color: '#888', fontSize: '0.8rem' }}>{i + 1}</Td>
+          <Td align="left">
+            <Button
+              intent="ghost"
               onClick={() => onTeamClick(row.teamId)}
               style={{
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
                 fontWeight: 600,
                 fontSize: '0.875rem',
                 textDecoration: 'underline',
@@ -53,20 +40,20 @@ const StandingsTable = ({
               }}
             >
               {row.teamName}
-            </button>
-          </td>
-          <td style={{ textAlign: 'center', padding: '8px' }}>{row.played}</td>
-          <td style={{ textAlign: 'center', padding: '8px' }}>{row.won}</td>
-          <td style={{ textAlign: 'center', padding: '8px' }}>{row.drawn}</td>
-          <td style={{ textAlign: 'center', padding: '8px' }}>{row.lost}</td>
-          <td style={{ textAlign: 'center', padding: '8px' }}>{row.runsFor}</td>
-          <td style={{ textAlign: 'center', padding: '8px' }}>{row.runsAgainst}</td>
-          <td style={{ textAlign: 'center', padding: '8px' }}>{row.runDifference}</td>
-          <td style={{ textAlign: 'center', padding: '8px', fontWeight: 700 }}>{row.points}</td>
-        </tr>
+            </Button>
+          </Td>
+          <Td>{row.played}</Td>
+          <Td>{row.won}</Td>
+          <Td>{row.drawn}</Td>
+          <Td>{row.lost}</Td>
+          <Td>{row.runsFor}</Td>
+          <Td>{row.runsAgainst}</Td>
+          <Td>{row.runDifference}</Td>
+          <Td style={{ fontWeight: 700 }}>{row.points}</Td>
+        </Tr>
       ))}
     </tbody>
-  </table>
+  </Table>
 );
 
 const TeamRoster = ({
@@ -78,24 +65,16 @@ const TeamRoster = ({
 }) => (
   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '6px', padding: '4px 0' }}>
     {teams.map((team) => (
-      <button
+      <Button
         key={team.id}
+        intent="secondary"
         aria-label={team.config?.name ?? `Team ${team.id}`}
         onClick={() => onTeamClick(team.id)}
-        style={{
-          background: 'none',
-          border: '1px solid #e0e0e0',
-          borderRadius: '4px',
-          padding: '8px 12px',
-          cursor: 'pointer',
-          textAlign: 'left',
-          fontSize: '0.85rem',
-          fontWeight: 500,
-        }}
+        style={{ borderColor: '#e0e0e0', padding: '8px 12px', textAlign: 'left', fontSize: '0.85rem', fontWeight: 500 }}
       >
         {team.config?.name ?? `Team ${team.id}`}
         <span style={{ float: 'right', color: '#aaa', fontSize: '0.75rem' }}>→</span>
-      </button>
+      </Button>
     ))}
   </div>
 );
@@ -183,19 +162,19 @@ const BracketView = ({
 
         return (
           <section key={`${round.round}-${round.label}`} style={{ display: 'grid', gap: '10px' }}>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#666' }}>
+            <SectionLabel style={{ color: '#666' }}>
               {round.label}
-            </div>
+            </SectionLabel>
 
             {byes.length > 0 && (
-              <div style={{ display: 'grid', gap: '6px', padding: '10px 12px', background: '#fafafa', border: '1px solid #eee', borderRadius: '4px' }}>
+              <Card style={{ display: 'grid', gap: '6px', padding: '10px 12px', background: '#fafafa', borderRadius: '4px' }}>
                 <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#555' }}>
                   Byes ({byes.length}) — auto-advanced to {nextRoundLabel}
                 </div>
                 <div style={{ fontSize: '0.875rem', color: '#222' }}>
                   {byes.map((tie) => tie.teamA.teamName).filter(Boolean).join(', ')}
                 </div>
-              </div>
+              </Card>
             )}
 
             {series.map((tie, tieIndex) => {
@@ -203,17 +182,14 @@ const BracketView = ({
               const isExpanded = expandedSeries[seriesKey] ?? false;
 
               return (
-                <div key={seriesKey} style={{ border: '1px solid #eee', borderRadius: '4px', overflow: 'hidden' }}>
-                  <button
-                    type="button"
+                <Card key={seriesKey} style={{ borderRadius: '4px', overflow: 'hidden' }}>
+                  <Button
+                    intent="ghost"
                     onClick={() => setExpandedSeries((current) => ({ ...current, [seriesKey]: !isExpanded }))}
                     style={{
                       width: '100%',
-                      background: 'none',
-                      border: 'none',
                       padding: '10px 12px',
                       textAlign: 'left',
-                      cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -225,7 +201,7 @@ const BracketView = ({
                     <span style={{ color: '#777', fontSize: '0.78rem', fontWeight: 600 }}>
                       {isExpanded ? 'Hide games' : 'Show games'}
                     </span>
-                  </button>
+                  </Button>
 
                   {isExpanded && (
                     <div style={{ borderTop: '1px solid #eee', padding: '8px 12px', display: 'grid', gap: '8px', background: '#fcfcfc' }}>
@@ -236,7 +212,7 @@ const BracketView = ({
                       ))}
                     </div>
                   )}
-                </div>
+                </Card>
               );
             })}
           </section>
@@ -244,9 +220,9 @@ const BracketView = ({
       })}
 
       {pendingRound && (
-        <div style={{ padding: '10px 12px', border: '1px dashed #ccc', borderRadius: '4px', fontSize: '0.85rem', color: '#666' }}>
+        <Card dashed style={{ padding: '10px 12px', borderRadius: '4px', fontSize: '0.85rem', textAlign: 'left' }}>
           Next: {pendingRound.label} — games pending
-        </div>
+        </Card>
       )}
     </div>
   );
@@ -271,9 +247,9 @@ const Division = ({
   const structure = divisionBracket?.structure ?? division.config?.format?.structure ?? 'ROUND_ROBIN';
 
   return (
-    <div
+    <Card
       data-testid={`division-card-${division.id}`}
-      style={{ border: '1px solid #ccc', borderRadius: '6px', overflow: 'hidden', marginBottom: '12px' }}
+      style={{ overflow: 'hidden', marginBottom: '12px' }}
     >
       <Collapsible.Root open={isOpen} onOpenChange={setIsOpen}>
         <Collapsible.Trigger asChild>
@@ -331,7 +307,7 @@ const Division = ({
           </div>
         </Collapsible.Content>
       </Collapsible.Root>
-    </div>
+    </Card>
   );
 };
 
@@ -388,7 +364,7 @@ const League = () => {
   const championDivision = getChampionBracket(league, divisionBrackets);
 
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
+    <PageContainer>
 
       {/* League identity */}
       <div style={{ marginBottom: '32px' }}>
@@ -397,18 +373,9 @@ const League = () => {
             {league.config?.name ?? `League ${leagueId}`}
           </h1>
           {league.config?.type && (
-            <span style={{
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: '#666',
-              border: '1px solid #ccc',
-              borderRadius: '20px',
-              padding: '2px 10px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-            }}>
+            <Badge>
               {league.config.type}
-            </span>
+            </Badge>
           )}
         </div>
         <p style={{ margin: 0, fontSize: '0.85rem', color: '#888' }}>
@@ -418,16 +385,9 @@ const League = () => {
 
       {/* Divisions */}
       <section>
-        <h2 style={{
-          margin: '0 0 14px',
-          fontSize: '0.75rem',
-          textTransform: 'uppercase',
-          letterSpacing: '0.07em',
-          color: '#888',
-          fontWeight: 600,
-        }}>
+        <SectionLabel style={{ marginBottom: '14px' }}>
           {hasAnyStandings || hasAnyBracketRounds ? 'Standings' : 'Divisions'}
-        </h2>
+        </SectionLabel>
 
         {league.Divisions?.map((division: any) => (
           <Division
@@ -440,7 +400,7 @@ const League = () => {
           />
         ))}
       </section>
-    </div>
+    </PageContainer>
   );
 };
 

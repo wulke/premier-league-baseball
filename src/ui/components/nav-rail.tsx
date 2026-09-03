@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useParams, useRouteLoaderData } from 'react-router';
 import { BatchSimulateControl } from './batch-simulate-control';
 import { RapidSimulateControl } from './rapid-simulate-control';
+import { SectionLabel } from './ui';
 
 // @spec SIMUI-006
 const formatCurrentDate = (currentDate: string) => {
@@ -55,7 +56,7 @@ const NavRail = () => {
       </Link>
       {gw && (
         <section data-testid="nav-world" style={{ marginTop: 22 }}>
-          <div style={{ fontSize: '0.75rem', color: '#888' }}>WORLD</div>
+          <SectionLabel as="div">WORLD</SectionLabel>
           <Link data-testid="nav-world-link" data-active={worldActive ? 'true' : 'false'} to={`/${gwId}`} style={linkStyle(worldActive)}>
             {gw.config?.name ?? `Game World ${gwId}`}
           </Link>
@@ -69,7 +70,7 @@ const NavRail = () => {
       )}
       {gw && leagues.length > 0 && (
         <section data-testid="nav-competitions" style={{ marginTop: 22 }}>
-          <div style={{ fontSize: '0.75rem', color: '#888' }}>COMPETITIONS</div>
+          <SectionLabel as="div">COMPETITIONS</SectionLabel>
           {leagues.map((league: any) => {
             const active = String(league.id) === leagueId;
             return (

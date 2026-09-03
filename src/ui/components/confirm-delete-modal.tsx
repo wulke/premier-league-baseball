@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button, Card, ErrorText } from './ui';
 
 type ConfirmDeleteModalProps = {
   title: string;
@@ -29,17 +30,7 @@ const ConfirmDeleteModal = ({ title, message, status, errorMessage, onConfirm, o
         zIndex: 1000,
       }}
     >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '420px',
-          background: '#fff',
-          border: '1px solid #ccc',
-          borderRadius: '6px',
-          padding: '24px',
-          boxShadow: '0 18px 40px rgba(0, 0, 0, 0.18)',
-        }}
-      >
+      <Card style={{ width: '100%', maxWidth: '420px', background: '#fff', padding: '24px', boxShadow: '0 18px 40px rgba(0, 0, 0, 0.18)' }}>
         <h2 style={{ margin: '0 0 12px', fontSize: '1.15rem', fontWeight: 700 }}>
           {title}
         </h2>
@@ -48,48 +39,20 @@ const ConfirmDeleteModal = ({ title, message, status, errorMessage, onConfirm, o
         </p>
 
         {status === 'error' && errorMessage && (
-          <p role="alert" style={{ margin: '0 0 16px', color: '#c00', fontSize: '0.9rem' }}>
+          <ErrorText role="alert" style={{ display: 'block', marginBottom: '16px' }}>
             {errorMessage}
-          </p>
+          </ErrorText>
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isSubmitting}
-            style={{
-              padding: '8px 16px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              background: '#fff',
-              cursor: isSubmitting ? 'default' : 'pointer',
-              fontSize: '0.85rem',
-              opacity: isSubmitting ? 0.6 : 1,
-            }}
-          >
+          <Button type="button" intent="secondary" onClick={onCancel} disabled={isSubmitting}>
             Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isSubmitting}
-            style={{
-              padding: '8px 18px',
-              border: '1px solid #8b0000',
-              borderRadius: '4px',
-              background: '#b00020',
-              color: '#fff',
-              cursor: isSubmitting ? 'default' : 'pointer',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              opacity: isSubmitting ? 0.6 : 1,
-            }}
-          >
+          </Button>
+          <Button type="button" intent="danger" onClick={onConfirm} disabled={isSubmitting}>
             {confirmLabel}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

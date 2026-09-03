@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { ActiveLineupEntry, PlayerPosition, RosterPlayer, TeamLineup } from '../../api/models';
+import { Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
 
 type LineupTab = 'DEFENSIVE' | 'BATTING' | 'BULLPEN';
 type DraftRole = ActiveLineupEntry['role'] | 'UNASSIGNED';
@@ -166,28 +167,28 @@ const TeamLineupView = () => {
     </div>;
   };
 
-  return <main style={{ maxWidth: '960px', margin: '0 auto', padding: '24px 24px 48px' }}>
+  return <PageContainer as="main" style={{ padding: '24px 24px 48px' }}>
     <header style={{ marginBottom: '20px' }}><h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700 }}>Lineup</h1><p style={{ margin: '6px 0 0', color: '#666', fontSize: '0.86rem' }}>Active lineup</p></header>
     {lineup && <>
       {isManagedTeam && <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-        {!editing ? <button type="button" onClick={enterEdit}>Edit Lineup</button> : <><button type="button" onClick={saveLineup}>Save Lineup</button><button type="button" onClick={cancelEdit}>Cancel</button></>}
-        {saveError && <span role="alert" style={{ color: '#a33', fontSize: '0.82rem' }}>{saveError}</span>}
+        {!editing ? <Button type="button" size="sm" onClick={enterEdit}>Edit Lineup</Button> : <><Button type="button" size="sm" onClick={saveLineup}>Save Lineup</Button><Button type="button" size="sm" onClick={cancelEdit}>Cancel</Button></>}
+        {saveError && <ErrorText role="alert" style={{ fontSize: '0.82rem' }}>{saveError}</ErrorText>}
       </div>}
-      <div role="tablist" style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>{(['DEFENSIVE', 'BATTING', 'BULLPEN'] as LineupTab[]).map((tab) => <button key={tab} role="tab" aria-selected={activeTab === tab} data-testid={`tab-${tab.toLowerCase()}`} onClick={() => setActiveTab(tab)} style={tabStyle(activeTab === tab)}>{tab === 'DEFENSIVE' ? 'Defensive' : tab === 'BATTING' ? 'Batting' : 'Bullpen'}</button>)}</div>
-      {activeTab === 'DEFENSIVE' && <section data-testid="defensive-table" aria-label="Defensive lineup" style={panelStyle}>{defensiveRows.map((row) => renderRow(row, 'DEFENSIVE'))}{reserves.map((row) => renderRow(row, 'DEFENSIVE'))}{editing && <UnassignedBucket rows={unassigned} renderRow={renderRow} />}</section>}
-      {activeTab === 'BATTING' && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(230px, 0.55fr)', gap: '18px', alignItems: 'start' }}><section data-testid="batting-table" aria-label="Batting order" style={panelStyle}>{battingRows.map((row) => renderRow(row, 'BATTING'))}{reserves.map((row) => renderRow(row, 'BATTING'))}{editing && <UnassignedBucket rows={unassigned} renderRow={renderRow} />}</section>{startingPitcher && <section data-testid="starting-pitcher" style={{ ...panelStyle, borderColor: '#71896e', background: '#f1f6ef' }}><h2 style={headingStyle}>Starting pitcher</h2><LineupPlayerLink playerId={startingPitcher.playerId} players={players} gwId={gwId} /></section>}</div>}
+      <div role="tablist" style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>{(['DEFENSIVE', 'BATTING', 'BULLPEN'] as LineupTab[]).map((tab) => <Button key={tab} intent={activeTab === tab ? 'primary' : 'secondary'} role="tab" aria-selected={activeTab === tab} data-testid={`tab-${tab.toLowerCase()}`} onClick={() => setActiveTab(tab)} style={{ borderColor: '#ddd', fontWeight: 650, fontSize: '0.84rem' }}>{tab === 'DEFENSIVE' ? 'Defensive' : tab === 'BATTING' ? 'Batting' : 'Bullpen'}</Button>)}</div>
+      {activeTab === 'DEFENSIVE' && <Card as="section" data-testid="defensive-table" aria-label="Defensive lineup" style={panelStyle}>{defensiveRows.map((row) => renderRow(row, 'DEFENSIVE'))}{reserves.map((row) => renderRow(row, 'DEFENSIVE'))}{editing && <UnassignedBucket rows={unassigned} renderRow={renderRow} />}</Card>}
+      {activeTab === 'BATTING' && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(230px, 0.55fr)', gap: '18px', alignItems: 'start' }}><Card as="section" data-testid="batting-table" aria-label="Batting order" style={panelStyle}>{battingRows.map((row) => renderRow(row, 'BATTING'))}{reserves.map((row) => renderRow(row, 'BATTING'))}{editing && <UnassignedBucket rows={unassigned} renderRow={renderRow} />}</Card>{startingPitcher && <Card as="section" data-testid="starting-pitcher" style={{ ...panelStyle, borderColor: '#71896e', background: '#f1f6ef' }}><SectionLabel>Starting pitcher</SectionLabel><LineupPlayerLink playerId={startingPitcher.playerId} players={players} gwId={gwId} /></Card>}</div>}
       {activeTab === 'BULLPEN' && <GameBullpenPanel game={nextGame} entries={gameDraft} players={players} roster={roster} gwId={gwId} editable={isManagedTeam && nextGame?.game.status === 'SCHEDULED'} error={gameSaveError} onChange={updateGameSlot} onSave={saveGameLineup} />}
     </>}
-  </main>;
+  </PageContainer>;
 };
 
 // @spec GBULL-006
 const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, error, onChange, onSave }: { game: NextGameLineup | null; entries: ActiveLineupEntry[]; players: Map<number, RosterPlayer>; roster: RosterPlayer[]; gwId?: string; editable: boolean; error: string | null; onChange: (index: number, playerId: number) => void; onSave: () => void }) => {
-  if (!game) return <section data-testid="bullpen-empty" style={panelStyle}>No next scheduled game.</section>;
+  if (!game) return <Card as="section" data-testid="bullpen-empty" style={panelStyle}>No next scheduled game.</Card>;
   const slotRows = entries.map((entry, index) => ({ entry, index })).filter(({ entry }) => entry.role === 'BENCH' || entry.role === 'BULLPEN' || (entry.role === 'STARTER' && entry.fieldingPosition === 'Pitcher'));
   const benchPlayerIds = new Set(entries.filter((entry) => entry.role === 'BENCH').map((entry) => entry.playerId));
   const defensiveStarterIds = new Set(entries.filter((entry) => entry.role === 'STARTER' && entry.fieldingPosition !== 'Pitcher').map((entry) => entry.playerId));
-  return <section data-testid="bullpen-game-lineup" style={panelStyle}><h2 style={headingStyle}>Next game: vs {game.game.opponentName} · {game.game.scheduledDate ? new Date(game.game.scheduledDate).toLocaleDateString() : 'Date TBD'}</h2>
+  return <Card as="section" data-testid="bullpen-game-lineup" style={panelStyle}><SectionLabel>Next game: vs {game.game.opponentName} · {game.game.scheduledDate ? new Date(game.game.scheduledDate).toLocaleDateString() : 'Date TBD'}</SectionLabel>
     {slotRows.map(({ entry, index }) => {
       // @spec GBULL-006 — only pitchers can occupy the designated starter/active-reliever
       // slots. Keep an existing legacy occupant visible even if its current roster profile is bad.
@@ -197,8 +198,8 @@ const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, erro
         : player.primaryPosition !== 'Pitcher' && benchPlayerIds.has(player.id)));
       return <div key={index} style={rowStyle}><span style={tagStyle}>{entry.role === 'STARTER' ? 'SP' : entry.role}</span><span style={{ flex: 1 }}><LineupPlayerLink playerId={entry.playerId} players={players} gwId={gwId} /></span>{editable && <select aria-label={`${entry.role === 'STARTER' ? 'Starting pitcher' : entry.role.toLowerCase()} slot ${index + 1}`} value={entry.playerId} onChange={(event) => onChange(index, Number(event.target.value))}>{eligiblePlayers.map((player) => <option key={player.id} value={player.id}>{player.givenName} {player.familyName}</option>)}</select>}</div>;
     })}
-    {editable && <button type="button" onClick={onSave}>Save game lineup</button>}{error && <span role="alert" style={{ color: '#a33', marginLeft: '10px' }}>{error}</span>}
-  </section>;
+    {editable && <Button type="button" size="sm" onClick={onSave}>Save game lineup</Button>}{error && <ErrorText role="alert" style={{ marginLeft: '10px' }}>{error}</ErrorText>}
+  </Card>;
 };
 
 // @spec LINEUI-010,LINEUI-011,LINEUI-013
@@ -208,11 +209,9 @@ const DraftControls = ({ row, dhEnabled, occupied, onChange }: { row: LineupRow;
 </>;
 
 // @spec LINEUI-013
-const UnassignedBucket = ({ rows, renderRow }: { rows: LineupRow[]; renderRow: (row: LineupRow, tab: LineupTab) => React.ReactNode }) => <section data-testid="unassigned-bucket" aria-label="Unassigned" style={{ marginTop: '14px', borderTop: '1px solid #ddd' }}><h2 style={headingStyle}>Unassigned</h2>{rows.map((row) => renderRow(row, 'DEFENSIVE'))}</section>;
+const UnassignedBucket = ({ rows, renderRow }: { rows: LineupRow[]; renderRow: (row: LineupRow, tab: LineupTab) => React.ReactNode }) => <section data-testid="unassigned-bucket" aria-label="Unassigned" style={{ marginTop: '14px', borderTop: '1px solid #ddd' }}><SectionLabel style={{ marginBottom: '10px' }}>Unassigned</SectionLabel>{rows.map((row) => renderRow(row, 'DEFENSIVE'))}</section>;
 
-const tabStyle = (active: boolean): React.CSSProperties => ({ border: '1px solid #ddd', borderRadius: '6px', padding: '6px 14px', background: active ? '#222' : '#fff', color: active ? '#fff' : '#333', fontWeight: 650, fontSize: '0.84rem', cursor: 'pointer' });
 const panelStyle: React.CSSProperties = { border: '1px solid #ddd', borderRadius: '6px', padding: '16px', background: '#fff' };
-const headingStyle: React.CSSProperties = { margin: '0 0 10px', fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#555' };
 const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '10px', minHeight: '34px', padding: '5px 7px', borderBottom: '1px solid #eee', fontSize: '0.88rem' };
 const positionStyle: React.CSSProperties = { minWidth: '72px', textAlign: 'right', fontSize: '0.77rem', fontWeight: 700, color: '#555' };
 const ratingStyle: React.CSSProperties = { minWidth: '32px', textAlign: 'right', fontSize: '0.77rem', fontWeight: 700, color: '#71896e' };

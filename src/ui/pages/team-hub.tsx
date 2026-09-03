@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet, useParams, useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
+import { Button } from '../components/ui';
 
 // @spec ROSTUI-006,ROSTUI-007,LINEUI-001,MCLUI-001,MCLUI-002,MCLUI-003
 const TeamHub = () => {
@@ -63,7 +64,8 @@ const TeamHub = () => {
           </NavLink>
         ))}
         {gwId && teamId && (
-          <button
+          <Button
+            intent="secondary"
             data-testid={isManaged ? 'resign-managed-club' : 'claim-managed-club'}
             type="button"
             onClick={() => submitManagedClub(isManaged ? null : Number(teamId))}
@@ -73,19 +75,14 @@ const TeamHub = () => {
               alignSelf: 'center',
               marginBottom: '10px',
               padding: '5px 12px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              background: '#fff',
-              cursor: submitting ? 'default' : 'pointer',
               fontSize: '0.72rem',
-              fontWeight: 700,
               letterSpacing: '0.04em',
               textTransform: 'uppercase',
               color: isManaged ? '#666' : '#222',
             }}
           >
             {isManaged ? 'Stop managing' : 'Claim as My Club'}
-          </button>
+          </Button>
         )}
       </nav>
       <Outlet />

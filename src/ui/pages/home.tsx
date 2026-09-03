@@ -4,6 +4,7 @@ import { Endpoints } from '../../api/endpoints';
 import { NewGameWorld, GameWorldType, DefaultWorlds, useDefaultGameWorld } from '../../api/models';
 import { useNavigate } from 'react-router';
 import { ConfirmDeleteModal } from '../components/confirm-delete-modal';
+import { Button, Card, ErrorBanner, FormField, IconButton, Input, PageContainer, Select, SectionLabel } from '../components/ui';
 
 type DeleteStatus = 'confirming' | 'submitting' | 'error';
 type DeleteTarget = { id: number; name: string };
@@ -125,7 +126,7 @@ const Home = () => {
   };
 
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto', padding: '0 24px 48px' }}>
+    <PageContainer>
 
       {/* Game Worlds Section */}
       <section>
@@ -135,25 +136,13 @@ const Home = () => {
           alignItems: 'center',
           marginBottom: '16px',
         }}>
-          <h2 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#555' }}>
+          <SectionLabel>
             Your Game Worlds
-          </h2>
+          </SectionLabel>
           {!showNewForm && (
-            <button
-              onClick={() => setShowNewForm(true)}
-              style={{
-                padding: '6px 14px',
-                background: '#000',
-                color: '#fff',
-                border: '1px solid #000',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-              }}
-            >
+            <Button intent="primary" onClick={() => setShowNewForm(true)}>
               + New Game World
-            </button>
+            </Button>
           )}
         </div>
 
@@ -166,16 +155,14 @@ const Home = () => {
             marginBottom: '28px',
           }}>
             {gameWorlds.map((gw) => (
-              <div
+              <Card
                 key={gw.id}
+                interactive
                 onClick={() => navigate(`/${gw.id}`)}
                 onMouseEnter={() => setHoveredGwId(gw.id)}
                 onMouseLeave={() => setHoveredGwId((current) => (current === gw.id ? null : current))}
                 style={{
-                  border: '1px solid #ccc',
-                  borderRadius: '6px',
                   padding: '18px',
-                  cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '6px',
@@ -183,25 +170,14 @@ const Home = () => {
                 }}
               >
                 {hoveredGwId === gw.id && (
-                  <button
+                  <IconButton
                     type="button"
+                    tone="danger"
                     onClick={(event) => openDeleteModal(gw, event)}
-                    style={{
-                      position: 'absolute',
-                      top: '10px',
-                      right: '10px',
-                      border: 'none',
-                      background: 'none',
-                      color: '#b00020',
-                      cursor: 'pointer',
-                      fontWeight: 700,
-                      fontSize: '0.9rem',
-                      padding: 0,
-                      lineHeight: 1,
-                    }}
+                    style={{ position: 'absolute', top: '10px', right: '10px' }}
                   >
                     [x]
-                  </button>
+                  </IconButton>
                 )}
                 <div style={{ fontWeight: 700, fontSize: '1rem' }}>
                   {gw.config?.name ?? `Game World ${gw.id}`}
@@ -212,48 +188,23 @@ const Home = () => {
                 <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '2px' }}>
                   {gw.config?.inProgress ? '● Season in progress' : '○ No active season'}
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         ) : (
           !showNewForm && (
-            <div style={{
-              border: '1px dashed #ccc',
-              borderRadius: '6px',
-              padding: '32px',
-              textAlign: 'center',
-              color: '#888',
-              marginBottom: '28px',
-            }}>
+            <Card dashed style={{ padding: '32px', marginBottom: '28px' }}>
               <p style={{ margin: '0 0 12px', fontSize: '0.95rem' }}>No game worlds yet.</p>
-              <button
-                onClick={() => setShowNewForm(true)}
-                style={{
-                  padding: '8px 18px',
-                  background: '#000',
-                  color: '#fff',
-                  border: '1px solid #000',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: '0.85rem',
-                }}
-              >
+              <Button intent="primary" onClick={() => setShowNewForm(true)}>
                 Create your first game world
-              </button>
-            </div>
+              </Button>
+            </Card>
           )
         )}
 
         {/* New Game World Form */}
         {showNewForm && (
-          <div style={{
-            border: '1px solid #ccc',
-            borderRadius: '6px',
-            padding: '24px',
-            maxWidth: '480px',
-            marginBottom: '28px',
-          }}>
+          <Card style={{ padding: '24px', maxWidth: '480px', marginBottom: '28px' }}>
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -261,57 +212,28 @@ const Home = () => {
               marginBottom: '20px',
             }}>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>New Game World</h3>
-              <button
-                onClick={() => setShowNewForm(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#666', lineHeight: 1 }}
-              >
+              <IconButton onClick={() => setShowNewForm(false)} style={{ fontSize: '1.2rem', color: '#666' }}>
                 ×
-              </button>
+              </IconButton>
             </div>
 
             <form onSubmit={handleSubmit(submit)}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>
-                  Name
-                </label>
-                <input
-                  required
-                  {...register('name')}
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    fontSize: '0.9rem',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
+              <FormField label="Name">
+                <Input required {...register('name')} />
+              </FormField>
 
               {/* @spec GWT-004 — template selector + dynamic summary */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>
-                  Template
-                </label>
-                <select
+              <FormField label="Template">
+                <Select
                   aria-label="Template"
                   value={selectedType}
                   onChange={(e) => onSelectTemplate(e.target.value as GameWorldType)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    fontSize: '0.9rem',
-                    boxSizing: 'border-box',
-                    background: '#fff',
-                  }}
                 >
                   {Object.keys(DefaultWorlds).map((type) => (
                     <option key={type} value={type}>{type}</option>
                   ))}
-                </select>
-              </div>
+                </Select>
+              </FormField>
 
               {/* Template summary — derived from the selected bundle */}
               <div style={{
@@ -337,54 +259,21 @@ const Home = () => {
               </div>
 
               {createError && (
-                <div style={{
-                  marginBottom: '16px',
-                  padding: '10px 12px',
-                  border: '1px solid #f0b4b4',
-                  background: '#fdecec',
-                  borderRadius: '4px',
-                  color: '#b00020',
-                  fontSize: '0.85rem',
-                }}>
+                <ErrorBanner style={{ marginBottom: '16px' }}>
                   {createError}
-                </div>
+                </ErrorBanner>
               )}
 
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowNewForm(false)}
-                  style={{
-                    padding: '8px 16px',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    background: '#fff',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                  }}
-                >
+                <Button type="button" intent="secondary" onClick={() => setShowNewForm(false)}>
                   Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isCreating}
-                  style={{
-                    padding: '8px 18px',
-                    border: '1px solid #000',
-                    borderRadius: '4px',
-                    background: '#000',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '0.85rem',
-                    opacity: isCreating ? 0.6 : 1,
-                  }}
-                >
+                </Button>
+                <Button type="submit" intent="primary" disabled={isCreating}>
                   {isCreating ? 'Creating...' : 'Create Game World →'}
-                </button>
+                </Button>
               </div>
             </form>
-          </div>
+          </Card>
         )}
       </section>
 
@@ -398,7 +287,7 @@ const Home = () => {
           onCancel={closeDeleteModal}
         />
       )}
-    </div>
+    </PageContainer>
   );
 };
 
