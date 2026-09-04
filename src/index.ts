@@ -1,19 +1,14 @@
 require('dotenv').config();
-const express = require('express');
-const app = express();
-const PORT = process.env.SERVER_PORT;
-const HOST = process.env.SERVER_HOST;
-app.use(express.json());
+const PORT = Number(process.env.SERVER_PORT ?? 3000);
+const HOST = process.env.SERVER_HOST ?? '0.0.0.0';
 
 import db from './db/client';
 import { migrateLeagueYearAndStatus } from './db/migrations/league-year-status';
 import { migrateManagedClubPointer } from './db/migrations/managed-club-pointer';
-import { router as ApiRouter } from './api/router';
+import { createApplication } from './app';
 
-// static site assets
-app.use('/', express.static('dist/ui'));
-// apis
-app.use('/', ApiRouter);
+// @spec SPAF-001,SPAF-002,SPAF-003
+const app = createApplication();
 
 db.sync().then(async () => {
   // @spec SCL-012
