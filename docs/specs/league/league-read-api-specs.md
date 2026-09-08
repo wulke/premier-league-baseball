@@ -28,7 +28,8 @@ is specced via API-001..004 and Today via TODAY-001..007; neither is restated he
   2024-season game to the same division and hit the constraint; the scenario now
   proves year-sourcing by flipping the GameWorld year instead. Ruling: remediate —
   drop the through-table FK uniqueness so the composite year-scoped index is the sole
-  constraint → #275 (HITL).
+  constraint → #275 (HITL). **Remediated in #275** — see
+  `docs/specs/league/division-season-unique-specs.md` (DSU-001..DSU-004).
 - **LRD-002 / LRD-005** — unknown ids surface as **500**, not 404, because
   `LeagueFactory.get()`/`getStandings()` throw plain `Error` rather than
   `DomainError('...', 404)`. This diverges from the sibling League reads
