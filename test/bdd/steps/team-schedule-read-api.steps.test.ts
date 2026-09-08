@@ -83,8 +83,8 @@ const registerSteps = ({ given, when, then }: any) => {
 
     // Team A/B are shared across both of the world's divisions — create only once.
     if (scenarioWorld.teamIds['Team A'] == null) {
-      const home = await db.models.Team.create({ gameWorldId: 1, config: { name: 'Team A' } }).then(({ dataValues }) => dataValues);
-      const away = await db.models.Team.create({ gameWorldId: 1, config: { name: 'Team B' } }).then(({ dataValues }) => dataValues);
+      const home = await db.models.Team.create({ gameWorldId: 1, homeLeagueId: league.id, config: { name: 'Team A' } }).then(({ dataValues }) => dataValues);
+      const away = await db.models.Team.create({ gameWorldId: 1, homeLeagueId: league.id, config: { name: 'Team B' } }).then(({ dataValues }) => dataValues);
       scenarioWorld.teamIds['Team A'] = home.id;
       scenarioWorld.teamIds['Team B'] = away.id;
     }
@@ -101,7 +101,7 @@ const registerSteps = ({ given, when, then }: any) => {
     } }).then(({ dataValues }) => dataValues);
     scenarioWorld.divisionIds[divisionName] = division.id;
 
-    const team = await db.models.Team.create({ gameWorldId: Number(gwId), config: { name: 'Team C' } }).then(({ dataValues }) => dataValues);
+    const team = await db.models.Team.create({ gameWorldId: Number(gwId), homeLeagueId: league.id, config: { name: 'Team C' } }).then(({ dataValues }) => dataValues);
     scenarioWorld.teamIds['Team C'] = team.id;
     await db.models.DivisionSeason.create({ divisionId: division.id, teamId: team.id, year: 2025 });
   });

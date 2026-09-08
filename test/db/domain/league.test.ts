@@ -67,10 +67,6 @@ describe('LeagueFactory (initial Season)', () => {
 
   it('getStandings: reads standings from current game world year', async () => {
     const sgw = await db.models.GameWorld.create({ config: {} }).then(({ dataValues }) => dataValues);
-    const teams = await Promise.all(
-      [{ name: 'Alpha' }, { name: 'Beta' }, { name: 'Gamma' }, { name: 'Delta' }]
-        .map((config) => db.models.Team.create({ config, gameWorldId: sgw.id }).then(({ dataValues }) => dataValues))
-    );
 
     const config: LeagueConfig = {
       name: 'Year Selection League',
@@ -90,7 +86,12 @@ describe('LeagueFactory (initial Season)', () => {
       ] }]
     };
 
-    const league = await LeagueFactory().create(sgw.id, config, teams.map(({ id }) => id));
+    const league = await LeagueFactory().createContainer(sgw.id, config);
+    const teams = await Promise.all(
+      [{ name: 'Alpha' }, { name: 'Beta' }, { name: 'Gamma' }, { name: 'Delta' }]
+        .map((teamConfig) => db.models.Team.create({ config: teamConfig, gameWorldId: sgw.id, homeLeagueId: league.id }).then(({ dataValues }) => dataValues))
+    );
+    await LeagueFactory(league.id).createDivisions(config, teams.map(({ id }) => id));
     const divisions = await db.models.League.findByPk(league.id, { include: db.models.Division })
       .then((result) => { if (!result) throw Error(); return result.dataValues.Divisions.map(({ dataValues }) => dataValues); });
     const [divisionA, divisionB] = divisions;
@@ -142,10 +143,6 @@ describe('LeagueFactory (initial Season)', () => {
 
   it('getStandings: honors table-mode standingsConfig points', async () => {
     const sgw = await db.models.GameWorld.create({ config: {} }).then(({ dataValues }) => dataValues);
-    const teams = await Promise.all(
-      [{ name: 'Knights' }, { name: 'Pirates' }]
-        .map((config) => db.models.Team.create({ config, gameWorldId: sgw.id }).then(({ dataValues }) => dataValues))
-    );
 
     const config: LeagueConfig = {
       name: 'Custom Points League',
@@ -158,7 +155,12 @@ describe('LeagueFactory (initial Season)', () => {
       }] }]
     };
 
-    const league = await LeagueFactory().create(sgw.id, config, teams.map(({ id }) => id));
+    const league = await LeagueFactory().createContainer(sgw.id, config);
+    const teams = await Promise.all(
+      [{ name: 'Knights' }, { name: 'Pirates' }]
+        .map((teamConfig) => db.models.Team.create({ config: teamConfig, gameWorldId: sgw.id, homeLeagueId: league.id }).then(({ dataValues }) => dataValues))
+    );
+    await LeagueFactory(league.id).createDivisions(config, teams.map(({ id }) => id));
     const division = await db.models.League.findByPk(league.id, { include: db.models.Division })
       .then((result) => { if (!result) throw Error(); return result.dataValues.Divisions[0].dataValues; });
 
@@ -190,10 +192,6 @@ describe('LeagueFactory (initial Season)', () => {
 
   it('getStandings: honors elimination-mode standingsConfig points', async () => {
     const sgw = await db.models.GameWorld.create({ config: {} }).then(({ dataValues }) => dataValues);
-    const teams = await Promise.all(
-      [{ name: 'Team A' }, { name: 'Team B' }]
-        .map((config) => db.models.Team.create({ config, gameWorldId: sgw.id }).then(({ dataValues }) => dataValues))
-    );
 
     const config: LeagueConfig = {
       name: 'Knockout League',
@@ -206,7 +204,12 @@ describe('LeagueFactory (initial Season)', () => {
       }] }]
     };
 
-    const league = await LeagueFactory().create(sgw.id, config, teams.map(({ id }) => id));
+    const league = await LeagueFactory().createContainer(sgw.id, config);
+    const teams = await Promise.all(
+      [{ name: 'Team A' }, { name: 'Team B' }]
+        .map((teamConfig) => db.models.Team.create({ config: teamConfig, gameWorldId: sgw.id, homeLeagueId: league.id }).then(({ dataValues }) => dataValues))
+    );
+    await LeagueFactory(league.id).createDivisions(config, teams.map(({ id }) => id));
     const division = await db.models.League.findByPk(league.id, { include: db.models.Division })
       .then((result) => { if (!result) throw Error(); return result.dataValues.Divisions[0].dataValues; });
 
@@ -255,7 +258,7 @@ describe('LeagueFactory.cutover', () => {
     division = await db.models.Division.findOne({ where: { leagueId: league.id } })
       .then((row) => row!.dataValues);
     teams = await Promise.all(['Home', 'Away'].map((name) => db.models.Team.create({
-      gameWorldId: gameWorld.id, config: { name },
+      gameWorldId: gameWorld.id, homeLeagueId: league.id, config: { name },
     }).then(({ dataValues }) => dataValues)));
   });
 
@@ -319,15 +322,17 @@ describe('LeagueFactory.start', () => {
     await db.sync({ force: true });
     gameWorld = await db.models.GameWorld.create({ year: 2030, currentDate: '2027-03-01', config: {} })
       .then(({ dataValues }) => dataValues);
-    teams = await Promise.all(['Home', 'Away'].map((name) => db.models.Team.create({
-      gameWorldId: gameWorld.id, config: { name },
-    }).then(({ dataValues }) => dataValues)));
-    league = await LeagueFactory().create(gameWorld.id, {
+    const startLeagueConfig: LeagueConfig = {
       name: 'Start League', type: LeagueType.League, stages: [{ id: "default", name: "Default", divisions: [{
         name: 'Division A', defaultTeams: [0, 1], isTopTier: true, format: ROUND_ROBIN_FORMAT,
         schedulingConfig: { startDate: '2027-03-08', intervalDays: 7 },
       }] }],
-    }, teams.map(({ id }) => id));
+    };
+    league = await LeagueFactory().createContainer(gameWorld.id, startLeagueConfig);
+    teams = await Promise.all(['Home', 'Away'].map((name) => db.models.Team.create({
+      gameWorldId: gameWorld.id, homeLeagueId: league.id, config: { name },
+    }).then(({ dataValues }) => dataValues)));
+    await LeagueFactory(league.id).createDivisions(startLeagueConfig, teams.map(({ id }) => id));
     division = await db.models.Division.findOne({ where: { leagueId: league.id } })
       .then((row) => row!.dataValues);
   });

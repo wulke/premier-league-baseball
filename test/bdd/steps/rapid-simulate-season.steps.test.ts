@@ -142,8 +142,8 @@ const registerSteps = ({ given, when, then }: any) => {
     const league = await db.models.League.create({ gameWorldId, config: { name: 'BDD League' } }).then(({ dataValues }) => dataValues);
     const division = await db.models.Division.create({ leagueId: league.id, config: { name: 'BDD Division' } }).then(({ dataValues }) => dataValues);
 
-    const homeTeam = await db.models.Team.create({ gameWorldId, config: { name: 'Home' } }).then(({ dataValues }) => dataValues);
-    const awayTeam = await db.models.Team.create({ gameWorldId, config: { name: 'Away' } }).then(({ dataValues }) => dataValues);
+    const homeTeam = await db.models.Team.create({ gameWorldId, homeLeagueId: league.id, config: { name: 'Home' } }).then(({ dataValues }) => dataValues);
+    const awayTeam = await db.models.Team.create({ gameWorldId, homeLeagueId: league.id, config: { name: 'Away' } }).then(({ dataValues }) => dataValues);
     const dsHome = await db.models.DivisionSeason.create({ divisionId: division.id, teamId: homeTeam.id, year: 2025 }).then(({ dataValues }) => dataValues);
     const dsAway = await db.models.DivisionSeason.create({ divisionId: division.id, teamId: awayTeam.id, year: 2025 }).then(({ dataValues }) => dataValues);
 

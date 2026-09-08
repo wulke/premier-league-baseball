@@ -43,8 +43,7 @@ describe('DivisionSeason year-scoped uniqueness', () => {
   // @spec DSU-002
   it('persists DivisionSeason rows for the same team and division across two different years', async () => {
     const gw = await db.models.GameWorld.create({ config: {} }).then((m) => m.dataValues);
-    const team = await TeamFactory().create(gw.id, { name: 'Returning Team' });
-    const league = await LeagueFactory().create(gw.id, {
+    const leagueConfig = {
       name: 'Two-Season League',
       type: LeagueType.League,
       stages: [{ id: 'default', name: 'Default', divisions: [{
@@ -53,7 +52,10 @@ describe('DivisionSeason year-scoped uniqueness', () => {
         isTopTier: true,
         format: ONE_LEG_ROUND_ROBIN_FORMAT,
       }] }]
-    } as LeagueConfig, [team.id]);
+    } as LeagueConfig;
+    const league = await LeagueFactory().createContainer(gw.id, leagueConfig);
+    const team = await TeamFactory().create(gw.id, { name: 'Returning Team' }, { homeLeagueId: league.id });
+    await LeagueFactory(league.id).createDivisions(leagueConfig, [team.id]);
     const divisionId = await db.models.League.findByPk(league.id, { include: db.models.Division })
       .then((l) => { if (!l) throw Error(); return l.dataValues; })
       .then(({ Divisions }) => Divisions[0].id);
@@ -77,10 +79,7 @@ describe('DivisionSeason year-scoped uniqueness', () => {
   // @spec DSU-003
   it('runs a season rollover twice for a returning team without a constraint error', async () => {
     const gw = await db.models.GameWorld.create({ config: {} }).then((m) => m.dataValues);
-    const teams = await Promise.all([0, 1, 2, 3].map((i) =>
-      TeamFactory().create(gw.id, { name: `Rollover Team ${i}` })
-    ));
-    const league = await LeagueFactory().create(gw.id, {
+    const leagueConfig = {
       name: 'Rollover League',
       type: LeagueType.League,
       stages: [{ id: 'default', name: 'Default', divisions: [{
@@ -89,7 +88,12 @@ describe('DivisionSeason year-scoped uniqueness', () => {
         isTopTier: true,
         format: ONE_LEG_ROUND_ROBIN_FORMAT,
       }] }]
-    } as LeagueConfig, teams.map(({ id }) => id));
+    } as LeagueConfig;
+    const league = await LeagueFactory().createContainer(gw.id, leagueConfig);
+    const teams = await Promise.all([0, 1, 2, 3].map((i) =>
+      TeamFactory().create(gw.id, { name: `Rollover Team ${i}` }, { homeLeagueId: league.id })
+    ));
+    await LeagueFactory(league.id).createDivisions(leagueConfig, teams.map(({ id }) => id));
     const divisionId = await db.models.League.findByPk(league.id, { include: db.models.Division })
       .then((l) => { if (!l) throw Error(); return l.dataValues; })
       .then(({ Divisions }) => Divisions[0].id);

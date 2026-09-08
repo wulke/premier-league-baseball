@@ -324,9 +324,16 @@ interface Stage {
   divisions: DivisionConfig[];
 }
 
+// #283 — a League owns its team pool (`teams`) or takes all of an earlier-declared
+// League's Teams (`externalTeams`, matched by `key`). Division `defaultTeams` indices
+// resolve against the owning (or external source) League's pool, not a world-level array.
+// @spec TLO-002,TLO-003
 interface LeagueConfig {
+  key?: string;                  // stable identity for externalTeams references
   name: string;
   type: LeagueType;
+  teams?: TeamConfig[];          // this League owns and creates exactly these Teams
+  externalTeams?: string;        // ...or takes ALL of a strictly-prior League's Teams
   stages: Stage[];                // array order = phase sequence
   standingsConfig?: StandingsConfig;
   compositionKey?: string;
@@ -385,6 +392,98 @@ interface TeamConfig {
 enum LeagueType {
   League = 'League',
   LeagueCup = 'League Cup'
+};
+
+// --- Named team pools (#85) --------------------------------------------------
+// Decoupled from `GameWorldType`, symmetric with LeagueTemplates. `england-44`
+// backs the Premier League world; `europe-32` backs the old Champions League
+// world (#87 pickability). `mlb-30` populates when its world runs (builder map).
+// #283: pools are referenced by the League templates that own them (TLO-002),
+// so this map is declared before LeagueTemplates.
+// @spec GWT-001
+const TeamPools: Record<string, TeamConfig[]> = {
+  'england-44': [
+    'Manchester City',
+    'Liverpool',
+    'Brighton Hove & Albion',
+    'Arsenal',
+    'Tottenham',
+    'Aston Villa',
+    'West Ham United',
+    'Newcastle United',
+    'Manchester United',
+    'Crystal Palace',
+    'Fulham',
+    'Nottingham Forest',
+    'Brentford',
+    'Chelsea',
+    'Everton',
+    'Wovles',
+    'Bournemouth',
+    'Luton Town',
+    'Burnely',
+    'Sheffield United',
+    'Leceister City',
+    'Ipswich Town',
+    'Preston North End',
+    'Hull City',
+    'Sudnerland',
+    'Leeds United',
+    'Cardiff City',
+    'Norwich City',
+    'Bristol City',
+    'Birmingham City',
+    'Milwall',
+    'Plymouth Argyle',
+    'West Bromwich Albion',
+    'Blackburn Rovers',
+    'Southamptom',
+    'Watford',
+    'Huddersfield Town',
+    'Coventry City',
+    'Queens Park Rangers',
+    'Stoke City',
+    'Swansea City',
+    'Middlesbrough',
+    'Rotherham United',
+    'Sheffield Wednesday',
+  ].map((name): TeamConfig => ({ name })),
+  // @spec GWT-001 — 32 stub European clubs; group divisions reference indices 0..31.
+  // Name-only, symmetric with england-44; roster realism is the factory's concern.
+  'europe-32': [
+    'Real Madrid',
+    'FC Barcelona',
+    'Atletico Madrid',
+    'Sevilla',
+    'Manchester City',
+    'Liverpool',
+    'Chelsea',
+    'Arsenal',
+    'Bayern Munich',
+    'Borussia Dortmund',
+    'RB Leipzig',
+    'Bayer Leverkusen',
+    'Inter Milan',
+    'AC Milan',
+    'Juventus',
+    'Napoli',
+    'Paris Saint-Germain',
+    'Marseille',
+    'Monaco',
+    'Lyon',
+    'Benfica',
+    'Porto',
+    'Sporting CP',
+    'Braga',
+    'Ajax',
+    'PSV Eindhoven',
+    'Feyenoord',
+    'Celtic',
+    'Rangers',
+    'Shakhtar Donetsk',
+    'Dinamo Zagreb',
+    'Red Star Belgrade',
+  ].map((name): TeamConfig => ({ name })),
 };
 
 // --- Named competition-config templates (#85) --------------------------------
@@ -450,9 +549,14 @@ const LC_SCHEDULING = { startDate: '2025-05-01', intervalDays: 14 };
 
 const LeagueTemplates: Record<string, LeagueConfig> = {
   // --- live configs ---
+  // @spec TLO-002 — the Premier League owns its pool; the cup borrows it whole via
+  // externalTeams (strictly-prior key reference), replacing the old index-overlapping
+  // of a world-level flat array (#283).
   'premier-league': {
+    key: 'premier-league',
     name: GameWorldType.PremierLeague,
     type: LeagueType.League,
+    teams: TeamPools['england-44'],
     stages: [{ id: 'regular-season', name: 'Regular Season', divisions: [
       {
         name: GameWorldType.PremierLeague,
@@ -471,8 +575,10 @@ const LeagueTemplates: Record<string, LeagueConfig> = {
     ] }],
   },
   'league-cup': {
+    key: 'league-cup',
     name: 'League Cup',
     type: LeagueType.LeagueCup,
+    externalTeams: 'premier-league',
     stages: [{ id: 'cup', name: 'League Cup', divisions: [
       {
         name: '1st Round',
@@ -491,8 +597,10 @@ const LeagueTemplates: Record<string, LeagueConfig> = {
   // (#80). `seeding: 'REDRAW'` (constrained winners-vs-runners-up draw is fog).
   // @spec CFG-005,CFG-007
   'champions-league': {
+    key: 'champions-league',
     name: 'Champions League',
     type: LeagueType.LeagueCup,
+    teams: TeamPools['europe-32'],
     stages: [
       {
         id: 'group-stage',
@@ -628,111 +736,23 @@ const LeagueTemplates: Record<string, LeagueConfig> = {
   },
 };
 
-// --- Named team pools (#85) --------------------------------------------------
-// Decoupled from `GameWorldType`, symmetric with LeagueTemplates. `england-44`
-// backs the Premier League world; `europe-32` backs the old Champions League
-// world (#87 pickability). `mlb-30` populates when its world runs (builder map).
-// @spec GWT-001
-const TeamPools: Record<string, TeamConfig[]> = {
-  'england-44': [
-    'Manchester City',
-    'Liverpool',
-    'Brighton Hove & Albion',
-    'Arsenal',
-    'Tottenham',
-    'Aston Villa',
-    'West Ham United',
-    'Newcastle United',
-    'Manchester United',
-    'Crystal Palace',
-    'Fulham',
-    'Nottingham Forest',
-    'Brentford',
-    'Chelsea',
-    'Everton',
-    'Wovles',
-    'Bournemouth',
-    'Luton Town',
-    'Burnely',
-    'Sheffield United',
-    'Leceister City',
-    'Ipswich Town',
-    'Preston North End',
-    'Hull City',
-    'Sudnerland',
-    'Leeds United',
-    'Cardiff City',
-    'Norwich City',
-    'Bristol City',
-    'Birmingham City',
-    'Milwall',
-    'Plymouth Argyle',
-    'West Bromwich Albion',
-    'Blackburn Rovers',
-    'Southamptom',
-    'Watford',
-    'Huddersfield Town',
-    'Coventry City',
-    'Queens Park Rangers',
-    'Stoke City',
-    'Swansea City',
-    'Middlesbrough',
-    'Rotherham United',
-    'Sheffield Wednesday',
-  ].map((name): TeamConfig => ({ name })),
-  // @spec GWT-001 — 32 stub European clubs; group divisions reference indices 0..31.
-  // Name-only, symmetric with england-44; roster realism is the factory's concern.
-  'europe-32': [
-    'Real Madrid',
-    'FC Barcelona',
-    'Atletico Madrid',
-    'Sevilla',
-    'Manchester City',
-    'Liverpool',
-    'Chelsea',
-    'Arsenal',
-    'Bayern Munich',
-    'Borussia Dortmund',
-    'RB Leipzig',
-    'Bayer Leverkusen',
-    'Inter Milan',
-    'AC Milan',
-    'Juventus',
-    'Napoli',
-    'Paris Saint-Germain',
-    'Marseille',
-    'Monaco',
-    'Lyon',
-    'Benfica',
-    'Porto',
-    'Sporting CP',
-    'Braga',
-    'Ajax',
-    'PSV Eindhoven',
-    'Feyenoord',
-    'Celtic',
-    'Rangers',
-    'Shakhtar Donetsk',
-    'Dinamo Zagreb',
-    'Red Star Belgrade',
-  ].map((name): TeamConfig => ({ name })),
-};
 
 // --- Runnable bundles (#85) --------------------------------------------------
-// The layer that opts a team pool + a set of league templates into a pickable,
-// runnable world. `GameWorldType` stays the *runnable* identity (only worlds that
-// actually simulate get one); new-CL + MLB are registry-only and so have no entry
-// here. The future builder map makes both fields user-selectable.
+// The layer that opts a set of league templates into a pickable, runnable world.
+// `GameWorldType` stays the *runnable* identity (only worlds that actually simulate
+// get one); new-CL + MLB are registry-only and so have no entry here. #283: the
+// teamPool field is gone — each template owns its pool via LeagueConfig.teams.
+// The future builder map makes both fields user-selectable.
 // @spec CFG-010,GWT-001
-const DefaultWorlds: Record<GameWorldType, { teamPool: string; leagues: string[] }> = {
-  [GameWorldType.PremierLeague]: { teamPool: 'england-44', leagues: ['premier-league', 'league-cup'] },
-  [GameWorldType.ChampionsLeague]: { teamPool: 'europe-32', leagues: ['champions-league'] },
+const DefaultWorlds: Record<GameWorldType, { leagues: string[] }> = {
+  [GameWorldType.PremierLeague]: { leagues: ['premier-league', 'league-cup'] },
+  [GameWorldType.ChampionsLeague]: { leagues: ['champions-league'] },
 };
 
+// @spec TLO-002 — teams live on the Leagues; the world payload carries no pool.
 interface NewGameWorld {
   name: GameWorldType;
   leagues: LeagueConfig[];
-  teams: TeamConfig[];
   year: number;
 };
 
@@ -741,9 +761,38 @@ const useDefaultGameWorld = (gwType: GameWorldType = GameWorldType.PremierLeague
   return {
     name: gwType,
     leagues: world.leagues.map((id) => LeagueTemplates[id]),
-    teams: TeamPools[world.teamPool],
     year: new Date().getFullYear() - 1,
   };
+};
+
+// @spec TLO-003 — world-level team-ownership validation, run before any row is
+// written (GameWorldFactory.create). Mirrors SeedingSelection.fromStage's
+// strictly-prior rule (CFG-013) so Leagues create in plain array order with no
+// dependency resolution. Plain Error → the router's 500 surface for malformed
+// create payloads (GWA-005); per-League stage/format rules stay in
+// validateLeagueConfig, which direct LeagueFactory callers rely on.
+const validateNewGameWorld = (config: NewGameWorld): void => {
+  const leagues = config.leagues;
+  if (!Array.isArray(leagues) || leagues.length === 0) throw Error('GameWorld config requires leagues');
+
+  const keyIndexes = new Map<string, number>();
+  leagues.forEach((league, index) => {
+    const hasTeams = Array.isArray(league.teams) && league.teams.length > 0;
+    const hasExternal = typeof league.externalTeams === 'string' && league.externalTeams.trim() !== '';
+    if (hasTeams === hasExternal) {
+      throw Error(`League '${league.name}' must declare exactly one team source (teams or externalTeams)`);
+    }
+    if (league.key != null) {
+      if (keyIndexes.has(league.key)) throw Error(`League key '${league.key}' must be unique`);
+      keyIndexes.set(league.key, index);
+    }
+    if (hasExternal) {
+      const sourceIndex = keyIndexes.get(league.externalTeams!);
+      if (sourceIndex == null || sourceIndex >= index) {
+        throw Error(`League '${league.name}' must source externalTeams from a strictly-prior League (key '${league.externalTeams}')`);
+      }
+    }
+  });
 };
 
 export {
@@ -792,5 +841,6 @@ export {
   TeamPools,
   DefaultWorlds,
   validateLeagueConfig,
+  validateNewGameWorld,
   useDefaultGameWorld,
 };

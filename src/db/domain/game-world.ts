@@ -1,10 +1,9 @@
 import { Op } from 'sequelize';
-import { NewGameWorld, RosterPlayer } from "../../api/models";
+import { NewGameWorld, RosterPlayer, validateNewGameWorld } from "../../api/models";
 import db from '../client';
 import { DomainError } from './errors';
 import { LeagueFactory, TeamFactory, resolveCurrentContract, toRosterPlayer } from ".";
 import { deleteForGameWorld } from './contract';
-import { resolveMatchRules } from './lineup';
 
 interface IGameWorld {
   create: (NewGameWorld) => any;
@@ -25,27 +24,54 @@ const notFoundError = (id: number) => {
 
 const GameWorldFactory = (id?: number): IGameWorld => {
   return {
+    // @spec TLO-002,TLO-003,TLO-004 — per-League team ownership replaces the old
+    // "first configured League" composition threading: (1) all Leagues exist as
+    // empty containers, (2) each League's own Teams are created in leagues[] order
+    // with homeLeagueId naming their owner (an externalTeams League pulls the
+    // strictly-prior source's already-created Teams instead of creating rows),
+    // (3) Divisions follow for every League. DivisionSeasons still materialize at
+    // League.start (unchanged).
     create: async (config: NewGameWorld) => {
+      // @spec TLO-003 — ownership validation precedes any write, so a malformed
+      // payload leaves no partial world behind.
+      validateNewGameWorld(config);
       // create game world
       const gw = await db.models.GameWorld.create({
         config: { ...config, inProgress: false },
       }).then(({ dataValues }) => dataValues);
-      // @spec PID-010 — teams are shared across the world's Leagues and are created
-      // before Division membership exists, so the first configured League is the
-      // explicit primary identity-composition source.
-      const primaryCompositionKey = config.leagues?.[0]?.compositionKey;
-      // @spec LIN-002,LIN-003 — teams precede Division rows, so their active cards
-      // use the first League's defaults; a Division override applies to later match contexts.
-      const primaryMatchRules = resolveMatchRules(config.leagues?.[0]);
-      // create teams
-      const teams = await Promise.all(config.teams?.map(async (teamConfig) => 
-        await TeamFactory().create(gw.id, teamConfig, { compositionKey: primaryCompositionKey, matchRules: primaryMatchRules })
+      // (1) all Leagues as empty containers, in leagues[] order
+      const leagues = await Promise.all(config.leagues.map(async (leagueConfig) =>
+        await LeagueFactory().createContainer(gw.id, leagueConfig)
       ));
-      // create Leagues
-      const leagues = await Promise.all(config.leagues?.map(async (leagueConfig) =>
-        await LeagueFactory().create(gw.id, leagueConfig, teams.map(({ id }) => id ))
-      ));
-      return { ...gw, leagues, teams };
+      // (2) per-League Teams, still in leagues[] order; a League's Team ids are
+      // registered under its key so later externalTeams references resolve.
+      const teamsByLeagueKey = new Map<string, any[]>();
+      const teamIdsByLeagueIndex = new Map<number, number[]>();
+      const createdTeams: any[] = [];
+      for (const [index, leagueConfig] of config.leagues.entries()) {
+        if (leagueConfig.teams) {
+          const teams = await Promise.all(leagueConfig.teams.map(async (teamConfig) =>
+            await TeamFactory().create(gw.id, teamConfig, { homeLeagueId: leagues[index].id })
+          ));
+          teams.forEach((team) => createdTeams.push(team));
+          teamIdsByLeagueIndex.set(index, teams.map(({ id }) => id));
+          if (leagueConfig.key != null) teamsByLeagueKey.set(leagueConfig.key, teams);
+        } else {
+          // @spec TLO-007 — externalTeams reuses the source's exact Team rows; no
+          // new Teams are created and homeLeagueId is left untouched.
+          const sourceTeams = teamsByLeagueKey.get(leagueConfig.externalTeams!);
+          if (!sourceTeams) {
+            throw Error(`League '${leagueConfig.name}' references unresolved externalTeams '${leagueConfig.externalTeams}'`);
+          }
+          teamIdsByLeagueIndex.set(index, sourceTeams.map(({ id }) => id));
+          if (leagueConfig.key != null) teamsByLeagueKey.set(leagueConfig.key, sourceTeams);
+        }
+      }
+      // (3) Divisions for all Leagues
+      for (const [index, leagueConfig] of config.leagues.entries()) {
+        await LeagueFactory(leagues[index].id).createDivisions(leagueConfig, teamIdsByLeagueIndex.get(index) ?? []);
+      }
+      return { ...gw, leagues, teams: createdTeams };
     },
     find: async () => 
       id ? await db.models.GameWorld.findByPk(id, { include: [db.models.League, db.models.Team]})

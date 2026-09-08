@@ -72,7 +72,8 @@ describe('Home new game world form', () => {
 
     expect(payload.name).toBe('My Test World');
     expect(payload.year).toBe(new Date().getFullYear() - 1);
-    expect(payload.teams).toHaveLength(44);
+    // TLO-002 — pools ride on the League configs; the cup owns none
+    expect(payload.leagues.reduce((count: number, league: any) => count + (league.teams?.length ?? 0), 0)).toBe(44);
     expect(payload.leagues).toHaveLength(2);
     expect(payload.leagues[0].stages[0].divisions).toHaveLength(2);
     expect(payload.leagues[1].stages[0].divisions).toHaveLength(1);

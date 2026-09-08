@@ -44,7 +44,8 @@ const registerSteps = ({ given, when, then, and }: any) => {
   });
 
   given(/^Team (\d+) belongs to GameWorld (\d+)$/, async (teamId: string, gwId: string) => {
-    await db.models.Team.create({ id: Number(teamId), gameWorldId: Number(gwId), config: {} });
+    const league = await db.models.League.create({ gameWorldId: Number(gwId), config: {} }).then(({ dataValues }) => dataValues);
+    await db.models.Team.create({ id: Number(teamId), gameWorldId: Number(gwId), homeLeagueId: league.id, config: {} });
   });
 
   given(/^GameWorld (\d+) has Team (\d+) as its managed club$/, async (gwId: string, teamId: string) => {

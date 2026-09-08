@@ -142,7 +142,7 @@ Configs and teams are decoupled from `GameWorldType` into named registries — t
 
 - `LeagueTemplates: Record<string, LeagueConfig>` — all templates (`premier-league`, `league-cup`, `champions-league`, `champions-league-swiss`, `mlb`).
 - `TeamPools: Record<string, TeamConfig[]>` — team identity, keyed by name (`england-44`, …).
-- `DefaultWorlds: Record<GameWorldType, { teamPool; leagues: string[] }>` — the *runnable* layer that opts a pool + templates into a pickable world. new-CL + MLB are registry-only (no entry).
+- `DefaultWorlds: Record<GameWorldType, { leagues: string[] }>` — the *runnable* layer that opts templates into a pickable world. Each template owns its `teams` pool or uses a strictly-prior template's `externalTeams` reference (#283); new-CL + MLB are registry-only (no entry).
 
 ### Pressure-test finding
 

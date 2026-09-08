@@ -7,7 +7,9 @@ import { getKnockoutRoundLabel } from './knockout';
 import { reconcileTeamMemberships } from './contract';
 
 interface ILeague {
-  create: (gwId: number, config: any, teamIdRefs: number[]) => any;
+  create: (gwId: number, config: LeagueConfig, teamIdRefs: number[]) => any;
+  createContainer: (gwId: number, config: LeagueConfig) => any;
+  createDivisions: (config: LeagueConfig, teamIdRefs: number[]) => Promise<void>;
   get: () => any;
   isSeasonComplete: (year: number) => any;
   cutover: () => Promise<{ id: number; year: number; status: 'CUTOVER' }>;
@@ -288,17 +290,25 @@ const LeagueFactory = (id?: number): ILeague => {
     getToday,
     cutover,
     start,
-    create: async (gwId: number, config: LeagueConfig, teamIdRefs: number[]) => {
+    // @spec TLO-004 — the split creation primitives GameWorldFactory composes: the
+    // League row (container) exists before its Teams (whose homeLeagueId FK needs
+    // it), and Divisions follow once Team ids exist. `create` below remains the
+    // one-step composite for direct callers whose Teams already exist.
+    createContainer: async (gwId: number, config: LeagueConfig) => {
       // @spec CFG-011,CFG-012,CFG-013,CFG-014,CFG-015,CFG-016,CFG-017,SCL-001,MSS-004
       validateLeagueConfig(config);
       const gameWorld = await db.models.GameWorld.findByPk(gwId);
       if (!gameWorld) throw Error(`Invalid GameWorld '${gwId}'`);
-      const league = await db.models.League.create({
+      return await db.models.League.create({
         config,
         gameWorldId: gwId,
         year: gameWorld.dataValues.year,
         status: 'CUTOVER',
       }).then(({ dataValues }) => dataValues);
+    },
+    createDivisions: async (config: LeagueConfig, teamIdRefs: number[]) => {
+      // @spec MSS-004 — stamps stageId/stageOrder; defaultTeams indices resolve
+      // against the owning (or external source) League's team-id array (TLO-002).
       await Promise.all(config.stages.flatMap((stage) => stage.divisions.map(async (divisionConfig, stageOrder) =>
         db.models.Division.create({
           config: {
@@ -308,9 +318,13 @@ const LeagueFactory = (id?: number): ILeague => {
             defaultTeams: divisionConfig.defaultTeams.map((idx) => teamIdRefs[idx]),
             format: divisionConfig.format,
           },
-          leagueId: league.id,
+          leagueId: id,
         }),
       )));
+    },
+    create: async (gwId: number, config: LeagueConfig, teamIdRefs: number[]) => {
+      const league = await LeagueFactory().createContainer(gwId, config);
+      await LeagueFactory(league.id).createDivisions(config, teamIdRefs);
       return league;
     },
     get: getLeague,

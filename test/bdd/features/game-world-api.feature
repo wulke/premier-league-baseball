@@ -2,7 +2,8 @@ Feature: GameWorld collection API (list + create)
 
   The pre-LID GameWorld collection endpoints: GET /api/gameWorld lists every world raw
   and unwrapped, and POST /api/gameWorld/new builds a complete runnable world from a
-  template payload (teams first, then leagues) and returns the composed result.
+  template payload (Leagues as containers, then per-League Teams, then Divisions — #283)
+  and returns the composed result.
   Backfilled per the legacy-API spec process (GWA-001..005).
 
   @spec:GWA-001

@@ -15,7 +15,8 @@ describe('multi-stage season run-path', () => {
   beforeEach(async () => {
     await db.sync({ force: true });
     gameWorld = await db.models.GameWorld.create({ year: 2027, config: {} }).then((row: any) => row.dataValues);
-    teams = await Promise.all([...Array(8).keys()].map((i) => TeamFactory().create(gameWorld.id, { name: `Team ${i}` })));
+    const homeLeague = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then((row: any) => row.dataValues);
+    teams = await Promise.all([...Array(8).keys()].map((i) => TeamFactory().create(gameWorld.id, { name: `Team ${i}` }, { homeLeagueId: homeLeague.id })));
   });
 
   const config = (selection: any = { kind: 'TOP_N_PER_DIVISION', fromStage: 'groups', topN: 2 }) => ({

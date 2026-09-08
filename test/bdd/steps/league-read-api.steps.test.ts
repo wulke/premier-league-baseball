@@ -72,8 +72,8 @@ const registerSteps = ({ given, when, then }: any) => {
       name: 'BDD Division',
       format: { structure: 'ROUND_ROBIN' },
     } }).then(({ dataValues }) => dataValues);
-    const home = await db.models.Team.create({ gameWorldId: Number(gwId), config: { name: 'Team A' } }).then(({ dataValues }) => dataValues);
-    const away = await db.models.Team.create({ gameWorldId: Number(gwId), config: { name: 'Team B' } }).then(({ dataValues }) => dataValues);
+    const home = await db.models.Team.create({ gameWorldId: Number(gwId), homeLeagueId: league.id, config: { name: 'Team A' } }).then(({ dataValues }) => dataValues);
+    const away = await db.models.Team.create({ gameWorldId: Number(gwId), homeLeagueId: league.id, config: { name: 'Team B' } }).then(({ dataValues }) => dataValues);
     await Promise.all([home, away].map((team) => db.models.DivisionSeason.create({
       divisionId: division.id, teamId: team.id, year: 2025,
     })));

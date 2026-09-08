@@ -9,6 +9,13 @@ module.exports = (sequelize: any) => {
     },
     config: {
       type: DataTypes.JSON
-    }
+    },
+    // @spec TLO-001 — set once at creation to the League whose config produced this
+    // Team; the durable Home League association (#174/#283). Participation in other
+    // Leagues happens via DivisionSeason and never changes this column.
+    homeLeagueId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   });
 };

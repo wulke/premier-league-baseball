@@ -45,8 +45,10 @@ describe('Contract model schema', () => {
   // @spec PCON-008,PCON-009
   it('@spec PCON-008 @spec PCON-009 binds one player and one team through Contract associations', async () => {
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2048 }).then(({ dataValues }) => dataValues);
+    const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
     const team = await db.models.Team.create({
       gameWorldId: gameWorld.id,
+      homeLeagueId: league.id,
       config: { name: 'Dallas Drillers' },
     }).then(({ dataValues }) => dataValues);
     const player = await db.models.Player.create({
@@ -79,8 +81,10 @@ describe('Contract model schema', () => {
   // @spec PCON-008,PCON-006
   it('@spec PCON-008 @spec PCON-006 exposes only the v1 contract term fields with no expiry side effects', async () => {
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2051 }).then(({ dataValues }) => dataValues);
+    const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
     const team = await db.models.Team.create({
       gameWorldId: gameWorld.id,
+      homeLeagueId: league.id,
       config: { name: 'Nashville Notes' },
     }).then(({ dataValues }) => dataValues);
     const player = await db.models.Player.create({
@@ -119,8 +123,10 @@ describe('Contract model schema', () => {
   // @spec XFER-021,GWD-002
   it('@spec XFER-021 @spec GWD-002 owns initial roster minting and GameWorld cascade deletion', async () => {
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2054 }).then(({ dataValues }) => dataValues);
+    const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
     const team = await db.models.Team.create({
       gameWorldId: gameWorld.id,
+      homeLeagueId: league.id,
       config: { name: 'Contract Owners' },
     }).then(({ dataValues }) => dataValues);
     const player = await db.models.Player.create({

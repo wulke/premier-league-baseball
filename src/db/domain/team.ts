@@ -5,10 +5,10 @@ import { listForTeam } from './contract';
 import { getKnockoutRoundLabel } from './knockout';
 import { PlayerFactory, resolveCurrentContract, toRosterPlayer } from './player';
 import { DomainError } from './errors';
-import { validateLineup } from './lineup';
+import { validateLineup, resolveMatchRules } from './lineup';
 
 interface ITeam {
-  create: (gwId: number, config: TeamConfig, options?: TeamCreateOptions) => any;
+  create: (gwId: number, config: TeamConfig, options: TeamCreateOptions) => any;
   getSchedule: (gwId: number, leagueId?: number) => Promise<TeamSeasonCalendar>;
   getRoster: () => Promise<RosterPlayer[]>;
   snapshotForGame: (gameId: number) => Promise<GameLineupSnapshot>;
@@ -19,10 +19,11 @@ interface ITeam {
   saveGameLineup: (gameId: number, entries: ActiveLineupEntry[], matchRules: MatchRules) => Promise<TeamLineup>;
 };
 
+// @spec TLO-001 — homeLeagueId is required: the Home League owns identity
+// composition (TLO-005) and the roster's default match rules (LIN-002/LIN-003).
 interface TeamCreateOptions {
-  compositionKey?: string;
+  homeLeagueId: number;
   rosterSeed?: number;
-  matchRules?: MatchRules;
 }
 
 interface NextScheduledGame {
@@ -122,7 +123,12 @@ const replaceGameLineup = async (teamId: number, gameId: number, entries: Active
 const TeamFactory = (id?: number): ITeam => {
   return {
     // @spec PCON-001,PCON-004,PCON-007,PID-010
-    create: async (gwId: number, config: TeamConfig, options: TeamCreateOptions = {}) => enqueueTeamCreate(async () => {
+    // @spec TLO-001 — homeLeagueId is persisted once, at creation, and names a
+    // League of the target GameWorld; ownership can never cross worlds.
+    // @spec TLO-005 — composition and match rules join through the Home League's
+    // config; no arbitrary League row is read and compositionKey is never
+    // duplicated onto the Team row.
+    create: async (gwId: number, config: TeamConfig, options: TeamCreateOptions) => enqueueTeamCreate(async () => {
       const transaction = await db.transaction();
 
       try {
@@ -131,16 +137,22 @@ const TeamFactory = (id?: number): ITeam => {
           return gw.dataValues;
         });
 
+        const homeLeague = await db.models.League.findByPk(options.homeLeagueId, { transaction });
+        if (!homeLeague || homeLeague.dataValues.gameWorldId !== gwId) {
+          throw new DomainError('homeLeagueId must reference a League in the target GameWorld', 422);
+        }
+
         const team = await db.models.Team.create({
           config,
-          gameWorldId: gwId
+          gameWorldId: gwId,
+          homeLeagueId: options.homeLeagueId,
         }, { transaction }).then(({ dataValues }) => dataValues);
 
         await PlayerFactory().generateRoster(team.id, gwId, {
           gameWorldYear: gameWorld.year,
-          compositionKey: options.compositionKey,
+          compositionKey: homeLeague.dataValues.config?.compositionKey,
           seed: options.rosterSeed,
-          matchRules: options.matchRules,
+          matchRules: resolveMatchRules(homeLeague.dataValues.config),
           transaction,
         });
 

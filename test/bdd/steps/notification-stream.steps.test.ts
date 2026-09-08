@@ -46,7 +46,8 @@ const registerSteps = ({ given, when, then, and }: any) => {
   });
 
   given(/^Team (\d+) "([^"]+)" belongs to GameWorld (\d+)$/, async (teamId: string, name: string, gwId: string) => {
-    await db.models.Team.create({ id: Number(teamId), gameWorldId: Number(gwId), config: { name } });
+    const league = await db.models.League.create({ gameWorldId: Number(gwId), config: {} }).then(({ dataValues }) => dataValues);
+    await db.models.Team.create({ id: Number(teamId), gameWorldId: Number(gwId), homeLeagueId: league.id, config: { name } });
   });
 
   given(/^a scheduled Game between Team (\d+) and Team (\d+) in GameWorld (\d+)$/, async (homeTeamId: string, awayTeamId: string, gwId: string) => {

@@ -14,9 +14,10 @@ const ROUND_ROBIN_FORMAT = {
 
 const setupLeague = async () => {
   const gw = await db.models.GameWorld.create({ config: {} }).then((row) => row.dataValues);
+  const homeLeague = await db.models.League.create({ gameWorldId: gw.id, config: { name: 'Fixture Home League' } }).then((row) => row.dataValues);
   const teams = await Promise.all(
     ['Premier A', 'Premier B', 'Championship A', 'Championship B']
-      .map((name) => TeamFactory().create(gw.id, { name }))
+      .map((name) => TeamFactory().create(gw.id, { name }, { homeLeagueId: homeLeague.id }))
   );
 
   const league = await LeagueFactory().create(gw.id, {

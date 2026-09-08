@@ -61,9 +61,10 @@ describe('DivisionFactory', () => {
   });
 
   it('newSeason: initial year', async () => {
-    // create generic league and teams
-    const teams = await Promise.all(teamConfigs.map(async (teamConfig) => await TeamFactory().create(gw.id, teamConfig)));
-    const league = await LeagueFactory().create(gw.id, leagueConfig, teams.map(({ id }) => id));
+    // create generic league and teams (TLO-004 order: container → teams → divisions)
+    const league = await LeagueFactory().createContainer(gw.id, leagueConfig);
+    const teams = await Promise.all(teamConfigs.map(async (teamConfig) => await TeamFactory().create(gw.id, teamConfig, { homeLeagueId: league.id })));
+    await LeagueFactory(league.id).createDivisions(leagueConfig, teams.map(({ id }) => id));
     // divisions
     const divisionIds = await db.models.League.findByPk(league.id, { include: db.models.Division })
       .then((league) => { if (!league) throw Error(); return league.dataValues })
@@ -89,22 +90,23 @@ describe('DivisionFactory', () => {
   it('getStandings: returns correct standings ordered by points', async () => {
     // Create a fresh game world, teams, league, and division
     const sgw = await db.models.GameWorld.create({ config: {} }).then((m) => m.dataValues);
-    const sgwTeams = await Promise.all(
-      [{ name: 'Alpha' }, { name: 'Beta' }, { name: 'Gamma' }].map((cfg) =>
-        TeamFactory().create(sgw.id, cfg)
-      )
-    );
     const sgLeagueConfig: LeagueConfig = {
       name: 'Standings Test League',
       type: LeagueType.League,
       stages: [{ id: "default", name: "Default", divisions: [{
         name: 'Standings Division',
-        defaultTeams: [...Array(sgwTeams.length).keys()],
+        defaultTeams: [...Array(3).keys()],
             isTopTier: true,
         format: ONE_LEG_ROUND_ROBIN_FORMAT,
       }] }]
     };
-    const sgLeague = await LeagueFactory().create(sgw.id, sgLeagueConfig, sgwTeams.map(({ id }) => id));
+    const sgLeague = await LeagueFactory().createContainer(sgw.id, sgLeagueConfig);
+    const sgwTeams = await Promise.all(
+      [{ name: 'Alpha' }, { name: 'Beta' }, { name: 'Gamma' }].map((cfg) =>
+        TeamFactory().create(sgw.id, cfg, { homeLeagueId: sgLeague.id })
+      )
+    );
+    await LeagueFactory(sgLeague.id).createDivisions(sgLeagueConfig, sgwTeams.map(({ id }) => id));
     const sgDivisionIds = await db.models.League.findByPk(sgLeague.id, { include: db.models.Division })
       .then((l) => { if (!l) throw Error(); return l.dataValues; })
       .then(({ Divisions }) => Divisions.map(({ id }) => id));
@@ -179,10 +181,7 @@ describe('DivisionFactory', () => {
 
       beforeAll(async () => {
         const sgGw = await db.models.GameWorld.create({ config: {} }).then((m) => m.dataValues);
-        const sgTeams = await Promise.all(
-          [...Array(N).keys()].map((i) => TeamFactory().create(sgGw.id, { name: `OL Team ${i}` }))
-        );
-        const sgLeague = await LeagueFactory().create(sgGw.id, {
+        const sgLeagueConfig: LeagueConfig = {
           name: 'ONE_LEG Schedule League',
           type: LeagueType.League,
           stages: [{ id: "default", name: "Default", divisions: [{
@@ -191,7 +190,12 @@ describe('DivisionFactory', () => {
             isTopTier: true,
             format: ONE_LEG_ROUND_ROBIN_FORMAT,
           }] }]
-        }, sgTeams.map(({ id }) => id));
+        };
+        const sgLeague = await LeagueFactory().createContainer(sgGw.id, sgLeagueConfig);
+        const sgTeams = await Promise.all(
+          [...Array(N).keys()].map((i) => TeamFactory().create(sgGw.id, { name: `OL Team ${i}` }, { homeLeagueId: sgLeague.id }))
+        );
+        await LeagueFactory(sgLeague.id).createDivisions(sgLeagueConfig, sgTeams.map(({ id }) => id));
         sgDivId = await db.models.League.findByPk(sgLeague.id, { include: db.models.Division })
           .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
         sgYear = sgGw.year;
@@ -242,10 +246,7 @@ describe('DivisionFactory', () => {
 
       beforeAll(async () => {
         const tlGw = await db.models.GameWorld.create({ config: {} }).then((m) => m.dataValues);
-        const tlTeams = await Promise.all(
-          [...Array(N).keys()].map((i) => TeamFactory().create(tlGw.id, { name: `TL Team ${i}` }))
-        );
-        const tlLeague = await LeagueFactory().create(tlGw.id, {
+        const tlLeagueConfig: LeagueConfig = {
           name: 'TWO_LEG Schedule League',
           type: LeagueType.League,
           stages: [{ id: "default", name: "Default", divisions: [{
@@ -254,7 +255,12 @@ describe('DivisionFactory', () => {
             isTopTier: true,
             format: TWO_LEG_ROUND_ROBIN_FORMAT,
           }] }]
-        }, tlTeams.map(({ id }) => id));
+        };
+        const tlLeague = await LeagueFactory().createContainer(tlGw.id, tlLeagueConfig);
+        const tlTeams = await Promise.all(
+          [...Array(N).keys()].map((i) => TeamFactory().create(tlGw.id, { name: `TL Team ${i}` }, { homeLeagueId: tlLeague.id }))
+        );
+        await LeagueFactory(tlLeague.id).createDivisions(tlLeagueConfig, tlTeams.map(({ id }) => id));
         tlDivId = await db.models.League.findByPk(tlLeague.id, { include: db.models.Division })
           .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
         tlYear = tlGw.year;
@@ -308,10 +314,7 @@ describe('DivisionFactory', () => {
           | typeof TWO_LEG_KNOCKOUT_FIXED_FORMAT;
       }) => {
         const knockoutGw = await db.models.GameWorld.create({ config: {} }).then((m) => m.dataValues);
-        const knockoutTeams = await Promise.all(
-          [...Array(teamCount).keys()].map((i) => TeamFactory().create(knockoutGw.id, { name: `KO Team ${i}` }))
-        );
-        const knockoutLeague = await LeagueFactory().create(knockoutGw.id, {
+        const knockoutLeagueConfig: LeagueConfig = {
           name: `${format.seeding} Knockout League`,
           type: LeagueType.LeagueCup,
           stages: [{ id: "default", name: "Default", divisions: [{
@@ -320,7 +323,12 @@ describe('DivisionFactory', () => {
             isTopTier: true,
             format,
           }] }]
-        }, knockoutTeams.map(({ id }) => id));
+        };
+        const knockoutLeague = await LeagueFactory().createContainer(knockoutGw.id, knockoutLeagueConfig);
+        const knockoutTeams = await Promise.all(
+          [...Array(teamCount).keys()].map((i) => TeamFactory().create(knockoutGw.id, { name: `KO Team ${i}` }, { homeLeagueId: knockoutLeague.id }))
+        );
+        await LeagueFactory(knockoutLeague.id).createDivisions(knockoutLeagueConfig, knockoutTeams.map(({ id }) => id));
         const knockoutDivId = await db.models.League.findByPk(knockoutLeague.id, { include: db.models.Division })
           .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
         const currentYear = knockoutGw.year;
@@ -450,13 +458,15 @@ describe('DivisionFactory', () => {
 
     beforeAll(async () => {
       iscGw = await db.models.GameWorld.create({ config: {} }).then((m) => m.dataValues);
-      const teams = await Promise.all(
-        [{ name: 'X' }, { name: 'Y' }].map((cfg) => TeamFactory().create(iscGw.id, cfg))
-      );
-      const league = await LeagueFactory().create(iscGw.id, {
+      const iscLeagueConfig: LeagueConfig = {
         name: 'ISC League', type: LeagueType.League,
         stages: [{ id: "default", name: "Default", divisions: [{ name: 'ISC Division', defaultTeams: [0, 1], isTopTier: true, format: ONE_LEG_ROUND_ROBIN_FORMAT }] }]
-      }, teams.map(({ id }) => id));
+      };
+      const league = await LeagueFactory().createContainer(iscGw.id, iscLeagueConfig);
+      const teams = await Promise.all(
+        [{ name: 'X' }, { name: 'Y' }].map((cfg) => TeamFactory().create(iscGw.id, cfg, { homeLeagueId: league.id }))
+      );
+      await LeagueFactory(league.id).createDivisions(iscLeagueConfig, teams.map(({ id }) => id));
       iscDivId = await db.models.League.findByPk(league.id, { include: db.models.Division })
         .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
       iscYear = iscGw.year + 1;

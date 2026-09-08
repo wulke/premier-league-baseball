@@ -9,7 +9,8 @@ describe('TeamFactory snapshotForGame race recovery', () => {
 
   const setup = async () => {
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2025 });
-    const team = await db.models.Team.create({ gameWorldId: gameWorld.dataValues.id, config: { name: 'Race Club' } });
+    const league = await db.models.League.create({ gameWorldId: gameWorld.dataValues.id, config: {} }).then((row) => row.dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gameWorld.dataValues.id, homeLeagueId: league.id, config: { name: 'Race Club' } });
     await db.models.Game.create({ id: 40, homeTeam: team.dataValues.id, awayTeam: team.dataValues.id });
     const active = await db.models.Lineup.create({ teamId: team.dataValues.id, gameWorldId: gameWorld.dataValues.id });
     return { team: team.dataValues, active, winner: { id: 999, teamId: team.dataValues.id, gameWorldId: gameWorld.dataValues.id, gameId: 40 } };

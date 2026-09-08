@@ -32,8 +32,8 @@ beforeEach(async () => { await db.sync({ force: true }); delete process.env.DEV_
 autoBindSteps(feature, [({ given, when, then, and }: any) => {
   given('managed Team 10 has a DH-on division and an active lineup', async () => {
     await db.models.GameWorld.create({ id: 1, year: 2025, managedTeamId: 10, config: {} });
-    await db.models.Team.create({ id: 10, gameWorldId: 1, config: { name: 'Club' } });
     const league = await db.models.League.create({ gameWorldId: 1, year: 2025, config: { matchRules: { dhEnabled: false, benchSize: 5, bullpenSize: 7 } } });
+    await db.models.Team.create({ id: 10, gameWorldId: 1, homeLeagueId: league.dataValues.id, config: { name: 'Club' } });
     const division = await db.models.Division.create({ leagueId: league.dataValues.id, config: { name: 'DH Division', matchRules: { dhEnabled: true, benchSize: 1, bullpenSize: 1 } } });
     await db.models.DivisionSeason.create({ divisionId: division.dataValues.id, teamId: 10, year: 2025 });
     const lineup = await db.models.Lineup.create({ teamId: 10, gameWorldId: 1 }); lineupId = lineup.dataValues.id;
@@ -49,7 +49,8 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
     before = await storedEntries();
   });
   given("Team 11 has a player outside Team 10's roster", async () => {
-    await db.models.Team.create({ id: 11, gameWorldId: 1, config: { name: 'Other' } });
+    const otherLeague = await db.models.League.create({ gameWorldId: 1, config: {} }).then((row: any) => row.dataValues);
+    await db.models.Team.create({ id: 11, gameWorldId: 1, homeLeagueId: otherLeague.id, config: { name: 'Other' } });
     foreignPlayerId = (await player(11, 99)).id;
   });
   given('Team 10 is not the managed club in development mode', async () => {
@@ -57,7 +58,8 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
     process.env.DEV_MODE = 'true';
   });
   given('Team 11 has an empty active lineup', async () => {
-    await db.models.Team.create({ id: 11, gameWorldId: 1, config: { name: 'Other' } });
+    const otherLeague = await db.models.League.create({ gameWorldId: 1, config: {} }).then((row: any) => row.dataValues);
+    await db.models.Team.create({ id: 11, gameWorldId: 1, homeLeagueId: otherLeague.id, config: { name: 'Other' } });
     protectedLineupId = (await db.models.Lineup.create({ teamId: 11, gameWorldId: 1 })).dataValues.id;
   });
   when('the manager sends a PUT wholesale lineup save using another roster player', async () => {
@@ -68,7 +70,7 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
     entries[0].lineupId = protectedLineupId;
     await save(10);
   });
-  when('Team 11 attempts the wholesale lineup save', async () => { await db.models.Team.create({ id: 11, gameWorldId: 1, config: { name: 'Other' } }); await save(11); });
+  when('Team 11 attempts the wholesale lineup save', async () => { const otherLeague = await db.models.League.create({ gameWorldId: 1, config: {} }).then((row: any) => row.dataValues); await db.models.Team.create({ id: 11, gameWorldId: 1, homeLeagueId: otherLeague.id, config: { name: 'Other' } }); await save(11); });
   when("the manager saves Team 10's lineup with Team 11's player", async () => { entries[1].playerId = foreignPlayerId; await save(10); });
   when(/^the manager saves a lineup with an invalid (.*)$/, async (shape: string) => {
     if (shape === 'duplicate player') entries[1].playerId = entries[0].playerId;

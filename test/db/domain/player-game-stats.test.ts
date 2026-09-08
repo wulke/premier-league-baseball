@@ -36,8 +36,10 @@ describe('PlayerGameStats model schema', () => {
   // @spec PSTAT-001
   it('@spec PSTAT-001 stores batting and pitching counters on one row for one player-game pair', async () => {
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2046 }).then(({ dataValues }) => dataValues);
+    const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
     const team = await db.models.Team.create({
       gameWorldId: gameWorld.id,
+      homeLeagueId: league.id,
       config: { name: 'St. Louis Spirits' },
     }).then(({ dataValues }) => dataValues);
     const player = await db.models.Player.create({

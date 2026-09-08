@@ -77,6 +77,7 @@ const createFixture = async (id: number, { inProgress = false } = {}) => {
 
   const teams = await Promise.all(['Home', 'Away'].map((name) => db.models.Team.create({
     gameWorldId: id,
+    homeLeagueId: league.id,
     config: { name: `${name} ${id}` },
   }).then(({ dataValues }) => dataValues)));
 

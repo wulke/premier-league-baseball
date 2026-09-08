@@ -16,15 +16,15 @@ describe('pickable old Champions League game world (#87)', () => {
     await db.sync({ force: true });
   });
 
-  // @spec GWT-001
+  // @spec GWT-001 (amended #283 — pools live on the templates, not the bundle)
   it('declares a ChampionsLeague world backed by a 32-team pool and an exhaustive DefaultWorlds', () => {
     // enum arm exists
     expect(GameWorldType.ChampionsLeague).toBeDefined();
-    // pool sized to the group divisions' largest index set (0..31)
+    // pool sized to the group divisions' largest index set (0..31), owned by the template
     expect(TeamPools['europe-32']).toHaveLength(32);
+    expect(LeagueTemplates['champions-league'].teams).toHaveLength(32);
     // bundle present
     const bundle = DefaultWorlds[GameWorldType.ChampionsLeague];
-    expect(bundle.teamPool).toBe('europe-32');
     expect(bundle.leagues).toEqual(['champions-league']);
     // DefaultWorlds is exhaustive over the enum: only runnable worlds are listed
     expect(Object.keys(DefaultWorlds).sort()).toEqual(

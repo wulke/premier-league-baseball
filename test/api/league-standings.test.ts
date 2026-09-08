@@ -18,10 +18,6 @@ describe('League standings API', () => {
 
   it('GET /api/league/:leagueId/standings handler returns standings grouped by division', async () => {
     const gw = await db.models.GameWorld.create({ config: {} }).then(({ dataValues }) => dataValues);
-    const teams = await Promise.all(
-      [{ name: 'Red' }, { name: 'Blue' }]
-        .map((config) => db.models.Team.create({ config, gameWorldId: gw.id }).then(({ dataValues }) => dataValues))
-    );
 
     const leagueConfig: LeagueConfig = {
       name: 'API Standings League',
@@ -33,7 +29,12 @@ describe('League standings API', () => {
         format: STANDARD_TEST_FORMAT,
       }] }]
     };
-    const league = await LeagueFactory().create(gw.id, leagueConfig, teams.map(({ id }) => id));
+    const league = await LeagueFactory().createContainer(gw.id, leagueConfig);
+    const teams = await Promise.all(
+      [{ name: 'Red' }, { name: 'Blue' }]
+        .map((teamConfig) => db.models.Team.create({ config: teamConfig, gameWorldId: gw.id, homeLeagueId: league.id }).then(({ dataValues }) => dataValues))
+    );
+    await LeagueFactory(league.id).createDivisions(leagueConfig, teams.map(({ id }) => id));
 
     const division = await db.models.League.findByPk(league.id, { include: db.models.Division })
       .then((result) => { if (!result) throw Error(); return result.dataValues.Divisions[0].dataValues; });

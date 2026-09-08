@@ -21,7 +21,8 @@ const createPlayer = async (teamId: number, gameWorldId: number, index: number) 
 }).then((row: any) => row.dataValues);
 
 const createActiveLineup = async (teamId: number, gameWorldId: number) => {
-  await db.models.Team.create({ id: teamId, gameWorldId, config: { name: `Snapshot Team ${teamId}` } });
+  const league = await db.models.League.create({ gameWorldId, config: {} }).then((row: any) => row.dataValues);
+  await db.models.Team.create({ id: teamId, gameWorldId, homeLeagueId: league.id, config: { name: `Snapshot Team ${teamId}` } });
   const lineup = await db.models.Lineup.create({ teamId, gameWorldId }).then((row: any) => row.dataValues);
   const players = await Promise.all(Array.from({ length: 11 }, (_, index) => createPlayer(teamId, gameWorldId, index + 1)));
   await db.models.LineupEntry.bulkCreate([

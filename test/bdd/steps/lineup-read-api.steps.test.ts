@@ -18,7 +18,8 @@ const createPlayer = async (teamId: number, gameWorldId: number, index: number) 
 }).then((row: any) => row.dataValues);
 
 const createActiveLineup = async (teamId: number, gameWorldId: number, dhEnabled: boolean) => {
-  await db.models.Team.create({ id: teamId, gameWorldId, config: { name: `Lineup Team ${teamId}` } });
+  const league = await db.models.League.create({ gameWorldId, config: {} }).then((row: any) => row.dataValues);
+  await db.models.Team.create({ id: teamId, gameWorldId, homeLeagueId: league.id, config: { name: `Lineup Team ${teamId}` } });
   const lineup = await db.models.Lineup.create({ teamId, gameWorldId }).then((row: any) => row.dataValues);
   const starters = await Promise.all(positions.map((position, index) => createPlayer(teamId, gameWorldId, index + 1)));
   const dh = dhEnabled ? await createPlayer(teamId, gameWorldId, 10) : undefined;
