@@ -43,10 +43,15 @@ const applyAssociations = (sequelize) => {
   Team.hasMany(Lineup, { foreignKey: 'teamId' });
   // @spec PCON-009
   Team.hasMany(Contract, { foreignKey: 'teamId' });
-  Team.belongsToMany(Division, { foreignKey: 'teamId', through: 'DivisionSeason' });
+  // @spec DSU-001 — through.unique=false suppresses Sequelize's default composite
+  // through-FK unique key, which emitted a year-less table-level
+  // UNIQUE (divisionId, teamId) into the synced DDL; the model's composite
+  // (divisionId, teamId, year) unique index is the sole uniqueness constraint (#275).
+  Team.belongsToMany(Division, { foreignKey: 'teamId', through: { model: 'DivisionSeason', unique: false } });
   // Division
   Division.belongsTo(League, { foreignKey: 'leagueId' });
-  Division.belongsToMany(Team, { foreignKey: 'divisionId', through: 'DivisionSeason' });
+  // @spec DSU-001 — see the Team.belongsToMany note above.
+  Division.belongsToMany(Team, { foreignKey: 'divisionId', through: { model: 'DivisionSeason', unique: false } });
   // DivisionSeason
   DivisionSeason.belongsTo(Team, { foreignKey: 'teamId' });
   DivisionSeason.belongsTo(Division, { foreignKey: 'divisionId' });

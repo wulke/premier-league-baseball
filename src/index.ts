@@ -5,6 +5,7 @@ const HOST = process.env.SERVER_HOST ?? '0.0.0.0';
 import db from './db/client';
 import { migrateLeagueYearAndStatus } from './db/migrations/league-year-status';
 import { migrateManagedClubPointer } from './db/migrations/managed-club-pointer';
+import { migrateDivisionSeasonYearUnique } from './db/migrations/division-season-year-unique';
 import { createApplication } from './app';
 
 // @spec SPAF-001,SPAF-002,SPAF-003
@@ -15,6 +16,8 @@ db.sync().then(async () => {
   await migrateLeagueYearAndStatus(db);
   // @spec MCLB-001
   await migrateManagedClubPointer(db);
+  // @spec DSU-004
+  await migrateDivisionSeasonYearUnique(db);
   app.listen(PORT, HOST);
   console.log(`Premier League Baseball -- running on http://${HOST}:${PORT}`);
 });

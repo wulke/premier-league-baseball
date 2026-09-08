@@ -51,17 +51,24 @@ Rebuild (SQLite cannot `DROP CONSTRAINT`, so the table is rebuilt):
 3. `PRAGMA foreign_keys = OFF` — **outside** any transaction (SQLite ignores the
    pragma mid-transaction). With enforcement on, the rebuild's `DROP TABLE`
    implicit-delete would cascade-destroy `DivisionSeasonGames` rows.
-4. In one transaction (DDL is transactional in SQLite):
-   a. Create the replacement via `queryInterface.createTable('DivisionSeasons_migrated',
-      model.tableAttributes, …)` — sourced from the model itself so the new DDL is
+4. On the **default connection**, with an explicit `BEGIN IMMEDIATE` … `COMMIT`
+   (DDL is transactional in SQLite) — *not* `sequelize.transaction()`: Sequelize's
+   sqlite connection manager opens a separate per-transaction connection and
+   re-runs `PRAGMA FOREIGN_KEYS=ON` on it, which would silently re-arm the very
+   cascade the rebuild must avoid. Plain `sequelize.query` calls (no `transaction`
+   option) all land on the shared default connection, where the `OFF` pragma holds.
+   a. `DROP TABLE IF EXISTS DivisionSeasons_migrated` (cleans any crashed prior run)
+   b. Create the replacement via `queryInterface.createTable('DivisionSeasons_migrated',
+      model.tableAttributes)` — sourced from the model itself so the new DDL is
       whatever a fresh `db.sync()` produces, not a hand-copied string that can drift.
-   b. Copy rows by explicit column list (`id, divisionId, teamId, year, bracketSlot,
+   c. Copy rows by explicit column list (`id, divisionId, teamId, year, bracketSlot,
       createdAt, updatedAt`) from `DivisionSeasons`.
-   c. `DROP TABLE DivisionSeasons`; `ALTER TABLE DivisionSeasons_migrated RENAME TO
-      DivisionSeasons`.
+   d. `DROP TABLE DivisionSeasons`; `ALTER TABLE DivisionSeasons_migrated RENAME TO
+      DivisionSeasons`; `COMMIT` (a failure `ROLLBACK`s and the original table is
+      untouched).
 5. `CREATE UNIQUE INDEX IF NOT EXISTS division_seasons_division_id_team_id_year ON
-   DivisionSeasons (divisionId, teamId, year)` — restores the composite index for
-   legacy databases where it is missing; a no-op where it survived.
+   DivisionSeasons (divisionId, teamId, year)` — `DROP TABLE` also dropped the
+   table's indexes, so this restores the composite index; a no-op where it survived.
 6. `PRAGMA foreign_keys = ON`; `PRAGMA foreign_key_check('DivisionSeasons')` as a
    post-condition (no orphaned rows are expected since only the parent's *schema*
    was rebuilt, never its rows).
@@ -70,6 +77,12 @@ Rebuild (SQLite cannot `DROP CONSTRAINT`, so the table is rebuilt):
 
 - Migration re-runs / already-migrated DB → detection finds no `origin = 'u'`
   year-less index; migration returns without touching the table.
+- Process crash mid-rebuild → the open transaction either committed (done) or rolls
+  back when the connection closes, leaving the original table untouched;
+  `DROP TABLE IF EXISTS DivisionSeasons_migrated` also cleans any stray backup from
+  an interrupted run.
+- Per-transaction connection re-enabling FKs (Sequelize sqlite) → avoided by never
+  using `sequelize.transaction()` for the rebuild (see Logic Flow step 4).
 - `DivisionSeasonGames` rows referencing rebuilt `DivisionSeasons` rows → preserved
   (FK enforcement off during the rebuild; `id`s copied unchanged, so references stay
   valid; verified by post-migration `foreign_key_check`).
