@@ -86,6 +86,8 @@ const createDeletionFixture = async (id = 1, { inProgress = false } = {}) => {
   await db.models.PlayerGameStats.bulkCreate(players.map((player) => ({
     playerId: player.id,
     gameId: game.id,
+    '2B': 1,
+    '3B': 0,
   })));
 
   const seasonResult = await db.models.SeasonResult.create({
@@ -166,8 +168,8 @@ describe('GameWorldFactory', () => {
     }
   });
 
-  // @spec GWD-001 @spec GWD-002
-  it('@spec GWD-001 @spec GWD-002 hard-deletes a GameWorld cascade while preserving a shared Game row', async () => {
+  // @spec GWD-001 @spec GWD-002 @spec PSTAT-004
+  it('@spec GWD-001 @spec GWD-002 @spec PSTAT-004 hard-deletes a GameWorld cascade while preserving shared Game stats', async () => {
     const gw1 = await createDeletionFixture(1);
     const gw2 = await createDeletionFixture(2);
 
@@ -195,6 +197,10 @@ describe('GameWorldFactory', () => {
     const sharedGame = await db.models.Game.findByPk(gw1.game.id);
     expect(sharedGame).not.toBeNull();
     await expect(db.models.PlayerGameStats.count({ where: { playerId: gw2.players.map(({ id }) => id), gameId: gw1.game.id } })).resolves.toBe(2);
+    await expect(db.models.PlayerGameStats.findAll({ where: { playerId: gw2.players.map(({ id }) => id), gameId: gw1.game.id } }))
+      .resolves.toEqual(expect.arrayContaining([
+        expect.objectContaining({ dataValues: expect.objectContaining({ '2B': 0, '3B': 0 }) }),
+      ]));
     await expect(db.models.DivisionSeasonGame.count({
       where: { divisionSeasonId: gw2.divisionSeasons[0].id, gameId: gw1.game.id },
     })).resolves.toBe(1);

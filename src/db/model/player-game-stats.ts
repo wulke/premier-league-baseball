@@ -44,6 +44,18 @@ module.exports = (sequelize: any) => {
       allowNull: false,
       defaultValue: 0,
     },
+    // @spec PSTAT-003,PSTAT-004
+    '2B': {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    // @spec PSTAT-003,PSTAT-004
+    '3B': {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
     HR: {
       type: DataTypes.INTEGER,
       allowNull: false,

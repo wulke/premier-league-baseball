@@ -119,6 +119,8 @@ const createFixture = async (id: number, { inProgress = false } = {}) => {
   await db.models.PlayerGameStats.bulkCreate(players.map((player) => ({
     playerId: player.id,
     gameId: game.id,
+    '2B': 1,
+    '3B': 0,
   })));
 
   const seasonResult = await db.models.SeasonResult.create({
@@ -191,8 +193,13 @@ const registerSteps = ({ given, when, then, and }: any) => {
     await expect(db.models.Contract.count()).resolves.toBe(2);
   });
 
+  // @spec PSTAT-004
   given(/^a Game exists in GameWorld (\d+)'s DivisionSeason with PlayerGameStats recorded$/, async () => {
     await expect(db.models.PlayerGameStats.count({ where: { gameId: scenarioWorld.gw1.game.id } })).resolves.toBe(2);
+    await expect(db.models.PlayerGameStats.findAll({ where: { gameId: scenarioWorld.gw1.game.id } }))
+      .resolves.toEqual(expect.arrayContaining([
+        expect.objectContaining({ dataValues: expect.objectContaining({ '2B': 1, '3B': 0 }) }),
+      ]));
   });
 
   given(/^a SeasonResult exists for GameWorld (\d+)'s Division$/, async () => {
