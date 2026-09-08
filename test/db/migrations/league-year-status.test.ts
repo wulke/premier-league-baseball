@@ -25,7 +25,8 @@ describe('League year/status migration', () => {
     const leagueId = await createLegacyLeague(gameWorld.id);
     const division = await db.models.Division.create({ config: {} }).then(({ dataValues }) => dataValues);
     await db.query('UPDATE Divisions SET leagueId = ? WHERE id = ?', { replacements: [leagueId, division.id] });
-    const team = await db.models.Team.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
+    const teamLeague = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gameWorld.id, homeLeagueId: teamLeague.id, config: {} }).then(({ dataValues }) => dataValues);
     await db.models.DivisionSeason.create({ divisionId: division.id, teamId: team.id, year: 1999 });
 
     await migrateLeagueYearAndStatus(db);

@@ -15,7 +15,7 @@ that extends `PlayerFactory.generateRoster()` (`src/db/model/player.ts`, `src/db
 | PID-007 | WHEN generating a Player's identity THE system SHALL select `countryCode` first from the league's composition, then draw `givenName` and `familyName` from that country's curated pool | [x] → #168 |
 | PID-008 | WHEN generating `bats` and `throws` THE system SHALL draw each independently (`bats` ∈ R/L/S, `throws` ∈ R/L) with an MLB-like distribution and no correlation to country or to each other | [x] → #168 |
 | PID-009 | WHEN generating `birthDate` THE system SHALL store a `Date` (the aging-immune seed) and SHALL NOT store a derived `age`; `age` is computed at read-time | [x] → #168 |
-| PID-010 | WHEN generating a roster THE system SHALL resolve the country composition from `League.config.compositionKey` so the same generator serves any league | [x] → #168 |
+| PID-010 | WHEN generating a roster THE system SHALL resolve the country composition from `League.config.compositionKey` so the same generator serves any league | [x] → #168; *which* League became structural in #283 — the Team's Home League via `homeLeagueId` (TLO-005) |
 
 `PID-003` is Deferred, not Active — no preserved data requires backfill (per [#144](https://github.com/wulke/premier-league-baseball/issues/144),
 closed out of scope); it records the migration posture, not a behavior to implement.

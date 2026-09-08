@@ -109,7 +109,8 @@ const registerSteps = ({ given, when, then }: any) => {
   });
 
   given(/^Team (\d+) belongs to GameWorld (\d+) with no roster$/, async (teamId: string, gwId: string) => {
-    await db.models.Team.create({ id: Number(teamId), gameWorldId: Number(gwId), config: { name: 'Empty Team' } });
+    const league = await db.models.League.create({ gameWorldId: Number(gwId), config: {} }).then(({ dataValues }) => dataValues);
+    await db.models.Team.create({ id: Number(teamId), gameWorldId: Number(gwId), homeLeagueId: league.id, config: { name: 'Empty Team' } });
   });
 
   given('a Player whose positions map has Shortstop and ThirdBase tied for the highest rating', async () => {

@@ -26,7 +26,8 @@ describe('active lineup generation', () => {
   // @spec LIN-001
   it('@spec LIN-001 enforces active, game, player, and batting-order uniqueness', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2050 }).then((row) => row.dataValues);
-    const team = await db.models.Team.create({ gameWorldId: gw.id, config: { name: 'Index Club' } }).then((row) => row.dataValues);
+    const league = await db.models.League.create({ gameWorldId: gw.id, config: {} }).then((row) => row.dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gw.id, homeLeagueId: league.id, config: { name: 'Index Club' } }).then((row) => row.dataValues);
     const player = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('Pitcher'), givenName: 'A', familyName: 'B', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
     const active = await db.models.Lineup.create({ teamId: team.id, gameWorldId: gw.id }).then((row) => row.dataValues);
     await expect(db.models.Lineup.create({ teamId: team.id, gameWorldId: gw.id })).rejects.toThrow();
@@ -41,7 +42,8 @@ describe('active lineup generation', () => {
   // @spec LIN-003,LIN-005
   it('@spec LIN-003 @spec LIN-005 creates one valid no-DH active lineup as part of TeamFactory.create', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2051 }).then((row) => row.dataValues);
-    const team = await TeamFactory().create(gw.id, { name: 'Creation Club' }, { rosterSeed: 1 });
+    const league = await db.models.League.create({ gameWorldId: gw.id, config: {} }).then((row) => row.dataValues);
+    const team = await TeamFactory().create(gw.id, { name: 'Creation Club' }, { homeLeagueId: league.id, rosterSeed: 1 });
     const lineup = await db.models.Lineup.findOne({ where: { teamId: team.id, gameId: null }, include: [db.models.LineupEntry] }).then((row) => row?.dataValues);
     expect(lineup).toBeDefined();
     expect(lineup.LineupEntries.filter((entry: any) => entry.dataValues.role === 'STARTER')).toHaveLength(9);
@@ -63,7 +65,8 @@ describe('active lineup generation', () => {
   // @spec LIN-002,LIN-004,LIN-005,LIN-006
   it('@spec LIN-002 @spec LIN-004 @spec LIN-005 @spec LIN-006 builds an optimal DH lineup and gracefully caps partial reserves', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2052 }).then((row) => row.dataValues);
-    const team = await db.models.Team.create({ gameWorldId: gw.id, config: { name: 'DH Club' } }).then((row) => row.dataValues);
+    const league = await db.models.League.create({ gameWorldId: gw.id, config: {} }).then((row) => row.dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gw.id, homeLeagueId: league.id, config: { name: 'DH Club' } }).then((row) => row.dataValues);
     const fielders = (['Catcher', 'FirstBase', 'ThirdBase', 'LeftField', 'CenterField', 'RightField'] as typeof positions[number][]).map((position, index) => ({
       primary: position, name: `F${index}`, rating: 80,
     }));
@@ -103,7 +106,8 @@ describe('active lineup generation', () => {
   // @spec LEDIT-005
   it('@spec LEDIT-005 preserves retained manual entries and places a signed player in the matching reserve pool', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2053 }).then((row) => row.dataValues);
-    const team = await db.models.Team.create({ gameWorldId: gw.id, config: { name: 'Preserve Club' } }).then((row) => row.dataValues);
+    const league = await db.models.League.create({ gameWorldId: gw.id, config: {} }).then((row) => row.dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gw.id, homeLeagueId: league.id, config: { name: 'Preserve Club' } }).then((row) => row.dataValues);
     const retained = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('Pitcher'), givenName: 'Retained', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
     const signed = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('Catcher'), givenName: 'Signed', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
     const lineup = await db.models.Lineup.create({ teamId: team.id, gameWorldId: gw.id }).then((row) => row.dataValues);
@@ -121,7 +125,8 @@ describe('active lineup generation', () => {
   // @spec LEDIT-006,LEDIT-007
   it('@spec LEDIT-006 @spec LEDIT-007 retains an unfillable departed starter as an invalid read-card entry', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2054 }).then((row) => row.dataValues);
-    const team = await db.models.Team.create({ gameWorldId: gw.id, config: { name: 'Thin Club' } }).then((row) => row.dataValues);
+    const league = await db.models.League.create({ gameWorldId: gw.id, config: {} }).then((row) => row.dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gw.id, homeLeagueId: league.id, config: { name: 'Thin Club' } }).then((row) => row.dataValues);
     const departed = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('Pitcher'), givenName: 'Departed', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
     const lineup = await db.models.Lineup.create({ teamId: team.id, gameWorldId: gw.id }).then((row) => row.dataValues);
     await db.models.LineupEntry.create({ lineupId: lineup.id, playerId: departed.id, role: 'STARTER', battingOrder: 9, fieldingPosition: 'Pitcher' });
@@ -137,7 +142,8 @@ describe('active lineup generation', () => {
   // @spec LEDIT-005,LEDIT-006
   it('@spec LEDIT-005 @spec LEDIT-006 fills the best feasible subset when replacements are fewer than departed fielders', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2055 }).then((row) => row.dataValues);
-    const team = await db.models.Team.create({ gameWorldId: gw.id, config: { name: 'Partial Club' } }).then((row) => row.dataValues);
+    const league = await db.models.League.create({ gameWorldId: gw.id, config: {} }).then((row) => row.dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gw.id, homeLeagueId: league.id, config: { name: 'Partial Club' } }).then((row) => row.dataValues);
     const pitcher = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('Pitcher'), givenName: 'Pitcher', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
     const catcher = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('Catcher'), givenName: 'Catcher', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);
     const firstBase = await db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: attributes('FirstBase'), givenName: 'First', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date() }).then((row) => row.dataValues);

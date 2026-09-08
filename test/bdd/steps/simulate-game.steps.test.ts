@@ -162,12 +162,15 @@ const registerSteps = ({ given, when, then, and }: any) => {
   given(/^a home team and away team exist in GameWorld (\d+)$/, async (gwId: string) => {
     const world = scenarioWorld;
     const gameWorldId = Number(gwId);
+    const league = await db.models.League.create({ gameWorldId, config: {} }).then(({ dataValues }) => dataValues);
     const homeTeam = await db.models.Team.create({
       gameWorldId,
+      homeLeagueId: league.id,
       config: { name: 'Home BDD Team' }
     }).then(({ dataValues }) => dataValues);
     const awayTeam = await db.models.Team.create({
       gameWorldId,
+      homeLeagueId: league.id,
       config: { name: 'Away BDD Team' }
     }).then(({ dataValues }) => dataValues);
 

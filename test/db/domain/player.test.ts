@@ -73,8 +73,8 @@ describe('Player model + attribute schema', () => {
     expect(resolveComposition('unknown')).toBe(LEAGUE_COMPOSITIONS.PREMIER_LEAGUE);
   });
 
-  // @spec PID-010
-  it('@spec PID-010 forwards the primary League composition to rosters before multi-League membership exists', async () => {
+  // @spec PID-010,TLO-005 — the Team's Home League (not `leagues[0]`) owns its composition
+  it('@spec PID-010 @spec TLO-005 resolves roster composition from the Team\'s home League', async () => {
     const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(168);
     const format = { structure: 'ROUND_ROBIN' as const, legs: 'ONE_LEG' as const, winsToAdvance: 'Bo1' as const };
     const stage = (teamIndex: number) => [{
@@ -86,13 +86,13 @@ describe('Player model + attribute schema', () => {
       const created = await GameWorldFactory().create({
         name: 'Premier League',
         year: 2056,
-        teams: [{ name: 'Tokyo Test Club' }],
         leagues: [
-          { name: 'Japan First', type: 'League', compositionKey: 'NPB', stages: stage(0) },
-          { name: 'England Second', type: 'League Cup', compositionKey: 'PREMIER_LEAGUE', stages: stage(0) },
+          { key: 'japan-first', name: 'Japan First', type: 'League', compositionKey: 'NPB', teams: [{ name: 'Tokyo Test Club' }], stages: stage(0) },
+          { key: 'england-cup', name: 'England Second', type: 'League Cup', compositionKey: 'PREMIER_LEAGUE', externalTeams: 'japan-first', stages: stage(0) },
         ],
       });
 
+      expect(created.teams[0].homeLeagueId).toBe(created.leagues[0].id);
       const playerRow = await db.models.Player.findOne({ where: { teamId: created.teams[0].id } });
       if (!playerRow) throw new Error('Expected initial roster player');
       const player = playerRow.dataValues;
@@ -125,8 +125,10 @@ describe('Player model + attribute schema', () => {
   // @spec PATTR-002,PATTR-003
   it('@spec PATTR-002 @spec PATTR-003 persists uniform pitches for a free-agent player', async () => {
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2046 }).then(({ dataValues }) => dataValues);
+    const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: { name: 'Fixture League' } }).then(({ dataValues }) => dataValues);
     const team = await db.models.Team.create({
       gameWorldId: gameWorld.id,
+      homeLeagueId: league.id,
       config: { name: 'Chicago Whales' }
     }).then(({ dataValues }) => dataValues);
 
@@ -187,8 +189,13 @@ describe('Player model + attribute schema', () => {
       { gameWorldId: gameWorld.id, config: { name: 'Premier League', compositionKey: 'PREMIER_LEAGUE' } },
       { gameWorldId: gameWorld.id, config: { name: 'Tokyo League', compositionKey: 'NPB' } },
     ]);
+    const homeLeague = await db.models.League.findOne({
+      where: { gameWorldId: gameWorld.id },
+      order: [['id', 'ASC']],
+    }).then((l) => l!.dataValues);
     const team = await db.models.Team.create({
       gameWorldId: gameWorld.id,
+      homeLeagueId: homeLeague.id,
       config: { name: 'Austin Arrows' },
     }).then(({ dataValues }) => dataValues);
 
@@ -260,8 +267,10 @@ describe('Player model + attribute schema', () => {
   it('@spec PCON-001 generates a maximum-size roster when the random headcount hits the upper bound', async () => {
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.999999);
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2053 }).then(({ dataValues }) => dataValues);
+    const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
     const team = await db.models.Team.create({
       gameWorldId: gameWorld.id,
+      homeLeagueId: league.id,
       config: { name: 'Denver Peaks' },
     }).then(({ dataValues }) => dataValues);
 
@@ -276,8 +285,10 @@ describe('Player model + attribute schema', () => {
   // @spec XFER-021 — not Gherkin-routed (internal refactor, no observable behavior change).
   it('@spec XFER-021 generated Contracts end on the shared SEASON_END anchor', async () => {
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2053 }).then(({ dataValues }) => dataValues);
+    const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
     const team = await db.models.Team.create({
       gameWorldId: gameWorld.id,
+      homeLeagueId: league.id,
       config: { name: 'Anchor City' },
     }).then(({ dataValues }) => dataValues);
 

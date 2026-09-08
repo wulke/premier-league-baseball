@@ -13,7 +13,8 @@ let beforeSave: any;
 
 const setup = async () => {
   await db.models.GameWorld.create({ id: 1, year: 2025, config: {} });
-  await db.models.Team.create({ id: 10, gameWorldId: 1, config: { name: 'Harbor' } });
+  const league = await db.models.League.create({ gameWorldId: 1, config: {} }).then((row: any) => row.dataValues);
+  await db.models.Team.create({ id: 10, gameWorldId: 1, homeLeagueId: league.id, config: { name: 'Harbor' } });
   const lineup = await db.models.Lineup.create({ teamId: 10, gameWorldId: 1 }).then((row: any) => row.dataValues);
   const players = await Promise.all(Array.from({ length: 12 }, (_, index) => db.models.Player.create({
     teamId: 10, gameWorldId: 1, givenName: 'Player', familyName: String(index + 1), countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date('2000-01-01'),

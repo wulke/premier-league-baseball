@@ -74,11 +74,6 @@ describe('Division bracket shaping', () => {
   // @spec API-002 @spec API-004
   it('@spec API-002 @spec API-004 returns one bracket entry per division with structure, rounds, and champion from SeasonResult', async () => {
     const gw = await db.models.GameWorld.create({ config: {} }).then(({ dataValues }) => dataValues);
-    const teams = await Promise.all(
-      ['Albion', 'Borough', 'City', 'Dynamos', 'Evergreen']
-        .map((name) => TeamFactory().create(gw.id, { name }))
-    );
-
     const leagueConfig: LeagueConfig = {
       name: 'Mixed Structure League',
       type: LeagueType.League,
@@ -97,7 +92,12 @@ describe('Division bracket shaping', () => {
       ] }],
     };
 
-    const league = await LeagueFactory().create(gw.id, leagueConfig, teams.map(({ id }) => id));
+    const league = await LeagueFactory().createContainer(gw.id, leagueConfig);
+    const teams = await Promise.all(
+      ['Albion', 'Borough', 'City', 'Dynamos', 'Evergreen']
+        .map((name) => TeamFactory().create(gw.id, { name }, { homeLeagueId: league.id }))
+    );
+    await LeagueFactory(league.id).createDivisions(leagueConfig, teams.map(({ id }) => id));
     const divisions = await db.models.League.findByPk(league.id, { include: db.models.Division })
       .then((result) => {
         if (!result) throw Error();
@@ -144,9 +144,6 @@ describe('Division bracket shaping', () => {
   // @spec API-002 @spec API-004
   it('@spec API-002 @spec API-004 returns empty rounds for round-robin divisions and champions from SeasonResult', async () => {
     const gw = await db.models.GameWorld.create({ config: {} }).then(({ dataValues }) => dataValues);
-    const teams = await Promise.all(
-      ['North', 'South'].map((name) => TeamFactory().create(gw.id, { name }))
-    );
     const leagueConfig: LeagueConfig = {
       name: 'Round Robin League',
       type: LeagueType.League,
@@ -158,7 +155,11 @@ describe('Division bracket shaping', () => {
       }] }],
     };
 
-    const league = await LeagueFactory().create(gw.id, leagueConfig, teams.map(({ id }) => id));
+    const league = await LeagueFactory().createContainer(gw.id, leagueConfig);
+    const teams = await Promise.all(
+      ['North', 'South'].map((name) => TeamFactory().create(gw.id, { name }, { homeLeagueId: league.id }))
+    );
+    await LeagueFactory(league.id).createDivisions(leagueConfig, teams.map(({ id }) => id));
     const divisionId = await getDivisionId(league.id);
     await DivisionFactory(divisionId).newSeason(gw.year - 1);
     await db.models.SeasonResult.create({ divisionId, year: gw.year, championTeamId: teams[1].id });
@@ -172,9 +173,6 @@ describe('Division bracket shaping', () => {
   // @spec API-002 @spec API-003
   it('@spec API-002 @spec API-003 groups knockout rounds into byes and series and synthesizes a pending next round during redraw gap', async () => {
     const gw = await db.models.GameWorld.create({ config: {} }).then(({ dataValues }) => dataValues);
-    const teams = await Promise.all(
-      ['Aces', 'Bruins', 'Comets', 'Dragons'].map((name) => TeamFactory().create(gw.id, { name }))
-    );
     const leagueConfig: LeagueConfig = {
       name: 'Cup League',
       type: LeagueType.LeagueCup,
@@ -185,7 +183,11 @@ describe('Division bracket shaping', () => {
       }] }],
     };
 
-    const league = await LeagueFactory().create(gw.id, leagueConfig, teams.map(({ id }) => id));
+    const league = await LeagueFactory().createContainer(gw.id, leagueConfig);
+    const teams = await Promise.all(
+      ['Aces', 'Bruins', 'Comets', 'Dragons'].map((name) => TeamFactory().create(gw.id, { name }, { homeLeagueId: league.id }))
+    );
+    await LeagueFactory(league.id).createDivisions(leagueConfig, teams.map(({ id }) => id));
     const divisionId = await getDivisionId(league.id);
     await DivisionFactory(divisionId).newSeason(gw.year - 1);
 

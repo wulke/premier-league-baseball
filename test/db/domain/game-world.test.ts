@@ -44,6 +44,7 @@ const createDeletionFixture = async (id = 1, { inProgress = false } = {}) => {
 
   const teams = await Promise.all(['Home', 'Away'].map((name) => db.models.Team.create({
     gameWorldId: gameWorld.id,
+    homeLeagueId: league.id,
     config: { name: `${name} ${id}` },
   }).then(({ dataValues }) => dataValues)));
 
@@ -129,7 +130,11 @@ describe('GameWorldFactory', () => {
       }
     });
     expect(leagues.length).toStrictEqual(config.leagues?.length);
-    expect(teams.length).toStrictEqual(config.teams?.length);
+    // TLO-002 — teams are owned per-League; the default world's cup adds none of its own
+    const ownedTeamCount = config.leagues.reduce(
+      (count: number, league: any) => count + (league.teams?.length ?? 0), 0,
+    );
+    expect(teams.length).toStrictEqual(ownedTeamCount);
   });
   it('newSeason: initial season', async () => {
     const gw = await GameWorldFactory().create(useDefaultGameWorld());
@@ -320,7 +325,8 @@ describe('GameWorldFactory.setManagedClub', () => {
   // @spec MCLB-003,MCLB-004
   it('@spec MCLB-003 @spec MCLB-004 sets a local Team then permits clearing it', async () => {
     const gameWorld = await db.models.GameWorld.create({ year: 2025, config: {} }).then(({ dataValues }) => dataValues);
-    const team = await db.models.Team.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
+    const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gameWorld.id, homeLeagueId: league.id, config: {} }).then(({ dataValues }) => dataValues);
 
     await expect((GameWorldFactory(gameWorld.id) as any).setManagedClub(team.id))
       .resolves.toEqual({ id: gameWorld.id, managedTeamId: team.id });
@@ -332,7 +338,8 @@ describe('GameWorldFactory.setManagedClub', () => {
   it('@spec MCLB-005 rejects missing, malformed, and foreign Teams without changing the pointer', async () => {
     const gameWorld = await db.models.GameWorld.create({ year: 2025, config: {} }).then(({ dataValues }) => dataValues);
     const otherWorld = await db.models.GameWorld.create({ year: 2025, config: {} }).then(({ dataValues }) => dataValues);
-    const foreignTeam = await db.models.Team.create({ gameWorldId: otherWorld.id, config: {} }).then(({ dataValues }) => dataValues);
+    const otherLeague = await db.models.League.create({ gameWorldId: otherWorld.id, config: {} }).then(({ dataValues }) => dataValues);
+    const foreignTeam = await db.models.Team.create({ gameWorldId: otherWorld.id, homeLeagueId: otherLeague.id, config: {} }).then(({ dataValues }) => dataValues);
 
     await expect((GameWorldFactory(gameWorld.id) as any).setManagedClub(999)).rejects.toMatchObject({ statusCode: 422 });
     await expect((GameWorldFactory(gameWorld.id) as any).setManagedClub(foreignTeam.id)).rejects.toMatchObject({ statusCode: 422 });

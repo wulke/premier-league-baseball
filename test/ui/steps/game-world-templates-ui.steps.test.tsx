@@ -71,7 +71,8 @@ defineFeature(feature, (test) => {
       fireEvent.click(screen.getByRole('button', { name: /create/i }));
       await waitFor(() => expect(postedPayload).not.toBeNull());
       const expected = useDefaultGameWorld(GameWorldType.ChampionsLeague);
-      expect(postedPayload.teams).toHaveLength(32);
+      // TLO-002 — the template's League owns its 32-team pool
+      expect(postedPayload.leagues[0].teams).toHaveLength(32);
       expect(postedPayload.leagues.map((l: any) => l.name)).toEqual(expected.leagues.map((l: any) => l.name));
     });
   });

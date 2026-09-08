@@ -49,7 +49,8 @@ const errorText = () => scenarioWorld.response?.error instanceof Error ? scenari
 const registerSteps = ({ given, when, then }: any) => {
   given(/^a GameWorld exists with id (\d+), year (\d+), and currentDate "([^"]+)"$/, async (id: string, year: string, currentDate: string) => {
     await db.models.GameWorld.create({ id: Number(id), year: Number(year), currentDate, config: {} });
-    await db.models.Team.create({ id: 10, gameWorldId: Number(id), config: { name: 'Detail Club' } });
+    const league = await db.models.League.create({ gameWorldId: Number(id), config: {} }).then(({ dataValues }) => dataValues);
+    await db.models.Team.create({ id: 10, gameWorldId: Number(id), homeLeagueId: league.id, config: { name: 'Detail Club' } });
   });
   given(/^Player 100 belongs to GameWorld 1 with identity, attributes, and a current Contract$/, async () => { await createPlayer(100); await createContract(100); });
   given(/^Player (\d+) belongs to GameWorld (\d+)$/, async (id: string) => { if (!await db.models.Player.findByPk(Number(id))) await createPlayer(Number(id)); });

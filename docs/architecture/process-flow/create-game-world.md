@@ -2,14 +2,12 @@
 
 ```mermaid
 flowchart TD
-  start([Start]) --> gw[Create GameWorld]
-  gw --> teams{config.teams?}
-  teams -->|yes| tcreate[Create Team per config]
-  teams -->|no| leagues
-  tcreate --> leagues{config.leagues?}
-  leagues -->|yes| lcreate[Create League per config]
-  lcreate --> lend[Return gw, leagues, teams]
-  leagues -->|no| lend
+  start([Start]) --> validate[Validate per-League team ownership]
+  validate --> gw[Create GameWorld]
+  gw --> lcreate[Create all League containers]
+  lcreate --> tcreate[Create each League's Teams in declaration order]
+  tcreate --> dcreate[Create each League's Divisions from its resolved team pool]
+  dcreate --> lend[Return gw, leagues, newly-created teams]
 
   click tcreate "create-team.md" "Open Create Team flow"
   click lcreate "create-league.md" "Open Create League flow"

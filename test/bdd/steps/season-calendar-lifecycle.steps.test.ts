@@ -38,8 +38,9 @@ const readLeague = async () => {
 const registerSteps = ({ given, when, then }: any) => {
   given(/^a GameWorld exists with id (\d+) and currentDate unset$/, async (id: string) => {
     await db.models.GameWorld.create({ id: Number(id), year: 2027, config: {}, currentDate: null });
+    const league = await db.models.League.create({ gameWorldId: Number(id), config: {} }).then(({ dataValues }) => dataValues);
     world.teamIds = await Promise.all(['Home', 'Away'].map((name) => db.models.Team.create({
-      gameWorldId: Number(id), config: { name },
+      gameWorldId: Number(id), homeLeagueId: league.id, config: { name },
     }).then(({ dataValues }) => dataValues.id)));
   });
 

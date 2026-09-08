@@ -34,8 +34,8 @@ const recreateLegacyTable = async (withCompositeIndex: boolean): Promise<void> =
 
 const seedLegacySeason = async (): Promise<{ divisionId: number; teamId: number; dsId: number; gameId: number }> => {
   const gw = await db.models.GameWorld.create({ config: {} }).then((m) => m.dataValues);
-  const team = await db.models.Team.create({ gameWorldId: gw.id, config: {} }).then((m) => m.dataValues);
   const league = await db.models.League.create({ gameWorldId: gw.id, config: {} }).then((m) => m.dataValues);
+  const team = await db.models.Team.create({ gameWorldId: gw.id, homeLeagueId: league.id, config: {} }).then((m) => m.dataValues);
   const division = await db.models.Division.create({ config: {} }).then((m) => m.dataValues);
   await db.query('UPDATE `Divisions` SET leagueId = ? WHERE id = ?', { replacements: [league.id, division.id] });
 

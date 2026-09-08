@@ -28,13 +28,16 @@ interface Bracket { gw: any; teams: any[]; divId: number; year: number; leagueId
 
 const setupBracket = async (teamCount: number, format: any): Promise<Bracket> => {
   const gw = await db.models.GameWorld.create({ config: {} }).then((m) => m.dataValues);
-  const teamConfigs: TeamConfig[] = [...Array(teamCount).keys()].map((i) => ({ name: `KO Team ${i}` }));
-  const teams = await Promise.all(teamConfigs.map((cfg) => TeamFactory().create(gw.id, cfg)));
-  const league = await LeagueFactory().create(gw.id, {
+  const leagueConfig = {
     name: `${format.seeding ?? 'FIXED'} Cup`,
     type: LeagueType.LeagueCup,
     stages: [{ id: "default", name: "Default", divisions: [{ name: 'Knockout', defaultTeams: [...Array(teamCount).keys()], isTopTier: true, format }] }],
-  }, teams.map(({ id }) => id));
+  };
+  // TLO-004 — League container precedes its Teams (homeLeagueId), Divisions follow
+  const league = await LeagueFactory().createContainer(gw.id, leagueConfig);
+  const teamConfigs: TeamConfig[] = [...Array(teamCount).keys()].map((i) => ({ name: `KO Team ${i}` }));
+  const teams = await Promise.all(teamConfigs.map((cfg) => TeamFactory().create(gw.id, cfg, { homeLeagueId: league.id })));
+  await LeagueFactory(league.id).createDivisions(leagueConfig, teams.map(({ id }) => id));
   const divId = await db.models.League.findByPk(league.id, { include: db.models.Division })
     .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
   const currentYear = gw.year;

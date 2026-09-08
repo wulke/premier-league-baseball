@@ -13,7 +13,8 @@ import { router } from '../../../../src/api/router';
 beforeAll(async () => {
   await db.sync({ force: true });
   await db.models.GameWorld.create({ id: 1, year: 2025, config: {} });
-  await db.models.Team.create({ id: 10, gameWorldId: 1, config: {} });
+  const league = await db.models.League.create({ gameWorldId: 1, config: {} }).then((row) => row.dataValues);
+  await db.models.Team.create({ id: 10, gameWorldId: 1, homeLeagueId: league.id, config: {} });
 });
 
 describe('registry', () => {

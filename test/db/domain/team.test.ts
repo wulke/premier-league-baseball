@@ -18,13 +18,14 @@ describe('TeamFactory', () => {
   // @spec SCL-010,SCL-011
   it('@spec SCL-010 @spec SCL-011 returns games from each League\'s current year with a per-game year', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2026 }).then(({ dataValues }) => dataValues);
+    const league = await db.models.League.create({ gameWorldId: gw.id, config: { name: 'MLS' }, year: 2028, status: 'IN_SEASON' }).then(({ dataValues }) => dataValues);
     const [team, mlsOpponent, uefaOpponent] = await Promise.all(
       ['Calendar Club', 'MLS Opponent', 'UEFA Opponent'].map((name) =>
-        db.models.Team.create({ gameWorldId: gw.id, config: { name } }).then(({ dataValues }) => dataValues)
+        db.models.Team.create({ gameWorldId: gw.id, homeLeagueId: league.id, config: { name } }).then(({ dataValues }) => dataValues)
       )
     );
     const [mls, uefa] = await Promise.all([
-      db.models.League.create({ gameWorldId: gw.id, config: { name: 'MLS' }, year: 2028, status: 'IN_SEASON' }).then(({ dataValues }) => dataValues),
+      league,
       db.models.League.create({ gameWorldId: gw.id, config: { name: 'UEFA' }, year: 2027, status: 'IN_SEASON' }).then(({ dataValues }) => dataValues),
     ]);
     const [mlsDivision, uefaDivision] = await Promise.all([
@@ -56,10 +57,6 @@ describe('TeamFactory', () => {
   // @spec CUP-011
   it('@spec CUP-011 renders knockout rounds with tournament-convention labels for a 44-team bracket', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2044 }).then((m) => m.dataValues);
-    const teams = await Promise.all(
-      [...Array(44).keys()].map((i) => TeamFactory().create(gw.id, { name: `Cup Team ${i}` }))
-    );
-
     const league = await db.models.League.create({
       gameWorldId: gw.id,
       config: {
@@ -67,6 +64,9 @@ describe('TeamFactory', () => {
         type: 'League Cup',
       }
     }).then(({ dataValues }) => dataValues);
+    const teams = await Promise.all(
+      [...Array(44).keys()].map((i) => TeamFactory().create(gw.id, { name: `Cup Team ${i}` }, { homeLeagueId: league.id }))
+    );
 
     const division = await db.models.Division.create({
       leagueId: league.id,
@@ -129,10 +129,6 @@ describe('TeamFactory', () => {
   // @spec CUP-011
   it('@spec CUP-011 renders knockout rounds with tournament-convention labels for an 8-team bracket', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2045 }).then((m) => m.dataValues);
-    const teams = await Promise.all(
-      [...Array(8).keys()].map((i) => TeamFactory().create(gw.id, { name: `Eight Team ${i}` }))
-    );
-
     const league = await db.models.League.create({
       gameWorldId: gw.id,
       config: {
@@ -140,6 +136,9 @@ describe('TeamFactory', () => {
         type: 'League Cup',
       }
     }).then(({ dataValues }) => dataValues);
+    const teams = await Promise.all(
+      [...Array(8).keys()].map((i) => TeamFactory().create(gw.id, { name: `Eight Team ${i}` }, { homeLeagueId: league.id }))
+    );
 
     const division = await db.models.Division.create({
       leagueId: league.id,
@@ -200,9 +199,13 @@ describe('TeamFactory', () => {
   it('@spec PCON-001 @spec PCON-004 @spec PCON-007 @spec PID-010 creates an initial roster with matching contracts after the team row exists', async () => {
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
     const gw = await db.models.GameWorld.create({ config: {}, year: 2054 }).then((m) => m.dataValues);
+    const homeLeague = await db.models.League.create({
+      gameWorldId: gw.id,
+      config: { name: 'Nippon League', compositionKey: 'NPB' },
+    }).then((m) => m.dataValues);
 
     try {
-      const team = await TeamFactory().create(gw.id, { name: 'Milwaukee Makers' }, { compositionKey: 'NPB', rosterSeed: 168 });
+      const team = await TeamFactory().create(gw.id, { name: 'Milwaukee Makers' }, { homeLeagueId: homeLeague.id, rosterSeed: 168 });
       const hydratedTeam = await db.models.Team.findByPk(team.id, {
         include: [db.models.Player, db.models.Contract],
       });
@@ -228,13 +231,14 @@ describe('TeamFactory', () => {
   // @spec PCON-004,PCON-007
   it('@spec PCON-004 @spec PCON-007 rolls back the team row when roster contract issuance fails', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2055 }).then((m) => m.dataValues);
+    const homeLeague = await db.models.League.create({ gameWorldId: gw.id, config: {} }).then((m) => m.dataValues);
     const originalBulkCreate = db.models.Contract.bulkCreate;
     const contractCountBefore = await db.models.Contract.count();
 
     db.models.Contract.bulkCreate = jest.fn().mockRejectedValueOnce(new Error('forced contract failure')) as typeof originalBulkCreate;
 
     try {
-      await expect(TeamFactory().create(gw.id, { name: 'Rollback Club' })).rejects.toThrow('forced contract failure');
+      await expect(TeamFactory().create(gw.id, { name: 'Rollback Club' }, { homeLeagueId: homeLeague.id })).rejects.toThrow('forced contract failure');
 
       const teams = await db.models.Team.findAll({
         where: { gameWorldId: gw.id },
@@ -255,7 +259,8 @@ describe('TeamFactory', () => {
   // @spec ROST-007,ROST-008,ROST-009,ROST-011
   it('@spec ROST-007 @spec ROST-008 @spec ROST-009 @spec ROST-011 reads Contract membership even when Player.teamId is null', async () => {
     const gw = await db.models.GameWorld.create({ config: {}, year: 2056 }).then(({ dataValues }) => dataValues);
-    const team = await db.models.Team.create({ gameWorldId: gw.id, config: { name: 'Contract Club' } }).then(({ dataValues }) => dataValues);
+    const league = await db.models.League.create({ gameWorldId: gw.id, config: { name: 'Contract League' } }).then(({ dataValues }) => dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gw.id, homeLeagueId: league.id, config: { name: 'Contract Club' } }).then(({ dataValues }) => dataValues);
     const player = await db.models.Player.create({
       teamId: null,
       gameWorldId: gw.id,

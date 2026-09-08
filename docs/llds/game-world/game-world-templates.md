@@ -28,13 +28,13 @@ const TeamPools: Record<string, TeamConfig[]> = {
 // 3. one new runnable bundle. Record<GameWorldType,…> is exhaustive, so the
 //    enum arm above FORCES this entry at compile time — a missing entry is a
 //    type error, not a runtime hole.
-const DefaultWorlds: Record<GameWorldType, { teamPool: string; leagues: string[] }> = {
-  [GameWorldType.PremierLeague]:   { teamPool: 'england-44', leagues: ['premier-league', 'league-cup'] },
-  [GameWorldType.ChampionsLeague]: { teamPool: 'europe-32',  leagues: ['champions-league'] },   // NEW
+const DefaultWorlds: Record<GameWorldType, { leagues: string[] }> = {
+  [GameWorldType.PremierLeague]:   { leagues: ['premier-league', 'league-cup'] },
+  [GameWorldType.ChampionsLeague]: { leagues: ['champions-league'] },
 };
 ```
 
-`useDefaultGameWorld(GameWorldType.ChampionsLeague)` then yields the pickable bundle unchanged in shape: `{ name, leagues: [champions-league template], teams: 32 europe-32 teams, year }`. The `champions-league` `LeagueTemplate` (8 group divisions referencing pool indices `0..31` + one `TOP_N_PER_DIVISION` knockout division) is already authored (#85) and already passes `validateLeagueConfig` (CFG-011: each division declares exactly one team source; CFG-013: exactly one final-stage `isTopTier`).
+`useDefaultGameWorld(GameWorldType.ChampionsLeague)` then yields the pickable bundle: `{ name, leagues: [champions-league template], year }`. Team pools live **on the League templates** since #283 (`LeagueConfig.teams`; `league-cup` instead declares `externalTeams: 'premier-league'`) — the bundle no longer carries a world-level `teams` array (see [`team-league-ownership.md`](./team-league-ownership.md)). The `champions-league` `LeagueTemplate` (owning `TeamPools['europe-32']` via `teams`, with 8 group divisions referencing per-League pool indices `0..31` + one `TOP_N_PER_DIVISION` knockout division) is already authored (#85) and already passes `validateLeagueConfig` (CFG-011: each division declares exactly one team source; CFG-013: exactly one final-stage `isTopTier`).
 
 ### UI — `src/ui/pages/home.tsx` (minimal, no new route/page)
 
@@ -49,11 +49,12 @@ The create-world form gains a **template selector** that drives the bundle:
 
 ```
 home form: user selects "Champions League" template
-  → useDefaultGameWorld(ChampionsLeague) → { 32 teams, [champions-league] }
+  → useDefaultGameWorld(ChampionsLeague) → { [champions-league (owns 32 teams)], year }
   → POST /api/gameWorld/new (payload = bundle + typed name)
-  → GameWorldFactory().create(config)
-      → TeamFactory × 32 (europe-32)
-      → LeagueFactory().create(gw, champions-league config, 32 teamIdRefs)
+  → GameWorldFactory().create(config)          // #283 ownership order
+      → LeagueFactory().createContainer(gw, config)  (all Leagues, empty)
+      → TeamFactory × 32 (europe-32, homeLeagueId = the League)
+      → LeagueFactory(id).createDivisions(config, 32 teamIdRefs)
           → validateLeagueConfig(config)            // CFG-011..017, already wired
           → stamp stageId/stageOrder on divisions   // MSS-004, already wired
   → navigate /:gwId
