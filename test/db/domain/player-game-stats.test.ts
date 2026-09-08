@@ -60,6 +60,8 @@ describe('PlayerGameStats model schema', () => {
       H: 2,
       R: 1,
       RBI: 3,
+      '2B': 1,
+      '3B': 0,
       HR: 1,
       BB: 0,
       SO: 1,
@@ -87,6 +89,8 @@ describe('PlayerGameStats model schema', () => {
       H: 2,
       R: 1,
       RBI: 3,
+      '2B': 1,
+      '3B': 0,
       HR: 1,
       BB: 0,
       SO: 1,
@@ -100,12 +104,18 @@ describe('PlayerGameStats model schema', () => {
   });
 
   // @spec PSTAT-002,PSTAT-003,PSTAT-004
-  it('@spec PSTAT-002 @spec PSTAT-003 @spec PSTAT-004 exposes only the v1 counting-stat schema', async () => {
+  it('@spec PSTAT-002 @spec PSTAT-003 @spec PSTAT-004 exposes the v1 counting-stat schema and derived-only rates', async () => {
     const attributes = db.models.PlayerGameStats.getAttributes();
 
     expect(attributes.playerId.allowNull).toBe(false);
     expect(attributes.gameId.allowNull).toBe(false);
     expect(attributes.GS.type.constructor.name).toBe('BOOLEAN');
+    expect(attributes['2B'].type.constructor.name).toBe('INTEGER');
+    expect(attributes['2B'].allowNull).toBe(false);
+    expect(attributes['2B'].defaultValue).toBe(0);
+    expect(attributes['3B'].type.constructor.name).toBe('INTEGER');
+    expect(attributes['3B'].allowNull).toBe(false);
+    expect(attributes['3B'].defaultValue).toBe(0);
 
     expect(attributes.G).toBeUndefined();
     expect(attributes.W).toBeUndefined();
@@ -118,8 +128,6 @@ describe('PlayerGameStats model schema', () => {
     expect(attributes.E).toBeUndefined();
     expect(attributes.A).toBeUndefined();
     expect(attributes.PO).toBeUndefined();
-    expect(attributes['2B']).toBeUndefined();
-    expect(attributes['3B']).toBeUndefined();
     expect(attributes.SB).toBeUndefined();
     expect(attributes.CS).toBeUndefined();
     expect(attributes.HBP).toBeUndefined();

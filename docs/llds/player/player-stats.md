@@ -25,6 +25,8 @@ interface PlayerGameStats {
   H: number;   // hits
   R: number;   // runs scored
   RBI: number; // runs batted in
+  '2B': number; // doubles
+  '3B': number; // triples
   HR: number;  // home runs
   BB: number;  // walks
   SO: number;  // strikeouts
@@ -49,9 +51,10 @@ interface PlayerGameStats {
 |---|---|
 | `G` (games played) | **Not a stored column.** Derived as `COUNT(*)` of a player's `PlayerGameStats` rows for the relevant season/career window. |
 | `pitchingH` / `pitchingBB` / `pitchingSO` | **Pitching-prefixed on purpose.** Batting keeps the canonical `H` / `BB` / `SO` names, so the pitching counters need distinct column names for a two-way player's single row to remain unambiguous. |
+| `2B` / `3B` | **Stored batting counting stats.** Doubles and triples supply the extra-base-hit detail needed to derive `SLG` from aggregate rows; singles are inferred as `H - 2B - 3B - HR`. |
 | `W` / `L` (wins/losses) | **Dropped from v1 entirely.** Real attribution requires decision logic (starter IP thresholds, bullpen credit rules, etc.) the random `SimulationEngine` cannot produce. An always-null column was judged worse than omitting the field. |
-| Rate stats (`AVG`, `OBP`, `SLG`, `ERA`, `WHIP`) | **Never stored.** Computed at read-time from counting-stat aggregates, at whatever grain (game/season/career) is queried — avoids drift against the counting stats they're derived from. |
-| Fielding (`E`/`A`/`PO`/`FLD%`) and "Common" tiers (`2B`/`3B`/`SB`/`CS`/`HBP`/`OPS`/`SV`/`HLD`/`K9`/`BB9`) | **Deferred**, not modeled by this schema. Add real-world flavor but aren't required for a believable v1 stat line or for `SimulationEngine`. |
+| Rate stats (`AVG`, `OBP`, `SLG`, `OPS`, `ERA`, `WHIP`) | **Never stored.** Computed at read-time from counting-stat aggregates, at whatever grain (game/season/career) is queried — avoids drift against the counting stats they're derived from. |
+| Fielding (`E`/`A`/`PO`/`FLD%`) and deferred "Common" tiers (`SB`/`CS`/`HBP`/`SV`/`HLD`/`K9`/`BB9`) | **Deferred**, not modeled by this schema. Add real-world flavor but aren't required for a believable v1 stat line or for `SimulationEngine`. |
 
 ## Logic Flow
 
@@ -60,7 +63,9 @@ interface PlayerGameStats {
 ```
 AVG(rows)  = SUM(rows.H)  / SUM(rows.AB)
 OBP(rows)  = (SUM(rows.H) + SUM(rows.BB)) / (SUM(rows.AB) + SUM(rows.BB))
-SLG(rows)  = totalBases(rows) / SUM(rows.AB)     // totalBases needs 2B/3B/HR detail beyond Core v1 — SLG is descoped alongside those columns until they land
+totalBases(rows) = SUM(rows.H - rows.2B - rows.3B - rows.HR) + 2 * SUM(rows.2B) + 3 * SUM(rows.3B) + 4 * SUM(rows.HR)
+SLG(rows)  = totalBases(rows) / SUM(rows.AB)
+OPS(rows)  = OBP(rows) + SLG(rows)
 ERA(rows)  = 9 * SUM(rows.ER) / SUM(rows.IP)
 WHIP(rows) = (SUM(rows.pitchingBB) + SUM(rows.pitchingH)) / SUM(rows.IP)
 G(rows)    = COUNT(rows)
@@ -84,7 +89,7 @@ Game completes with real per-player events (future SimulationEngine capability)
 |---|---|---|---|
 | e1 | Rate stat requested where denominator is 0 (e.g. `AVG` with `AB = 0`) | Not resolved by this LLD — no writer exists yet to produce real denominators; the read-time computation's zero-division handling is left to whichever future map implements the aggregation queries. | — |
 | e2 | A player who both bats and pitches in the same game | Single-table, non-role-conditioned shape (matching `Player.attributes`' flat precedent) — one `PlayerGameStats` row can carry both batting and pitching columns for the same `(playerId, gameId)`, no split needed. | PSTAT-001 |
-| e3 | `SLG`/`OPS` requested under the Core-only v1 column set | Not computable — `SLG` needs `2B`/`3B`/`HR` detail beyond Core batting; `OPS` needs `SLG`. Both are Common-tier per #61 and explicitly deferred; not a bug, a scope boundary. | — |
+| e3 | `SLG`/`OPS` requested from game, season, or career rows | Computable at read-time: infer singles as `H - 2B - 3B - HR`, derive `SLG` from total bases and at-bats, then add `OBP` for `OPS`. Neither rate is stored. | PSTAT-003 |
 | e4 | Season/career query before any `PlayerGameStats` rows exist (current state — no writer yet) | Aggregate queries over an empty set — `COUNT` returns 0, `SUM` returns `NULL`/0 depending on driver. Not guarded by this LLD since no query implementation exists yet either. | — |
 
 ## Traceability
