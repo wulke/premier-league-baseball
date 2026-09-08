@@ -139,7 +139,10 @@ erDiagram
 ```
 
 Notes
-- `DivisionSeason` has a unique composite index on `(divisionId, teamId, year)`.
+- `DivisionSeason` has a unique composite index on `(divisionId, teamId, year)` — and
+  this is the sole uniqueness constraint: the belongsToMany through-table artifact
+  (a table-level `UNIQUE (divisionId, teamId)` without `year`) was removed and legacy
+  databases rebuilt in #275 (`docs/specs/league/division-season-unique-specs.md`).
 - `League.year` is the League-scoped season year; `League.status` is its lifecycle phase and defaults to `CUTOVER`.
 - `GameWorld.managedTeamId` is a nullable, user-managed Team pointer. It is intentionally not a
   database association or an ownership gate yet: `GameWorldFactory.setManagedClub` validates that
