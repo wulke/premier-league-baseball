@@ -39,6 +39,10 @@ const applyAssociations = (sequelize) => {
   PlayerGameStats.belongsTo(Player, { foreignKey: 'playerId' });
   // Team
   Team.belongsTo(GameWorld, { foreignKey: 'gameWorldId' });
+  // @spec TLO-001 — Team's Home League: a NOT NULL FK naming the League whose config
+  // produced the Team. Distinct from Division participation (belongsToMany below).
+  Team.belongsTo(League, { as: 'HomeLeague', foreignKey: 'homeLeagueId' });
+  League.hasMany(Team, { as: 'HomeTeams', foreignKey: 'homeLeagueId' });
   Team.hasMany(Player, { foreignKey: 'teamId' });
   Team.hasMany(Lineup, { foreignKey: 'teamId' });
   // @spec PCON-009

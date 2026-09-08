@@ -68,10 +68,10 @@ router.get(Endpoints.GetLeague, async (req: any, res: any) => {
 
 router.post(Endpoints.NewGameWorld, async (req: any, res: any) => {
   // @spec GWA-003,GWA-004,GWA-005
+  // @spec TLO-002 — teams ride on each League config; no world-level pool field
   await handlers.newGameWorld({
     name: req.body.name,
     leagues: req.body.leagues,
-    teams: req.body.teams,
     year: req.body.year
   }).then((response) => {
     res.send(response);

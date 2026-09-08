@@ -249,7 +249,9 @@ const Home = () => {
                   Template: {selectedType}
                 </div>
                 <ul style={{ margin: 0, padding: '0 0 0 16px', lineHeight: '1.7' }}>
-                  <li>{selectedBundle.teams.length} teams</li>
+                  {/* @spec TLO-002 — pools are owned per-League; external-source Leagues
+                      (e.g. the cup) add no teams of their own */}
+                  <li>{selectedBundle.leagues.reduce((count, league) => count + (league.teams?.length ?? 0), 0)} teams</li>
                   {selectedBundle.leagues.map((league) => (
                     <li key={league.name}>{league.name} — {league.stages
                       .flatMap((stage) => stage.divisions).length} divisions</li>
