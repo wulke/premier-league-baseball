@@ -9,7 +9,7 @@ Replace the "first configured League" arbitrary-selection pattern in `GameWorldF
 - `Team` gains a persisted **NOT NULL** `homeLeagueId` FK — the durable "primary League" association #174 called for. Every Team has exactly one Home League, even though it may later participate in many Leagues via `DivisionSeason`.
 - Team pools move off `NewGameWorld` and onto the `LeagueConfig` that owns them (`LeagueConfig.teams`); `NewGameWorld.teams` is removed.
 - A League may instead declare `externalTeams` — "this League's teams are all of that earlier-declared League's already-created Teams" — which is how `league-cup` shares `premier-league`'s roster instead of index-overlapping a shared flat pool.
-- `compositionKey` is derived by joining `Team.homeLeagueId → League.config.compositionKey` at roster-generation time. It is never duplicated onto `Team` — the Home League's config stays the single source of truth.
+- `compositionKey` and the roster-generation `matchRules` are derived by joining `Team.homeLeagueId → League.config` at roster-generation time. Neither is duplicated onto `Team` — the Home League's config stays the single source of truth.
 
 **In scope:** the schema change, the config-surface change, `GameWorldFactory.create`'s creation order, the live template updates, and the test-fixture adaptation the NOT NULL column forces. **Out of scope:** partial/pool-sliced external team selection (whole-roster only), cross-world team sharing, any backfill of legacy `dev.sqlite` rows (regenerated, not migrated — see PID-003's posture), and `DivisionSeason` materialization (still happens at `League.start`, unchanged).
 
@@ -135,11 +135,12 @@ Plain `Error` (→ HTTP 500 via the existing router fallback), matching GWA-005'
 | e8 | `dev.sqlite` carries Teams created under the old schema (no `homeLeagueId`) | Regenerated, not backfilled — there is no reliable way to reconstruct home ownership for old rows (same posture as PID-003). No migration is written. | TLO-009 |
 | e9 | External reference chains (C sources from B, B sources from A) | B's resolved roster is registered under B's key when created, so C's strictly-prior lookup finds it; whole-roster semantics make the chain idempotent (C's teams = A's teams). | TLO-003 |
 | e10 | Pressure-test templates (`mlb`, `champions-league-swiss`) declare no team source | Fine — they are registry-only, never enter a `NewGameWorld` payload, and so never meet `validateNewGameWorld`. | TLO-002 |
+| e11 | Two independent parent Leagues declare different `matchRules` | Each Team generates its active Lineup using `resolveMatchRules` for its own Home League; the array position of either League is irrelevant. Later Division-level overrides continue to take precedence when a Division supplies rules. | TLO-010 |
 
 ## Traceability
 
 - HLD: [`docs/high-level-design.md`](../../high-level-design.md) — unchanged; this slice refines ownership inside the existing world-creation flow (the architectural decision is recorded in [#174](https://github.com/wulke/premier-league-baseball/issues/174)'s grill-me thread)
 - LLD: this file; sibling updates — [`player-identity.md`](../player/player-identity.md) edge e7 (composition now resolved via `homeLeagueId`), [`game-world-templates.md`](./game-world-templates.md) (bundle shape note)
-- EARS: [`docs/specs/game-world/team-league-ownership-specs.md`](../../specs/game-world/team-league-ownership-specs.md) — TLO-001..TLO-009; GWT-001/GWT-004 amended for the new bundle shape
-- Tests: `test/db/domain/team-league-ownership.test.ts` (TLO-001..TLO-008); fixture adaptations across the suite carry the NOT NULL column
+- EARS: [`docs/specs/game-world/team-league-ownership-specs.md`](../../specs/game-world/team-league-ownership-specs.md) — TLO-001..TLO-010; GWT-001/GWT-004 amended for the new bundle shape
+- Tests: `test/db/domain/team-league-ownership.test.ts` (TLO-001..TLO-008, TLO-010); fixture adaptations across the suite carry the NOT NULL column
 - Code: `src/db/model/team.ts`, `src/db/model/associations.ts` (TLO-001); `src/api/models.ts` (TLO-002, TLO-003); `src/db/domain/game-world.ts` (TLO-004), `src/db/domain/team.ts` (TLO-005), `src/db/domain/league.ts` (TLO-004); `src/ui/pages/home.tsx` (summary derivation)

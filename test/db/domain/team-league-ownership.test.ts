@@ -1,4 +1,4 @@
-// @spec TLO-001,TLO-002,TLO-003,TLO-004,TLO-005,TLO-006,TLO-007,TLO-008
+// @spec TLO-001,TLO-002,TLO-003,TLO-004,TLO-005,TLO-006,TLO-007,TLO-008,TLO-010
 // Per-League team ownership & unambiguous identity composition (#283) acceptance.
 import db from '../../../src/db/client';
 import { GameWorldFactory, LeagueFactory } from '../../../src/db/domain';
@@ -180,6 +180,41 @@ describe('Team home-League ownership (#283)', () => {
       nowSpy.mockRestore();
       randomSpy.mockRestore();
     }
+  });
+
+  // @spec TLO-010
+  it('@spec TLO-010 generates each parent League\'s active lineup with its own match rules', async () => {
+    const created = await GameWorldFactory().create({
+      name: 'Premier League',
+      year: 2032,
+      leagues: [
+        {
+          key: 'no-dh', name: 'No DH League', type: 'League',
+          matchRules: { dhEnabled: false, benchSize: 0, bullpenSize: 0 },
+          teams: [{ name: 'Pitchers Bat' }], stages: allTeamsStage(),
+        },
+        {
+          key: 'dh', name: 'DH League', type: 'League',
+          matchRules: { dhEnabled: true, benchSize: 0, bullpenSize: 0 },
+          teams: [{ name: 'Designated Hitter' }], stages: allTeamsStage(),
+        },
+      ],
+    });
+    const teams = await db.models.Team.findAll({ where: { gameWorldId: created.id }, order: [['id', 'ASC']] })
+      .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+
+    const entriesFor = async (teamId: number) => db.models.Lineup.findOne({ where: { teamId, gameId: null }, include: [db.models.LineupEntry] })
+      .then((lineup: any) => lineup.dataValues.LineupEntries.map((entry: any) => entry.dataValues));
+    const [noDhEntries, dhEntries] = await Promise.all(teams.map((team) => entriesFor(team.id)));
+    const starters = (entries: any[]) => entries.filter(({ role }) => role === 'STARTER');
+
+    expect(starters(noDhEntries)).toHaveLength(9);
+    expect(starters(noDhEntries).find(({ fieldingPosition }) => fieldingPosition === 'Pitcher').battingOrder).toBe(9);
+    expect(noDhEntries.filter(({ role }) => role === 'BENCH' || role === 'BULLPEN')).toHaveLength(0);
+    expect(starters(dhEntries)).toHaveLength(10);
+    expect(starters(dhEntries).find(({ fieldingPosition }) => fieldingPosition === 'Pitcher').battingOrder).toBeNull();
+    expect(starters(dhEntries).filter(({ fieldingPosition }) => fieldingPosition == null)).toHaveLength(1);
+    expect(dhEntries.filter(({ role }) => role === 'BENCH' || role === 'BULLPEN')).toHaveLength(0);
   });
 
   // @spec TLO-004
