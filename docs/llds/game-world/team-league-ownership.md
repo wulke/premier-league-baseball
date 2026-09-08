@@ -135,7 +135,7 @@ Plain `Error` (→ HTTP 500 via the existing router fallback), matching GWA-005'
 | e8 | `dev.sqlite` carries Teams created under the old schema (no `homeLeagueId`) | Regenerated, not backfilled — there is no reliable way to reconstruct home ownership for old rows (same posture as PID-003). No migration is written. | TLO-009 |
 | e9 | External reference chains (C sources from B, B sources from A) | B's resolved roster is registered under B's key when created, so C's strictly-prior lookup finds it; whole-roster semantics make the chain idempotent (C's teams = A's teams). | TLO-003 |
 | e10 | Pressure-test templates (`mlb`, `champions-league-swiss`) declare no team source | Fine — they are registry-only, never enter a `NewGameWorld` payload, and so never meet `validateNewGameWorld`. | TLO-002 |
-| e11 | Two independent parent Leagues declare different `matchRules` | Each Team generates its active Lineup using `resolveMatchRules` for its own Home League; the array position of either League is irrelevant. Later Division-level overrides continue to take precedence when a Division supplies rules. | TLO-010 |
+| e11 | Two independent parent Leagues declare different `matchRules` | At roster creation, each Team generates its active Lineup using `resolveMatchRules` for its own Home League; the array position of either League is irrelevant. Division-level overrides are a later, separate League/Division resolution path (LIN-002), whose existing precedence is unchanged by this ownership join. | TLO-010 |
 
 ## Traceability
 
