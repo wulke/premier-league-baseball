@@ -125,7 +125,7 @@ const TeamFactory = (id?: number): ITeam => {
     // @spec PCON-001,PCON-004,PCON-007,PID-010
     // @spec TLO-001 — homeLeagueId is persisted once, at creation, and names a
     // League of the target GameWorld; ownership can never cross worlds.
-    // @spec TLO-005 — composition and match rules join through the Home League's
+    // @spec TLO-005,TLO-010 — composition and match rules join through the Home League's
     // config; no arbitrary League row is read and compositionKey is never
     // duplicated onto the Team row.
     create: async (gwId: number, config: TeamConfig, options: TeamCreateOptions) => enqueueTeamCreate(async () => {
