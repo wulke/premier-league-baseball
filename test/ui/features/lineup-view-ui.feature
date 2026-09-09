@@ -206,6 +206,7 @@ Feature: Team Lineup View UI
     When the player navigates to "/1/team/10/lineup"
     And the manager enters lineup edit mode
     And the manager drags player 1 onto player 2
+    And the player selects the Batting tab
     And the manager picks player 10 for the Catcher slot
     And the manager saves the lineup
     Then the one saved lineup includes both the drag and picker slot swaps
@@ -231,14 +232,15 @@ Feature: Team Lineup View UI
     Then the starter slots for players 1 and 2 are swapped
 
   @spec:LINEUI-010 @spec:LINEUI-015
-  Scenario: The Batting tab keeps lineup slot reassignment compact
+  Scenario: Edit selectors replace duplicated row labels
     Given GameWorld 1 has Team 10 as its managed club
     And GET /api/team/10/lineup returns a DH-off active lineup
     And GET /api/team/10/roster returns names and ratings for the active lineup
     When the player navigates to "/1/team/10/lineup"
     And the manager enters lineup edit mode
-    And the player selects the Batting tab
-    Then player 1 has a leading lineup slot picker and a drag-enabled row without role or position controls
+    Then the Defensive position picker replaces its read-only position label
+    When the player selects the Batting tab
+    Then the Batting slot picker replaces the player name and the row remains drag-enabled
 
   @spec:LINEUI-012
   Scenario: An invalid read-mode lineup entry is visibly flagged

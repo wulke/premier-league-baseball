@@ -367,7 +367,7 @@ defineFeature(feature, (test) => {
     and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
     and('the manager drags player 10 onto player 1', () => dragPlayerOnto(10, 1));
     // @spec LINEUI-015
-    then('player 10 fills player 1\'s starter slot and player 1 fills player 10\'s bench slot', () => { expect(within(slot(0)).getByRole('link')).toHaveTextContent('Player 10'); expect(within(slot(9)).getByRole('link')).toHaveTextContent('Player 1'); });
+    then('player 10 fills player 1\'s starter slot and player 1 fills player 10\'s bench slot', () => { expect(within(slot(0)).getByRole('link')).toHaveTextContent('Player 10'); expect(within(slot(9)).getByTestId('lineup-picker-bench-9')).toHaveValue('1'); });
   });
 
   test('A manager demotes a starter by dropping it onto a bench player', ({ given, and, when, then }) => {
@@ -379,7 +379,7 @@ defineFeature(feature, (test) => {
     and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
     and('the manager drags player 1 onto player 10', () => dragPlayerOnto(1, 10));
     // @spec LINEUI-015
-    then('player 10 fills player 1\'s starter slot and player 1 fills player 10\'s bench slot', () => { expect(within(slot(0)).getByRole('link')).toHaveTextContent('Player 10'); expect(within(slot(9)).getByRole('link')).toHaveTextContent('Player 1'); });
+    then('player 10 fills player 1\'s starter slot and player 1 fills player 10\'s bench slot', () => { expect(within(slot(0)).getByRole('link')).toHaveTextContent('Player 10'); expect(within(slot(9)).getByTestId('lineup-picker-bench-9')).toHaveValue('1'); });
   });
 
   test('A manager combines drag and picker edits before saving once', ({ given, and, when, then }) => {
@@ -390,6 +390,7 @@ defineFeature(feature, (test) => {
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
     and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
     and('the manager drags player 1 onto player 2', () => dragPlayerOnto(1, 2));
+    and('the player selects the Batting tab', () => selectTab('Batting'));
     and('the manager picks player 10 for the Catcher slot', () => fireEvent.change(screen.getByTestId('lineup-picker-Catcher'), { target: { value: '10' } }));
     and('the manager saves the lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save Lineup' })));
     // @spec LINEUI-015
@@ -424,16 +425,18 @@ defineFeature(feature, (test) => {
     then('the starter slots for players 1 and 2 are swapped', () => { expect(within(slot(0)).getByRole('link')).toHaveTextContent('Player 2'); expect(within(slot(1)).getByRole('link')).toHaveTextContent('Player 1'); });
   });
 
-  test('The Batting tab keeps lineup slot reassignment compact', ({ given, and, when, then }) => {
+  test('Edit selectors replace duplicated row labels', ({ given, and, when, then }) => {
     given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
     given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
     and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
     and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
     and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
-    and('the player selects the Batting tab', () => selectTab('Batting'));
     // @spec LINEUI-010,LINEUI-015
-    then('player 1 has a leading lineup slot picker and a drag-enabled row without role or position controls', () => { const row = screen.getByTestId('batting-row-1'); expect(screen.getByTestId('lineup-picker-Catcher')).toBeInTheDocument(); expect(row).toHaveAttribute('draggable', 'true'); expect(row.firstElementChild).toBe(screen.getByTestId('lineup-picker-Catcher')); expect(screen.queryByTestId('role-picker-1')).toBeNull(); expect(screen.queryByTestId('position-picker-1')).toBeNull(); });
+    then('the Defensive position picker replaces its read-only position label', () => { const row = screen.getByTestId('defensive-row-1'); expect(row.firstElementChild).toBe(screen.getByTestId('position-picker-1')); expect(within(row).queryByText('Catcher', { selector: 'span' })).toBeNull(); expect(within(row).getByRole('link')).toHaveTextContent('Player 1'); });
+    when('the player selects the Batting tab', () => selectTab('Batting'));
+    // @spec LINEUI-010,LINEUI-015
+    then('the Batting slot picker replaces the player name and the row remains drag-enabled', () => { const row = screen.getByTestId('batting-row-1'); expect(row).toHaveAttribute('draggable', 'true'); expect(within(row).getByTestId('lineup-picker-Catcher')).toBeInTheDocument(); expect(within(row).queryByRole('link')).toBeNull(); expect(screen.queryByTestId('role-picker-1')).toBeNull(); expect(screen.queryByTestId('position-picker-1')).toBeNull(); });
   });
 
   test('An invalid read-mode lineup entry is visibly flagged', ({ given, and, when, then }) => {

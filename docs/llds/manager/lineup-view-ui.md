@@ -138,7 +138,7 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
 | u15 | Drag source or target is a pitcher, bullpen row, or non-managed-team row | No drag handle or drop behavior is rendered; pitcher and bullpen assignment remain owned by #243. | LINEUI-015 |
 | u16 | A drag edit and picker edit occur before save | Both call the same slot-swap mutation over the one draft; the existing Save Lineup PUT and validator gate serialize the composed draft once. | LINEUI-015 |
 | u17 | A drop has no valid lineup-entry drag payload | Ignore a drop not initiated by this lineup and leave the draft unchanged. Retain the source slot locally throughout a row-initiated drag so browsers that omit custom MIME data can still complete its swap. | LINEUI-015 |
-| u18 | The manager edits a starter or bench row | Put the slot-occupant picker first and make the entire eligible row the drag source, so the player name remains visible while dragging. Defensive starter rows immediately follow the picker with their position label; role and fielding-position controls remain available later in the row. | LINEUI-010, LINEUI-015 |
+| u18 | The manager edits a starter or bench row | Make the entire eligible row the drag source. On Defensive rows, place the fielding-position picker where the read-only position label appears and show the player name once. On Batting and defensive bench rows, place the slot-occupant picker where the read-only player name appears rather than duplicating it. Keep role controls available later in Defensive rows. | LINEUI-010, LINEUI-015 |
 
 ## Traceability
 
