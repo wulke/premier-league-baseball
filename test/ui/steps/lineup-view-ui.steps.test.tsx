@@ -18,6 +18,7 @@ let lineup: TeamLineup;
 let roster: RosterPlayer[];
 let managedTeamId: number | null = null;
 let rejectLineupSave = false;
+let malformedLineupSave = false;
 let nextGameLineup: { game: any; lineup: TeamLineup } | null = null;
 
 const rosterPlayer = (id: number): RosterPlayer => ({
@@ -46,7 +47,7 @@ const installFetch = () => {
     if (url === '/api/team/10/lineup' && (init as RequestInit | undefined)?.method === 'PUT') {
       return Promise.resolve(rejectLineupSave
         ? { ok: false, status: 422, json: () => Promise.resolve({ error: 'Starters must have batting orders 1 through 9 exactly once' }) }
-        : { ok: true, status: 200, json: () => Promise.resolve(lineup) });
+        : { ok: true, status: 200, json: () => Promise.resolve(malformedLineupSave ? {} : lineup) });
     }
     if (url === '/api/team/10/roster') return response(roster);
     if (url === '/api/gameWorld/1') return response({ id: 1, year: 2025, config: { name: 'Test World', inProgress: true }, Leagues: [], managedTeamId });
@@ -97,7 +98,7 @@ const dragBullpenPlayerOnto = (sourcePlayerId: number, targetPlayerId: number) =
   fireEvent.drop(screen.getByTestId(`game-lineup-row-${targetPlayerId}`), { dataTransfer });
 };
 
-beforeEach(() => { lineup = dhOff(); roster = makeRoster(); managedTeamId = null; rejectLineupSave = false; nextGameLineup = null; installFetch(); });
+beforeEach(() => { lineup = dhOff(); roster = makeRoster(); managedTeamId = null; rejectLineupSave = false; malformedLineupSave = false; nextGameLineup = null; installFetch(); });
 afterEach(() => cleanup());
 
 defineFeature(feature, (test) => {
@@ -304,6 +305,21 @@ defineFeature(feature, (test) => {
     and('the manager saves the lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save Lineup' })));
     // @spec LINEUI-011
     then('the lineup validation failure is shown', async () => await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Starters must have batting orders 1 through 9 exactly once')));
+    and('the draft remains in edit mode', () => expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument());
+  });
+
+  test('A malformed successful lineup save keeps the editor available', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    and('PUT /api/team/10/lineup returns a malformed successful response', () => { malformedLineupSave = true; });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    and('the manager saves the lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save Lineup' })));
+    // @spec LINEUI-014
+    then('the malformed lineup save failure is shown', async () => await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save lineup')));
+    // @spec LINEUI-014
     and('the draft remains in edit mode', () => expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument());
   });
 

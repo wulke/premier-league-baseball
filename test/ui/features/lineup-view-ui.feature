@@ -145,6 +145,18 @@ Feature: Team Lineup View UI
     And the draft remains in edit mode
 
   @spec:LINEUI-014
+  Scenario: A malformed successful lineup save keeps the editor available
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    And PUT /api/team/10/lineup returns a malformed successful response
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager saves the lineup
+    Then the malformed lineup save failure is shown
+    And the draft remains in edit mode
+
+  @spec:LINEUI-014
   Scenario: Cancelling an edit discards its draft
     Given GameWorld 1 has Team 10 as its managed club
     And GET /api/team/10/lineup returns a DH-off active lineup
