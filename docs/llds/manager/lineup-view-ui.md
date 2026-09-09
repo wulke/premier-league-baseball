@@ -61,6 +61,11 @@ eligible player swaps the two entries' `playerId` values and preserves both slot
 entries are `STARTER` rows other than the `Pitcher` row plus `BENCH` rows. `BULLPEN` rows and the
 starting-pitcher slot are never candidates or editable targets.
 
+For #250, the same eligible slot rows expose a drag handle while the managed team is editing.
+The drag payload is the source draft entry index; dropping it on another eligible row calls the
+same player-ID slot-swap mutation used by the per-row picker. Drag state is transient UI event
+data only: it is never a second draft, request, or save path.
+
 ## Logic Flow
 
 ```
@@ -82,7 +87,7 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
       STARTER rows sorted by battingOrder (unchanged from pre-#225 behavior)
       render: Tag | Order | Player | Position (DH label when fieldingPosition === null) | picker (managed editable rows only)  # LINEUI-002/003
       append BENCH rows, then BULLPEN rows (Order/Position columns blank)               # LINEUI-007
-  → selecting a picker swaps playerIds in the selected and target slots; no fetch       # LINEUI-010
+  → selecting a picker or dropping an eligible row on another swaps playerIds in the selected and target slots; no fetch       # LINEUI-010, LINEUI-015
   → Save Lineup PUTs `{ entries: draft }`; successful save replaces read/draft state    # LINEUI-009
   → rejected PUT keeps draft and shows its error; server state is unchanged              # LINEUI-011
   → every row links to /:gwId/player/:playerId; non-managed views have no controls      # LINEUI-004
@@ -130,6 +135,8 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
 | u12 | A draft role or position change conflicts with a starter slot | Disable occupied fielding-position options, including the null-position DH slot, so a duplicate position cannot be selected locally. When a newly promoted non-pitcher starter is assigned an available fielder position or explicitly selected DH position, derive the first available batting slot (the vacated slot in the normal demote/promote flow); the pitcher remains locked by rule. Server validation remains authoritative for every other lineup shape and cap. | LINEUI-010, LINEUI-011, LINEUI-013 |
 | u13 | Wholesale save rejects | Keep the draft and edit mode, surface the 422 message, and make no read-card replacement. A successful PUT replaces the read card and exits edit mode. | LINEUI-014 |
 | u14 | Cancel or route changes | Cancel resets the draft from the loaded card; effect cleanup/navigation drops component state with no unsaved-changes guard. | LINEUI-014 |
+| u15 | Drag source or target is a pitcher, bullpen row, or non-managed-team row | No drag handle or drop behavior is rendered; pitcher and bullpen assignment remain owned by #243. | LINEUI-015 |
+| u16 | A drag edit and picker edit occur before save | Both call the same slot-swap mutation over the one draft; the existing Save Lineup PUT and validator gate serialize the composed draft once. | LINEUI-015 |
 
 ## Traceability
 

@@ -1,4 +1,4 @@
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014,GBULL-006
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014,LINEUI-015,GBULL-006
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -62,6 +62,19 @@ const renderAt = async (entry: string) => {
 };
 
 const selectTab = (name: 'Defensive' | 'Batting' | 'Bullpen') => fireEvent.click(screen.getByRole('tab', { name }));
+
+// @spec LINEUI-015 — JSDOM's drag events need an explicit transferable payload.
+const dragPlayerOnto = (sourcePlayerId: number, targetPlayerId: number) => {
+  const values = new Map<string, string>();
+  const dataTransfer = { setData: (type: string, value: string) => values.set(type, value), getData: (type: string) => values.get(type) ?? '' };
+  fireEvent.dragStart(screen.getByTestId(`lineup-drag-handle-${sourcePlayerId}`), { dataTransfer });
+  const target = screen.getByTestId(targetPlayerId <= 9 ? `defensive-row-${targetPlayerId}` : `bench-row-${targetPlayerId}`);
+  fireEvent.dragOver(target, { dataTransfer });
+  fireEvent.drop(target, { dataTransfer });
+};
+
+// @spec LINEUI-015 — the slot index represents the fixed assignment shape, not its current occupant.
+const slot = (entryIndex: number) => document.querySelector(`[data-slot-index="${entryIndex}"]`)!;
 
 beforeEach(() => { lineup = dhOff(); roster = makeRoster(); managedTeamId = null; rejectLineupSave = false; nextGameLineup = null; installFetch(); });
 afterEach(() => cleanup());
@@ -283,6 +296,60 @@ defineFeature(feature, (test) => {
     and('the manager assigns unassigned player 14 to the bench', () => fireEvent.change(screen.getByTestId('role-picker-14'), { target: { value: 'BENCH' } }));
     and('the manager cancels lineup editing', () => fireEvent.click(screen.getByRole('button', { name: 'Cancel' })));
     then('the unassigned player is not assigned in the read-only lineup', () => expect(screen.queryByTestId('bench-row-14')).toBeNull());
+  });
+
+  test('A manager drags one position-player starter onto another starter', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    and('the manager drags player 1 onto player 2', () => dragPlayerOnto(1, 2));
+    // @spec LINEUI-015
+    then('the starter slots for players 1 and 2 are swapped', () => { expect(slot(0)).toHaveTextContent('Player 2'); expect(slot(1)).toHaveTextContent('Player 1'); });
+  });
+
+  test('A manager promotes a bench player by dropping it onto a starter', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    and('the manager drags player 10 onto player 1', () => dragPlayerOnto(10, 1));
+    // @spec LINEUI-015
+    then('player 10 fills player 1\'s starter slot and player 1 fills player 10\'s bench slot', () => { expect(slot(0)).toHaveTextContent('Player 10'); expect(slot(9)).toHaveTextContent('Player 1'); });
+  });
+
+  test('A manager demotes a starter by dropping it onto a bench player', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    and('the manager drags player 1 onto player 10', () => dragPlayerOnto(1, 10));
+    // @spec LINEUI-015
+    then('player 10 fills player 1\'s starter slot and player 1 fills player 10\'s bench slot', () => { expect(slot(0)).toHaveTextContent('Player 10'); expect(slot(9)).toHaveTextContent('Player 1'); });
+  });
+
+  test('A manager combines drag and picker edits before saving once', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    and('the manager drags player 1 onto player 2', () => dragPlayerOnto(1, 2));
+    and('the manager picks player 10 for the Catcher slot', () => fireEvent.change(screen.getByTestId('lineup-picker-Catcher'), { target: { value: '10' } }));
+    and('the manager saves the lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save Lineup' })));
+    // @spec LINEUI-015
+    then('the one saved lineup includes both the drag and picker slot swaps', async () => await waitFor(() => {
+      const save = (global.fetch as jest.Mock).mock.calls.find(([url, options]) => url === '/api/team/10/lineup' && options?.method === 'PUT');
+      const entries = JSON.parse(save[1].body).entries;
+      expect(entries[0].playerId).toBe(10); expect(entries[1].playerId).toBe(1); expect(entries[9].playerId).toBe(2);
+    }));
   });
 
   test('An invalid read-mode lineup entry is visibly flagged', ({ given, and, when, then }) => {

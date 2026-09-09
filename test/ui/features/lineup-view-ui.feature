@@ -155,6 +155,48 @@ Feature: Team Lineup View UI
     And the manager cancels lineup editing
     Then the unassigned player is not assigned in the read-only lineup
 
+  @spec:LINEUI-015
+  Scenario: A manager drags one position-player starter onto another starter
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager drags player 1 onto player 2
+    Then the starter slots for players 1 and 2 are swapped
+
+  @spec:LINEUI-015
+  Scenario: A manager promotes a bench player by dropping it onto a starter
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager drags player 10 onto player 1
+    Then player 10 fills player 1's starter slot and player 1 fills player 10's bench slot
+
+  @spec:LINEUI-015
+  Scenario: A manager demotes a starter by dropping it onto a bench player
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager drags player 1 onto player 10
+    Then player 10 fills player 1's starter slot and player 1 fills player 10's bench slot
+
+  @spec:LINEUI-015
+  Scenario: A manager combines drag and picker edits before saving once
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager drags player 1 onto player 2
+    And the manager picks player 10 for the Catcher slot
+    And the manager saves the lineup
+    Then the one saved lineup includes both the drag and picker slot swaps
+
   @spec:LINEUI-012
   Scenario: An invalid read-mode lineup entry is visibly flagged
     Given GET /api/team/10/lineup returns a lineup with an invalid starter
