@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { ActiveLineupEntry, PlayerPosition, RosterPlayer, TeamLineup } from '../../api/models';
@@ -63,6 +63,7 @@ const TeamLineupView = () => {
   const [nextGame, setNextGame] = useState<NextGameLineup | null>(null);
   const [gameDraft, setGameDraft] = useState<ActiveLineupEntry[]>([]);
   const [gameSaveError, setGameSaveError] = useState<string | null>(null);
+  const draggedLineupEntryIndex = useRef<number | null>(null);
 
   useEffect(() => {
     if (!teamId || !gwId) return;
@@ -195,11 +196,19 @@ const TeamLineupView = () => {
       if (!editableSlot) return;
       event.preventDefault();
       const sourcePayload = event.dataTransfer.getData('application/x-lineup-entry-index');
-      if (sourcePayload === '') return;
-      const sourceIndex = Number(sourcePayload);
-      if (Number.isInteger(sourceIndex)) swapDraftSlots(sourceIndex, row.entryIndex);
+      const payloadIndex = Number(sourcePayload);
+      const sourceIndex = draggedLineupEntryIndex.current ?? (sourcePayload !== '' && Number.isInteger(payloadIndex) ? payloadIndex : null);
+      if (sourceIndex != null) swapDraftSlots(sourceIndex, row.entryIndex);
+      draggedLineupEntryIndex.current = null;
     };
-    return <div key={row.entryIndex} data-testid={testId} data-slot-index={row.entryIndex} draggable={editableSlot || undefined} onDragStart={editableSlot ? (event) => event.dataTransfer.setData('application/x-lineup-entry-index', String(row.entryIndex)) : undefined} onDragOver={editableSlot ? (event) => event.preventDefault() : undefined} onDrop={handleDrop} style={row.valid === false ? { ...rowStyle, background: '#fff0f0', color: '#a11' } : rowStyle}>
+    // @spec LINEUI-015 — retain the source because some browsers drop custom MIME data.
+    const startDrag = (event: React.DragEvent<HTMLDivElement>) => {
+      draggedLineupEntryIndex.current = row.entryIndex;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('application/x-lineup-entry-index', String(row.entryIndex));
+      event.dataTransfer.setData('text/plain', String(row.entryIndex));
+    };
+    return <div key={row.entryIndex} data-testid={testId} data-slot-index={row.entryIndex} draggable={editableSlot || undefined} onDragStart={editableSlot ? startDrag : undefined} onDragEnd={editableSlot ? () => { draggedLineupEntryIndex.current = null; } : undefined} onDragOver={editableSlot ? (event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; } : undefined} onDrop={handleDrop} style={{ ...(row.valid === false ? { ...rowStyle, background: '#fff0f0', color: '#a11' } : rowStyle), ...(editableSlot ? { cursor: 'grab' } : {}) }}>
       {editableSlot && <LineupSlotPicker row={row} entries={swappableRows} players={players} onSwap={swapDraftSlots} />}
       {!editing && row.valid === false && <span aria-label="Invalid lineup entry" style={{ color: '#b11', fontWeight: 800 }}>✕ Invalid</span>}
       {tab === 'DEFENSIVE' && row.role === 'STARTER' && <span style={slotLabelStyle}>{isDh ? 'DH' : row.fieldingPosition}</span>}
@@ -228,6 +237,7 @@ const TeamLineupView = () => {
 
 // @spec GBULL-006
 const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, error, onChange, onSwap, onSave }: { game: NextGameLineup | null; entries: ActiveLineupEntry[]; players: Map<number, RosterPlayer>; roster: RosterPlayer[]; gwId?: string; editable: boolean; error: string | null; onChange: (index: number, playerId: number) => void; onSwap: (sourceIndex: number, targetIndex: number) => void; onSave: () => void }) => {
+  const draggedGameEntryIndex = useRef<number | null>(null);
   if (!game) return <Card as="section" data-testid="bullpen-empty" style={panelStyle}>No next scheduled game.</Card>;
   const slotRows = entries.map((entry, index) => ({ entry, index })).filter(({ entry }) => entry.role === 'BENCH' || entry.role === 'BULLPEN' || (entry.role === 'STARTER' && entry.fieldingPosition === 'Pitcher'));
   const benchPlayerIds = new Set(entries.filter((entry) => entry.role === 'BENCH').map((entry) => entry.playerId));
@@ -243,12 +253,20 @@ const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, erro
       const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
         if (!editable) return;
         event.preventDefault();
-        const sourcePayload = event.dataTransfer.getData('application/x-game-lineup-entry-index');
-        if (sourcePayload === '') return;
-        const sourceIndex = Number(sourcePayload);
-        if (Number.isInteger(sourceIndex)) onSwap(sourceIndex, index);
+      const sourcePayload = event.dataTransfer.getData('application/x-game-lineup-entry-index');
+      const payloadIndex = Number(sourcePayload);
+      const sourceIndex = draggedGameEntryIndex.current ?? (sourcePayload !== '' && Number.isInteger(payloadIndex) ? payloadIndex : null);
+      if (sourceIndex != null) onSwap(sourceIndex, index);
+      draggedGameEntryIndex.current = null;
+    };
+      // @spec GBULL-006 — mirror active-lineup drag resilience for the next-game bullpen editor.
+      const startDrag = (event: React.DragEvent<HTMLDivElement>) => {
+        draggedGameEntryIndex.current = index;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('application/x-game-lineup-entry-index', String(index));
+        event.dataTransfer.setData('text/plain', String(index));
       };
-      return <div key={index} data-testid={`game-lineup-row-${entry.playerId}`} data-game-slot-index={index} draggable={editable || undefined} onDragStart={editable ? (event) => event.dataTransfer.setData('application/x-game-lineup-entry-index', String(index)) : undefined} onDragOver={editable ? (event) => event.preventDefault() : undefined} onDrop={handleDrop} style={rowStyle}>{editable && <select aria-label={`${entry.role === 'STARTER' ? 'Starting pitcher' : entry.role.toLowerCase()} slot ${index + 1}`} value={entry.playerId} onChange={(event) => onChange(index, Number(event.target.value))}>{eligiblePlayers.map((player) => <option key={player.id} value={player.id}>{player.givenName} {player.familyName}</option>)}</select>}<span style={tagStyle}>{entry.role === 'STARTER' ? 'SP' : entry.role}</span><span style={{ flex: 1 }}><LineupPlayerLink playerId={entry.playerId} players={players} gwId={gwId} /></span></div>;
+      return <div key={index} data-testid={`game-lineup-row-${entry.playerId}`} data-game-slot-index={index} draggable={editable || undefined} onDragStart={editable ? startDrag : undefined} onDragEnd={editable ? () => { draggedGameEntryIndex.current = null; } : undefined} onDragOver={editable ? (event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; } : undefined} onDrop={handleDrop} style={{ ...rowStyle, ...(editable ? { cursor: 'grab' } : {}) }}>{editable && <select aria-label={`${entry.role === 'STARTER' ? 'Starting pitcher' : entry.role.toLowerCase()} slot ${index + 1}`} value={entry.playerId} onChange={(event) => onChange(index, Number(event.target.value))}>{eligiblePlayers.map((player) => <option key={player.id} value={player.id}>{player.givenName} {player.familyName}</option>)}</select>}<span style={tagStyle}>{entry.role === 'STARTER' ? 'SP' : entry.role}</span><span style={{ flex: 1 }}><LineupPlayerLink playerId={entry.playerId} players={players} gwId={gwId} /></span></div>;
     })}
     {editable && <Button type="button" size="sm" onClick={onSave}>Save game lineup</Button>}{error && <ErrorText role="alert" style={{ marginLeft: '10px' }}>{error}</ErrorText>}
   </Card>;
