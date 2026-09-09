@@ -208,6 +208,16 @@ Feature: Team Lineup View UI
     And an unrelated item is dropped onto player 2
     Then player 1 and player 2 remain in their original starter slots
 
+  @spec:LINEUI-010 @spec:LINEUI-015
+  Scenario: The Batting tab keeps lineup slot reassignment compact
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the player selects the Batting tab
+    Then player 1 has a lineup slot picker and drag handle without role or position controls
+
   @spec:LINEUI-012
   Scenario: An invalid read-mode lineup entry is visibly flagged
     Given GET /api/team/10/lineup returns a lineup with an invalid starter
@@ -227,3 +237,13 @@ Feature: Team Lineup View UI
     And defensive starters are excluded from bench slots
     When the manager saves the game lineup
     Then the game lineup draft is sent to the game save endpoint
+
+  @spec:GBULL-006
+  Scenario: A manager swaps two next-game bullpen slots by drag and drop
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup/next-game returns a scheduled game lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the player opens the Bullpen tab
+    And the manager drags bullpen player 12 onto bullpen player 13
+    Then the next-game bullpen slots for players 12 and 13 are swapped

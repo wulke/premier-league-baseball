@@ -155,6 +155,17 @@ const TeamLineupView = () => {
     target.playerId = playerId;
     return next;
   });
+  // @spec GBULL-006 — drag/drop preserves the selectors' pitcher-slot versus bench-slot boundary.
+  const swapGameSlots = (sourceIndex: number, targetIndex: number) => setGameDraft((current) => {
+    const source = current[sourceIndex];
+    const target = current[targetIndex];
+    const isPitcherSlot = (entry: ActiveLineupEntry) => entry.role === 'BULLPEN' || (entry.role === 'STARTER' && entry.fieldingPosition === 'Pitcher');
+    const sameSlotType = source && target && (isPitcherSlot(source) === isPitcherSlot(target)) && ((source.role === 'BENCH') === (target.role === 'BENCH'));
+    if (!source || !target || sourceIndex === targetIndex || !sameSlotType) return current;
+    const next = current.map((entry) => ({ ...entry }));
+    [next[sourceIndex].playerId, next[targetIndex].playerId] = [next[targetIndex].playerId, next[sourceIndex].playerId];
+    return next;
+  });
   // @spec GBULL-006
   const saveGameLineup = async () => {
     if (!teamId || !nextGame) return;
@@ -185,7 +196,7 @@ const TeamLineupView = () => {
       {tab === 'BATTING' && row.role === 'STARTER' && <strong style={{ color: '#555', width: '24px' }}>{row.battingOrder ?? '—'}</strong>}
       <span data-testid={isDh ? 'dh-row' : undefined} style={{ flex: 1 }}><LineupPlayerLink playerId={row.playerId} players={players} gwId={gwId} /></span>
       {!editing && <><span style={positionStyle}>{isDh ? 'DH' : row.fieldingPosition ?? ''}</span>{tab === 'DEFENSIVE' && <span style={ratingStyle}>{rating}</span>}</>}
-      {editing && <><DraftControls row={row} dhEnabled={dhEnabled} occupied={occupiedPositions(row.entryIndex)} onChange={updateDraft} />{editableSlot && <LineupSlotInteractions row={row} entries={swappableRows} players={players} onSwap={swapDraftSlots} />}</>}
+      {editing && <>{tab === 'DEFENSIVE' && <DraftControls row={row} dhEnabled={dhEnabled} occupied={occupiedPositions(row.entryIndex)} onChange={updateDraft} />}{editableSlot && <LineupSlotInteractions row={row} entries={swappableRows} players={players} onSwap={swapDraftSlots} />}</>}
     </div>;
   };
 
@@ -199,13 +210,13 @@ const TeamLineupView = () => {
       <div role="tablist" style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>{(['DEFENSIVE', 'BATTING', 'BULLPEN'] as LineupTab[]).map((tab) => <Button key={tab} intent={activeTab === tab ? 'primary' : 'secondary'} role="tab" aria-selected={activeTab === tab} data-testid={`tab-${tab.toLowerCase()}`} onClick={() => setActiveTab(tab)} style={{ borderColor: '#ddd', fontWeight: 650, fontSize: '0.84rem' }}>{tab === 'DEFENSIVE' ? 'Defensive' : tab === 'BATTING' ? 'Batting' : 'Bullpen'}</Button>)}</div>
       {activeTab === 'DEFENSIVE' && <Card as="section" data-testid="defensive-table" aria-label="Defensive lineup" style={panelStyle}>{defensiveRows.map((row) => renderRow(row, 'DEFENSIVE'))}{reserves.map((row) => renderRow(row, 'DEFENSIVE'))}{editing && <UnassignedBucket rows={unassigned} renderRow={renderRow} />}</Card>}
       {activeTab === 'BATTING' && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(230px, 0.55fr)', gap: '18px', alignItems: 'start' }}><Card as="section" data-testid="batting-table" aria-label="Batting order" style={panelStyle}>{battingRows.map((row) => renderRow(row, 'BATTING'))}{reserves.map((row) => renderRow(row, 'BATTING'))}{editing && <UnassignedBucket rows={unassigned} renderRow={renderRow} />}</Card>{startingPitcher && <Card as="section" data-testid="starting-pitcher" style={{ ...panelStyle, borderColor: '#71896e', background: '#f1f6ef' }}><SectionLabel>Starting pitcher</SectionLabel><LineupPlayerLink playerId={startingPitcher.playerId} players={players} gwId={gwId} /></Card>}</div>}
-      {activeTab === 'BULLPEN' && <GameBullpenPanel game={nextGame} entries={gameDraft} players={players} roster={roster} gwId={gwId} editable={isManagedTeam && nextGame?.game.status === 'SCHEDULED'} error={gameSaveError} onChange={updateGameSlot} onSave={saveGameLineup} />}
+      {activeTab === 'BULLPEN' && <GameBullpenPanel game={nextGame} entries={gameDraft} players={players} roster={roster} gwId={gwId} editable={isManagedTeam && nextGame?.game.status === 'SCHEDULED'} error={gameSaveError} onChange={updateGameSlot} onSwap={swapGameSlots} onSave={saveGameLineup} />}
     </>}
   </PageContainer>;
 };
 
 // @spec GBULL-006
-const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, error, onChange, onSave }: { game: NextGameLineup | null; entries: ActiveLineupEntry[]; players: Map<number, RosterPlayer>; roster: RosterPlayer[]; gwId?: string; editable: boolean; error: string | null; onChange: (index: number, playerId: number) => void; onSave: () => void }) => {
+const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, error, onChange, onSwap, onSave }: { game: NextGameLineup | null; entries: ActiveLineupEntry[]; players: Map<number, RosterPlayer>; roster: RosterPlayer[]; gwId?: string; editable: boolean; error: string | null; onChange: (index: number, playerId: number) => void; onSwap: (sourceIndex: number, targetIndex: number) => void; onSave: () => void }) => {
   if (!game) return <Card as="section" data-testid="bullpen-empty" style={panelStyle}>No next scheduled game.</Card>;
   const slotRows = entries.map((entry, index) => ({ entry, index })).filter(({ entry }) => entry.role === 'BENCH' || entry.role === 'BULLPEN' || (entry.role === 'STARTER' && entry.fieldingPosition === 'Pitcher'));
   const benchPlayerIds = new Set(entries.filter((entry) => entry.role === 'BENCH').map((entry) => entry.playerId));
@@ -218,7 +229,15 @@ const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, erro
       const eligiblePlayers = roster.filter((player) => player.id === entry.playerId || (pitcherSlot
         ? player.primaryPosition === 'Pitcher' && !defensiveStarterIds.has(player.id)
         : player.primaryPosition !== 'Pitcher' && benchPlayerIds.has(player.id)));
-      return <div key={index} style={rowStyle}><span style={tagStyle}>{entry.role === 'STARTER' ? 'SP' : entry.role}</span><span style={{ flex: 1 }}><LineupPlayerLink playerId={entry.playerId} players={players} gwId={gwId} /></span>{editable && <select aria-label={`${entry.role === 'STARTER' ? 'Starting pitcher' : entry.role.toLowerCase()} slot ${index + 1}`} value={entry.playerId} onChange={(event) => onChange(index, Number(event.target.value))}>{eligiblePlayers.map((player) => <option key={player.id} value={player.id}>{player.givenName} {player.familyName}</option>)}</select>}</div>;
+      const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+        if (!editable) return;
+        event.preventDefault();
+        const sourcePayload = event.dataTransfer.getData('application/x-game-lineup-entry-index');
+        if (sourcePayload === '') return;
+        const sourceIndex = Number(sourcePayload);
+        if (Number.isInteger(sourceIndex)) onSwap(sourceIndex, index);
+      };
+      return <div key={index} data-testid={`game-lineup-row-${entry.playerId}`} data-game-slot-index={index} onDragOver={editable ? (event) => event.preventDefault() : undefined} onDrop={handleDrop} style={rowStyle}><span style={tagStyle}>{entry.role === 'STARTER' ? 'SP' : entry.role}</span><span style={{ flex: 1 }}><LineupPlayerLink playerId={entry.playerId} players={players} gwId={gwId} /></span>{editable && <><span data-testid={`game-lineup-drag-handle-${entry.playerId}`} aria-label={`Drag game lineup slot for player ${entry.playerId}`} draggable onDragStart={(event) => event.dataTransfer.setData('application/x-game-lineup-entry-index', String(index))} style={{ cursor: 'grab', color: '#777', fontSize: '1rem' }}>⠿</span><select aria-label={`${entry.role === 'STARTER' ? 'Starting pitcher' : entry.role.toLowerCase()} slot ${index + 1}`} value={entry.playerId} onChange={(event) => onChange(index, Number(event.target.value))}>{eligiblePlayers.map((player) => <option key={player.id} value={player.id}>{player.givenName} {player.familyName}</option>)}</select></>}</div>;
     })}
     {editable && <Button type="button" size="sm" onClick={onSave}>Save game lineup</Button>}{error && <ErrorText role="alert" style={{ marginLeft: '10px' }}>{error}</ErrorText>}
   </Card>;
