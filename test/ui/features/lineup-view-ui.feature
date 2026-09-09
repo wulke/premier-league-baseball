@@ -216,7 +216,7 @@ Feature: Team Lineup View UI
     When the player navigates to "/1/team/10/lineup"
     And the manager enters lineup edit mode
     And the player selects the Batting tab
-    Then player 1 has a lineup slot picker and drag handle without role or position controls
+    Then player 1 has a leading lineup slot picker and a drag-enabled row without role or position controls
 
   @spec:LINEUI-012
   Scenario: An invalid read-mode lineup entry is visibly flagged

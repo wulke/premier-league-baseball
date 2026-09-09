@@ -67,7 +67,7 @@ const selectTab = (name: 'Defensive' | 'Batting' | 'Bullpen') => fireEvent.click
 const dragPlayerOnto = (sourcePlayerId: number, targetPlayerId: number) => {
   const values = new Map<string, string>();
   const dataTransfer = { setData: (type: string, value: string) => values.set(type, value), getData: (type: string) => values.get(type) ?? '' };
-  fireEvent.dragStart(screen.getByTestId(`lineup-drag-handle-${sourcePlayerId}`), { dataTransfer });
+  fireEvent.dragStart(screen.getByTestId(sourcePlayerId <= 9 ? `defensive-row-${sourcePlayerId}` : `bench-row-${sourcePlayerId}`), { dataTransfer });
   const target = screen.getByTestId(targetPlayerId <= 9 ? `defensive-row-${targetPlayerId}` : `bench-row-${targetPlayerId}`);
   fireEvent.dragOver(target, { dataTransfer });
   fireEvent.drop(target, { dataTransfer });
@@ -92,7 +92,7 @@ const gameSlot = (entryIndex: number) => document.querySelector<HTMLElement>(`[d
 const dragBullpenPlayerOnto = (sourcePlayerId: number, targetPlayerId: number) => {
   const values = new Map<string, string>();
   const dataTransfer = { setData: (type: string, value: string) => values.set(type, value), getData: (type: string) => values.get(type) ?? '' };
-  fireEvent.dragStart(screen.getByTestId(`game-lineup-drag-handle-${sourcePlayerId}`), { dataTransfer });
+  fireEvent.dragStart(screen.getByTestId(`game-lineup-row-${sourcePlayerId}`), { dataTransfer });
   fireEvent.dragOver(screen.getByTestId(`game-lineup-row-${targetPlayerId}`), { dataTransfer });
   fireEvent.drop(screen.getByTestId(`game-lineup-row-${targetPlayerId}`), { dataTransfer });
 };
@@ -289,7 +289,7 @@ defineFeature(feature, (test) => {
     and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
     // @spec LINEUI-004,LINEUI-009
-    then('no mutating lineup controls are shown', () => { expect(screen.queryByRole('button', { name: /save lineup/i })).toBeNull(); expect(screen.queryByTestId('lineup-drag-handle-1')).toBeNull(); });
+    then('no mutating lineup controls are shown', () => { expect(screen.queryByRole('button', { name: /save lineup/i })).toBeNull(); expect(screen.getByTestId('defensive-row-1')).not.toHaveAttribute('draggable', 'true'); });
   });
 
   test('A rejected managed-team lineup save shows the validation failure', ({ given, and, when, then }) => {
@@ -330,7 +330,7 @@ defineFeature(feature, (test) => {
     // @spec LINEUI-015
     then('the starter slots for players 1 and 2 are swapped', () => { expect(within(slot(0)).getByRole('link')).toHaveTextContent('Player 2'); expect(within(slot(1)).getByRole('link')).toHaveTextContent('Player 1'); });
     // @spec LINEUI-015
-    and('pitcher and bullpen rows have no drag affordance', () => { expect(screen.queryByTestId('lineup-drag-handle-9')).toBeNull(); expect(screen.queryByTestId('lineup-drag-handle-12')).toBeNull(); });
+    and('pitcher and bullpen rows have no drag affordance', () => { expect(screen.getByTestId('defensive-row-9')).not.toHaveAttribute('draggable', 'true'); expect(screen.getByTestId('bullpen-row-12')).not.toHaveAttribute('draggable', 'true'); });
   });
 
   test('A manager promotes a bench player by dropping it onto a starter', ({ given, and, when, then }) => {
@@ -396,7 +396,7 @@ defineFeature(feature, (test) => {
     and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
     and('the player selects the Batting tab', () => selectTab('Batting'));
     // @spec LINEUI-010,LINEUI-015
-    then('player 1 has a lineup slot picker and drag handle without role or position controls', () => { expect(screen.getByTestId('lineup-picker-Catcher')).toBeInTheDocument(); expect(screen.getByTestId('lineup-drag-handle-1')).toBeInTheDocument(); expect(screen.queryByTestId('role-picker-1')).toBeNull(); expect(screen.queryByTestId('position-picker-1')).toBeNull(); });
+    then('player 1 has a leading lineup slot picker and a drag-enabled row without role or position controls', () => { const row = screen.getByTestId('batting-row-1'); expect(screen.getByTestId('lineup-picker-Catcher')).toBeInTheDocument(); expect(row).toHaveAttribute('draggable', 'true'); expect(row.firstElementChild).toBe(screen.getByTestId('lineup-picker-Catcher')); expect(screen.queryByTestId('role-picker-1')).toBeNull(); expect(screen.queryByTestId('position-picker-1')).toBeNull(); });
   });
 
   test('An invalid read-mode lineup entry is visibly flagged', ({ given, and, when, then }) => {

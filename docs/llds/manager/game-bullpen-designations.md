@@ -39,8 +39,8 @@ PATCH game lineup:
 Lineup page Bullpen tab:
   → fetch next-game lineup alongside the active card and roster
   → render the next opponent/date and snapshot slots
-  → for a managed team with a SCHEDULED game, per-slot select controls and same-type drag/drop
-    handles swap player IDs between the SP, BENCH, and BULLPEN slots locally; pitcher slots
+  → for a managed team with a SCHEDULED game, per-slot select controls and same-type whole-row
+    drag/drop swap player IDs between the SP, BENCH, and BULLPEN slots locally; pitcher slots
     (SP/BULLPEN) may exchange only with pitcher slots and BENCH slots only with BENCH slots.
     SP/BULLPEN controls offer only roster players whose
     `primaryPosition` is `Pitcher`, while BENCH controls offer only existing non-pitcher BENCH

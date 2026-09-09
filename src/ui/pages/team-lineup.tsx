@@ -190,13 +190,15 @@ const TeamLineupView = () => {
       const sourceIndex = Number(sourcePayload);
       if (Number.isInteger(sourceIndex)) swapDraftSlots(sourceIndex, row.entryIndex);
     };
-    return <div key={row.entryIndex} data-testid={testId} data-slot-index={row.entryIndex} onDragOver={editableSlot ? (event) => event.preventDefault() : undefined} onDrop={handleDrop} style={row.valid === false ? { ...rowStyle, background: '#fff0f0', color: '#a11' } : rowStyle}>
+    return <div key={row.entryIndex} data-testid={testId} data-slot-index={row.entryIndex} draggable={editableSlot || undefined} onDragStart={editableSlot ? (event) => event.dataTransfer.setData('application/x-lineup-entry-index', String(row.entryIndex)) : undefined} onDragOver={editableSlot ? (event) => event.preventDefault() : undefined} onDrop={handleDrop} style={row.valid === false ? { ...rowStyle, background: '#fff0f0', color: '#a11' } : rowStyle}>
+      {editableSlot && <LineupSlotPicker row={row} entries={swappableRows} players={players} onSwap={swapDraftSlots} />}
       {!editing && row.valid === false && <span aria-label="Invalid lineup entry" style={{ color: '#b11', fontWeight: 800 }}>✕ Invalid</span>}
+      {tab === 'DEFENSIVE' && row.role === 'STARTER' && <span style={slotLabelStyle}>{isDh ? 'DH' : row.fieldingPosition}</span>}
       {row.role !== 'STARTER' && <span style={tagStyle}>{row.role}</span>}
       {tab === 'BATTING' && row.role === 'STARTER' && <strong style={{ color: '#555', width: '24px' }}>{row.battingOrder ?? '—'}</strong>}
       <span data-testid={isDh ? 'dh-row' : undefined} style={{ flex: 1 }}><LineupPlayerLink playerId={row.playerId} players={players} gwId={gwId} /></span>
       {!editing && <><span style={positionStyle}>{isDh ? 'DH' : row.fieldingPosition ?? ''}</span>{tab === 'DEFENSIVE' && <span style={ratingStyle}>{rating}</span>}</>}
-      {editing && <>{tab === 'DEFENSIVE' && <DraftControls row={row} dhEnabled={dhEnabled} occupied={occupiedPositions(row.entryIndex)} onChange={updateDraft} />}{editableSlot && <LineupSlotInteractions row={row} entries={swappableRows} players={players} onSwap={swapDraftSlots} />}</>}
+      {editing && <>{tab === 'DEFENSIVE' && <DraftControls row={row} dhEnabled={dhEnabled} occupied={occupiedPositions(row.entryIndex)} onChange={updateDraft} />}</>}
     </div>;
   };
 
@@ -237,7 +239,7 @@ const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, erro
         const sourceIndex = Number(sourcePayload);
         if (Number.isInteger(sourceIndex)) onSwap(sourceIndex, index);
       };
-      return <div key={index} data-testid={`game-lineup-row-${entry.playerId}`} data-game-slot-index={index} onDragOver={editable ? (event) => event.preventDefault() : undefined} onDrop={handleDrop} style={rowStyle}><span style={tagStyle}>{entry.role === 'STARTER' ? 'SP' : entry.role}</span><span style={{ flex: 1 }}><LineupPlayerLink playerId={entry.playerId} players={players} gwId={gwId} /></span>{editable && <><span data-testid={`game-lineup-drag-handle-${entry.playerId}`} aria-label={`Drag game lineup slot for player ${entry.playerId}`} draggable onDragStart={(event) => event.dataTransfer.setData('application/x-game-lineup-entry-index', String(index))} style={{ cursor: 'grab', color: '#777', fontSize: '1rem' }}>⠿</span><select aria-label={`${entry.role === 'STARTER' ? 'Starting pitcher' : entry.role.toLowerCase()} slot ${index + 1}`} value={entry.playerId} onChange={(event) => onChange(index, Number(event.target.value))}>{eligiblePlayers.map((player) => <option key={player.id} value={player.id}>{player.givenName} {player.familyName}</option>)}</select></>}</div>;
+      return <div key={index} data-testid={`game-lineup-row-${entry.playerId}`} data-game-slot-index={index} draggable={editable || undefined} onDragStart={editable ? (event) => event.dataTransfer.setData('application/x-game-lineup-entry-index', String(index)) : undefined} onDragOver={editable ? (event) => event.preventDefault() : undefined} onDrop={handleDrop} style={rowStyle}>{editable && <select aria-label={`${entry.role === 'STARTER' ? 'Starting pitcher' : entry.role.toLowerCase()} slot ${index + 1}`} value={entry.playerId} onChange={(event) => onChange(index, Number(event.target.value))}>{eligiblePlayers.map((player) => <option key={player.id} value={player.id}>{player.givenName} {player.familyName}</option>)}</select>}<span style={tagStyle}>{entry.role === 'STARTER' ? 'SP' : entry.role}</span><span style={{ flex: 1 }}><LineupPlayerLink playerId={entry.playerId} players={players} gwId={gwId} /></span></div>;
     })}
     {editable && <Button type="button" size="sm" onClick={onSave}>Save game lineup</Button>}{error && <ErrorText role="alert" style={{ marginLeft: '10px' }}>{error}</ErrorText>}
   </Card>;
@@ -249,14 +251,12 @@ const DraftControls = ({ row, dhEnabled, occupied, onChange }: { row: LineupRow;
   {row.role === 'STARTER' && <><select aria-label={`Fielding position for player ${row.playerId}`} data-testid={`position-picker-${row.playerId}`} value={row.fieldingPosition ?? (row.battingOrder != null ? 'DH' : '')} onChange={(e) => onChange(row.entryIndex, { fieldingPosition: e.target.value === 'DH' ? null : e.target.value as PlayerPosition })}><option value="">Choose position</option>{DEFENSIVE_TAB_ORDER.map((position) => <option key={position} value={position} disabled={occupied.has(position)}>{position}</option>)}{dhEnabled && <option value="DH" disabled={occupied.has(null)}>DH</option>}</select><select aria-label={`Batting slot for player ${row.playerId}`} data-testid={`batting-picker-${row.playerId}`} value={row.battingOrder ?? ''} disabled><option value="">—</option>{row.battingOrder != null && <option value={row.battingOrder}>{row.battingOrder}</option>}</select></>}
 </>;
 
-// @spec LINEUI-015 — both controls delegate to the same slot-swap mutation supplied by the draft owner.
-const LineupSlotInteractions = ({ row, entries, players, onSwap }: { row: LineupRow; entries: LineupRow[]; players: Map<number, RosterPlayer>; onSwap: (sourceIndex: number, targetIndex: number) => void }) => <>
-  <span data-testid={`lineup-drag-handle-${row.playerId}`} aria-label={`Drag lineup slot for player ${row.playerId}`} draggable onDragStart={(event) => event.dataTransfer.setData('application/x-lineup-entry-index', String(row.entryIndex))} style={{ cursor: 'grab', color: '#777', fontSize: '1rem' }}>⠿</span>
+// @spec LINEUI-015 — the leading picker delegates to the same slot-swap mutation as whole-row drag/drop.
+const LineupSlotPicker = ({ row, entries, players, onSwap }: { row: LineupRow; entries: LineupRow[]; players: Map<number, RosterPlayer>; onSwap: (sourceIndex: number, targetIndex: number) => void }) =>
   <select aria-label={`Lineup slot picker for player ${row.playerId}`} data-testid={`lineup-picker-${row.fieldingPosition ?? `bench-${row.entryIndex}`}`} value={row.playerId} onChange={(event) => {
     const sourceIndex = entries.find((entry) => entry.playerId === Number(event.target.value))?.entryIndex;
     if (sourceIndex != null) onSwap(sourceIndex, row.entryIndex);
-  }}>{entries.map((entry) => <option key={entry.playerId} value={entry.playerId}>{playerName(entry.playerId, players)}</option>)}</select>
-</>;
+  }}>{entries.map((entry) => <option key={entry.playerId} value={entry.playerId}>{playerName(entry.playerId, players)}</option>)}</select>;
 
 // @spec LINEUI-013
 const UnassignedBucket = ({ rows, renderRow }: { rows: LineupRow[]; renderRow: (row: LineupRow, tab: LineupTab) => React.ReactNode }) => <section data-testid="unassigned-bucket" aria-label="Unassigned" style={{ marginTop: '14px', borderTop: '1px solid #ddd' }}><SectionLabel style={{ marginBottom: '10px' }}>Unassigned</SectionLabel>{rows.map((row) => renderRow(row, 'DEFENSIVE'))}</section>;
@@ -266,5 +266,6 @@ const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', g
 const positionStyle: React.CSSProperties = { minWidth: '72px', textAlign: 'right', fontSize: '0.77rem', fontWeight: 700, color: '#555' };
 const ratingStyle: React.CSSProperties = { minWidth: '32px', textAlign: 'right', fontSize: '0.77rem', fontWeight: 700, color: '#71896e' };
 const tagStyle: React.CSSProperties = { minWidth: '58px', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', color: '#888' };
+const slotLabelStyle: React.CSSProperties = { minWidth: '78px', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', color: '#555' };
 
 export { TeamLineupView };
