@@ -12,6 +12,13 @@ type NextGameLineup = { game: { id: number; scheduledDate: string | null; status
 
 const DEFENSIVE_TAB_ORDER: PlayerPosition[] = ['Pitcher', 'Catcher', 'FirstBase', 'SecondBase', 'ThirdBase', 'Shortstop', 'LeftField', 'CenterField', 'RightField'];
 
+// @spec LINEUI-014,GBULL-006 — never replace rendered lineup state with an incomplete save response.
+const isTeamLineup = (value: unknown): value is TeamLineup => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const candidate = value as Partial<TeamLineup>;
+  return Array.isArray(candidate.starters) && Array.isArray(candidate.bench) && Array.isArray(candidate.bullpen);
+};
+
 // @spec LINEUI-009,LINEUI-010,LINEUI-013 — the UI draft includes every roster player; only assigned rows are serialized.
 const toDraft = (lineup: TeamLineup, roster: RosterPlayer[]): DraftEntry[] => {
   const entries: DraftEntry[] = [
@@ -69,10 +76,10 @@ const TeamLineupView = () => {
       if (!mounted) return;
       const safeRoster = Array.isArray(nextRoster) ? nextRoster as RosterPlayer[] : [];
       setRoster(safeRoster);
-      const safeLineup = nextLineup && !Array.isArray(nextLineup) ? nextLineup as TeamLineup : null;
+      const safeLineup = isTeamLineup(nextLineup) ? nextLineup : null;
       setLineup(safeLineup);
       setDraft(safeLineup ? toDraft(safeLineup, safeRoster) : []);
-      const safeNextGame = nextGameResponse && !Array.isArray(nextGameResponse) && nextGameResponse.game && nextGameResponse.lineup ? nextGameResponse as NextGameLineup : null;
+      const safeNextGame = nextGameResponse && !Array.isArray(nextGameResponse) && nextGameResponse.game && isTeamLineup(nextGameResponse.lineup) ? nextGameResponse as NextGameLineup : null;
       setNextGame(safeNextGame);
       setGameDraft(safeNextGame ? toGameEntries(safeNextGame.lineup) : []);
     });
@@ -142,7 +149,8 @@ const TeamLineupView = () => {
     const response = await fetch(Endpoints.SaveTeamLineup.replace(':teamId', teamId), { method: 'PUT', mode: 'cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entries }) }).catch(() => null);
     if (!response || !response.ok) { const body = response ? await response.json().catch(() => ({})) : {}; setSaveError(body?.error ?? 'Unable to save lineup'); return; }
     const saved = await response.json().catch(() => null);
-    if (saved && !Array.isArray(saved)) { setLineup(saved as TeamLineup); setDraft([]); setEditing(false); }
+    if (!isTeamLineup(saved)) { setSaveError('Unable to save lineup'); return; }
+    setLineup(saved); setDraft([]); setEditing(false);
   };
   // @spec GBULL-006 — a chosen player swaps with their current snapshot slot, preserving a
   // complete unique entry set whenever both players are already represented in the snapshot.
@@ -173,7 +181,8 @@ const TeamLineupView = () => {
     const response = await fetch(Endpoints.SaveTeamGameLineup.replace(':teamId', teamId).replace(':gameId', String(nextGame.game.id)), { method: 'PATCH', mode: 'cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entries: gameDraft }) }).catch(() => null);
     if (!response || !response.ok) { const body = response ? await response.json().catch(() => ({})) : {}; setGameSaveError(body?.error ?? 'Unable to save game lineup'); return; }
     const saved = await response.json().catch(() => null);
-    if (saved && !Array.isArray(saved)) { const updated = { ...nextGame, lineup: saved as TeamLineup }; setNextGame(updated); setGameDraft(toGameEntries(updated.lineup)); }
+    if (!isTeamLineup(saved)) { setGameSaveError('Unable to save game lineup'); return; }
+    const updated = { ...nextGame, lineup: saved }; setNextGame(updated); setGameDraft(toGameEntries(updated.lineup));
   };
   const occupiedPositions = (self: number) => new Set(starters.filter((row) => row.entryIndex !== self).map((row) => row.fieldingPosition));
 
