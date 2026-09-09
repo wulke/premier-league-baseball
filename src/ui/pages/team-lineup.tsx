@@ -39,7 +39,10 @@ const LineupPlayerLink = ({ playerId, players, gwId }: { playerId: number; playe
   <Link to={`/${gwId}/player/${playerId}`} style={{ color: '#222', fontWeight: 650, textUnderlineOffset: '3px' }}>{playerName(playerId, players)}</Link>
 );
 
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014
+// @spec LINEUI-015 — active-template slots that can exchange occupants through picker or drag.
+const isSwappableSlot = (entry: DraftEntry) => entry.role === 'BENCH' || (entry.role === 'STARTER' && entry.fieldingPosition !== 'Pitcher');
+
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014,LINEUI-015
 const TeamLineupView = () => {
   const { gwId, teamId } = useParams();
   const gameWorld = useRouteLoaderData('gwId') as any;
@@ -83,6 +86,7 @@ const TeamLineupView = () => {
   const starters = rows.filter((row) => row.role === 'STARTER');
   const reserves = rows.filter((row) => row.role === 'BENCH' || row.role === 'BULLPEN');
   const unassigned = rows.filter((row) => row.role === 'UNASSIGNED');
+  const swappableRows = rows.filter(isSwappableSlot);
   const defensiveRows = [...starters].sort((a, b) => (a.fieldingPosition ? DEFENSIVE_TAB_ORDER.indexOf(a.fieldingPosition) : DEFENSIVE_TAB_ORDER.length) - (b.fieldingPosition ? DEFENSIVE_TAB_ORDER.indexOf(b.fieldingPosition) : DEFENSIVE_TAB_ORDER.length));
   const battingRows = [...starters].filter((row) => row.battingOrder != null).sort((a, b) => a.battingOrder! - b.battingOrder!);
   const startingPitcher = starters.find((row) => row.fieldingPosition === 'Pitcher');
@@ -121,6 +125,15 @@ const TeamLineupView = () => {
     }
     return next;
   });
+  // @spec LINEUI-015 — picker selection and a row drop both exchange fixed-slot occupants in this one draft.
+  const swapDraftSlots = (sourceIndex: number, targetIndex: number) => setDraft((current) => {
+    const source = current[sourceIndex];
+    const target = current[targetIndex];
+    if (!source || !target || sourceIndex === targetIndex || !isSwappableSlot(source) || !isSwappableSlot(target)) return current;
+    const next = current.map((entry) => ({ ...entry }));
+    [next[sourceIndex].playerId, next[targetIndex].playerId] = [next[targetIndex].playerId, next[sourceIndex].playerId];
+    return next;
+  });
   // @spec LINEUI-014 — submit only the assigned entries to #254's wholesale PUT endpoint.
   const saveLineup = async () => {
     if (!teamId) return;
@@ -157,13 +170,20 @@ const TeamLineupView = () => {
     const isDh = row.fieldingPosition === null && row.role === 'STARTER';
     const rating = row.fieldingPosition ? players.get(row.playerId)?.positions[row.fieldingPosition] ?? '—' : '';
     const testId = row.role === 'STARTER' ? `${tab.toLowerCase()}-row-${tab === 'BATTING' ? row.battingOrder : row.playerId}` : `${row.role.toLowerCase()}-row-${row.playerId}`;
-    return <div key={row.entryIndex} data-testid={testId} style={row.valid === false ? { ...rowStyle, background: '#fff0f0', color: '#a11' } : rowStyle}>
+    const editableSlot = isManagedTeam && editing && isSwappableSlot(row);
+    const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+      if (!editableSlot) return;
+      event.preventDefault();
+      const sourceIndex = Number(event.dataTransfer.getData('application/x-lineup-entry-index'));
+      if (Number.isInteger(sourceIndex)) swapDraftSlots(sourceIndex, row.entryIndex);
+    };
+    return <div key={row.entryIndex} data-testid={testId} data-slot-index={row.entryIndex} onDragOver={editableSlot ? (event) => event.preventDefault() : undefined} onDrop={handleDrop} style={row.valid === false ? { ...rowStyle, background: '#fff0f0', color: '#a11' } : rowStyle}>
       {!editing && row.valid === false && <span aria-label="Invalid lineup entry" style={{ color: '#b11', fontWeight: 800 }}>✕ Invalid</span>}
       {row.role !== 'STARTER' && <span style={tagStyle}>{row.role}</span>}
       {tab === 'BATTING' && row.role === 'STARTER' && <strong style={{ color: '#555', width: '24px' }}>{row.battingOrder ?? '—'}</strong>}
       <span data-testid={isDh ? 'dh-row' : undefined} style={{ flex: 1 }}><LineupPlayerLink playerId={row.playerId} players={players} gwId={gwId} /></span>
       {!editing && <><span style={positionStyle}>{isDh ? 'DH' : row.fieldingPosition ?? ''}</span>{tab === 'DEFENSIVE' && <span style={ratingStyle}>{rating}</span>}</>}
-      {editing && <DraftControls row={row} dhEnabled={dhEnabled} occupied={occupiedPositions(row.entryIndex)} onChange={updateDraft} />}
+      {editing && <><DraftControls row={row} dhEnabled={dhEnabled} occupied={occupiedPositions(row.entryIndex)} onChange={updateDraft} />{editableSlot && <LineupSlotInteractions row={row} entries={swappableRows} players={players} onSwap={swapDraftSlots} />}</>}
     </div>;
   };
 
@@ -206,6 +226,15 @@ const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, erro
 const DraftControls = ({ row, dhEnabled, occupied, onChange }: { row: LineupRow; dhEnabled: boolean; occupied: Set<PlayerPosition | null>; onChange: (index: number, patch: Partial<DraftEntry>) => void }) => <>
   <select aria-label={`Role for player ${row.playerId}`} data-testid={`role-picker-${row.playerId}`} value={row.role} onChange={(e) => onChange(row.entryIndex, { role: e.target.value as DraftRole })}>{(['STARTER', 'BENCH', 'BULLPEN', 'UNASSIGNED'] as DraftRole[]).map((role) => <option key={role} value={role}>{role}</option>)}</select>
   {row.role === 'STARTER' && <><select aria-label={`Fielding position for player ${row.playerId}`} data-testid={`position-picker-${row.playerId}`} value={row.fieldingPosition ?? (row.battingOrder != null ? 'DH' : '')} onChange={(e) => onChange(row.entryIndex, { fieldingPosition: e.target.value === 'DH' ? null : e.target.value as PlayerPosition })}><option value="">Choose position</option>{DEFENSIVE_TAB_ORDER.map((position) => <option key={position} value={position} disabled={occupied.has(position)}>{position}</option>)}{dhEnabled && <option value="DH" disabled={occupied.has(null)}>DH</option>}</select><select aria-label={`Batting slot for player ${row.playerId}`} data-testid={`batting-picker-${row.playerId}`} value={row.battingOrder ?? ''} disabled><option value="">—</option>{row.battingOrder != null && <option value={row.battingOrder}>{row.battingOrder}</option>}</select></>}
+</>;
+
+// @spec LINEUI-015 — both controls delegate to the same slot-swap mutation supplied by the draft owner.
+const LineupSlotInteractions = ({ row, entries, players, onSwap }: { row: LineupRow; entries: LineupRow[]; players: Map<number, RosterPlayer>; onSwap: (sourceIndex: number, targetIndex: number) => void }) => <>
+  <span data-testid={`lineup-drag-handle-${row.playerId}`} aria-label={`Drag lineup slot for player ${row.playerId}`} draggable onDragStart={(event) => event.dataTransfer.setData('application/x-lineup-entry-index', String(row.entryIndex))} style={{ cursor: 'grab', color: '#777', fontSize: '1rem' }}>⠿</span>
+  <select aria-label={`Lineup slot picker for player ${row.playerId}`} data-testid={`lineup-picker-${row.fieldingPosition ?? `bench-${row.entryIndex}`}`} value={row.playerId} onChange={(event) => {
+    const sourceIndex = entries.find((entry) => entry.playerId === Number(event.target.value))?.entryIndex;
+    if (sourceIndex != null) onSwap(sourceIndex, row.entryIndex);
+  }}>{entries.map((entry) => <option key={entry.playerId} value={entry.playerId}>{playerName(entry.playerId, players)}</option>)}</select>
 </>;
 
 // @spec LINEUI-013
