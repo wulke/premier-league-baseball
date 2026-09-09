@@ -1116,3 +1116,68 @@ Client (already viewing a GameWorld):
 - **Scalability of the direct-domain-call trigger pattern** — revisit only if trigger sites proliferate enough that per-site `notify()` calls become unwieldy.
 - **Multi-instance/clustering delivery** — the in-memory connection map assumes a single Express process; revisit only if the app ever needs to scale beyond one instance.
 - **AI-managed-team reactive triggers** (e.g. an AI-controlled team responding to a user's trade offer) — a genuinely different consumer shape from the human-client SSE feed this map builds: it needs at-least-once delivery so an occurrence is never silently missed, which conflicts with this map's explicit "logged and swallowed on failure, no reliability guarantees" trade-off. Not designed here; a future map should reuse this map's typed **registry** pattern (the occurrence catalog) as precedent, but is expected to design its own delivery/reliability mechanism rather than consume this map's SSE/REST transport as-is — the same relationship this map already has to #218's reward-ledger note above.
+
+---
+
+# HLD: UI Navigation Performance (Loader-Based Data Fetching)
+
+## Goal
+
+Make navigation between the application's existing data-driven UI pages feel continuous rather than like a full-page refresh. A route transition should not first present an intentionally empty page while its primary data is fetched again, and revisiting a page should have a defined path toward reusing recently obtained data. This HLD establishes the architectural direction only; it does not prescribe individual route contracts or cache configuration.
+
+## Strategy
+
+- **Options**:
+  - **Option A:** Extend the existing React Router data-router loader pattern from the `:gwId` route to each in-scope page, allowing the router to coordinate data acquisition with route transitions.
+  - **Option B:** Add loaders and introduce a client cache library (for example, React Query) immediately, using stale-while-revalidate and invalidation for cross-navigation reuse.
+  - **Option C:** Retain page-owned `useEffect` fetching and reduce flicker with local loading placeholders, retained component state, or bespoke shared context caches.
+- **Decision:** Option A. Route loaders are already an established application boundary through `gwLoader`; applying that same responsibility to page routes directly addresses the observed blank-initial-state transition without adding a second data lifecycle or cache-invalidation system. Option B is intentionally deferred: cross-navigation caching is valuable, but its stale-time, mutation invalidation, error, and ownership rules need a dedicated LLD once loader-based navigation establishes a consistent baseline. Option C is rejected because it leaves each page responsible for transition timing and perpetuates the duplicate, uncached fetch patterns causing the issue.
+
+### Trade-offs
+
+- Loader-only navigation improves transition coordination and provides a common foundation, but does not by itself promise persistent cross-navigation caching; a revisit can still revalidate according to router behavior.
+- A cache library could provide stronger reuse and stale-while-revalidate behavior, but adopting it now would introduce a parallel source of truth beside router loader data and broaden this initiative beyond the diagnosed first fix.
+- The chosen path requires follow-on routes to make loading and error rendering compatible with router-managed data. Those page-level decisions remain LLD work rather than being fixed here.
+
+## Architecture
+
+### Components and responsibility
+
+- **Route data boundary:** React Router route loaders become the owner of primary data acquisition for each in-scope page. A transition resolves the destination route's required data through the router instead of mounting a page that begins in a deliberately empty/loading state and independently fetches after paint.
+- **Page rendering boundary:** In-scope page components consume route-provided data and retain responsibility for presenting their page content. Their precise loader inputs, returned shapes, loading UI, errors, and mutation refresh behavior are intentionally unspecified pending LLDs.
+- **Existing GameWorld route:** The top-level `:gwId` route and its `gwLoader` remain the existing shared GameWorld-data boundary. Revalidations may replace its loader object identity; reducing incidental `NavRail` renders is a separate optimization, not part of this initiative.
+- **Future cache boundary:** If measurements or follow-on design show loader-only reuse insufficient, a client cache may be introduced behind the route-data boundary. Its cache keys, freshness policy, invalidation ownership, and relationship to router revalidation must be designed as a separate decision.
+
+### Transition flow
+
+```
+User navigates to an in-scope page
+  → React Router identifies the destination route
+  → destination route obtains its primary data at the route data boundary
+  → router commits the destination page with route-provided data
+  → page renders its content without its own initial blank-state fetch cycle
+
+Future, separately designed enhancement:
+  → route data boundary may reuse still-fresh client-cached data
+  → stale data may remain visible while a background refresh is coordinated
+```
+
+### Scope
+
+**In scope — the six self-fetching page routes/pages:**
+
+- `team-roster.tsx`
+- `team-calendar.tsx`
+- `team-lineup.tsx`
+- `league.tsx`
+- `transfers.tsx`
+- `player-detail.tsx`
+
+**Out of scope:**
+
+- `game-world.tsx`, including its post-mount per-league detail/bracket/today's-games waterfall. It is a distinct hub-page aggregation problem that should be designed separately.
+- `NavRail` render memoization or any other `AppShell` optimization. `NavRail` is outside the `Outlet` and does not remount on page navigation; its re-rendering when `gwLoader` revalidates is a separate concern.
+- Changes to `gwLoader`, GameWorld revalidation policy, season-start/club-claim/resign mutation flows, or backend API response contracts.
+- New UI placeholders, visual redesign, prefetch-on-hover behavior, or route-animation work.
+- Selecting or configuring a client cache library, including React Query, cache keys, stale times, persistence, mutation invalidation, and stale-while-revalidate mechanics.
+- Page-specific loader signatures, error boundaries, data dependencies, and implementation sequencing. These belong to follow-on LLD/EARS issues after this HLD is approved.
