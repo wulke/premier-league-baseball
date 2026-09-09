@@ -164,6 +164,7 @@ Feature: Team Lineup View UI
     And the manager enters lineup edit mode
     And the manager drags player 1 onto player 2
     Then the starter slots for players 1 and 2 are swapped
+    And pitcher and bullpen rows have no drag affordance
 
   @spec:LINEUI-015
   Scenario: A manager promotes a bench player by dropping it onto a starter

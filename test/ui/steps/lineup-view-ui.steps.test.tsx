@@ -268,7 +268,7 @@ defineFeature(feature, (test) => {
     and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
     when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
     // @spec LINEUI-004,LINEUI-009
-    then('no mutating lineup controls are shown', () => expect(screen.queryByRole('button', { name: /save lineup/i })).toBeNull());
+    then('no mutating lineup controls are shown', () => { expect(screen.queryByRole('button', { name: /save lineup/i })).toBeNull(); expect(screen.queryByTestId('lineup-drag-handle-1')).toBeNull(); });
   });
 
   test('A rejected managed-team lineup save shows the validation failure', ({ given, and, when, then }) => {
@@ -308,6 +308,8 @@ defineFeature(feature, (test) => {
     and('the manager drags player 1 onto player 2', () => dragPlayerOnto(1, 2));
     // @spec LINEUI-015
     then('the starter slots for players 1 and 2 are swapped', () => { expect(slot(0)).toHaveTextContent('Player 2'); expect(slot(1)).toHaveTextContent('Player 1'); });
+    // @spec LINEUI-015
+    and('pitcher and bullpen rows have no drag affordance', () => { expect(screen.queryByTestId('lineup-drag-handle-9')).toBeNull(); expect(screen.queryByTestId('lineup-drag-handle-12')).toBeNull(); });
   });
 
   test('A manager promotes a bench player by dropping it onto a starter', ({ given, and, when, then }) => {
