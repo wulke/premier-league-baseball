@@ -174,7 +174,9 @@ const TeamLineupView = () => {
     const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
       if (!editableSlot) return;
       event.preventDefault();
-      const sourceIndex = Number(event.dataTransfer.getData('application/x-lineup-entry-index'));
+      const sourcePayload = event.dataTransfer.getData('application/x-lineup-entry-index');
+      if (sourcePayload === '') return;
+      const sourceIndex = Number(sourcePayload);
       if (Number.isInteger(sourceIndex)) swapDraftSlots(sourceIndex, row.entryIndex);
     };
     return <div key={row.entryIndex} data-testid={testId} data-slot-index={row.entryIndex} onDragOver={editableSlot ? (event) => event.preventDefault() : undefined} onDrop={handleDrop} style={row.valid === false ? { ...rowStyle, background: '#fff0f0', color: '#a11' } : rowStyle}>

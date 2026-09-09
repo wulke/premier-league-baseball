@@ -198,6 +198,16 @@ Feature: Team Lineup View UI
     And the manager saves the lineup
     Then the one saved lineup includes both the drag and picker slot swaps
 
+  @spec:LINEUI-015
+  Scenario: An unrelated drop does not change the lineup draft
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And an unrelated item is dropped onto player 2
+    Then player 1 and player 2 remain in their original starter slots
+
   @spec:LINEUI-012
   Scenario: An invalid read-mode lineup entry is visibly flagged
     Given GET /api/team/10/lineup returns a lineup with an invalid starter
