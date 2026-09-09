@@ -145,6 +145,18 @@ Feature: Team Lineup View UI
     And the draft remains in edit mode
 
   @spec:LINEUI-014
+  Scenario: A malformed successful lineup save keeps the editor available
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    And PUT /api/team/10/lineup returns a malformed successful response
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager saves the lineup
+    Then the malformed lineup save failure is shown
+    And the draft remains in edit mode
+
+  @spec:LINEUI-014
   Scenario: Cancelling an edit discards its draft
     Given GameWorld 1 has Team 10 as its managed club
     And GET /api/team/10/lineup returns a DH-off active lineup
@@ -154,6 +166,81 @@ Feature: Team Lineup View UI
     And the manager assigns unassigned player 14 to the bench
     And the manager cancels lineup editing
     Then the unassigned player is not assigned in the read-only lineup
+
+  @spec:LINEUI-015
+  Scenario: A manager drags one position-player starter onto another starter
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager drags player 1 onto player 2
+    Then the starter slots for players 1 and 2 are swapped
+    And pitcher and bullpen rows have no drag affordance
+
+  @spec:LINEUI-015
+  Scenario: A manager promotes a bench player by dropping it onto a starter
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager drags player 10 onto player 1
+    Then player 10 fills player 1's starter slot and player 1 fills player 10's bench slot
+
+  @spec:LINEUI-015
+  Scenario: A manager demotes a starter by dropping it onto a bench player
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager drags player 1 onto player 10
+    Then player 10 fills player 1's starter slot and player 1 fills player 10's bench slot
+
+  @spec:LINEUI-015
+  Scenario: A manager combines drag and picker edits before saving once
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager drags player 1 onto player 2
+    And the player selects the Batting tab
+    And the manager picks player 10 for the Catcher slot
+    And the manager saves the lineup
+    Then the one saved lineup includes both the drag and picker slot swaps
+
+  @spec:LINEUI-015
+  Scenario: An unrelated drop does not change the lineup draft
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And an unrelated item is dropped onto player 2
+    Then player 1 and player 2 remain in their original starter slots
+
+  @spec:LINEUI-015
+  Scenario: A row drag still swaps when the browser does not return its custom payload
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager drags player 1 onto player 2 without a readable drag payload
+    Then the starter slots for players 1 and 2 are swapped
+
+  @spec:LINEUI-010 @spec:LINEUI-015
+  Scenario: Edit selectors replace duplicated row labels
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    Then the Defensive position picker replaces its read-only position label
+    When the player selects the Batting tab
+    Then the Batting slot picker replaces the player name and the row remains drag-enabled
 
   @spec:LINEUI-012
   Scenario: An invalid read-mode lineup entry is visibly flagged
@@ -174,3 +261,13 @@ Feature: Team Lineup View UI
     And defensive starters are excluded from bench slots
     When the manager saves the game lineup
     Then the game lineup draft is sent to the game save endpoint
+
+  @spec:GBULL-006
+  Scenario: A manager swaps two next-game bullpen slots by drag and drop
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup/next-game returns a scheduled game lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the player opens the Bullpen tab
+    And the manager drags bullpen player 12 onto bullpen player 13
+    Then the next-game bullpen slots for players 12 and 13 are swapped

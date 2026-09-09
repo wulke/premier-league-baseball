@@ -39,8 +39,10 @@ PATCH game lineup:
 Lineup page Bullpen tab:
   → fetch next-game lineup alongside the active card and roster
   → render the next opponent/date and snapshot slots
-  → for a managed team with a SCHEDULED game, per-slot select controls swap player IDs between
-    the SP, BENCH, and BULLPEN slots locally; SP/BULLPEN controls offer only roster players whose
+  → for a managed team with a SCHEDULED game, per-slot select controls and same-type whole-row
+    drag/drop swap player IDs between the SP, BENCH, and BULLPEN slots locally; pitcher slots
+    (SP/BULLPEN) may exchange only with pitcher slots and BENCH slots only with BENCH slots.
+    SP/BULLPEN controls offer only roster players whose
     `primaryPosition` is `Pitcher`, while BENCH controls offer only existing non-pitcher BENCH
     occupants (never defensive starters); submit the complete snapshot with PATCH
   → other teams and started/completed games render the snapshot read-only
@@ -63,6 +65,7 @@ current random-score `SimulationEngine`.
 | Non-managed viewed club | Its snapshot remains visible, but only the UI hides selectors and Save. |
 | A fielder is selected for an SP or active-bullpen slot | It is not an eligible option. The current slot occupant remains available for legacy/invalid snapshot display. |
 | A manager changes a bench slot | Only current non-pitcher bench occupants are candidates; a defensive starter cannot be silently exchanged through this bullpen-only surface. |
+| A manager drops a pitcher slot on a BENCH slot, or vice versa | No swap occurs; drag/drop retains the same pitcher-versus-bench eligibility boundary as the selectors. |
 
 ## Traceability
 
