@@ -220,6 +220,16 @@ Feature: Team Lineup View UI
     And an unrelated item is dropped onto player 2
     Then player 1 and player 2 remain in their original starter slots
 
+  @spec:LINEUI-015
+  Scenario: A row drag still swaps when the browser does not return its custom payload
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager drags player 1 onto player 2 without a readable drag payload
+    Then the starter slots for players 1 and 2 are swapped
+
   @spec:LINEUI-010 @spec:LINEUI-015
   Scenario: The Batting tab keeps lineup slot reassignment compact
     Given GameWorld 1 has Team 10 as its managed club

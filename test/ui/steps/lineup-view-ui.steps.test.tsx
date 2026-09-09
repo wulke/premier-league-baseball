@@ -74,6 +74,15 @@ const dragPlayerOnto = (sourcePlayerId: number, targetPlayerId: number) => {
   fireEvent.drop(target, { dataTransfer });
 };
 
+// @spec LINEUI-015 — some browsers do not make custom MIME data readable on drop.
+const dragPlayerOntoWithoutReadablePayload = (sourcePlayerId: number, targetPlayerId: number) => {
+  const dataTransfer = { setData: jest.fn(), getData: () => '' };
+  fireEvent.dragStart(screen.getByTestId(sourcePlayerId <= 9 ? `defensive-row-${sourcePlayerId}` : `bench-row-${sourcePlayerId}`), { dataTransfer });
+  const target = screen.getByTestId(targetPlayerId <= 9 ? `defensive-row-${targetPlayerId}` : `bench-row-${targetPlayerId}`);
+  fireEvent.dragOver(target, { dataTransfer });
+  fireEvent.drop(target, { dataTransfer });
+};
+
 // @spec LINEUI-015 — use the same transferable shape as a lineup drag, but without its payload.
 const dropUnrelatedItemOnto = (targetPlayerId: number) => {
   const values = new Map<string, string>();
@@ -401,6 +410,18 @@ defineFeature(feature, (test) => {
     and('an unrelated item is dropped onto player 2', () => dropUnrelatedItemOnto(2));
     // @spec LINEUI-015
     then('player 1 and player 2 remain in their original starter slots', () => { expect(within(slot(0)).getByRole('link')).toHaveTextContent('Player 1'); expect(within(slot(1)).getByRole('link')).toHaveTextContent('Player 2'); });
+  });
+
+  test('A row drag still swaps when the browser does not return its custom payload', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    and('the manager drags player 1 onto player 2 without a readable drag payload', () => dragPlayerOntoWithoutReadablePayload(1, 2));
+    // @spec LINEUI-015
+    then('the starter slots for players 1 and 2 are swapped', () => { expect(within(slot(0)).getByRole('link')).toHaveTextContent('Player 2'); expect(within(slot(1)).getByRole('link')).toHaveTextContent('Player 1'); });
   });
 
   test('The Batting tab keeps lineup slot reassignment compact', ({ given, and, when, then }) => {
