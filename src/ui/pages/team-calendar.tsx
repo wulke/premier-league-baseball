@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouteLoaderData } from 'react-router';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useLoaderData, useParams, useRevalidator } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { TeamSeasonCalendar, TeamSeasonGame } from '../../api/models';
 import { Button, ErrorText, PageContainer, SectionLabel } from '../components/ui';
@@ -153,52 +153,21 @@ const GameRow = ({
 const TeamCalendar = () => {
   // @spec UI-004
   const { gwId, teamId } = useParams();
-  const [calendar, setCalendar] = useState<TeamSeasonCalendar | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // @spec NAVLOAD-001,NAVLOAD-003,NAVLOAD-005,NAVLOAD-007
+  const loaded = useLoaderData() as { calendar: TeamSeasonCalendar | null; error: string | null };
+  const [calendar, setCalendar] = useState<TeamSeasonCalendar | null>(loaded.calendar);
+  const [error, setError] = useState<string | null>(loaded.error);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [statusFilter, setStatusFilter] = useState<CalendarFilter>('all');
   const [divisionFilter, setDivisionFilter] = useState<string>('all');
-  const [retryToken, setRetryToken] = useState<number>(0);
   const [simulateState, setSimulateState] = useState<Map<number, SimulateRowStatus>>(new Map());
-  // @spec RLDRUI-005 — interim bridge: the gw loader result's identity changes on every
-  // loader re-run (including a revalidate() from NavRail's batch simulate), same trigger
-  // semantics as the retired refreshToken counter. Removed once TeamCalendar gets its own
-  // loader + shouldRevalidate (#234).
-  const gw = useRouteLoaderData('gwId');
+  const { revalidate } = useRevalidator();
+  const preservePatchedCalendar = useRef(false);
 
   useEffect(() => {
-    if (!teamId) return;
-    let isMounted = true;
-
-    setIsLoading(true);
-    setError(null);
-    setSimulateState(new Map());
-
-    const qs = new URLSearchParams();
-    if (gwId) qs.append('gwId', gwId);
-
-    fetch(`${Endpoints.GetTeamSchedule.replace(':teamId', teamId)}?${qs.toString()}`, {
-      method: 'GET',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' }
-    }).then((response) => {
-      if (!response.ok) throw Error(`Failed to load team calendar (${response.status})`);
-      return response.json();
-    }).then((data) => {
-      if (!isMounted) return;
-      setCalendar(data);
-    }).catch((err) => {
-      if (!isMounted) return;
-      console.error(err);
-      setError('Unable to load team calendar right now.');
-      setCalendar(null);
-    }).finally(() => {
-      if (!isMounted) return;
-      setIsLoading(false);
-    });
-
-    return () => { isMounted = false; };
-  }, [gwId, retryToken, gw, teamId]);
+    if (preservePatchedCalendar.current) { preservePatchedCalendar.current = false; return; }
+    setCalendar(loaded.calendar); setError(loaded.error); setIsLoading(false); setSimulateState(new Map());
+  }, [loaded]);
 
   const handleSimulate = (gameId: number) => {
     setSimulateState((prev) => new Map(prev).set(gameId, 'loading'));
@@ -221,6 +190,9 @@ const TeamCalendar = () => {
           next.delete(gameId);
           return next;
         });
+        preservePatchedCalendar.current = true;
+        // @spec NAVLOAD-006
+        revalidate();
       })
       .catch(() => {
         // Error icon persists (no retry) until the player navigates away or the calendar
@@ -345,7 +317,7 @@ const TeamCalendar = () => {
       {!isLoading && error && (
         <div style={{ border: '1px solid #fcc', background: '#fff8f8', borderRadius: '6px', padding: '16px' }}>
           <ErrorText style={{ display: 'block', marginBottom: '10px', fontSize: '0.9rem' }}>{error}</ErrorText>
-          <Button intent="secondary" onClick={() => setRetryToken((v) => v + 1)} style={{ padding: '6px 14px', fontSize: '0.85rem' }}>
+          <Button intent="secondary" onClick={revalidate} style={{ padding: '6px 14px', fontSize: '0.85rem' }}>
             Retry
           </Button>
         </div>

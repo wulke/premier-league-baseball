@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Endpoints } from '../../api/endpoints';
+import React, { useState } from 'react';
 import { BracketRound, BracketTie, DivisionStandings, LeagueDivisionBracket, TeamStanding } from '../../api/models';
-import { useNavigate, useParams } from 'react-router';
+import { useLoaderData, useNavigate, useParams } from 'react-router';
 import { Collapsible } from 'radix-ui';
 import { formatLeagueChampionBanner, getChampionBracket, getChampionTeamName } from '../champion';
 import { Badge, Button, Card, PageContainer, SectionLabel, Table, Td, Th, Tr } from '../components/ui';
@@ -315,41 +314,8 @@ const Division = ({
 const League = () => {
   const { gwId, leagueId } = useParams();
   const navigate = useNavigate();
-  const [league, setLeague] = useState<any>(null);
-  const [standings, setStandings] = useState<DivisionStandings[]>([]);
-  const [divisionBrackets, setDivisionBrackets] = useState<LeagueDivisionBracket[]>([]);
-
-  useEffect(() => {
-    if (!leagueId) return;
-
-    let isMounted = true;
-
-    fetch(Endpoints.GetLeague.replace(':leagueId', leagueId), {
-      method: 'GET',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' }
-    }).then((r) => r.json())
-      .then((leagueData) => { if (isMounted) setLeague(leagueData); })
-      .catch(console.error);
-
-    fetch(Endpoints.GetLeagueStandings.replace(':leagueId', leagueId), {
-      method: 'GET',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' }
-    }).then((r) => r.json())
-      .then((standingsData) => { if (isMounted) setStandings(standingsData ?? []); })
-      .catch((error) => { console.error(error); if (isMounted) setStandings([]); });
-
-    fetch(Endpoints.GetLeagueBracket.replace(':leagueId', leagueId), {
-      method: 'GET',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' }
-    }).then((r) => r.json())
-      .then((bracketData) => { if (isMounted) setDivisionBrackets(bracketData ?? []); })
-      .catch((error) => { console.error(error); if (isMounted) setDivisionBrackets([]); });
-
-    return () => { isMounted = false; };
-  }, [leagueId]);
+  // @spec NAVLOAD-001,NAVLOAD-004,NAVLOAD-005
+  const { league, standings, brackets: divisionBrackets } = useLoaderData() as { league: any; standings: DivisionStandings[]; brackets: LeagueDivisionBracket[] };
 
   if (!league) return <></>;
 

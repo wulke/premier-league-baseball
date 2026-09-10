@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import React, { useState } from 'react';
+import { Link, useLoaderData, useParams } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { PlayerDetail as PlayerDetailRecord, PlayerPosition } from '../../api/models';
 import { Card, PageContainer } from '../components/ui';
@@ -76,21 +76,9 @@ const chipStyle: React.CSSProperties = { display: 'inline-block', padding: '3px 
 // @spec PDETUI-001,PDETUI-002,PDETUI-003,PDETUI-004,PDETUI-005,PDETUI-006,PDETUI-007,PDETUI-008,PDETUI-009
 const PlayerDetail = () => {
   const { playerId, gwId } = useParams();
-  const [player, setPlayer] = useState<PlayerDetailRecord | null | undefined>(undefined);
+  // @spec NAVLOAD-001,NAVLOAD-003,NAVLOAD-005
+  const player = useLoaderData() as PlayerDetailRecord | null;
   const [tab, setTab] = useState<Tab>('overview');
-
-  useEffect(() => {
-    if (!playerId) { setPlayer(null); return; }
-    let mounted = true;
-    setPlayer(undefined);
-    fetch(Endpoints.GetPlayerDetail.replace(':playerId', playerId), { method: 'GET', mode: 'cors', headers: { 'Content-Type': 'application/json' } })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => { if (mounted) setPlayer(data && !Array.isArray(data) ? data : null); })
-      .catch(() => { if (mounted) setPlayer(null); });
-    return () => { mounted = false; };
-  }, [playerId]);
-
-  if (player === undefined) return <main style={{ padding: '24px' }} aria-busy="true">Loading player…</main>;
   if (!player) return <main data-testid="player-not-found" style={{ padding: '24px' }}><h1>Player not found</h1><p>This player is unavailable in this game world.</p></main>;
   const pitchable = player.primaryPosition === 'Pitcher';
   const tabs: Array<[Tab, string]> = [['overview', 'Overview'], ['positions', 'Positions'], ...(pitchable ? [['pitches', 'Pitch repertoire'] as [Tab, string]] : [])];

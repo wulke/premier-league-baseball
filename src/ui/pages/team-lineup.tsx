@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useRouteLoaderData } from 'react-router';
+import { Link, useLoaderData, useParams, useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { ActiveLineupEntry, PlayerPosition, RosterPlayer, TeamLineup } from '../../api/models';
 import { Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
@@ -54,6 +54,9 @@ const isSwappableSlot = (entry: DraftEntry) => entry.role === 'BENCH' || (entry.
 const TeamLineupView = () => {
   const { gwId, teamId } = useParams();
   const gameWorld = useRouteLoaderData('gwId') as any;
+  // @spec NAVLOAD-001,NAVLOAD-004,NAVLOAD-005,NAVLOAD-009
+  const loaded = useLoaderData() as { lineup: TeamLineup | null; roster: RosterPlayer[]; nextGame: NextGameLineup | null };
+  const { revalidate } = useRevalidator();
   const isManagedTeam = gameWorld?.managedTeamId != null && String(gameWorld.managedTeamId) === teamId;
   const [lineup, setLineup] = useState<TeamLineup | null>(null);
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
@@ -67,26 +70,13 @@ const TeamLineupView = () => {
   const lineupDragSource = useLineupDragSource('application/x-lineup-entry-index');
 
   useEffect(() => {
-    if (!teamId || !gwId) return;
-    let mounted = true;
-    setLineup(null); setDraft([]); setRoster([]); setEditing(false); setSaveError(null); setNextGame(null); setGameDraft([]); setGameSaveError(null);
-    Promise.all([
-      fetch(`${Endpoints.GetTeamLineup.replace(':teamId', teamId)}?gwId=${encodeURIComponent(gwId)}`, { method: 'GET', mode: 'cors', headers: { 'Content-Type': 'application/json' } }).then((r) => r.ok ? r.json() : null).catch(() => null),
-      fetch(Endpoints.GetTeamRoster.replace(':teamId', teamId), { method: 'GET', mode: 'cors', headers: { 'Content-Type': 'application/json' } }).then((r) => r.ok ? r.json() : []).catch(() => []),
-      fetch(`${Endpoints.GetNextTeamGameLineup.replace(':teamId', teamId)}?gwId=${encodeURIComponent(gwId)}`, { method: 'GET', mode: 'cors', headers: { 'Content-Type': 'application/json' } }).then((r) => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([nextLineup, nextRoster, nextGameResponse]) => {
-      if (!mounted) return;
-      const safeRoster = Array.isArray(nextRoster) ? nextRoster as RosterPlayer[] : [];
-      setRoster(safeRoster);
-      const safeLineup = isTeamLineup(nextLineup) ? nextLineup : null;
-      setLineup(safeLineup);
-      setDraft(safeLineup ? toDraft(safeLineup, safeRoster) : []);
-      const safeNextGame = nextGameResponse && !Array.isArray(nextGameResponse) && nextGameResponse.game && isTeamLineup(nextGameResponse.lineup) ? nextGameResponse as NextGameLineup : null;
-      setNextGame(safeNextGame);
-      setGameDraft(safeNextGame ? toGameEntries(safeNextGame.lineup) : []);
-    });
-    return () => { mounted = false; };
-  }, [gwId, teamId]);
+    const safeRoster = Array.isArray(loaded.roster) ? loaded.roster : [];
+    const safeLineup = isTeamLineup(loaded.lineup) ? loaded.lineup : null;
+    const safeNextGame = loaded.nextGame && isTeamLineup(loaded.nextGame.lineup) ? loaded.nextGame : null;
+    setRoster(safeRoster); setLineup(safeLineup); setNextGame(safeNextGame);
+    // @spec NAVLOAD-009
+    if (!editing) { setDraft(safeLineup ? toDraft(safeLineup, safeRoster) : []); setGameDraft(safeNextGame ? toGameEntries(safeNextGame.lineup) : []); }
+  }, [loaded]);
 
   const players = useMemo(() => new Map(roster.map((player) => [player.id, player])), [roster]);
   // The read card is canonical and therefore carries the effective DH shape used by the server.
@@ -153,6 +143,8 @@ const TeamLineupView = () => {
     const saved = await response.json().catch(() => null);
     if (!isTeamLineup(saved)) { setSaveError('Unable to save lineup'); return; }
     setLineup(saved); setDraft([]); setEditing(false);
+    // @spec NAVLOAD-006,NAVLOAD-009
+    revalidate();
   };
   // @spec GBULL-006 — a chosen player swaps with their current snapshot slot, preserving a
   // complete unique entry set whenever both players are already represented in the snapshot.
@@ -185,6 +177,8 @@ const TeamLineupView = () => {
     const saved = await response.json().catch(() => null);
     if (!isTeamLineup(saved)) { setGameSaveError('Unable to save game lineup'); return; }
     const updated = { ...nextGame, lineup: saved }; setNextGame(updated); setGameDraft(toGameEntries(updated.lineup));
+    // @spec NAVLOAD-006,NAVLOAD-009
+    revalidate();
   };
   const occupiedPositions = (self: number) => new Set(starters.filter((row) => row.entryIndex !== self).map((row) => row.fieldingPosition));
 
