@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useRouteLoaderData } from 'react-router';
+import React, { useState } from 'react';
+import { useLoaderData, useParams, useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { RosterPlayer } from '../../api/models';
 import { RosterTable } from '../components/roster-table';
@@ -13,24 +13,10 @@ const Transfers = () => {
   const managedTeamId: number | null | undefined = gw?.managedTeamId;
   const hasManagedClub = managedTeamId != null;
 
-  const [freeAgents, setFreeAgents] = useState<RosterPlayer[]>([]);
+  // @spec NAVLOAD-001,NAVLOAD-003,NAVLOAD-005
+  const freeAgents = useLoaderData() as RosterPlayer[];
   const [signError, setSignError] = useState<number | null>(null);
-  const [refetchToken, setRefetchToken] = useState(0);
-
-  useEffect(() => {
-    if (!gwId) return;
-    let isMounted = true;
-
-    fetch(Endpoints.GetFreeAgents.replace(':gwId', gwId), {
-      method: 'GET',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' },
-    }).then((response) => (response.ok ? response.json() : []))
-      .then((data) => { if (isMounted) setFreeAgents(Array.isArray(data) ? data : []); })
-      .catch(() => { if (isMounted) setFreeAgents([]); });
-
-    return () => { isMounted = false; };
-  }, [gwId, refetchToken]);
+  const { revalidate } = useRevalidator();
 
   // @spec XFERUI-003,XFERUI-004
   const signPlayer = async (playerId: number) => {
@@ -43,7 +29,8 @@ const Transfers = () => {
       body: JSON.stringify({ playerId }),
     });
     if (!response.ok) setSignError(playerId);
-    setRefetchToken((token) => token + 1);
+    // @spec NAVLOAD-006
+    revalidate();
   };
 
   return (

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useRouteLoaderData } from 'react-router';
+import React from 'react';
+import { useLoaderData, useParams, useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { RosterPlayer } from '../../api/models';
 import { RosterTable } from '../components/roster-table';
@@ -13,23 +13,9 @@ const TeamRoster = () => {
   const managedTeamId: number | null | undefined = gw?.managedTeamId;
   const isManagedTeam = managedTeamId != null && String(managedTeamId) === teamId;
 
-  const [players, setPlayers] = useState<RosterPlayer[]>([]);
-  const [refetchToken, setRefetchToken] = useState(0);
-
-  useEffect(() => {
-    if (!teamId) return;
-    let isMounted = true;
-
-    fetch(Endpoints.GetTeamRoster.replace(':teamId', teamId), {
-      method: 'GET',
-      mode: 'cors',
-      headers: { 'Content-Type': 'application/json' },
-    }).then((response) => (response.ok ? response.json() : []))
-      .then((data) => { if (isMounted) setPlayers(Array.isArray(data) ? data : []); })
-      .catch(() => { if (isMounted) setPlayers([]); });
-
-    return () => { isMounted = false; };
-  }, [teamId, refetchToken]);
+  // @spec NAVLOAD-001,NAVLOAD-003,NAVLOAD-005
+  const players = useLoaderData() as RosterPlayer[];
+  const { revalidate } = useRevalidator();
 
   // @spec XFERUI-005
   const postTransferAction = async (endpoint: string, playerId: number) => {
@@ -40,7 +26,8 @@ const TeamRoster = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ playerId }),
     });
-    setRefetchToken((token) => token + 1);
+    // @spec NAVLOAD-006
+    revalidate();
   };
 
   return (
