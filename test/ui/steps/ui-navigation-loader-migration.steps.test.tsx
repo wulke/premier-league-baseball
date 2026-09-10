@@ -1,7 +1,9 @@
 // @spec NAVLOAD-001,NAVLOAD-002,NAVLOAD-003,NAVLOAD-004,NAVLOAD-005,NAVLOAD-006,NAVLOAD-007,NAVLOAD-008,NAVLOAD-009
 import path from 'path';
-import { createMemoryRouter } from 'react-router';
+import React from 'react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
+import { cleanup, render, screen } from '@testing-library/react';
 import routes from '../../../src/ui/routes';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/ui-navigation-loader-migration.feature'));
@@ -13,7 +15,15 @@ const findRoute = (path: string) => allRoutes(routes as RouteWithChildren[]).fin
 
 defineFeature(feature, (test) => {
   test('Every approved page route owns its primary loader', ({ given, then, and }) => {
-    given('the shared UI route configuration', () => expect(createMemoryRouter(routes)).toBeDefined());
+    given('the shared UI route configuration', async () => {
+      global.fetch = jest.fn((input: RequestInfo | URL) => {
+        const url = input.toString();
+        const body = url === '/api/gameWorld/1' ? { id: 1, managedTeamId: null, config: {} } : { id: 7, givenName: 'Loader', familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', age: 25, birthDate: '2000-01-01', primaryPosition: 'Pitcher', positions: { Pitcher: 80 }, pitches: [], contact: 50, power: 50, armStrength: 50, accuracy: 50, reaction: 50, vision: 50, discipline: 50, contract: null };
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+      }) as jest.Mock;
+      render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/1/player/7'] })} />);
+      expect(await screen.findByTestId('player-masthead')).toHaveTextContent('Loader Player');
+    });
     // @spec NAVLOAD-001,NAVLOAD-004,NAVLOAD-008
     then('Player Detail, Team Roster, Team Calendar, Team Lineup, League, and Transfers each have a route loader', () => {
       ['player/:playerId', 'roster', 'calendar', 'lineup', ':leagueId', 'transfers'].forEach((path) => {
@@ -33,3 +43,5 @@ defineFeature(feature, (test) => {
     });
   });
 });
+
+afterEach(() => cleanup());

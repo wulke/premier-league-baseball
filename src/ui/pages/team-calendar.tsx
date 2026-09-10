@@ -162,11 +162,16 @@ const TeamCalendar = () => {
   const [divisionFilter, setDivisionFilter] = useState<string>('all');
   const [simulateState, setSimulateState] = useState<Map<number, SimulateRowStatus>>(new Map());
   const { revalidate } = useRevalidator();
-  const preservePatchedCalendar = useRef(false);
+  const pendingCalendarPatch = useRef<Pick<TeamSeasonCalendar['games'][number], 'gameId' | 'status' | 'homeTeamResult' | 'awayTeamResult'> | null>(null);
 
   useEffect(() => {
-    if (preservePatchedCalendar.current) { preservePatchedCalendar.current = false; return; }
-    setCalendar(loaded.calendar); setError(loaded.error); setIsLoading(false); setSimulateState(new Map());
+    setCalendar((current) => {
+      const patch = pendingCalendarPatch.current;
+      pendingCalendarPatch.current = null;
+      if (!loaded.calendar || !patch) return loaded.calendar;
+      return { ...loaded.calendar, games: loaded.calendar.games.map((game) => game.gameId === patch.gameId ? { ...game, ...patch } : game) };
+    });
+    setError(loaded.error); setIsLoading(false); setSimulateState(new Map());
   }, [loaded]);
 
   const handleSimulate = (gameId: number) => {
@@ -190,7 +195,7 @@ const TeamCalendar = () => {
           next.delete(gameId);
           return next;
         });
-        preservePatchedCalendar.current = true;
+        pendingCalendarPatch.current = { gameId, status: result.status, homeTeamResult: result.homeTeamResult, awayTeamResult: result.awayTeamResult };
         // @spec NAVLOAD-006
         revalidate();
       })

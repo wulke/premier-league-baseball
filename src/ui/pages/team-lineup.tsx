@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLoaderData, useParams, useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { ActiveLineupEntry, PlayerPosition, RosterPlayer, TeamLineup } from '../../api/models';
@@ -57,6 +57,7 @@ const TeamLineupView = () => {
   // @spec NAVLOAD-001,NAVLOAD-004,NAVLOAD-005,NAVLOAD-009
   const loaded = useLoaderData() as { lineup: TeamLineup | null; roster: RosterPlayer[]; nextGame: NextGameLineup | null };
   const { revalidate } = useRevalidator();
+  const previousTeamId = useRef(teamId);
   const isManagedTeam = gameWorld?.managedTeamId != null && String(gameWorld.managedTeamId) === teamId;
   const [lineup, setLineup] = useState<TeamLineup | null>(null);
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
@@ -70,13 +71,16 @@ const TeamLineupView = () => {
   const lineupDragSource = useLineupDragSource('application/x-lineup-entry-index');
 
   useEffect(() => {
+    const teamChanged = previousTeamId.current !== teamId;
+    previousTeamId.current = teamId;
     const safeRoster = Array.isArray(loaded.roster) ? loaded.roster : [];
     const safeLineup = isTeamLineup(loaded.lineup) ? loaded.lineup : null;
     const safeNextGame = loaded.nextGame && isTeamLineup(loaded.nextGame.lineup) ? loaded.nextGame : null;
     setRoster(safeRoster); setLineup(safeLineup); setNextGame(safeNextGame);
     // @spec NAVLOAD-009
-    if (!editing) { setDraft(safeLineup ? toDraft(safeLineup, safeRoster) : []); setGameDraft(safeNextGame ? toGameEntries(safeNextGame.lineup) : []); }
-  }, [loaded]);
+    if (teamChanged) { setEditing(false); setSaveError(null); setGameSaveError(null); }
+    if (!editing || teamChanged) { setDraft(safeLineup ? toDraft(safeLineup, safeRoster) : []); setGameDraft(safeNextGame ? toGameEntries(safeNextGame.lineup) : []); }
+  }, [loaded, teamId]);
 
   const players = useMemo(() => new Map(roster.map((player) => [player.id, player])), [roster]);
   // The read card is canonical and therefore carries the effective DH shape used by the server.
