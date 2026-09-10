@@ -17,9 +17,24 @@ This LLD migrates six approved pages from mount-time `useEffect` reads to route 
 | `League` | `/:gwId/:leagueId` | league identity, standings, bracket |
 | `Transfers` | `/:gwId/transfers` | free agents |
 
-It supersedes only overlapping, unfinished page-migration plans in the older route-loader rollout.
-The landed `:gwId` loader and shared router remain the foundation. `Home`, `GameWorld`'s waterfall,
+It supersedes only overlapping, unfinished page-migration plans in the older route-loader rollout:
+the blocking/defer decision [#231](https://github.com/wulke/premier-league-baseball/issues/231),
+the TeamCalendar loader decision [#234](https://github.com/wulke/premier-league-baseball/issues/234),
+and its batch rollout [#235](https://github.com/wulke/premier-league-baseball/issues/235). The
+landed `:gwId` loader and shared router remain the foundation. `Home`, `GameWorld`'s waterfall,
 `NavRail` optimization, backend API changes, and client caching remain out of scope.
+
+### Existing LLD amendments at implementation
+
+The following established page LLDs currently describe the shipping `useEffect`+`fetch` read
+path. They remain accurate until this migration's code lands. The EARS/Tests/Code work that
+implements this LLD must amend their primary-read Logic Flow and Traceability sections to point
+to the route-data boundary below; it must not leave two competing canonical read paths:
+
+- [`docs/llds/manager/team-roster-ui.md`](../manager/team-roster-ui.md)
+- [`docs/llds/player/player-detail-ui.md`](../player/player-detail-ui.md)
+- [`docs/llds/manager/lineup-view-ui.md`](../manager/lineup-view-ui.md)
+- [`docs/llds/manager/transfers-ui.md`](../manager/transfers-ui.md)
 
 ## Interface / Data Model
 
@@ -44,6 +59,11 @@ GameWorld data.
 blocking: this is the smallest consistent loader migration, and skeleton/deferred-section design is
 deliberately deferred. An individual failed secondary Lineup/League read maps to its documented
 safe value so the returned shape stays usable.
+
+`teamCalendarLoader` also owns a `shouldRevalidate` policy. It returns true when either route
+parameter changes and otherwise preserves React Router's `defaultShouldRevalidate` result; an
+explicit `revalidator.revalidate()` therefore always reruns it. The current local Status and
+Division filters remain client-only state in this scope—no search-param UI change is introduced.
 
 ### State boundaries
 
@@ -85,6 +105,11 @@ Calendar game simulation succeeds
   → patch the one visible row immediately
   → revalidate so the loader result converges on server truth
 
+Calendar load failed, user selects Retry
+  → Button calls useRevalidator().revalidate()
+  → teamCalendarLoader reruns under its shouldRevalidate policy
+  → completed success replaces the error route data
+
 Lineup save succeeds
   → revalidate; derive/reset drafts only from completed fresh data
 ```
@@ -105,7 +130,7 @@ destination loader before constructing the router, exercising the actual navigat
 |---|---|---|
 | u1 | Rapid navigation supersedes a pending loader | Router aborts the old fetch through `request.signal`; no primary-read `isMounted` flag remains. |
 | u2 | Player detail is missing/fails | Loader returns `null`; the existing not-found state renders without a loading flash. |
-| u3 | A list request fails | Loader returns `[]`; Calendar instead returns its explicit error shape so Retry remains possible. |
+| u3 | A list request fails | Loader returns `[]`; Calendar instead returns its explicit error shape. Retry calls `useRevalidator().revalidate()` rather than incrementing `retryToken`. |
 | u4 | One League/Lineup secondary request fails | Return its safe null/empty value while settled sibling data remains usable. |
 | u5 | Revalidation begins while Lineup is being edited | Preserve the dirty draft; never replace it merely because revalidation started. |
 | u6 | Calendar simulation has an immediate result | Apply the local row patch, then allow the server-authoritative loader result to replace it. |
@@ -119,6 +144,8 @@ destination loader before constructing the router, exercising the actual navigat
 |---|---|
 | HLD | [`docs/high-level-design.md` — UI Navigation Performance](../../high-level-design.md#hld-ui-navigation-performance-loader-based-data-fetching) |
 | Existing foundation | [`docs/llds/shell/route-loader-foundation-ui.md`](./route-loader-foundation-ui.md) |
+| Superseded unfinished rollout decisions | [#231](https://github.com/wulke/premier-league-baseball/issues/231) · [#234](https://github.com/wulke/premier-league-baseball/issues/234) · [#235](https://github.com/wulke/premier-league-baseball/issues/235) |
+| LLDs amended with implementation | `manager/team-roster-ui.md` · `player/player-detail-ui.md` · `manager/lineup-view-ui.md` · `manager/transfers-ui.md` |
 | **This LLD** | `docs/llds/shell/ui-navigation-loader-migration.md` |
 | EARS | To be created only after LLD approval. |
 | Gherkin | To be created only after EARS approval. |
