@@ -19,10 +19,8 @@ branding change. The backend sibling LLD is deliberately not changed.
 
 ## LID Gate
 
-This revision is the design and EARS gate for #301. `TODAYUI-007` and `TODAYUI-008` remain active
-until the LLD/EARS review is approved; no UI test or implementation work is in scope for this issue.
-The later implementation issue must add Red scenarios for both IDs before changing
-`src/ui/pages/game-world.tsx`.
+This revision was the design and EARS gate for #301. Issue #302 adds Red scenarios for
+`TODAYUI-007` and `TODAYUI-008` before implementing the scoreboard in `src/ui/pages/game-world.tsx`.
 
 ## Interface / Data Model
 
@@ -109,7 +107,6 @@ card layout.
 | Backend sibling LLD (unchanged) | `docs/llds/league/league-today.md` |
 | **This LLD** | `docs/llds/league/league-today-ui.md` |
 | EARS | `docs/specs/league/league-today-ui-specs.md` — `TODAYUI-001`..`TODAYUI-008` |
-| Existing Gherkin | `test/ui/features/league-today-ui.feature` — `TODAYUI-001`..`TODAYUI-006` |
-| Future Gherkin | new scoreboard scenarios for `TODAYUI-007`, `TODAYUI-008` |
-| Future code | `src/ui/pages/game-world.tsx` |
+| Gherkin | `test/ui/features/league-today-ui.feature` — `TODAYUI-001`..`TODAYUI-008` |
+| Code | `src/ui/pages/game-world.tsx` |
 | Decision records | [#101](https://github.com/wulke/premier-league-baseball/issues/101), [#301](https://github.com/wulke/premier-league-baseball/issues/301) |
