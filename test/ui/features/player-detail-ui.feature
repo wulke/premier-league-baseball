@@ -3,10 +3,12 @@ Feature: Player Detail UI
   A player detail page at the top-level route `/:gwId/player/:playerId` with a persistent identity
   masthead and an FM-style page tab bar — Overview, Positions, and Pitch repertoire (the last shown
   only for pitchers). Overview is the current-state snapshot (flat-7 tinted ratings + a contract
-  block + a deferred Career & accomplishments hook); Positions owns all position-affinity viz via a
+  block + a deferred Career & accomplishments hook); the masthead always shows a client-computed,
+  display-only OVR badge next to the position badge. Positions owns all position-affinity viz via a
   view-switcher (field diagram default); the Pitch repertoire tab shows 4-pitch cards for pitchers.
   The top-level route forward-proofs free agents, who render with a "Free Agent" chip in place of a
-  team link. No stored or computed OVR; a display-only OVR toggle is client-side only.
+  team link. OVR is not stored or API-carried: it is the rounded mean of the flat-7 ratings and has
+  no manual visibility toggle.
 
   Background:
     Given GameWorld 1 exists
@@ -19,6 +21,7 @@ Feature: Player Detail UI
     Given GET /api/player/100 returns Player 100's detail with a current Contract
     When the player navigates to "/1/player/100"
     Then the page shows the identity masthead with Player 100's name
+    And the masthead shows the display-only OVR badge beside the primary-position badge
     And the page shows an Overview tab
     And the page shows a Positions tab
     And the page shows a Pitch repertoire tab
@@ -31,6 +34,7 @@ Feature: Player Detail UI
     When the player navigates to "/1/player/100"
     And the player selects the Overview tab
     Then the Overview shows the flat-7 tinted ratings
+    And the Overview does not show a Display OVR toggle
     And the Overview shows a contract block with the team and term
     And the Overview shows a Career & accomplishments hook
 

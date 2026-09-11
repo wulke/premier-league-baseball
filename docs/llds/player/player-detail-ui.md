@@ -27,7 +27,7 @@ type Tab = 'overview' | 'positions' | 'pitches';
 // pitches tab is rendered ONLY when primaryPosition === 'Pitcher' (hidden for fielders).
 
 // Sub-views (all render from the single PlayerDetail response — no extra fetches):
-//   Overview : flat-7 tinted ratings (+ optional display-only OVR) + contract block (team+term)
+//   Overview : flat-7 tinted ratings + contract block (team+term)
 //              + a deferred "Career & accomplishments" hook (graduates with #139/#140/awards)
 //   Positions: view-switcher — field diagram (default) · bar grid · coverage pills
 //   Pitches   : 4-pitch cards (VEL/CTL/SPN) — pitchers only
@@ -42,12 +42,12 @@ Roster row click (team-roster-ui.md) → navigate(`/${gwId}/player/${playerId}`)
         .then(r => r.ok ? r.json() : null)                      // non-ok → null → not-found state (PDETUI-001)
       render:
         masthead (persistent across tabs):
-          name, primaryPosition badge (group hue), team link OR "Free Agent" chip (#146 edge),
+          name, primaryPosition badge (group hue), always-visible display-only OVR badge, team link OR "Free Agent" chip (#146 edge),
           country (flag + ISO-2), bats/throws, age (+ birthDate), primary position
         tab bar: [Overview] [Positions] [Pitch repertoire (if pitcher)]
         active tab's content, all from the one response
       Overview tab:
-        flat-7 tinted ratings; "+ Display OVR" toggle computes a display-only mean (never API-carried)
+        flat-7 tinted ratings; OVR is computed client-side as the rounded mean of those seven ratings and is displayed unconditionally in the masthead beside the primary-position badge (never API-carried)
         contract block: team (linked) + term (start–end); Free Agent chip if contract === null
         "Career & accomplishments" deferred block (stats #139 / contract-history #140 / awards)
       Positions tab:
@@ -66,7 +66,7 @@ Roster row click (team-roster-ui.md) → navigate(`/${gwId}/player/${playerId}`)
 - **Page owns its own tab bar** — distinct from the team hub's tabs; no collision because the routes don't nest.
 - **Overview de-duplicated** — Overview carries *no* position-affinity content (an earlier draft had a field-diagram hero that duplicated the Positions tab; removed). Each tab has genuinely distinct content.
 - **Pitch tab = pitchers only** — `PlayerFactory` generates pitches for every player but they're meaningless for fielders; the tab is hidden for non-pitchers (FM hides inapplicable tabs). The cleaner fix (don't generate them for fielders) → #136.
-- **No stored OVR** — ratings shown verbatim; a *display-only* OVR is a client toggle, never carried by the API (#145/#146 additive constraint).
+- **No stored OVR** — ratings are shown verbatim; a *display-only* OVR is computed client-side as the rounded flat-7 mean, rendered unconditionally as a masthead badge beside the primary-position badge, and never carried by the API (#145/#146 additive constraint). Full visibility is for the owned-team context; future scouting/fog-of-war rules for other teams must introduce their own conditional visibility policy rather than a manual toggle.
 - **Contract block, not a tab** — team + term only; no salary (no schema field), no history (no writer → #140). A contract-history view graduates when #140 lands — same deferral as stats (#139: detail never renders an always-empty section).
 - **Affinity presentation remains one data source** — all three Positions views render the keys actually present in `positions`, including LF and RF. The primary is the existing argmax, but is named in text rather than conveyed by a border alone. The masthead badge uses the same affinity tint so it agrees with the field rendering.
 
@@ -82,6 +82,7 @@ Roster row click (team-roster-ui.md) → navigate(`/${gwId}/player/${playerId}`)
 | u6 | "Career & accomplishments" block is empty | Renders as a deferred-state hook (text explaining what graduates in and from which map), NOT as an empty data section — consistent with the #139 deferral logic. | PDETUI-005 |
 | u7 | A low-affinity or colorblind user cannot infer the primary marker from hue/border alone | Every view renders the affinity number and an explicit “Primary” label; the field also includes a non-hover legend. | PDETUI-007 |
 | u8 | `positions` includes LeftField or RightField | The same map iteration renders LF/RF in the field, bar, and pill views at their dedicated defensive locations. | PDETUI-007 |
+| u9 | Future scouting/fog-of-war limits an opposing player's visibility | This owned-team masthead remains always visible; the future scouting design owns any conditional visibility for other teams. No manual OVR toggle returns. | PDETUI-008 |
 
 ## Traceability
 
