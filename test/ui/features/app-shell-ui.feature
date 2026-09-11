@@ -53,3 +53,8 @@ Feature: App Shell left nav rail
     Given GameWorld 1 is named "Test World" with league 7 named "Premier"
     When the player opens the GameWorld route for GameWorld 1
     Then no page-local app header or breadcrumb is rendered
+
+  @spec:SHELL-011
+  Scenario: The rail is pinned while main content owns vertical scrolling
+    Given the player opens the Home route
+    Then the App Shell separates viewport scrolling between the rail and main content

@@ -40,6 +40,11 @@ Feature: Transfers UI
     When the player navigates to "/1/transfers"
     Then the free-agent table shows a row for Player 100
 
+  @spec:XFERUI-007
+  Scenario: Transfers retains the shared content width
+    When the player navigates to "/1/transfers"
+    Then the Transfers page uses the shared 960px content width
+
   @spec:XFERUI-002
   Scenario: An empty or failed free-agent fetch degrades to an empty table
     Given GameWorld 1 has Team 10 as its managed club

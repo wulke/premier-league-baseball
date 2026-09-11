@@ -15,6 +15,7 @@ Frontend requirements for the team hub page and its Roster tab
 | ROSTUI-007 | WHEN the team hub renders THE system SHALL provide a Calendar tab and a Roster tab at `/:gwId/team/:teamId` | [x] → #171 |
 | ROSTUI-008 | WHEN the Roster tab renders THE system SHALL show a flat roster table with the positions-coverage cell as the organizer — multi-position players show all positions, primary bolded, secondaries dimmed | [x] → #171 |
 | ROSTUI-009 | WHEN rating columns render THE system SHALL show seven tinted rating columns and SHALL NOT show a stored or computed OVR | [x] → #171 |
+| ROSTUI-010 | WHEN the user navigates among Team Hub Calendar, Roster, and Lineup tabs THE system SHALL retain one shared 960px content maximum for the tab bar and every tab, so the content column does not reflow between routes | [x] → #294 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 

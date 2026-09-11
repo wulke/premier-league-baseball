@@ -29,6 +29,11 @@ Feature: Team Hub & Roster View UI
     Then the page shows a Calendar tab
     And the page shows a Roster tab
 
+  @spec:ROSTUI-010
+  Scenario: Team Hub tabs share one stable content width
+    When the player navigates to "/1/team/10/roster"
+    Then the Team Hub tab bar and Roster page use the shared 960px content width
+
   # ─── Roster Rendering ───────────────────────────────────────────────────────
 
   @spec:ROSTUI-008

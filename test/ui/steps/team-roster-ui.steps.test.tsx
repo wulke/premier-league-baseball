@@ -1,4 +1,4 @@
-// @spec ROSTUI-001,ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-005,ROSTUI-006,ROSTUI-007,ROSTUI-008,ROSTUI-009
+// @spec ROSTUI-001..ROSTUI-010
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -120,6 +120,17 @@ defineFeature(feature, (test) => {
     then('the page shows a Calendar tab', () => expect(screen.getByRole('link', { name: 'Calendar' })).toBeInTheDocument());
     // @spec ROSTUI-007
     and('the page shows a Roster tab', () => expect(screen.getByRole('link', { name: 'Roster' })).toBeInTheDocument());
+  });
+
+  test('Team Hub tabs share one stable content width', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {});
+    and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    when('the player navigates to "/1/team/10/roster"', () => renderAt('/1/team/10/roster'));
+    // @spec ROSTUI-010
+    then('the Team Hub tab bar and Roster page use the shared 960px content width', async () => {
+      expect(await screen.findByTestId('team-hub-tabs')).toHaveStyle({ maxWidth: '960px' });
+      expect(screen.getByTestId('team-roster-page')).toHaveStyle({ maxWidth: '960px' });
+    });
   });
 
   test('The roster renders as a flat table with the positions-coverage cell as organizer', ({ given, and, when, then }) => {
