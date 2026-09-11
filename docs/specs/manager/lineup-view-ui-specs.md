@@ -20,11 +20,11 @@ lineup card from `GET /api/team/:teamId/lineup` and roster display identities.
 | LINEUI-014 | WHEN the manager saves the draft THE client SHALL PUT its complete assigned entry set to the wholesale save endpoint; on a canonical returned card it SHALL exit edit mode and use that card, while a 422 or malformed successful response SHALL retain the draft, remain in edit mode, and display an error. Cancel or route navigation SHALL discard the draft without a guard. | [x] → #255 |
 | LINEUI-012 | WHEN a read-mode Lineup entry has `valid: false` THE system SHALL render a visible invalid indicator on that row. | [x] → #256 |
 | LINEUI-015 | WHEN a managed team is editing its active lineup THE system SHALL let a position-player starter or bench row be dragged onto another such row, and SHALL apply the same local slot-occupant swap used by its picker before the existing Save Lineup validation gate persists the single composed draft; pitcher and bullpen rows and all non-managed-team rows SHALL expose no drag affordance. | [x] → #250 |
-| BLUX-001 | WHEN a manager drags an eligible active-lineup row THE system SHALL retain the source slot as a visibly greyed-out placeholder. | [ ] → #290 (backlog-1) |
-| BLUX-002 | WHEN an eligible active-lineup row is under an eligible row drag THE system SHALL visibly highlight that row as the prospective swap target. | [ ] → #290 (backlog-1) |
-| BLUX-003 | WHEN an eligible row drag is dropped, cancelled, or ends THE system SHALL clear its source and target visual indicators. | [ ] → #290 (backlog-1) |
-| BLUX-004 | WHEN a pitcher, bullpen-role, non-managed-team, or otherwise ineligible row is involved in a drag THE system SHALL expose no drag-state affordance on that row. | [ ] → #290 (backlog-1) |
-| BLUX-005 | WHEN a manager combines an eligible-row drag with picker edits before saving THE system SHALL retain the existing single-draft validation and save path. | [ ] → #290 (backlog-1) |
+| BLUX-001 | WHEN a manager drags an eligible active-lineup row THE system SHALL retain the source slot as a visibly greyed-out placeholder. | [x] → #290 (backlog-1) |
+| BLUX-002 | WHEN an eligible active-lineup row is under an eligible row drag THE system SHALL visibly highlight that row as the prospective swap target. | [x] → #290 (backlog-1) |
+| BLUX-003 | WHEN an eligible row drag is dropped, cancelled, or ends THE system SHALL clear its source and target visual indicators. | [x] → #290 (backlog-1) |
+| BLUX-004 | WHEN a pitcher, bullpen-role, non-managed-team, or otherwise ineligible row is involved in a drag THE system SHALL expose no drag-state affordance on that row. | [x] → #290 (backlog-1) |
+| BLUX-005 | WHEN a manager combines an eligible-row drag with picker edits before saving THE system SHALL retain the existing single-draft validation and save path. | [x] → #290 (backlog-1) |
 
 LINEUI-005 through LINEUI-008 formalize the Defensive \| Batting tabbed redesign
 ([#225](https://github.com/wulke/premier-league-baseball/issues/225)), which replaces the

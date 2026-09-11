@@ -68,7 +68,7 @@ const TeamLineupView = () => {
   const [nextGame, setNextGame] = useState<NextGameLineup | null>(null);
   const [gameDraft, setGameDraft] = useState<ActiveLineupEntry[]>([]);
   const [gameSaveError, setGameSaveError] = useState<string | null>(null);
-  const lineupDragSource = useLineupDragSource('application/x-lineup-entry-index');
+  const lineupDrag = useLineupDragSource('application/x-lineup-entry-index');
 
   useEffect(() => {
     const teamChanged = previousTeamId.current !== teamId;
@@ -95,9 +95,9 @@ const TeamLineupView = () => {
   const startingPitcher = starters.find((row) => row.fieldingPosition === 'Pitcher');
 
   // @spec LINEUI-009,LINEUI-013
-  const enterEdit = () => { if (lineup) { setDraft(toDraft(lineup, roster)); setSaveError(null); setEditing(true); } };
+  const enterEdit = () => { if (lineup) { lineupDrag.clearDragState(); setDraft(toDraft(lineup, roster)); setSaveError(null); setEditing(true); } };
   // @spec LINEUI-014
-  const cancelEdit = () => { setDraft([]); setSaveError(null); setEditing(false); };
+  const cancelEdit = () => { lineupDrag.clearDragState(); setDraft([]); setSaveError(null); setEditing(false); };
   // @spec LINEUI-010,LINEUI-011,LINEUI-013 — occupied defensive slots are unavailable locally; server validates the full shape.
   const updateDraft = (entryIndex: number, patch: Partial<DraftEntry>) => setDraft((current) => {
     const next = current.map((entry) => ({ ...entry }));
@@ -146,7 +146,7 @@ const TeamLineupView = () => {
     if (!response || !response.ok) { const body = response ? await response.json().catch(() => ({})) : {}; setSaveError(body?.error ?? 'Unable to save lineup'); return; }
     const saved = await response.json().catch(() => null);
     if (!isTeamLineup(saved)) { setSaveError('Unable to save lineup'); return; }
-    setLineup(saved); setDraft([]); setEditing(false);
+    lineupDrag.clearDragState(); setLineup(saved); setDraft([]); setEditing(false);
     // @spec NAVLOAD-006,NAVLOAD-009
     revalidate();
   };
@@ -193,8 +193,11 @@ const TeamLineupView = () => {
     const editableSlot = isManagedTeam && editing && isSwappableSlot(row);
     const replacesPositionLabel = editing && tab === 'DEFENSIVE' && row.role === 'STARTER';
     const replacesPlayerName = editableSlot && !replacesPositionLabel;
-    const dragProps = lineupDragSource(row.entryIndex, editableSlot, swapDraftSlots);
-    return <div key={row.entryIndex} data-testid={testId} data-slot-index={row.entryIndex} {...dragProps} style={{ ...(row.valid === false ? { ...rowStyle, background: '#fff0f0', color: '#a11' } : rowStyle), ...(editableSlot ? { cursor: 'grab' } : {}) }}>
+    const dragProps = lineupDrag.dragProps(row.entryIndex, editableSlot, swapDraftSlots);
+    // @spec BLUX-001,BLUX-002 — only eligible active-lineup rows can surface transient drag feedback.
+    const isDragSource = editableSlot && lineupDrag.sourceIndex === row.entryIndex;
+    const isDragTarget = editableSlot && lineupDrag.targetIndex === row.entryIndex;
+    return <div key={row.entryIndex} data-testid={testId} data-slot-index={row.entryIndex} data-drag-source={isDragSource || undefined} data-drag-target={isDragTarget || undefined} {...dragProps} style={{ ...(row.valid === false ? { ...rowStyle, background: '#fff0f0', color: '#a11' } : rowStyle), ...(editableSlot ? { cursor: 'grab' } : {}), ...(isDragSource ? dragSourceStyle : {}), ...(isDragTarget ? dragTargetStyle : {}) }}>
       {!editing && row.valid === false && <span aria-label="Invalid lineup entry" style={{ color: '#b11', fontWeight: 800 }}>✕ Invalid</span>}
       {tab === 'DEFENSIVE' && row.role === 'STARTER' && (replacesPositionLabel ? <FieldingPositionPicker row={row} dhEnabled={dhEnabled} occupied={occupiedPositions(row.entryIndex)} onChange={updateDraft} /> : <span style={slotLabelStyle}>{isDh ? 'DH' : row.fieldingPosition}</span>)}
       {row.role !== 'STARTER' && <span style={tagStyle}>{row.role}</span>}
@@ -222,7 +225,7 @@ const TeamLineupView = () => {
 
 // @spec GBULL-006
 const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, error, onChange, onSwap, onSave }: { game: NextGameLineup | null; entries: ActiveLineupEntry[]; players: Map<number, RosterPlayer>; roster: RosterPlayer[]; gwId?: string; editable: boolean; error: string | null; onChange: (index: number, playerId: number) => void; onSwap: (sourceIndex: number, targetIndex: number) => void; onSave: () => void }) => {
-  const gameDragSource = useLineupDragSource('application/x-game-lineup-entry-index');
+  const gameLineupDrag = useLineupDragSource('application/x-game-lineup-entry-index');
   if (!game) return <Card as="section" data-testid="bullpen-empty" style={panelStyle}>No next scheduled game.</Card>;
   const slotRows = entries.map((entry, index) => ({ entry, index })).filter(({ entry }) => entry.role === 'BENCH' || entry.role === 'BULLPEN' || (entry.role === 'STARTER' && entry.fieldingPosition === 'Pitcher'));
   const benchPlayerIds = new Set(entries.filter((entry) => entry.role === 'BENCH').map((entry) => entry.playerId));
@@ -235,7 +238,7 @@ const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, erro
       const eligiblePlayers = roster.filter((player) => player.id === entry.playerId || (pitcherSlot
         ? player.primaryPosition === 'Pitcher' && !defensiveStarterIds.has(player.id)
         : player.primaryPosition !== 'Pitcher' && benchPlayerIds.has(player.id)));
-      const dragProps = gameDragSource(index, editable, onSwap);
+      const dragProps = gameLineupDrag.dragProps(index, editable, onSwap);
       return <div key={index} data-testid={`game-lineup-row-${entry.playerId}`} data-game-slot-index={index} {...dragProps} style={{ ...rowStyle, ...(editable ? { cursor: 'grab' } : {}) }}>{editable && <select aria-label={`${entry.role === 'STARTER' ? 'Starting pitcher' : entry.role.toLowerCase()} slot ${index + 1}`} value={entry.playerId} onChange={(event) => onChange(index, Number(event.target.value))}>{eligiblePlayers.map((player) => <option key={player.id} value={player.id}>{player.givenName} {player.familyName}</option>)}</select>}<span style={tagStyle}>{entry.role === 'STARTER' ? 'SP' : entry.role}</span><span style={{ flex: 1 }}><LineupPlayerLink playerId={entry.playerId} players={players} gwId={gwId} /></span></div>;
     })}
     {editable && <Button type="button" size="sm" onClick={onSave}>Save game lineup</Button>}{error && <ErrorText role="alert" style={{ marginLeft: '10px' }}>{error}</ErrorText>}
@@ -264,6 +267,10 @@ const UnassignedBucket = ({ rows, renderRow }: { rows: LineupRow[]; renderRow: (
 
 const panelStyle: React.CSSProperties = { border: '1px solid #ddd', borderRadius: '6px', padding: '16px', background: '#fff' };
 const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '10px', minHeight: '34px', padding: '5px 7px', borderBottom: '1px solid #eee', fontSize: '0.88rem' };
+// @spec BLUX-001 — preserve the source row's geometry while making its temporary vacancy unmistakable.
+const dragSourceStyle: React.CSSProperties = { background: '#eeeeee', color: '#888', opacity: 0.52, filter: 'grayscale(1)' };
+// @spec BLUX-002 — distinguish the valid prospective swap destination without changing the slot's data.
+const dragTargetStyle: React.CSSProperties = { background: '#edf5eb', outline: '2px solid #71896e', outlineOffset: '-2px' };
 const positionStyle: React.CSSProperties = { minWidth: '72px', textAlign: 'right', fontSize: '0.77rem', fontWeight: 700, color: '#555' };
 const ratingStyle: React.CSSProperties = { minWidth: '32px', textAlign: 'right', fontSize: '0.77rem', fontWeight: 700, color: '#71896e' };
 const tagStyle: React.CSSProperties = { minWidth: '58px', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', color: '#888' };
