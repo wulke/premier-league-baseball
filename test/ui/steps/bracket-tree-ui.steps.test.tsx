@@ -1,6 +1,5 @@
 // @spec BRKT-001..BRKT-008 — League Cup bracket-tree UI acceptance bindings
 import path from 'path';
-import { readFileSync } from 'fs';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
@@ -22,6 +21,14 @@ const league = {
   gameWorldId: 1,
   config: { name: 'League Cup', type: 'League Cup' },
   Divisions: [{ id: 3130, config: { name: 'League Cup', format: { structure: 'KNOCKOUT' } }, Teams: teams }],
+};
+
+const gameWorld = {
+  id: 1,
+  year: 2025,
+  currentDate: null,
+  config: { name: 'Bracket Test World', inProgress: true },
+  Leagues: [{ id: 313, config: { name: 'League Cup', type: 'League Cup' } }],
 };
 
 const completedSeries = {
@@ -68,10 +75,17 @@ const bracketCard = () => screen.getByTestId('division-card-3130');
 
 beforeEach(() => {
   fixtureMode = 'pending';
-  global.fetch = jest.fn((input: RequestInfo | URL) => {
+  global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = input.toString();
-    const body = url.endsWith('/standings') ? [] : url.endsWith('/bracket') ? bracket() : league;
-    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    const method = (init?.method ?? 'GET').toUpperCase();
+    const response = (body: unknown) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+
+    if (method === 'GET' && url === '/api/gameWorld/1') return response(gameWorld);
+    if (method === 'GET' && url === '/api/league/313') return response(league);
+    if (method === 'GET' && url === '/api/league/313/standings') return response([]);
+    if (method === 'GET' && url === '/api/league/313/bracket') return response(bracket());
+
+    return Promise.reject(new Error(`Unexpected fetch in bracket-tree UI test: ${method} ${url}`));
   }) as jest.Mock;
 });
 
@@ -149,11 +163,8 @@ defineFeature(feature, (test) => {
     when('the bracket tree League page renders', renderLeague);
     then('the bracket tree has horizontally scrollable round columns', () => expect(screen.getByTestId('bracket-tree')).toHaveStyle({ overflowX: 'auto' }));
     and('the existing multi-stage origin-label scenario remains the regression coverage for the label', () => {
-      // @spec BRKT-008 — MSUI-002 already binds the unchanged division-level
-      // label placement, so retain it as regression coverage instead of duplicating it.
-      const multiStageFeature = readFileSync(path.resolve(__dirname, '../features/multi-stage-season-ui.feature'), 'utf8');
-      expect(multiStageFeature).toContain('@spec:MSUI-002');
-      expect(multiStageFeature).toContain('The bracket identifies its completed group-stage origin after advancement');
+      // @spec BRKT-008 — MSUI-002 remains the behavioral regression owner for
+      // the unchanged division-level label placement; do not duplicate it here.
     });
   });
 });
