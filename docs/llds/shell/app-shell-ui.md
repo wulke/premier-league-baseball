@@ -30,9 +30,9 @@ features and render their existing content inside this shell.
   WORLD / COMPETITIONS / dimmed fog trio), the app mark, and world-level display (current date
   chip). Consumes `useGameWorldContext()`. Active highlighting derived from the router.
 - **`BatchSimulateControl`** (`src/ui/components/batch-simulate-control.tsx`, **NEW — RELOCATED**):
-  the existing batch "Simulate Today" state machine (idle/submitting/success-clean/
-  success-skipped/error + `invalidate()`), extracted verbatim from `AppHeader` into its own
-  component and rendered inside the rail's WORLD section.
+  the batch "Simulate Today" state machine (idle/submitting/success-clean/
+  success-skipped/error), rendered inside the rail's WORLD section. Successful daily progression
+  names the returned next game day; only an in-progress blocker produces a persistent warning.
 - **Routing** (`src/ui/routes.tsx`, **MODIFIED**): a pathless layout route carries `AppShell` and
   wraps Home + the `:gwId` subtree; `GameWorldLayout` is removed (its provider duty absorbed by the
   shell).
@@ -188,12 +188,14 @@ For each render (driven by context gw + router):
                      section (reserved for the later Team-overview rebuild — HLD trade-off).
 ```
 
-### BatchSimulateControl — (unchanged from AppHeader; relocated)
+### BatchSimulateControl — daily-progression summary
 
-Identical to `AppHeader.renderBatchRegion()` + `runBatch()` today. No behavioural change; the
-state machine, fetch, auto-dismiss timer, and `invalidate()` split are copied verbatim. See the
-existing [simulate-game-ui LLD](./simulate-game-ui.md) Flow B for the full step list; the only
-difference is the render host (rail WORLD section vs. header right slot).
+On a successful Simulate Today response, `nextDate` identifies the next playable game day. The
+control shows an auto-dismissing summary (`N simulated · Next game day: YYYY-MM-DD`) instead of
+treating expected `future date` and `already completed` ledger entries as failures. A persistent
+warning is reserved for a response whose authoritative `progressBlocked` flag is true (normally a
+`game in progress` skip), because that game blocks date progression. Successful and failed request
+revalidation behaviour is unchanged.
 
 ### Page migration (content unchanged)
 
@@ -225,6 +227,7 @@ intent.
 | s9 | **NEW — batch control relocated to a flex column rail (was a header row)** | `AppHeader`'s batch region sat in a right-aligned header slot. In the rail it stacks vertically under the date chip inside WORLD. The control's internal layout (button / summary / warning / error+retry) is unchanged; only its outer container flow changes. Confirm the `[role="alert"]` + Retry button remain queryable by name/role after the move (step bindings rely on role/name, not position). | SIMUI-016/017 |
 | s10 | **NEW — `Outlet` from `react-router` import surface** | `routes.tsx` already imports `Outlet`; `AppShell` adds one more importer. No new dependency. Confirm `react-router` v7 exports `useLocation` (used already in pages? — verify; if not, it is a documented v7 export). | — |
 | s11 | **Back-link breadcrumbs are dropped, not relocated** | `AppHeader`'s `backLink`/`backLabel` props retire with the component. The rail makes hierarchical back-links redundant (#10 consolidates navigation). No replacement breadcrumb is built; pages that previously relied on the back-link for navigation now rely on the rail's HOME/WORLD/COMPETITIONS links. (Deliberate; flagged in HLD trade-offs.) | SHELL-nav |
+| s12 | Future-date skips appear after a successful daily batch | The backend retains them in the diagnostic ledger while advancing `currentDate` to `nextDate`. The UI therefore shows the successful next-game-day summary, not a “could not be simulated” warning. Only an in-progress game that prevents advancement remains a warning. | SIMUI-029 |
 
 ---
 

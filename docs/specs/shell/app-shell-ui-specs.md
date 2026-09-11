@@ -31,10 +31,11 @@ Upstream: [HLD](../high-level-design.md#hld-app-shell--left-nav-rail) ·
 | SIMUI-010 | WHEN the BatchSimulateControl renders IF gw.config.inProgress is false THE system SHALL NOT show the "Simulate Today" button | [ ] |
 | SIMUI-011 | WHEN the BatchSimulateControl renders IF gw.currentDate is null THE system SHALL NOT show the "Simulate Today" button | [ ] |
 | SIMUI-012 | WHEN the player clicks "Simulate Today" IF the request is in flight THE system SHALL disable the button and change its label to "Simulating…" | [ ] |
-| SIMUI-013 | WHEN POST /api/gameWorld/:gwId/simulate returns 200 with zero skipped games THE system SHALL briefly show a "N simulated · 0 skipped" summary, auto-dismiss it after approximately 3 seconds, and return the button to its idle enabled state | [ ] |
-| SIMUI-014 | WHEN POST /api/gameWorld/:gwId/simulate returns 200 with one or more skipped games THE system SHALL show a warning indicating how many games could not be simulated that does NOT auto-dismiss and SHALL hide the "Simulate Today" button while the warning is active | [ ] |
+| SIMUI-013 | WHEN POST /api/gameWorld/:gwId/simulate returns 200 without an in-progress game blocking date progression THE system SHALL briefly show a summary naming the simulated count and next game day (or that no later games are scheduled), auto-dismiss it after approximately 3 seconds, and return the button to its idle enabled state | [ ] |
+| SIMUI-014 | WHEN POST /api/gameWorld/:gwId/simulate returns 200 with progressBlocked true THE system SHALL show a warning indicating how many games could not be simulated that does NOT auto-dismiss and SHALL hide the "Simulate Today" button while the warning is active | [ ] |
 | SIMUI-016 | WHEN POST /api/gameWorld/:gwId/simulate returns a server error THE system SHALL show an error message in the NavRail and a "Retry" button | [ ] |
 | SIMUI-017 | WHEN the player clicks "Retry" after a batch failure THE system SHALL return the control to the "Simulating…" disabled state and re-request POST /api/gameWorld/:gwId/simulate | [ ] |
+| SIMUI-029 | WHEN Simulate Today returns 200 with nextDate and only `future date` or `already completed` skipped entries THE BatchSimulateControl SHALL briefly show a successful summary naming nextDate and SHALL NOT show a “could not be simulated” warning | [x] → #293 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred, `[~]` Retired.*
 

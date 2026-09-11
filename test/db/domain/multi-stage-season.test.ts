@@ -100,4 +100,32 @@ describe('multi-stage season run-path', () => {
     expect(await db.models.SeasonResult.count({ where: { divisionId: divisions[2].id, year: 2027 } })).toBe(1);
     expect(await LeagueFactory(league.id).isSeasonComplete(2027)).toBe(true);
   });
+
+  // @spec SIM-019,MSS-009
+  it('simulates same-day dependent-stage games before advancing Simulate Today', async () => {
+    const league = await LeagueFactory().create(gameWorld.id, config(), teams.map(({ id }) => id));
+    await LeagueFactory(league.id).start();
+    await db.models.GameWorld.update({ currentDate: '2027-01-01' }, { where: { id: gameWorld.id } });
+    const divisions = await divisionRows(league.id);
+    const sourceSeasons = await db.models.DivisionSeason.findAll({
+      where: { divisionId: divisions.slice(0, 2).map((division) => division.id), year: 2027 },
+      include: [db.models.Game],
+    });
+    const sourceGames = [...new Map(sourceSeasons.flatMap((season: any) => season.dataValues.Games)
+      .map((game: any) => [game.id, game])).values()] as any[];
+    await Promise.all(sourceGames.map((game) => db.models.Game.update(
+      { scheduledDate: new Date('2027-01-01') }, { where: { id: game.id } },
+    )));
+
+    const result = await GameFactory().simulateToday(gameWorld.id);
+    const knockoutGames = await db.models.Game.findAll({
+      include: [{ model: db.models.DivisionSeason, where: { divisionId: divisions[2].id, year: 2027 } }],
+    });
+
+    expect(knockoutGames).not.toHaveLength(0);
+    expect(knockoutGames.filter((game: any) => game.dataValues.scheduledDate
+      && new Date(game.dataValues.scheduledDate).toISOString().slice(0, 10) === '2027-01-01')
+      .every((game: any) => game.dataValues.status === 'COMPLETED')).toBe(true);
+    expect(result.progressBlocked).toBe(false);
+  });
 });

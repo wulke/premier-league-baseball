@@ -217,7 +217,7 @@ router.get(Endpoints.StreamGameWorldNotifications, (req: any, res: any) => {
 });
 
 router.post(Endpoints.BatchSimulateGames, async (req: any, res: any) => {
-  // @spec SIM-008,SIM-009,SIM-010,SIM-011,SIM-012,SIM-013,SIM-014,SIM-015
+  // @spec SIM-008,SIM-009,SIM-010,SIM-011,SIM-012,SIM-013,SIM-014,SIM-015,SIM-019,SIM-020
   await handlers.simulateBatchGames(Number(req.params.gwId), req.body?.endDate)
     .then((response) => res.send(response))
     .catch((error) => sendError(res, error));

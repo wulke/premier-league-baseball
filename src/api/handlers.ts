@@ -80,9 +80,13 @@ const simulateGame = async (id: number) => {
   return await GameFactory(id).simulate();
 };
 
-// @spec SIM-008,SIM-009,SIM-010,SIM-011,SIM-012,SIM-013,SIM-014,SIM-015
+// @spec SIM-008,SIM-009,SIM-010,SIM-011,SIM-012,SIM-013,SIM-014,SIM-015,SIM-019,SIM-020
 const simulateBatchGames = async (gwId: number, endDate?: string) => {
-  return await GameFactory().simulateBatch(gwId, endDate);
+  // @spec SIM-019,SIM-020 — the no-endDate UI path is Simulate Today, which advances
+  // a completed day. Explicit endDate retains the generic bounded-batch API contract.
+  return endDate == null
+    ? await GameFactory().simulateToday(gwId)
+    : await GameFactory().simulateBatch(gwId, endDate);
 };
 
 // @spec RSS-001,RSS-002,RSS-003,RSS-004,RSS-005,RSS-006,RSS-007 dev-only rapid season

@@ -135,6 +135,24 @@ Feature: Simulate Game
 
   # ─── Batch Simulation — Boundary Conditions ───────────────────────────────────
 
+  @spec:SIM-019
+  Scenario: Simulate Today advances to the next scheduled game day
+    Given a Game exists with status "SCHEDULED" and scheduledDate "2025-04-10"
+    And a Game exists with status "SCHEDULED" and scheduledDate "2025-04-12"
+    When the player triggers batch simulation for GameWorld 1 with no endDate
+    Then the response is 200
+    And the GameWorld currentDate is "2025-04-12"
+    And the response nextDate is "2025-04-12"
+
+  @spec:SIM-020
+  Scenario: Simulate Today does not advance past an in-progress game today
+    Given a Game exists with status "IN_PROGRESS" and scheduledDate "2025-04-10"
+    And a Game exists with status "SCHEDULED" and scheduledDate "2025-04-12"
+    When the player triggers batch simulation for GameWorld 1 with no endDate
+    Then the response is 200
+    And the GameWorld currentDate is "2025-04-10"
+    And the response nextDate is null
+
   @spec:SIM-011
   Scenario: Batch simulation when no games exist for the date range
     When the player triggers batch simulation for GameWorld 1 with no endDate
