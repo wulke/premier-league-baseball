@@ -1,4 +1,4 @@
-// @spec SIM-001..SIM-015 (simulate-game + batch-simulate acceptance)
+// @spec SIM-001..SIM-020 (simulate-game + batch-simulate acceptance)
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import { simulateGame, simulateBatchGames as simulateBatchGamesHandler } from '../../../src/api/handlers';
@@ -30,7 +30,7 @@ interface WorldState {
   forceDbError: boolean;
 }
 
-// @spec SIM-001..SIM-015 (simulate-game acceptance)
+// @spec SIM-001..SIM-020 (simulate-game acceptance)
 const feature = loadFeature(path.resolve(__dirname, '../features/simulate-game.feature'));
 
 const createWorld = (): WorldState => ({
@@ -410,6 +410,19 @@ const registerSteps = ({ given, when, then, and }: any) => {
   then('the skipped list is empty', () => {
     const world = scenarioWorld;
     expect(getSkippedGames(world)).toHaveLength(0);
+  });
+
+  then(/^the GameWorld currentDate is "([^"]+)"$/, async (expectedDate: string) => {
+    const gameWorld = await db.models.GameWorld.findByPk(scenarioWorld.gameWorldId);
+    expect(gameWorld?.dataValues.currentDate).toBe(expectedDate);
+  });
+
+  then(/^the response nextDate is "([^"]+)"$/, (expectedDate: string) => {
+    expect((scenarioWorld.response?.body as any)?.nextDate).toBe(expectedDate);
+  });
+
+  then('the response nextDate is null', () => {
+    expect((scenarioWorld.response?.body as any)?.nextDate).toBeNull();
   });
 
   then(/^all (\d+) games remain with status "([^"]+)"$/, async (count: string, status: string) => {

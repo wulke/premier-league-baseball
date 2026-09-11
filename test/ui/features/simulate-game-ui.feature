@@ -58,12 +58,19 @@ Feature: Simulate Game UI
     And the "Simulate Today" button returns to its idle enabled state
 
   @spec:SIMUI-014
-  Scenario: Batch simulation succeeds with skipped games and warning persists
+  Scenario: Batch simulation warns when an in-progress game blocks date progression
     Given the player clicks "Simulate Today"
     When POST /api/gameWorld/1/simulate returns 200 with simulated 1 game and skipped 1
     Then a warning indicating 1 game could not be simulated is shown
     And the warning does not auto-dismiss
     And the "Simulate Today" button is not shown while the warning is active
+
+  @spec:SIMUI-029
+  Scenario: Batch simulation shows the next game day instead of warning about future games
+    Given the player clicks "Simulate Today"
+    When POST /api/gameWorld/1/simulate returns 200 with simulated 1 game, skipped 1 future game, and nextDate "2025-04-12"
+    Then a summary "1 simulated · Next game day: 2025-04-12" is briefly shown
+    And no warning indicating games could not be simulated is shown
 
   # ─── Retired: SIMUI-015 ────────────────────────────────────────────────────────
   # "Batch simulation calls invalidate() on any successful response" tested the deleted

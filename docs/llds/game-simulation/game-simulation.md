@@ -39,6 +39,7 @@ const GameFactory = (id?: number) => ({
   create(homeTeam, awayTeam),          // not part of simulate flow
   simulate(options?: { seed?: number }): Promise<GameRow>,        // single-game, guarded
   simulateBatch(gwId, endDate?, options?: { seed?: number }): Promise<{ simulated: GameRow[]; skipped: { game; reason }[] }>,
+  simulateToday(gwId): Promise<{ simulated: GameRow[]; skipped: { game; reason }[]; nextDate: string | null }>,
   rapidSimulateSeason(gwId),           // unchanged — delegates through simulateBatch
 });
 // result(): REMOVED (#190, was e4) — no unguarded score-write path remains
@@ -151,7 +152,7 @@ matches them literally:
 ```ts
 // src/api/handlers.ts
 const simulateGame     = async (id: number)              => GameFactory(id).simulate();
-const simulateBatchGames = async (gwId: number, endDate?: string) => GameFactory().simulateBatch(gwId, endDate);
+const simulateBatchGames = async (gwId: number) => GameFactory().simulateToday(gwId);
 // src/api/endpoints.ts
 SimulateGame      = '/api/game/:gameId/simulate'        // POST → handlers.simulateGame(Number(gameId))
 BatchSimulateGames = '/api/gameWorld/:gwId/simulate'     // POST → handlers.simulateBatchGames(gwId, body?.endDate)
@@ -237,6 +238,29 @@ carry a time component) down to `'YYYY-MM-DD'` so it compares cleanly against th
 Only the `Game.update` writes run inside the transaction; the preceding reads do not. On rollback no
 `simulated` row is persisted, so the batch is all-or-nothing with respect to writes.
 
+### `simulateToday(gwId)` — player-facing daily progression
+
+`simulateToday` is the domain orchestration behind `POST /api/gameWorld/:gwId/simulate`.
+It deliberately keeps `simulateBatch` reusable and date-bounded for callers such as
+`rapidSimulateSeason`, whose loop owns multi-day progression.
+
+```
+1. result = simulateBatch(gwId)                                                   # SIM-019
+2. Reload reachable games after completion hooks have run.
+3. If a non-COMPLETED game with scheduledDate <= GameWorld.currentDate remains,
+      return { ...result, nextDate:null }                                         # SIM-020
+   (an IN_PROGRESS game is a blocker; never skip over an unresolved current day.)
+4. nextDate = MIN(scheduledDate) among reachable non-COMPLETED games with
+      scheduledDate > GameWorld.currentDate.
+5. If nextDate exists, GameWorldFactory(gwId).advanceCurrentDate(nextDate);
+   return { ...result, nextDate }. If no later scheduled game exists, return
+   { ...result, nextDate:null }.                                                   # SIM-019
+```
+
+The response preserves the batch skip ledger for diagnostics. In particular, games on later
+dates may still be recorded with reason `future date`; this is informational rather than a
+failure of Simulate Today because the returned `nextDate` advances the world to the earliest one.
+
 ---
 
 ## Edge Case Probe
@@ -262,6 +286,8 @@ Each row ties a condition to its handling and the EARS id that pins it.
 | e15 | RNG draw order inside a game | Pinned **home-then-away**. Changing draw order changes pinned-seed scores — the golden master fails loudly rather than silently, which is the desired alarm. | SIM-017 |
 | e16 | Seed exposure | `seed` is a domain-only optional parameter. Handlers/API pass nothing — production always draws a fresh per-game seed (variance preserved). A seed in the API contract would leak a test concern into the public surface. | SIM-018 |
 | e17 | Engine purity vs transaction scope | `simulateGame` is pure (no DB reads/writes, no side effects), so calling it inside the batch transaction changes nothing about tx semantics — writes still begin and end at `Game.update`. | SIM-016 |
+| e18 | Simulate Today sees future-dated games in its skip ledger | They remain `future date` skips from `simulateBatch`, but `simulateToday` advances `currentDate` to the earliest remaining scheduled date and returns it as `nextDate`; the UI presents this as successful progression, not an alarming failure. | SIM-019 |
+| e19 | An unresolved reachable game is at or before the current date | `simulateToday` does not advance past it. This prevents an `IN_PROGRESS` game from being stranded behind a later date; the response has `nextDate:null` and its normal skip reason remains available to the UI. | SIM-020 |
 
 ---
 
@@ -271,10 +297,10 @@ Each row ties a condition to its handling and the EARS id that pins it.
 |---|---|
 | HLD | [`docs/high-level-design.md`](../high-level-design.md) |
 | **This LLD** | `docs/llds/game-simulation/game-simulation.md` |
-| EARS | `docs/specs/game-simulation/simulate-game-specs.md` — `SIM-001`..`SIM-015`, plus `SIM-016`..`SIM-018` (engine seam, #190) |
+| EARS | `docs/specs/game-simulation/simulate-game-specs.md` — `SIM-001`..`SIM-020` |
 | Gherkin | `test/bdd/features/simulate-game.feature` (22 scenarios, one `@spec:SIM-###` tag per scenario; #190 adds engine-seam scenarios) |
 | Step defs | `test/bdd/steps/simulate-game.steps.test.ts` |
-| Code | `src/db/domain/game.ts` (`GameFactory.simulate`, `simulateBatch`), `src/db/domain/simulation/` (`engine.ts`, `seed.ts`, `random-engine.ts` — #190), `src/db/domain/game-world.ts` (`currentDate`), `src/db/domain/errors.ts` (`DomainError`), `src/api/handlers.ts` (`simulateGame`, `simulateBatchGames`) |
+| Code | `src/db/domain/game.ts` (`GameFactory.simulate`, `simulateBatch`, `simulateToday`), `src/db/domain/simulation/` (`engine.ts`, `seed.ts`, `random-engine.ts` — #190), `src/db/domain/game-world.ts` (`currentDate`), `src/db/domain/errors.ts` (`DomainError`), `src/api/handlers.ts` (`simulateGame`, `simulateBatchGames`) |
 
 **Branch note (for the merge ticket).** The EARS spec file and `LID.md` currently live on the
 `docs/simulate-game-ears-specs` branch and are **not yet present on `feat/simulate-game`**; the

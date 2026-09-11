@@ -1,4 +1,4 @@
-// @spec:SIMUI-009..SIMUI-028, RLDRUI-006 (simulate-game UI acceptance).
+// @spec:SIMUI-009..SIMUI-029, RLDRUI-006 (simulate-game UI acceptance).
 // SIMUI-006/007 (currentDate chip display) are implemented in app-shell-ui.steps.test.tsx.
 // Flow C (SIMUI-001..005) and SIMUI-015/018/027 are retired — GameWorldProvider is deleted;
 // see test/ui/features/route-loader-foundation-ui.feature (RLDRUI-001/002/003/005).
@@ -27,7 +27,8 @@ const feature = loadFeature(path.resolve(__dirname, '../features/simulate-game-u
 interface BatchResponse {
   status: number;
   simulated: unknown[];
-  skipped: unknown[];
+  skipped: { reason?: string }[];
+  nextDate?: string | null;
 }
 
 interface SingleResponse {
@@ -154,7 +155,7 @@ const resolveBatch = () => {
   const d = world.batchDeferred;
   if (!d) return;
   const r = world.batchResponse;
-  d.resolve({ ok: r.status >= 200 && r.status < 400, status: r.status, json: () => Promise.resolve({ simulated: r.simulated, skipped: r.skipped }) });
+  d.resolve({ ok: r.status >= 200 && r.status < 400, status: r.status, json: () => Promise.resolve({ simulated: r.simulated, skipped: r.skipped, nextDate: r.nextDate }) });
   world.batchDeferred = null;
 };
 
@@ -323,6 +324,22 @@ given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
 
   then('the "Simulate Today" button is not shown while the warning is active', () => {
     expect(screen.queryByTestId('batch-simulate')).toBeNull();
+  });
+
+  when(/^POST \/api\/gameWorld\/(\d+)\/simulate returns 200 with simulated (\d+) games?, skipped (\d+) future games?, and nextDate "([^"]+)"$/, async (_id: string, simulated: string, skipped: string, nextDate: string) => {
+    world.batchResponse = {
+      status: 200,
+      simulated: Array.from({ length: Number(simulated) }, () => ({})),
+      skipped: Array.from({ length: Number(skipped) }, () => ({ reason: 'future date' })),
+      nextDate,
+    };
+    jest.useFakeTimers();
+    resolveBatch();
+    await flush();
+  });
+
+  then('no warning indicating games could not be simulated is shown', () => {
+    expect(screen.queryByText(/could not be simulated/i)).toBeNull();
   });
 
   when(/^POST \/api\/gameWorld\/(\d+)\/simulate returns a server error$/, async () => {

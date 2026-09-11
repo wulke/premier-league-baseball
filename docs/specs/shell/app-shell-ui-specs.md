@@ -35,6 +35,7 @@ Upstream: [HLD](../high-level-design.md#hld-app-shell--left-nav-rail) ·
 | SIMUI-014 | WHEN POST /api/gameWorld/:gwId/simulate returns 200 with one or more skipped games THE system SHALL show a warning indicating how many games could not be simulated that does NOT auto-dismiss and SHALL hide the "Simulate Today" button while the warning is active | [ ] |
 | SIMUI-016 | WHEN POST /api/gameWorld/:gwId/simulate returns a server error THE system SHALL show an error message in the NavRail and a "Retry" button | [ ] |
 | SIMUI-017 | WHEN the player clicks "Retry" after a batch failure THE system SHALL return the control to the "Simulating…" disabled state and re-request POST /api/gameWorld/:gwId/simulate | [ ] |
+| SIMUI-029 | WHEN Simulate Today returns 200 with nextDate and only `future date` or `already completed` skipped entries THE BatchSimulateControl SHALL briefly show a successful summary naming nextDate and SHALL NOT show a “could not be simulated” warning | [ ] → #293 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred, `[~]` Retired.*
 

@@ -22,6 +22,8 @@ Backend requirements for single-game and batch game simulation (`GameFactory(id)
 | SIM-016 | WHEN the system simulates a game, singly or in batch THE system SHALL produce that game's homeTeamResult and awayTeamResult by delegating to the configured SimulationEngine strategy, with guards, the transaction, and completion hooks remaining in GameFactory | [x] → #190 |
 | SIM-017 | WHEN a game or batch is simulated with a provided seed THE system SHALL derive each game's RNG stream deterministically from the seed and the gameId, so the same seed reproduces the same scores across runs and machines, independent of loop order and skipped games | [x] → #190 |
 | SIM-018 | WHEN a game is simulated without a provided seed THE system SHALL draw a fresh seed per game (current time mixed with gameId) so outcomes vary between simulations and no two games in a batch share a seed | [x] → #190 |
+| SIM-019 | WHEN the player triggers Simulate Today for a GameWorld and every reachable game scheduled on or before currentDate has completed THE system SHALL advance GameWorld currentDate to the earliest later scheduled date among remaining reachable non-COMPLETED games, return that date as nextDate, and leave currentDate unchanged with nextDate null when no later scheduled game exists | [ ] → #293 |
+| SIM-020 | WHEN the player triggers Simulate Today IF a reachable non-COMPLETED game scheduled on or before currentDate remains after batch simulation THE system SHALL leave currentDate unchanged and return nextDate null | [ ] → #293 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
