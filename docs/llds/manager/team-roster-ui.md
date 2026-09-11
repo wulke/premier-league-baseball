@@ -38,7 +38,9 @@ type Tab = 'calendar' | 'roster';
 // Renders a FLAT table; no grouping by default (Flat · FM, per #147):
 //   row = { name → link, age, country, bats/throws, primaryPosition badge, positionCoverage cell,
 //           7 tinted rating columns (CON/POW/ARM/ACC/REA/VIS/DIS) }
-// positionCoverage cell: multi-pos players show all positions (primary bolded, secondaries dimmed).
+// positionCoverage cell: multi-pos players show all positions as compact position-code badges
+// (primary bolded, secondaries dimmed); codes use the same PlayerPosition → acronym mapping
+// as Player Detail (for example, Shortstop → SS and CenterField → CF).
 // Sort + filter: client-side, from the flat-7 + coverage already in the response — no new query params.
 // Rating tint: Baseball-Savant-style low→red/high→green hue, same scale the player-detail view uses.
 ```
@@ -56,7 +58,7 @@ League standings (src/ui/pages/league.tsx) — team row click
       render flat table:
         each RosterPlayer row:
           name → <Link to={`/${gwId}/player/${player.id}`}>     # ROSTUI-004 → player detail (#149)
-          positionCoverage cell (primary bold + secondaries dim)
+          positionCoverage cell (abbreviated code badges; primary bold + secondaries dim)
           7 rating cells, tinted by value
         sort/filter controls act on local state (no refetch)    # ROSTUI-003
 ```
@@ -82,6 +84,7 @@ League standings (src/ui/pages/league.tsx) — team row click
 | u5 | Direct navigation to `/:gwId/team/:teamId` (no tab) | Index route redirects to `calendar` (existing URL preserved) — so the hub never renders without a tab selected. | ROSTUI-006 |
 | u6 | `positionCoverage` threshold mismatch with player detail | Both views derive coverage from the same `≥ COVERAGE_THRESHOLD` rule (roster-read-api #147 corrigendum; detail derives client-side from the 9-key map) — same language, no mismatch. Calibration → #136. | — |
 | u7 | Switching among Calendar, Roster, and Lineup | Every tab and the shared tab bar use the 960px canvas. The roster table scrolls horizontally inside its own wrapper if needed, so route changes cannot recenter the shell content column. | ROSTUI-010 |
+| u8 | A raw `PlayerPosition` enum value reaches the roster row | Render its shared acronym label in a compact badge; never expose the full enum name in Coverage. | ROSTUI-011 |
 
 ## Traceability
 
