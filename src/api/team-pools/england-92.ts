@@ -200,8 +200,11 @@ const TeamBadgeSources: Record<string, string> = {
 };
 
 // TeamConfig-shaped output (structurally compatible — no import from models.ts, avoids a
-// models.ts <-> team-pools circular import). badge is the deterministic /badges/<key>.png path.
+// models.ts <-> team-pools circular import). badge is the deterministic /badges/<key>.svg path
+// — fixed to .svg because every curated TeamBadgeSources URl above is itself an .svg crest
+// (Wikimedia's convention for football club badges); tools/fetch-team-badges.ts enforces this
+// invariant at fetch time so the extension can never drift from what's actually written to disk.
 const England92Teams: { key: string; name: string; badge: string }[] =
-  England92.map(({ key, name }) => ({ key, name, badge: `/badges/${key}.png` }));
+  England92.map(({ key, name }) => ({ key, name, badge: `/badges/${key}.svg` }));
 
 export { England92, England92Teams, TeamBadgeSources };

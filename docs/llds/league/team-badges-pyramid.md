@@ -22,8 +22,8 @@ interface TeamConfig {
   name: string;
   key?: string;    // NEW — stable identity slug (e.g. 'arsenal'); optional so `europe-32`/future
                     // pools that don't participate in badges need no change.
-  badge?: string;   // NEW — root-relative URL (e.g. '/badges/arsenal.png'); present only when `key`
-                     // is set. Always the deterministic '/badges/<key>.png' path — existence of the
+  badge?: string;   // NEW — root-relative URL (e.g. '/badges/arsenal.svg'); present only when `key`
+                     // is set. Always the deterministic '/badges/<key>.svg' path — existence of the
                      // file on disk is NOT guaranteed (see BADGE-001/002); the UI owns the fallback.
 }
 
@@ -36,7 +36,7 @@ const TeamBadgeSources: Record<string, string> = {
 };
 
 // Pool-authoring helper — mirrors today's `.map((name): TeamConfig => ({ name }))` idiom.
-const realTeam = (key: string, name: string): TeamConfig => ({ key, name, badge: `/badges/${key}.png` });
+const realTeam = (key: string, name: string): TeamConfig => ({ key, name, badge: `/badges/${key}.svg` });
 
 const TeamPools: Record<string, TeamConfig[]> = {
   // RENAMED from 'england-44' — 92 real clubs, ordered Premier League (0-19),
@@ -54,7 +54,7 @@ const TeamPools: Record<string, TeamConfig[]> = {
 | Field | Notes |
 |---|---|
 | `key` | Optional on the shared type; always set for `england-92` entries. Must be unique within a pool that sets it — badge filenames collide otherwise (BADGE-004). Not consumed by any domain logic branch (persists into `Team.config` JSON like `name`, no schema/DB change — `backend-standards.md` §2). |
-| `badge` | A pure function of `key` (`/badges/${key}.png`), always populated when `key` is set — **not** conditionally omitted when the file is missing. The file's actual presence is a build/script-time concern; the browser-side `<img>` failure path (UI LLD, `u1`) is what tolerates a missing file, not this field's optionality. |
+| `badge` | A pure function of `key` (`/badges/${key}.svg`), always populated when `key` is set — **not** conditionally omitted when the file is missing. The file's actual presence is a build/script-time concern; the browser-side `<img>` failure path (UI LLD, `u1`) is what tolerates a missing file, not this field's optionality. |
 
 ### `LeagueTemplates` changes
 
@@ -91,7 +91,7 @@ const TeamPools: Record<string, TeamConfig[]> = {
 
 Output committed to the repo (`src/ui/assets/badges/*`). The existing `npm run build`/`build:clean`
 gains a copy step (`cp -r src/ui/assets/badges dist/ui/badges`, after the Parcel build) so the
-files are served by `express.static(dist/ui)` (`src/app.ts`) at their `/badges/<key>.png` URLs
+files are served by `express.static(dist/ui)` (`src/app.ts`) at their `/badges/<key>.svg` URLs
 with no Parcel asset-pipeline involvement (no bundler `import`, no content hashing) — sidesteps
 needing 92 static `import` statements for a dynamically-keyed image.
 
@@ -100,7 +100,7 @@ needing 92 static `import` statements for a dynamically-keyed image.
 ```
 Developer (one-time, or whenever a source URL needs updating):
   npx ts-node tools/fetch-team-badges.ts
-    → for each TeamBadgeSources entry: download → src/ui/assets/badges/<key>.<ext>   # BADGE-002
+    → for each TeamBadgeSources entry: download → src/ui/assets/badges/<key>.svg   # BADGE-002
     → missing source entries for a key are simply never attempted                     # BADGE-001
   git add src/ui/assets/badges && commit
 
@@ -131,12 +131,27 @@ Runtime (unchanged domain path):
 - **`key`/`badge` optional on the shared `TeamConfig`, not required.** Keeps `europe-32` (and any
   future pool) compiling unchanged — per the HLD's explicit out-of-scope boundary, no other pool
   is touched by this feature.
+- **Badge extension is hardcoded to `.svg`, not inferred per-file.** Found in review: an earlier
+  revision computed `badge` as `/badges/<key>.png` while the fetch script inferred each file's
+  extension from its source URL — every `TeamBadgeSources` entry is a Wikimedia `.svg`, so every
+  written file was `<key>.svg`, silently mismatching the `.png` path every `<img>` requested (100%
+  fallback-to-initials, undetected because the JSDOM UI tests mock `fetch` and never load a real
+  `<img>`). Fixed by hardcoding `.svg` on both sides — `badge` computes `/badges/<key>.svg`, and
+  the script now asserts every source URL ends in `.svg` before downloading (skips + warns
+  otherwise) rather than trusting a per-file inferred extension. A `test/db/domain` assertion pins
+  this invariant so it can't silently regress again.
+- **Club crest copyright/trademark is a consciously accepted risk, not an oversight.** Club
+  badges are typically registered trademarks; Wikipedia's non-free-use rationale for hosting them
+  does not extend to redistributing them in a separate application. This repo is a personal,
+  non-commercial hobby project — the user made this call explicitly (see the HLD's originating
+  conversation) — so it's accepted as-is rather than pursued further (e.g. licensed/generic crests).
+  Revisit if this project's distribution posture ever changes.
 
 ## Edge Case Probe
 
 | # | Condition | Handling | Spec |
 |---|---|---|---|
-| e1 | A club `key` has no `TeamBadgeSources` entry | Script never attempts that download; `badge` still resolves to `/badges/<key>.png` at read-time, which simply 404s in the browser (UI fallback owns recovery). | BADGE-001 |
+| e1 | A club `key` has no `TeamBadgeSources` entry | Script never attempts that download; `badge` still resolves to `/badges/<key>.svg` at read-time, which simply 404s in the browser (UI fallback owns recovery). | BADGE-001 |
 | e2 | A `TeamBadgeSources` URL fetch fails (network error, 4xx/5xx) | Script logs a warning and continues the remaining downloads — one bad source never aborts the batch. | BADGE-002 |
 | e3 | The script is re-run (e.g. a source URL was fixed) | Overwrites the existing file at the same path; no skip-if-exists/dedup logic — always idempotent to re-run. | BADGE-003 |
 | e4 | Two `england-92` entries share a `key` | Badge filenames collide (last write wins) and downstream badge lookups become ambiguous; a unit test asserts `TeamPools['england-92'].map(t => t.key)` has no duplicates. | BADGE-004 |

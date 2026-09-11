@@ -3,6 +3,7 @@
 // behavior (tools/fetch-team-badges.ts, package.json build) — not mechanically assertable
 // here without a network call; verified manually per team-badges-pyramid-specs.md.
 import { LeagueTemplates, TeamPools, validateLeagueConfig } from '../../../src/api/models';
+import { TeamBadgeSources } from '../../../src/api/team-pools/england-92';
 
 describe('real English pyramid pool & badge config (team-badges-pyramid)', () => {
   // @spec BADGE-009
@@ -17,15 +18,25 @@ describe('real English pyramid pool & badge config (team-badges-pyramid)', () =>
   });
 
   // @spec BADGE-007,BADGE-008
-  it('computes badge as /badges/<key>.png for every keyed entry, leaving other pools untouched', () => {
+  it('computes badge as /badges/<key>.svg for every keyed entry, leaving other pools untouched', () => {
     TeamPools['england-92'].forEach((team) => {
       expect(team.key).toBeDefined();
-      expect(team.badge).toBe(`/badges/${team.key}.png`);
+      expect(team.badge).toBe(`/badges/${team.key}.svg`);
     });
     // europe-32 predates key/badge and stays name-only — compiles/behaves unchanged.
     TeamPools['europe-32'].forEach((team) => {
       expect(team.key).toBeUndefined();
       expect(team.badge).toBeUndefined();
+    });
+  });
+
+  // @spec BADGE-008,BADGE-010 — guards the extension-mismatch bug found in review: every
+  // curated source MUST be .svg, matching the hardcoded /badges/<key>.svg path, or the
+  // fetch script would write a file whose extension the app never requests.
+  it('every TeamBadgeSources URL is an .svg, matching the hardcoded badge extension', () => {
+    Object.entries(TeamBadgeSources).forEach(([key, url]) => {
+      expect(url.toLowerCase().endsWith('.svg')).toBe(true);
+      expect(TeamPools['england-92'].find((t) => t.key === key)?.badge).toBe(`/badges/${key}.svg`);
     });
   });
 
