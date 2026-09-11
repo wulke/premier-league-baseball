@@ -18,7 +18,23 @@ type LeagueTodaySummary = {
   games: TeamSeasonGame[];
 };
 
-// @spec UI-002,LIFE-001,TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-006
+type ScoreboardOutcome = 'home' | 'away' | 'none';
+
+// @spec TODAYUI-007
+const teamBadgeText = (name: string): string => {
+  const initials = name.trim().split(/\s+/).filter(Boolean).map((word) => word[0]).join('');
+  return initials || '?';
+};
+
+// @spec TODAYUI-008
+const scoreboardOutcome = (game: TeamSeasonGame): ScoreboardOutcome => {
+  if (game.status !== 'COMPLETED' || game.homeTeamResult == null || game.awayTeamResult == null) return 'none';
+  if (game.homeTeamResult > game.awayTeamResult) return 'home';
+  if (game.awayTeamResult > game.homeTeamResult) return 'away';
+  return 'none';
+};
+
+// @spec UI-002,LIFE-001,TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-006,TODAYUI-007,TODAYUI-008
 const GameWorld = () => {
   const { gwId } = useParams();
   // @spec RLDRUI-001,RLDRUI-003
@@ -240,7 +256,7 @@ const GameWorld = () => {
         </Card>
       </section>
 
-      {/* @spec TODAYUI-003,TODAYUI-004,TODAYUI-005 */}
+      {/* @spec TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-007,TODAYUI-008 */}
       {leaguesWithTodayGames.length > 0 && (
         <section data-testid="today-section" style={{ marginBottom: '40px' }}>
           <SectionLabel style={{ marginBottom: '12px' }}>
@@ -253,26 +269,51 @@ const GameWorld = () => {
                 <h3 style={{ margin: '0 0 8px', fontSize: '0.95rem', fontWeight: 700 }}>
                   {league.leagueName}
                 </h3>
-                <Card style={{ borderRadius: '6px' }}>
-                  {league.games.map((game) => (
-                    <div
-                      key={game.gameId}
-                      data-testid={`today-game-${game.gameId}`}
-                      style={{ padding: '12px 14px', borderBottom: '1px solid #eee' }}
-                    >
-                      <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '3px' }}>
-                        {game.scheduledDate ?? 'TBD'} · {game.divisionName}{game.roundLabel ? ` · ${game.roundLabel}` : ''}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {league.games.map((game) => {
+                    // @spec TODAYUI-007,TODAYUI-008
+                    const outcome = scoreboardOutcome(game);
+                    const context = [game.divisionName, game.roundLabel, game.scheduledDate].filter(Boolean).join(' · ');
+                    const statusLabel = game.status === 'COMPLETED' ? 'Final' : game.status;
+                    const teamLane = (side: 'home' | 'away', teamName: string, result: number | null) => {
+                      const isWinner = outcome === side;
+                      return (
+                        <div
+                          key={side}
+                          data-testid={`today-team-lane-${game.gameId}-${side}`}
+                          style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr) auto 18px', gap: '8px', alignItems: 'center', minWidth: 0, fontWeight: isWinner ? 700 : 400 }}
+                        >
+                          <span data-testid={`today-team-badge-${game.gameId}-${side}`} style={{ display: 'inline-grid', placeItems: 'center', width: '26px', height: '26px', borderRadius: '4px', background: '#edf1eb', color: '#344634', fontSize: '0.68rem', fontWeight: 700 }}>
+                            {teamBadgeText(teamName)}
+                          </span>
+                          <span data-testid={`today-team-name-${game.gameId}-${side}`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {teamName}
+                          </span>
+                          <span data-testid={`today-team-score-${game.gameId}-${side}`} style={{ minWidth: '16px', textAlign: 'right', fontWeight: 700 }}>
+                            {result ?? '—'}
+                          </span>
+                          {isWinner ? <span data-testid={`today-winner-${game.gameId}-${side}`} aria-label={`${teamName} won`}>W</span> : <span aria-hidden="true" />}
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <div key={game.gameId} data-testid={`today-game-${game.gameId}`}>
+                        <div
+                          data-testid={`today-scoreboard-${game.gameId}`}
+                          style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) minmax(180px, 1fr)', gap: '12px 20px', alignItems: 'center', padding: '10px 12px', border: '1px solid #dfe5dc', borderRadius: '6px', background: '#fff' }}
+                        >
+                          <div style={{ fontSize: '0.75rem', color: '#666' }}>{context || 'TBD'}</div>
+                          <div style={{ justifySelf: 'end', fontSize: '0.75rem', fontWeight: 700, color: '#555', textTransform: 'uppercase' }}>{statusLabel}</div>
+                          <div style={{ display: 'grid', gap: '5px', gridColumn: '1 / -1' }}>
+                            {teamLane('home', game.homeTeamName, game.homeTeamResult)}
+                            {teamLane('away', game.awayTeamName, game.awayTeamResult)}
+                          </div>
+                        </div>
                       </div>
-                      <div style={{ fontWeight: 600 }}>
-                        {game.homeTeamName} vs {game.awayTeamName}
-                        {game.status === 'COMPLETED' && ` · ${game.homeTeamResult}–${game.awayTeamResult}`}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#888', marginTop: '3px' }}>
-                        {game.status}
-                      </div>
-                    </div>
-                  ))}
-                </Card>
+                    );
+                  })}
+                </div>
               </div>
             ))}
           </div>

@@ -1,7 +1,7 @@
 Feature: GameWorld Home "Today" Section
 
   The GameWorld home page shows a "Today" section between the Season section and the Leagues
-  list, previewing each league's rolling window of recent results and upcoming games so the
+  list through dense scoreboard banners, previewing each league's rolling window of recent results and upcoming games so the
   player can see what's happening across leagues without drilling into each one. A league with
   nothing in its window is left out rather than shown as an empty block, and if no league has
   anything to show the whole section is left out too.
@@ -24,6 +24,18 @@ Feature: GameWorld Home "Today" Section
     When the GameWorld 1 home page loads
     Then the Today section shows a "National League" sub-block listing its two games in chronological order
     And the Today section shows an "American League" sub-block listing its one game
+
+  @spec:TODAYUI-007
+  Scenario: A Today game renders as a scoreboard banner
+    Given GET /api/league/1/today returns a completed game won by the home team
+    When the GameWorld 1 home page loads
+    Then the game renders a scoreboard banner with Final status, compact context, text badges, team names, and scores
+
+  @spec:TODAYUI-008
+  Scenario: A scoreboard banner identifies only the derived winner
+    Given GET /api/league/1/today returns completed home-win, away-win, tied, and missing-score games
+    When the GameWorld 1 home page loads
+    Then only the winning lane of each unequal completed game has a winner indicator
 
   # ─── Omitting Empty Leagues ──────────────────────────────────────────────────
 
