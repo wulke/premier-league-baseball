@@ -1,4 +1,4 @@
-// @spec SHELL-004..SHELL-009
+// @spec SHELL-004..SHELL-011
 import React, { useState } from 'react';
 import { Link, useLocation, useParams, useRouteLoaderData } from 'react-router';
 import { BatchSimulateControl } from './batch-simulate-control';
@@ -25,7 +25,7 @@ const managedLinkStyle: React.CSSProperties = {
   padding: '6px 0',
 };
 
-// @spec SHELL-004..SHELL-009, SIMUI-006,SIMUI-007
+// @spec SHELL-004..SHELL-011, SIMUI-006,SIMUI-007
 const NavRail = () => {
   // @spec RLDRUI-001 — gw comes from the :gwId route's loader; undefined on Home (no match).
   const gw = useRouteLoaderData('gwId') as any;
@@ -47,7 +47,7 @@ const NavRail = () => {
   });
 
   return (
-    <aside data-testid="nav-rail" style={{ width: 220, padding: 20, borderRight: '1px solid #ddd' }}>
+    <aside data-testid="nav-rail" style={{ boxSizing: 'border-box', flex: '0 0 220px', width: 220, height: '100vh', position: 'sticky', top: 0, overflowY: 'auto', padding: 20, borderRight: '1px solid #ddd' }}>
       <div data-testid="nav-mark" style={{ fontWeight: 800, marginBottom: 20 }}>
         Premier League Baseball
       </div>
