@@ -3,28 +3,10 @@ import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { RosterPlayer } from '../../../src/api/models';
 import routes from '../../../src/ui/routes';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/team-roster-ui.feature'));
-
-type RosterPlayer = {
-  id: number;
-  givenName: string;
-  familyName: string;
-  countryCode: string;
-  bats: 'R' | 'L' | 'S';
-  throws: 'R' | 'L';
-  age: number;
-  primaryPosition: string;
-  positionCoverage: string[];
-  contact: number;
-  power: number;
-  armStrength: number;
-  accuracy: number;
-  reaction: number;
-  vision: number;
-  discipline: number;
-};
 
 let roster: RosterPlayer[] = [];
 let rosterStatus = 200;
@@ -38,8 +20,9 @@ const player = (overrides: Partial<RosterPlayer> = {}): RosterPlayer => ({
   bats: 'R',
   throws: 'R',
   age: 24,
-  primaryPosition: 'SS',
-  positionCoverage: ['SS'],
+  primaryPosition: 'Shortstop',
+  positionCoverage: ['Shortstop'],
+  positions: { Pitcher: 0, Catcher: 0, FirstBase: 0, SecondBase: 0, ThirdBase: 0, Shortstop: 70, LeftField: 0, CenterField: 0, RightField: 0 },
   contact: 70,
   power: 65,
   armStrength: 60,
