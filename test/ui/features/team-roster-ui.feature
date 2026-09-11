@@ -52,6 +52,12 @@ Feature: Team Hub & Roster View UI
 
   # ─── Client-Side Sort & Filter ──────────────────────────────────────────────
 
+  @spec:ROSTUI-012
+  Scenario: My Club roster defaults to primary defensive position and player name order
+    Given GET /api/team/10/roster returns Players with mixed primary defensive positions and matching-position names
+    When the player navigates to "/1/team/10/roster"
+    Then the roster rows are ordered C, 1B, 2B, 3B, SS, LF, CF, RF, P with player names alphabetized within each position
+
   @spec:ROSTUI-003
   Scenario: Sorting the roster is client-side with no refetch
     Given GET /api/team/10/roster returns several Players

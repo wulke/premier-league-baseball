@@ -17,6 +17,7 @@ Frontend requirements for the team hub page and its Roster tab
 | ROSTUI-009 | WHEN rating columns render THE system SHALL show seven tinted rating columns and SHALL NOT show a stored or computed OVR | [x] → #171 |
 | ROSTUI-010 | WHEN the user navigates among Team Hub Calendar, Roster, and Lineup tabs THE system SHALL retain one shared 960px content maximum for the tab bar and every tab, so the content column does not reflow between routes | [x] → #294 |
 | ROSTUI-011 | WHEN a roster Coverage cell renders a `PlayerPosition` THE system SHALL display the shared abbreviated position code in a compact badge, with the primary bolded and secondaries dimmed, and SHALL NOT display the raw enum name | [x] → #296 |
+| ROSTUI-012 | WHEN the My Club Roster tab initially renders players THE system SHALL order them by primary defensive position `C, 1B, 2B, 3B, SS, LF, CF, RF, P`, then deterministically by player name within each position; IF the user selects a roster sort control THEN the system SHALL use that local sort order without refetching roster data | [ ] → #307 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
