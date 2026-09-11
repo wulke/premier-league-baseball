@@ -4,7 +4,7 @@ import { useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 
 type BatchStatus = 'idle' | 'submitting' | 'success-clean' | 'success-skipped' | 'error';
-type BatchResult = { simulated: unknown[]; skipped: { reason?: string }[]; nextDate?: string | null };
+type BatchResult = { simulated: unknown[]; skipped: { reason?: string }[]; nextDate?: string | null; progressBlocked?: boolean };
 
 type BatchSimulateControlProps = {
   // Peer (rapid) control is in flight → lock this control (RSSUI-006).
@@ -45,11 +45,10 @@ const BatchSimulateControl = ({ disabled = false, onBusyChange }: BatchSimulateC
       .then((result: BatchResult) => {
         const simulated = result?.simulated ?? [];
         const skipped = result?.skipped ?? [];
-        setBatchResult({ simulated, skipped, nextDate: result?.nextDate });
-        // @spec SIMUI-029 — future-date and already-completed ledger entries are expected
-        // after a successful day and do not merit the old persistent failure warning.
-        const hasProgressBlocker = skipped.some((entry) => entry.reason === 'game in progress');
-        transition(hasProgressBlocker ? 'success-skipped' : 'success-clean');
+        setBatchResult({ simulated, skipped, nextDate: result?.nextDate, progressBlocked: result?.progressBlocked });
+        // @spec SIMUI-014,SIMUI-029 — the domain's authoritative progression result,
+        // rather than a stale batch skip ledger, decides whether the rail warns.
+        transition(result?.progressBlocked ? 'success-skipped' : 'success-clean');
         revalidate();
       })
       .catch((err) => {

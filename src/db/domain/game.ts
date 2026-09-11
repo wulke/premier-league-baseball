@@ -263,33 +263,49 @@ const GameFactory = (id?: number) => {
       return { simulated, skipped };
     },
 
-    // @spec SIM-019,SIM-020 — Simulate Today owns one player-facing day: complete the
-    // current batch, then move to the earliest later date only when no reachable game
-    // at or before today remains unresolved. The generic simulateBatch stays date-bounded
-    // so rapidSimulateSeason can retain ownership of its multi-day loop.
+    // @spec SIM-019,SIM-020,MSS-009 — Simulate Today owns one player-facing day: complete
+    // every scheduled game at or before today (including dependent-stage games created by
+    // completion hooks), then move to the earliest later date only when nothing remains
+    // unresolved. The generic simulateBatch stays date-bounded for rapidSimulateSeason.
     simulateToday: async (gwId: number) => {
-      const result = await GameFactory().simulateBatch(gwId);
       const gameWorld = await db.models.GameWorld.findByPk(gwId);
       const currentDate = gameWorld?.dataValues.currentDate;
-      if (currentDate == null) return { ...result, nextDate: null };
+      const simulated: any[] = [];
+      const skipped: any[] = [];
 
-      const reachableGames = await loadReachableGames(gwId);
-      const unresolvedAtCurrentDate = reachableGames.some((game: any) =>
-        game.status !== 'COMPLETED'
-        && game.scheduledDate != null
-        && toDateStr(game.scheduledDate) <= currentDate,
-      );
-      if (unresolvedAtCurrentDate) return { ...result, nextDate: null };
+      while (true) {
+        const result = await GameFactory().simulateBatch(gwId);
+        simulated.push(...result.simulated);
+        skipped.push(...result.skipped);
 
-      const nextDate = reachableGames
-        .filter((game: any) => game.status !== 'COMPLETED'
+        const reachableGames = await loadReachableGames(gwId);
+        // @spec SIM-019,MSS-009 — completion hooks may materialize a dependent stage at
+        // today's date after the batch has queried its candidates. Run another batch so a
+        // single Simulate Today click does not falsely report success with that game pending.
+        const scheduledAtCurrentDate = reachableGames.some((game: any) =>
+          game.status === 'SCHEDULED'
           && game.scheduledDate != null
-          && toDateStr(game.scheduledDate) > currentDate)
-        .map((game: any) => toDateStr(game.scheduledDate))
-        .sort()[0] ?? null;
+          && toDateStr(game.scheduledDate) <= currentDate,
+        );
+        if (scheduledAtCurrentDate) continue;
 
-      if (nextDate != null) await GameWorldFactory(gwId).advanceCurrentDate(nextDate);
-      return { ...result, nextDate };
+        const progressBlocked = reachableGames.some((game: any) =>
+          game.status !== 'COMPLETED'
+          && game.scheduledDate != null
+          && toDateStr(game.scheduledDate) <= currentDate,
+        );
+        if (progressBlocked) return { simulated, skipped, nextDate: null, progressBlocked: true };
+
+        const nextDate = reachableGames
+          .filter((game: any) => game.status !== 'COMPLETED'
+            && game.scheduledDate != null
+            && toDateStr(game.scheduledDate) > currentDate)
+          .map((game: any) => toDateStr(game.scheduledDate))
+          .sort()[0] ?? null;
+
+        if (nextDate != null) await GameWorldFactory(gwId).advanceCurrentDate(nextDate);
+        return { simulated, skipped, nextDate, progressBlocked: false };
+      }
     },
 
     // @spec RSS-001,RSS-002,RSS-003,RSS-004,RSS-005,RSS-006,MSS-009 rapidSimulateSeason:
