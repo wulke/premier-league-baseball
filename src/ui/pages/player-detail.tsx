@@ -22,6 +22,8 @@ const fieldPositions: Record<PlayerPosition, React.CSSProperties> = {
 };
 
 const ratingTint = (rating: number) => `hsl(${Math.round(Math.max(0, Math.min(100, rating)) * 1.2)} 62% 91%)`;
+// @spec PDETUI-008
+const displayOvr = (player: PlayerDetailRecord) => Math.round(ratings.reduce((total, rating) => total + player[rating.key], 0) / ratings.length);
 // @spec PDETUI-007
 const affinityTint = (rating: number) => {
   const bounded = Math.max(0, Math.min(100, rating));
@@ -33,12 +35,9 @@ const countryFlag = (countryCode: string) => String.fromCodePoint(...countryCode
 const Panel = ({ children }: { children: React.ReactNode }) => <Card as="section" style={{ borderColor: '#ddd', padding: '16px', background: '#fff' }}>{children}</Card>;
 
 const Overview = ({ player }: { player: PlayerDetailRecord }) => {
-  const [showOvr, setShowOvr] = useState(false);
-  const ovr = Math.round(ratings.reduce((total, rating) => total + player[rating.key], 0) / ratings.length);
   return <div style={{ display: 'grid', gap: '16px' }}>
     <Panel>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}><h2 style={{ margin: 0, fontSize: '1rem' }}>Ratings</h2><button type="button" onClick={() => setShowOvr((shown) => !shown)}>{showOvr ? 'Hide display OVR' : 'Display OVR'}</button></div>
-      {showOvr && <output data-testid="display-ovr" style={{ fontWeight: 700, marginBottom: '10px', display: 'block' }}>OVR {ovr}</output>}
+      <h2 style={{ margin: '0 0 10px', fontSize: '1rem' }}>Ratings</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(48px, 1fr))', gap: '6px' }}>{ratings.map(({ key, label }) => <div key={key} data-testid={`player-rating-${key}`} style={{ padding: '9px 5px', textAlign: 'center', fontWeight: 700, background: ratingTint(player[key]), borderRadius: '3px' }}><small style={{ display: 'block', color: '#555' }}>{label}</small>{player[key]}</div>)}</div>
     </Panel>
     <Panel><h2 style={{ marginTop: 0, fontSize: '1rem' }}>Contract</h2>{player.contract ? <div data-testid="contract-block"><strong>{player.contract.team.name}</strong>{' '}<span>{player.contract.startDate} – {player.contract.endDate}</span></div> : <span data-testid="contract-free-agent" style={chipStyle}>Free Agent</span>}</Panel>
@@ -81,9 +80,10 @@ const PlayerDetail = () => {
   const [tab, setTab] = useState<Tab>('overview');
   if (!player) return <main data-testid="player-not-found" style={{ padding: '24px' }}><h1>Player not found</h1><p>This player is unavailable in this game world.</p></main>;
   const pitchable = player.primaryPosition === 'Pitcher';
+  const ovr = displayOvr(player);
   const tabs: Array<[Tab, string]> = [['overview', 'Overview'], ['positions', 'Positions'], ...(pitchable ? [['pitches', 'Pitch repertoire'] as [Tab, string]] : [])];
   return <PageContainer as="main" style={{ maxWidth: '1000px', padding: '24px 24px 48px' }}>
-    <header data-testid="player-masthead" style={{ borderBottom: '1px solid #ddd', paddingBottom: '16px', marginBottom: '16px' }}><div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}><h1 style={{ margin: 0, fontSize: '1.65rem' }}>{displayName(player)}</h1><span data-testid="primary-position-badge" style={{ ...chipStyle, background: affinityTint(player.positions[player.primaryPosition]), borderColor: '#466c4b', color: '#132717' }}>{positionLabels[player.primaryPosition]}</span>{player.contract ? <Link to={`/${gwId}/team/${player.contract.team.id}`}>{player.contract.team.name}</Link> : <span data-testid="free-agent-chip" style={chipStyle}>Free Agent</span>}</div><p style={{ margin: '8px 0 0', color: '#666' }}>{countryFlag(player.countryCode)} {player.countryCode} · Bats {player.bats} / Throws {player.throws} · Age {player.age} ({player.birthDate})</p></header>
+    <header data-testid="player-masthead" style={{ borderBottom: '1px solid #ddd', paddingBottom: '16px', marginBottom: '16px' }}><div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}><h1 style={{ margin: 0, fontSize: '1.65rem' }}>{displayName(player)}</h1><span data-testid="primary-position-badge" style={{ ...chipStyle, background: affinityTint(player.positions[player.primaryPosition]), borderColor: '#466c4b', color: '#132717' }}>{positionLabels[player.primaryPosition]}</span><output data-testid="display-ovr-badge" style={chipStyle}>OVR: {ovr}</output>{player.contract ? <Link to={`/${gwId}/team/${player.contract.team.id}`}>{player.contract.team.name}</Link> : <span data-testid="free-agent-chip" style={chipStyle}>Free Agent</span>}</div><p style={{ margin: '8px 0 0', color: '#666' }}>{countryFlag(player.countryCode)} {player.countryCode} · Bats {player.bats} / Throws {player.throws} · Age {player.age} ({player.birthDate})</p></header>
     <nav aria-label="Player detail tabs" style={{ display: 'flex', gap: '4px', borderBottom: '1px solid #ddd', marginBottom: '20px' }}>{tabs.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)} style={{ padding: '9px 13px', border: 'none', borderBottom: tab === key ? '3px solid #222' : '3px solid transparent', background: 'none', cursor: 'pointer', fontWeight: tab === key ? 700 : 400 }}>{label}</button>)}</nav>
     {tab === 'overview' && <Overview player={player} />}{tab === 'positions' && <Positions player={player} />}{tab === 'pitches' && pitchable && <Pitches player={player} />}
   </PageContainer>;
