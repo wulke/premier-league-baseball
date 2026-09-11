@@ -94,6 +94,11 @@ defineFeature(feature, (test) => {
     when('the player navigates to "/1/player/100"', () => renderAt('/1/player/100'));
     // @spec PDETUI-006
     then('the page shows the identity masthead with Player 100\'s name', async () => expect(await screen.findByTestId('player-masthead')).toHaveTextContent('Marcus Velandez'));
+    // @spec PDETUI-008
+    and('the masthead shows the display-only OVR badge beside the primary-position badge', () => {
+      expect(screen.getByTestId('display-ovr-badge')).toHaveTextContent('OVR: 65');
+      expect(screen.getByTestId('primary-position-badge').nextElementSibling).toBe(screen.getByTestId('display-ovr-badge'));
+    });
     // @spec PDETUI-006
     and('the page shows an Overview tab', () => expect(screen.getByRole('button', { name: 'Overview' })).toBeInTheDocument());
     // @spec PDETUI-006
@@ -109,6 +114,8 @@ defineFeature(feature, (test) => {
     and('the player selects the Overview tab', async () => fireEvent.click(await screen.findByRole('button', { name: 'Overview' })));
     // @spec PDETUI-008
     then('the Overview shows the flat-7 tinted ratings', async () => expect(await screen.findAllByTestId(/player-rating-/)).toHaveLength(7));
+    // @spec PDETUI-008
+    and('the Overview does not show a Display OVR toggle', () => expect(screen.queryByRole('button', { name: /display ovr/i })).toBeNull());
     // @spec PDETUI-008
     and('the Overview shows a contract block with the team and term', () => expect(screen.getByTestId('contract-block')).toHaveTextContent('Manchester Mariners 2025-01-01 – 2027-12-31'));
     // @spec PDETUI-008

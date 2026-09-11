@@ -12,7 +12,7 @@ Frontend requirements for the player detail page and its FM-style page tabs
 | PDETUI-005 | WHEN the Career & accomplishments block has no data THE system SHALL render a deferred-state hook explaining what graduates in, not an empty data section | [x] → #172 |
 | PDETUI-006 | WHEN a user navigates to `/:gwId/player/:playerId` THE system SHALL render a persistent identity masthead and a page-level tab bar (Overview / Positions / Pitch repertoire) | [x] → #172 |
 | PDETUI-007 | WHEN the Positions tab is selected THE system SHALL offer a segmented view-switcher across a stylized baseball-field diagram, bar grid, and coverage pills, all derived from the keys present in the `positions` map; it SHALL use a shared legible affinity tint, expose every affinity and the primary position in text, and include a field legend | [x] → #203 |
-| PDETUI-008 | WHEN the Overview tab is selected THE system SHALL show the flat-7 tinted ratings (with a display-only OVR toggle), a contract block (team + term), and a deferred Career & accomplishments hook | [x] → #172 |
+| PDETUI-008 | WHEN a player detail page is rendered THE system SHALL compute the display-only OVR as the rounded mean of the flat-7 ratings and render it unconditionally as a masthead badge beside the primary-position badge; the OVR SHALL NOT be carried by the API or controlled by a manual toggle | [ ] → #299 |
 | PDETUI-009 | WHEN the player's primary position is Pitcher THE system SHALL render a Pitch repertoire tab showing the 4-pitch cards (VEL/CTL/SPN) | [x] → #172 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
