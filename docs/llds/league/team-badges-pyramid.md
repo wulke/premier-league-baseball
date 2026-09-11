@@ -82,11 +82,11 @@ const TeamPools: Record<string, TeamConfig[]> = {
 ### Badge fetch script
 
 ```ts
-// scripts/fetch-team-badges.ts — developer-run offline tool, NOT part of build/CI/tests.
+// tools/fetch-team-badges.ts — developer-run offline tool, NOT part of build/CI/tests.
 // for each [key, url] in TeamBadgeSources:
 //   download url → write src/ui/assets/badges/<key>.<ext inferred from url/content-type>
 //   on failure: console.warn and continue (BADGE-002)
-// Run manually: `npx ts-node scripts/fetch-team-badges.ts`
+// Run manually: `npx ts-node tools/fetch-team-badges.ts`
 ```
 
 Output committed to the repo (`src/ui/assets/badges/*`). The existing `npm run build`/`build:clean`
@@ -99,7 +99,7 @@ needing 92 static `import` statements for a dynamically-keyed image.
 
 ```
 Developer (one-time, or whenever a source URL needs updating):
-  npx ts-node scripts/fetch-team-badges.ts
+  npx ts-node tools/fetch-team-badges.ts
     → for each TeamBadgeSources entry: download → src/ui/assets/badges/<key>.<ext>   # BADGE-002
     → missing source entries for a key are simply never attempted                     # BADGE-001
   git add src/ui/assets/badges && commit
@@ -151,5 +151,5 @@ Runtime (unchanged domain path):
 | **This LLD** | `docs/llds/league/team-badges-pyramid.md` |
 | Sibling LLD | `docs/llds/league/team-badges-ui.md` (UI) |
 | EARS | `docs/specs/league/team-badges-pyramid-specs.md` — `BADGE-001`..`BADGE-006` |
-| Code | `src/api/models.ts` (`TeamConfig`, `TeamBadgeSources`, `TeamPools['england-92']`, `LeagueTemplates['premier-league']`/`['league-cup']`), `scripts/fetch-team-badges.ts` (NEW), `src/ui/assets/badges/*` (NEW, committed output), `package.json` build scripts |
+| Code | `src/api/models.ts` (`TeamConfig`, `TeamBadgeSources`, `TeamPools['england-92']`, `LeagueTemplates['premier-league']`/`['league-cup']`), `tools/fetch-team-badges.ts` (NEW), `src/ui/assets/badges/*` (NEW, committed output), `package.json` build scripts |
 | Decision record | Conversation-resolved HLD (no wayfinder map) |

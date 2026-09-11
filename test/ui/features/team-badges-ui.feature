@@ -24,10 +24,10 @@ Feature: Team Crest Rendering
 
   @spec:BADGEUI-003
   Scenario: A knockout bye slot's initials render the same as any name-only team
-    Given the player opens the TeamCalendar route "/1/team/7/calendar"
-    And GET /api/team/7/calendar returns a knockout bye row
-    When the TeamCalendar page loads
-    Then the bye row shows text initials "B"
+    Given GameWorld 1 has an in-progress season with League 1 named "National League" and League 2 named "American League"
+    And GET /api/league/1/today returns a completed knockout bye game
+    When the GameWorld 1 home page loads
+    Then the bye lane shows text initials "B"
 
   # ─── Standings Table ─────────────────────────────────────────────────────────
 

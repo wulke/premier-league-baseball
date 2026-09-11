@@ -3,6 +3,7 @@ import { useLoaderData, useParams, useRevalidator } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { TeamSeasonCalendar, TeamSeasonGame } from '../../api/models';
 import { Button, ErrorText, PageContainer, SectionLabel } from '../components/ui';
+import { TeamCrest } from '../components/team-crest';
 
 type CalendarFilter = 'all' | 'scheduled' | 'played';
 type SimulateRowStatus = 'idle' | 'loading' | 'error';
@@ -244,7 +245,9 @@ const TeamCalendar = () => {
 
       {/* Team identity */}
       <div style={{ marginBottom: '28px' }}>
-        <h1 style={{ margin: '0 0 6px', fontSize: '1.6rem', fontWeight: 700 }}>
+        {/* @spec BADGEUI-005,BADGEUI-008 */}
+        <h1 style={{ margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.6rem', fontWeight: 700 }}>
+          <TeamCrest name={calendar ? calendar.teamName : `Team ${teamId}`} badge={calendar?.teamBadge} size={32} testId="team-calendar-badge" />
           {calendar ? calendar.teamName : `Team ${teamId}`}
         </h1>
         {calendar && (

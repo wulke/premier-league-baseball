@@ -248,7 +248,7 @@ describe('Team home-League ownership (#283)', () => {
     const created = await GameWorldFactory().create(useDefaultGameWorld());
 
     expect(created.leagues).toHaveLength(2);
-    expect(created.teams).toHaveLength(44);
+    expect(created.teams).toHaveLength(92);
 
     const [premierLeague, leagueCup] = created.leagues;
     const teamRows = await db.models.Team.findAll({ where: { gameWorldId: created.id } });
@@ -259,7 +259,7 @@ describe('Team home-League ownership (#283)', () => {
     expect(cupDivisions).toHaveLength(1);
     const cupTeamIds = [...cupDivisions[0].dataValues.config.defaultTeams].sort();
     expect(cupTeamIds).toEqual(teamRows.map((team: any) => team.dataValues.id).sort());
-    expect(cupTeamIds).toHaveLength(44);
+    expect(cupTeamIds).toHaveLength(92);
   });
 
   // @spec TLO-008
@@ -268,12 +268,12 @@ describe('Team home-League ownership (#283)', () => {
 
     expect(response.id).toBeDefined();
     expect(response.leagues).toHaveLength(2);
-    expect(response.teams).toHaveLength(44);
+    expect(response.teams).toHaveLength(92);
 
     const world = await db.models.GameWorld.findByPk(response.id);
     expect(world?.dataValues.config.inProgress).toBe(false);
     await expect(db.models.League.count({ where: { gameWorldId: response.id } })).resolves.toBe(2);
-    await expect(db.models.Team.count({ where: { gameWorldId: response.id } })).resolves.toBe(44);
+    await expect(db.models.Team.count({ where: { gameWorldId: response.id } })).resolves.toBe(92);
 
     // both Leagues still carry their divisions for the existing start flow
     for (const league of response.leagues) {

@@ -2,7 +2,7 @@
 
 Backend/config requirements for the real 92-club English pyramid pool, the widened Premier League
 and League Cup templates, and the offline badge-fetch/build pipeline (`src/api/models.ts`,
-`scripts/fetch-team-badges.ts`).
+`tools/fetch-team-badges.ts`).
 
 | ID | Requirement | Status |
 |---|---|---|
@@ -34,4 +34,4 @@ full-season BDD coverage). Per `backend-standards.md` §4 and the `game-world-te
 - LLD: `docs/llds/league/team-badges-pyramid.md`
 - Sibling specs: `docs/specs/league/team-badges-ui-specs.md`
 - Decision record: conversation-resolved HLD (no wayfinder map)
-- Code: `src/api/models.ts` (`TeamConfig`, `TeamBadgeSources`, `TeamPools['england-92']`, `LeagueTemplates['premier-league']`/`['league-cup']`), `scripts/fetch-team-badges.ts`, `src/ui/assets/badges/*`, `package.json` build scripts
+- Code: `src/api/models.ts` (`TeamConfig`, `TeamBadgeSources`, `TeamPools['england-92']`, `LeagueTemplates['premier-league']`/`['league-cup']`), `tools/fetch-team-badges.ts`, `src/ui/assets/badges/*`, `package.json` build scripts

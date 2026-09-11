@@ -147,10 +147,13 @@ const LeagueFactory = (id?: number): ILeague => {
       teamIds.add(game.dataValues.homeTeam);
       if (game.dataValues.awayTeam != null) teamIds.add(game.dataValues.awayTeam);
     });
-    const teamMap = new Map<number, string>();
+    const teamMap = new Map<number, { name: string; badge?: string }>();
     if (teamIds.size > 0) {
       const teams = await db.models.Team.findAll({ where: { id: { [Op.in]: [...teamIds] } } });
-      teams.forEach((team: any) => teamMap.set(team.dataValues.id, team.dataValues.config?.name ?? `Team ${team.dataValues.id}`));
+      teams.forEach((team: any) => teamMap.set(team.dataValues.id, {
+        name: team.dataValues.config?.name ?? `Team ${team.dataValues.id}`,
+        badge: team.dataValues.config?.badge,
+      }));
     }
 
     return games.map((row: any) => {
@@ -158,13 +161,17 @@ const LeagueFactory = (id?: number): ILeague => {
       const divisionSeason = gameContext.get(game.id);
       const division = divisionSeason.Division?.dataValues ?? divisionSeason.Division;
       const format = division?.config?.format;
+      const homeTeam = teamMap.get(game.homeTeam);
+      const awayTeam = game.awayTeam == null ? null : teamMap.get(game.awayTeam);
       return {
         gameId: game.id,
         scheduledDate: game.scheduledDate ? new Date(game.scheduledDate).toISOString() : null,
         homeTeamId: game.homeTeam,
-        homeTeamName: teamMap.get(game.homeTeam) ?? `Team ${game.homeTeam}`,
+        homeTeamName: homeTeam?.name ?? `Team ${game.homeTeam}`,
+        homeTeamBadge: homeTeam?.badge, // @spec BADGEUI-005
         awayTeamId: game.awayTeam,
-        awayTeamName: game.awayTeam == null ? 'Bye' : (teamMap.get(game.awayTeam) ?? `Team ${game.awayTeam}`),
+        awayTeamName: game.awayTeam == null ? 'Bye' : (awayTeam?.name ?? `Team ${game.awayTeam}`),
+        awayTeamBadge: game.awayTeam == null ? null : awayTeam?.badge, // @spec BADGEUI-005
         divisionId: divisionSeason.divisionId,
         divisionName: division?.config?.name ?? `Division ${divisionSeason.divisionId}`,
         roundLabel: game.round == null ? null : format?.structure === 'KNOCKOUT'

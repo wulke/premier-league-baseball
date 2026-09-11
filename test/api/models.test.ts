@@ -315,7 +315,7 @@ describe('pressure-test configs (#85)', () => {
     expect(Object.keys(LeagueTemplates).sort()).toEqual(
       ['champions-league', 'champions-league-swiss', 'league-cup', 'mlb', 'premier-league']
     );
-    expect(TeamPools['england-44'].length).toBe(44);
+    expect(TeamPools['england-92'].length).toBe(92);
     expect(DefaultWorlds[GameWorldType.PremierLeague]).toEqual({
       leagues: ['premier-league', 'league-cup'],
     });
@@ -330,7 +330,7 @@ describe('pressure-test configs (#85)', () => {
     const world = useDefaultGameWorld();
     expect(world.leagues.map((l) => l.name)).toEqual(['Premier League', 'League Cup']);
     // TLO-002 — pools are owned per-League; the cup contributes none of its own
-    expect(world.leagues.reduce((count, league) => count + (league.teams?.length ?? 0), 0)).toBe(44);
-    expect(world.leagues[0].stages[0].divisions.map((d) => d.name)).toEqual(['Premier League', 'Championship']);
+    expect(world.leagues.reduce((count, league) => count + (league.teams?.length ?? 0), 0)).toBe(92);
+    expect(world.leagues[0].stages[0].divisions.map((d) => d.name)).toEqual(['Premier League', 'Championship', 'League One', 'League Two']);
   });
 });
