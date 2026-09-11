@@ -29,6 +29,7 @@ interface BatchResponse {
   simulated: unknown[];
   skipped: { reason?: string }[];
   nextDate?: string | null;
+  progressBlocked?: boolean;
 }
 
 interface SingleResponse {
@@ -155,7 +156,7 @@ const resolveBatch = () => {
   const d = world.batchDeferred;
   if (!d) return;
   const r = world.batchResponse;
-  d.resolve({ ok: r.status >= 200 && r.status < 400, status: r.status, json: () => Promise.resolve({ simulated: r.simulated, skipped: r.skipped, nextDate: r.nextDate }) });
+  d.resolve({ ok: r.status >= 200 && r.status < 400, status: r.status, json: () => Promise.resolve({ simulated: r.simulated, skipped: r.skipped, nextDate: r.nextDate, progressBlocked: r.progressBlocked }) });
   world.batchDeferred = null;
 };
 
@@ -290,6 +291,7 @@ given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
       status: 200,
       simulated: Array.from({ length: Number(simulated) }, () => ({})),
       skipped: Array.from({ length: Number(skipped) }, () => ({ reason: 'game in progress' })),
+      progressBlocked: Number(skipped) > 0,
     };
     // SIMUI-013 relies on the ~3s auto-dismiss timer — switch to fake timers BEFORE
     // flushing so the component schedules that timer under the fake clock.
@@ -333,6 +335,7 @@ given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
       simulated: Array.from({ length: Number(simulated) }, () => ({})),
       skipped: Array.from({ length: Number(skipped) }, () => ({ reason: 'future date' })),
       nextDate,
+      progressBlocked: false,
     };
     jest.useFakeTimers();
     resolveBatch();

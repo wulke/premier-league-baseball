@@ -193,8 +193,9 @@ For each render (driven by context gw + router):
 On a successful Simulate Today response, `nextDate` identifies the next playable game day. The
 control shows an auto-dismissing summary (`N simulated · Next game day: YYYY-MM-DD`) instead of
 treating expected `future date` and `already completed` ledger entries as failures. A persistent
-warning is reserved for a `game in progress` skip that leaves `nextDate` null, because that game
-blocks date progression. Successful and failed request revalidation behaviour is unchanged.
+warning is reserved for a response whose authoritative `progressBlocked` flag is true (normally a
+`game in progress` skip), because that game blocks date progression. Successful and failed request
+revalidation behaviour is unchanged.
 
 ### Page migration (content unchanged)
 

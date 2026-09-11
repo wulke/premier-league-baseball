@@ -245,16 +245,19 @@ It deliberately keeps `simulateBatch` reusable and date-bounded for callers such
 `rapidSimulateSeason`, whose loop owns multi-day progression.
 
 ```
-1. result = simulateBatch(gwId)                                                   # SIM-019
+1. result = simulateBatch(gwId); append its simulated/skipped rows to the daily ledger. # SIM-019
 2. Reload reachable games after completion hooks have run.
-3. If a non-COMPLETED game with scheduledDate <= GameWorld.currentDate remains,
-      return { ...result, nextDate:null }                                         # SIM-020
+3. If a SCHEDULED game with scheduledDate <= GameWorld.currentDate now exists,
+      repeat from step 1. Completion hooks can create a same-day dependent-stage game;
+      Simulate Today completes it in this click rather than reporting a false success. # SIM-019/MSS-009
+4. If any other non-COMPLETED game with scheduledDate <= GameWorld.currentDate remains,
+      return { simulated, skipped, nextDate:null, progressBlocked:true }           # SIM-020
    (an IN_PROGRESS game is a blocker; never skip over an unresolved current day.)
-4. nextDate = MIN(scheduledDate) among reachable non-COMPLETED games with
+5. nextDate = MIN(scheduledDate) among reachable non-COMPLETED games with
       scheduledDate > GameWorld.currentDate.
-5. If nextDate exists, GameWorldFactory(gwId).advanceCurrentDate(nextDate);
-   return { ...result, nextDate }. If no later scheduled game exists, return
-   { ...result, nextDate:null }.                                                   # SIM-019
+6. If nextDate exists, GameWorldFactory(gwId).advanceCurrentDate(nextDate);
+   return { simulated, skipped, nextDate, progressBlocked:false }. If no later
+   scheduled game exists, return the same shape with nextDate:null.                 # SIM-019
 ```
 
 The response preserves the batch skip ledger for diagnostics. In particular, games on later
@@ -287,7 +290,8 @@ Each row ties a condition to its handling and the EARS id that pins it.
 | e16 | Seed exposure | `seed` is a domain-only optional parameter. Handlers/API pass nothing — production always draws a fresh per-game seed (variance preserved). A seed in the API contract would leak a test concern into the public surface. | SIM-018 |
 | e17 | Engine purity vs transaction scope | `simulateGame` is pure (no DB reads/writes, no side effects), so calling it inside the batch transaction changes nothing about tx semantics — writes still begin and end at `Game.update`. | SIM-016 |
 | e18 | Simulate Today sees future-dated games in its skip ledger | They remain `future date` skips from `simulateBatch`, but `simulateToday` advances `currentDate` to the earliest remaining scheduled date and returns it as `nextDate`; the UI presents this as successful progression, not an alarming failure. | SIM-019 |
-| e19 | An unresolved reachable game is at or before the current date | `simulateToday` does not advance past it. This prevents an `IN_PROGRESS` game from being stranded behind a later date; the response has `nextDate:null` and its normal skip reason remains available to the UI. | SIM-020 |
+| e19 | A completion hook creates a SCHEDULED dependent-stage game at or before the current date | `simulateToday` reloads reachable games and re-runs its date batch until no such SCHEDULED game remains, matching Rapid Simulate Season's `MSS-009` handling. | SIM-019/MSS-009 |
+| e20 | An unresolved reachable game is at or before the current date | `simulateToday` does not advance past it. This prevents an `IN_PROGRESS` game from being stranded behind a later date; the response has `nextDate:null, progressBlocked:true`, which is the UI's authoritative persistent-warning signal. | SIM-020 |
 
 ---
 
