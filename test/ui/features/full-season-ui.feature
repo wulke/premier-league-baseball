@@ -41,38 +41,9 @@ Feature: Full-Season UI
     When the player filters the calendar to played games
     Then the knockout bye remains visible
 
-  @spec:UI-005 @spec:UI-006 @spec:UI-008
-  Scenario: Knockout divisions render a bracket with byes and pending rounds
-    Given the League page loads for league "3"
-    When the League page renders
-    Then the "Premier Division" card still shows the standings table
-    And the "League Cup" card shows round "Quarterfinals"
-    And the "League Cup" card groups byes under "Byes (1) — auto-advanced to Semifinals"
-    And the "League Cup" card lists bye teams "Chelsea"
-    And the "League Cup" card shows "Next: Semifinals — games pending"
-
-  @spec:UI-005
-  Scenario: Knockout divisions still render the bracket path when bracket data is temporarily unavailable
-    Given the League page loads for league "5"
-    When the League page renders
-    Then the "Knockout" card shows "No bracket yet — season not started."
-    And the "Knockout" card does not show the standings table
-
-  @spec:UI-007
-  Scenario: Multi-leg knockout ties expand from series rows to game rows
-    Given the League page loads for league "3"
-    When the League page renders
-    Then the "League Cup" card shows collapsed series "Manchester City [2–1, 2–0] Leeds United ✓ Manchester City (2–0)"
-    When the player expands the "Manchester City" knockout series
-    Then the "League Cup" card shows game score "Game 1: Manchester City 2–1 Leeds United"
-    And the "League Cup" card shows game score "Game 2: Leeds United 0–2 Manchester City"
-
-  @spec:UI-008
-  Scenario: Knockout divisions without games show the existing empty state and roster
-    Given the League page loads for league "4"
-    When the League page renders
-    Then the "League Cup Qualifying" card shows "No bracket yet — season not started."
-    And the "League Cup Qualifying" card shows roster teams "Rovers, Wanderers, Athletic, County"
+  # @spec:UI-005..UI-008 superseded by BRKT-001..BRKT-008 in
+  # test/ui/features/bracket-tree-ui.feature. The former accordion-specific scenarios
+  # are removed because the bracket-tree acceptance suite covers their behavior directly.
 
   # Note (surfaced by map #229's route-loader migration, not caused by it): UI-003 ("disable
   # that page's simulate-triggering control") was previously asserted against a standalone
