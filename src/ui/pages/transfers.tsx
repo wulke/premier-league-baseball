@@ -5,7 +5,7 @@ import { RosterPlayer } from '../../api/models';
 import { RosterTable } from '../components/roster-table';
 import { ErrorText, PageContainer } from '../components/ui';
 
-// @spec XFERUI-001,XFERUI-002,XFERUI-003,XFERUI-004,XFERUI-006
+// @spec XFERUI-001,XFERUI-002,XFERUI-003,XFERUI-004,XFERUI-006,XFERUI-007
 const Transfers = () => {
   const { gwId } = useParams();
   // @spec RLDRUI-001
@@ -34,7 +34,7 @@ const Transfers = () => {
   };
 
   return (
-    <PageContainer style={{ maxWidth: '1200px', padding: '24px 24px 48px' }}>
+    <PageContainer data-testid="transfers-page" style={{ maxWidth: '960px', padding: '24px 24px 48px' }}>
       <h1 style={{ margin: '0 0 16px', fontSize: '1.35rem', fontWeight: 700 }}>Transfers</h1>
       {signError != null && (
         <ErrorText data-testid="sign-error" style={{ display: 'block' }}>

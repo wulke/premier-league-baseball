@@ -5,7 +5,7 @@ import { RosterPlayer } from '../../api/models';
 import { RosterTable } from '../components/roster-table';
 import { PageContainer } from '../components/ui';
 
-// @spec ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-008,ROSTUI-009,XFERUI-005
+// @spec ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-008,ROSTUI-009,ROSTUI-010,XFERUI-005
 const TeamRoster = () => {
   const { gwId, teamId } = useParams();
   // @spec RLDRUI-001
@@ -31,7 +31,7 @@ const TeamRoster = () => {
   };
 
   return (
-    <PageContainer style={{ maxWidth: '1200px', padding: '24px 24px 48px' }}>
+    <PageContainer data-testid="team-roster-page" style={{ maxWidth: '960px', padding: '24px 24px 48px' }}>
       <h1 style={{ margin: '0 0 16px', fontSize: '1.35rem', fontWeight: 700 }}>Roster</h1>
       <RosterTable
         players={players}

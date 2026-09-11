@@ -154,6 +154,17 @@ absorbed by `AppShell`.
 
 ## Logic Flow
 
+### Viewport layout and scrolling (issue #294)
+
+```
+1. The AppShell occupies exactly one viewport height and clips document-level overflow.
+2. NavRail is a fixed-width, viewport-height sticky aside with its own vertical overflow.
+3. The main sibling occupies the remaining viewport width and is the only page-content vertical
+   scroll region.
+4. A long page therefore scrolls beneath a continuously visible NavRail; a long rail can scroll
+   its own links without moving the content column.
+```
+
 ### Mount (AppShell)
 
 ```
@@ -228,6 +239,7 @@ intent.
 | s10 | **NEW — `Outlet` from `react-router` import surface** | `routes.tsx` already imports `Outlet`; `AppShell` adds one more importer. No new dependency. Confirm `react-router` v7 exports `useLocation` (used already in pages? — verify; if not, it is a documented v7 export). | — |
 | s11 | **Back-link breadcrumbs are dropped, not relocated** | `AppHeader`'s `backLink`/`backLabel` props retire with the component. The rail makes hierarchical back-links redundant (#10 consolidates navigation). No replacement breadcrumb is built; pages that previously relied on the back-link for navigation now rely on the rail's HOME/WORLD/COMPETITIONS links. (Deliberate; flagged in HLD trade-offs.) | SHELL-nav |
 | s12 | Future-date skips appear after a successful daily batch | The backend retains them in the diagnostic ledger while advancing `currentDate` to `nextDate`. The UI therefore shows the successful next-game-day summary, not a “could not be simulated” warning. Only an in-progress game that prevents advancement remains a warning. | SIMUI-029 |
+| s13 | A page is taller than the viewport, or the rail itself has more links than fit | The shell stays `height: 100vh` with hidden outer overflow; `main` owns `overflowY: auto`, while the sticky rail owns its own `overflowY: auto`. Neither region enlarges the document and scrolling one does not displace the other. | SHELL-011 |
 
 ---
 

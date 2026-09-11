@@ -13,6 +13,7 @@ Frontend requirements for the world-scoped Transfers page and the Release/Renew 
 | XFERUI-004 | WHEN a Sign action is rejected with `422` (the player is no longer a free agent) THE system SHALL show an inline "no longer available" message and refetch the free-agent list | [x] → #237 |
 | XFERUI-005 | WHEN the viewed team's roster IS the managed club THE system SHALL render Release and Renew actions on each roster row, and SHALL refetch the team roster after either action succeeds; WHEN the viewed team is NOT the managed club THE system SHALL render the roster table with no action column | [x] → #237 |
 | XFERUI-006 | WHEN no club is managed THE system SHALL keep the nav rail's "Transfers" entry in the dimmed fog trio rather than linking it, even though a direct visit to `/:gwId/transfers` still renders the read-only free-agent market | [x] → #237 |
+| XFERUI-007 | WHEN the user opens Transfers from a Team Hub page THE system SHALL retain the shared default 960px content maximum, so the centered content column does not widen or recenter | [x] → #294 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 

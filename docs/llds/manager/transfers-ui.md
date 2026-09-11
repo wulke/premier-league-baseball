@@ -113,6 +113,9 @@ Team Roster view (own managed club) — Release/Renew click
   page component degrades on `hasManagedClub` alone, not on how it was navigated to); the nav rail
   gate is a discoverability choice, not an authorization boundary (that boundary is
   `contract-lifecycle.md`'s `assertManaged`, server-side).
+- **Shared world-page canvas** — Transfers uses the default 960px `PageContainer` maximum, matching
+  the Team Hub canvas; its table handles extra width locally, avoiding a visible column-width snap
+  when navigating from a team page.
 
 ## Edge Case Probe
 
@@ -123,6 +126,7 @@ Team Roster view (own managed club) — Release/Renew click
 | u3 | Release/Renew clicked on a roster row for a team that is NOT the managed club | Action column is not rendered at all for a non-managed team's roster view — no client-side guard needed beyond the render condition, since the server-side `assertManaged` (`contract-lifecycle.md`) is the real boundary. | XFERUI-005 |
 | u4 | `GET /free-agents` returns `[]` (no free agents in the `GameWorld`) | Table renders empty with the same empty-state convention `team-roster-ui.md` already establishes for `[]`. | XFERUI-002 |
 | u5 | Renew succeeds | Row is visually unchanged (the successor contract isn't current yet) — no toast/confirmation beyond a brief inline success acknowledgment, since there is nothing in the roster row's displayed fields for a successor contract to change today (no contract-term column exists in `RosterPlayer` per `roster-read-api.md`). | XFERUI-005 |
+| u6 | Navigation from Team Hub to Transfers | Both surfaces use the default 960px content maximum; the page column stays aligned instead of widening to a distinct 1200px layout. | XFERUI-007 |
 
 ## Traceability
 

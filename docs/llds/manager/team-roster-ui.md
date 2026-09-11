@@ -67,6 +67,9 @@ League standings (src/ui/pages/league.tsx) — team row click
 - **Flat · FM default** — one flat roster where the positions-coverage cell is the organizer (multi-pos players show all positions); by-position grouping is an optional toggle, not the default.
 - **No OVR column** — 7 additive rating columns only; a display-only OVR is the player-detail view's toggle, never the roster's (#145/#147).
 - **Roster row is the single link origin** for player detail (#149) — no other entry point to `/:gwId/player/:playerId` is introduced here.
+- **Stable Team Hub canvas** — Calendar, Roster, and Lineup retain the shared `PageContainer`
+  960px maximum; the TeamHub tab bar uses that same maximum. The wide roster table retains its
+  own horizontal scroll wrapper, rather than widening the page canvas between tabs.
 
 ## Edge Case Probe
 
@@ -78,6 +81,7 @@ League standings (src/ui/pages/league.tsx) — team row click
 | u4 | Nav rail interaction | The rail is deliberately not modified — no "Roster" item is added to it. Entry is standings-team-click only, per the symmetric/no-My-Club boundary. | ROSTUI-005 |
 | u5 | Direct navigation to `/:gwId/team/:teamId` (no tab) | Index route redirects to `calendar` (existing URL preserved) — so the hub never renders without a tab selected. | ROSTUI-006 |
 | u6 | `positionCoverage` threshold mismatch with player detail | Both views derive coverage from the same `≥ COVERAGE_THRESHOLD` rule (roster-read-api #147 corrigendum; detail derives client-side from the 9-key map) — same language, no mismatch. Calibration → #136. | — |
+| u7 | Switching among Calendar, Roster, and Lineup | Every tab and the shared tab bar use the 960px canvas. The roster table scrolls horizontally inside its own wrapper if needed, so route changes cannot recenter the shell content column. | ROSTUI-010 |
 
 ## Traceability
 

@@ -3,7 +3,7 @@ import { NavLink, Outlet, useParams, useRevalidator, useRouteLoaderData } from '
 import { Endpoints } from '../../api/endpoints';
 import { Button } from '../components/ui';
 
-// @spec ROSTUI-006,ROSTUI-007,LINEUI-001,MCLUI-001,MCLUI-002,MCLUI-003
+// @spec ROSTUI-006,ROSTUI-007,ROSTUI-010,LINEUI-001,MCLUI-001,MCLUI-002,MCLUI-003
 const TeamHub = () => {
   const { gwId, teamId } = useParams();
   // @spec RLDRUI-001,RLDRUI-003
@@ -42,6 +42,7 @@ const TeamHub = () => {
   return (
     <>
       <nav
+        data-testid="team-hub-tabs"
         aria-label="Team sections"
         style={{ maxWidth: '960px', margin: '0 auto', padding: '20px 24px 0', display: 'flex', gap: '18px', borderBottom: '1px solid #e5e5e5' }}
       >

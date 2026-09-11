@@ -1,4 +1,4 @@
-// @spec SHELL-001..SHELL-010, SIMUI-006,SIMUI-007 (AppShell + NavRail acceptance; real MemoryRouter locations).
+// @spec SHELL-001..SHELL-011, SIMUI-006,SIMUI-007 (AppShell + NavRail acceptance; real MemoryRouter locations).
 import { act } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
@@ -88,6 +88,12 @@ const registerSteps = ({ given, when, then }: any) => {
   then('the rail shows a competition link to "/1/7"', () => expect(screen.getByTestId('nav-league-7')).toHaveAttribute('href', '/1/7'));
   then('the competition link is active', () => expect(screen.getByTestId('nav-league-7')).toHaveAttribute('data-active', 'true'));
   then('no page-local app header or breadcrumb is rendered', () => { expect(screen.queryByTestId('app-header')).toBeNull(); expect(screen.queryByText(/←/)).toBeNull(); });
+  // @spec SHELL-011
+  then('the App Shell separates viewport scrolling between the rail and main content', () => {
+    expect(screen.getByTestId('app-shell')).toHaveStyle({ height: '100vh', overflow: 'hidden' });
+    expect(screen.getByTestId('nav-rail')).toHaveStyle({ position: 'sticky', top: '0px', height: '100vh', overflowY: 'auto' });
+    expect(screen.getByTestId('app-shell').querySelector('main')).toHaveStyle({ height: '100vh', overflowY: 'auto' });
+  });
 };
 
 autoBindSteps(feature, [registerSteps]);

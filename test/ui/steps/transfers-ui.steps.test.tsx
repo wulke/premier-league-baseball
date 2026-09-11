@@ -1,4 +1,4 @@
-// @spec XFERUI-001,XFERUI-002,XFERUI-003,XFERUI-004,XFERUI-005,XFERUI-006
+// @spec XFERUI-001..XFERUI-007
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -140,6 +140,16 @@ defineFeature(feature, (test) => {
     when('the player navigates to "/1/transfers"', () => renderAt('/1/transfers'));
     then('the free-agent table shows a row for Player 100', async () => {
       expect(await screen.findByTestId('free-agent-row-100')).toBeInTheDocument();
+    });
+  });
+
+  test('Transfers retains the shared content width', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {});
+    and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    when('the player navigates to "/1/transfers"', () => renderAt('/1/transfers'));
+    // @spec XFERUI-007
+    then('the Transfers page uses the shared 960px content width', async () => {
+      expect(await screen.findByTestId('transfers-page')).toHaveStyle({ maxWidth: '960px' });
     });
   });
 
