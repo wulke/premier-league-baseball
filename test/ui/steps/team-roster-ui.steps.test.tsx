@@ -1,4 +1,4 @@
-// @spec ROSTUI-001..ROSTUI-011
+// @spec ROSTUI-001..ROSTUI-012
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -171,6 +171,35 @@ defineFeature(feature, (test) => {
     then('the rows are reordered by age', () => expect(screen.getAllByTestId(/roster-row-/).map((row) => row.getAttribute('data-testid'))).toEqual(['roster-row-101', 'roster-row-100']));
     // @spec ROSTUI-003
     and('no second GET /api/team/10/roster request is made', () => expect(requests.filter((url) => url === '/api/team/10/roster')).toHaveLength(1));
+  });
+
+  // @spec ROSTUI-012
+  test('My Club roster defaults to primary defensive position and player name order', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {});
+    and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GET /api/team/10/roster returns Players with mixed primary defensive positions and matching-position names', () => {
+      roster = [
+        player({ id: 100, givenName: 'Zane', familyName: 'Catcher', primaryPosition: 'Catcher' }),
+        player({ id: 101, givenName: 'Bert', familyName: 'Pitcher', primaryPosition: 'Pitcher' }),
+        player({ id: 102, givenName: 'Avery', familyName: 'Catcher', primaryPosition: 'Catcher' }),
+        player({ id: 103, givenName: 'Casey', familyName: 'First', primaryPosition: 'FirstBase' }),
+        player({ id: 104, givenName: 'Drew', familyName: 'Second', primaryPosition: 'SecondBase' }),
+        player({ id: 105, givenName: 'Evan', familyName: 'Third', primaryPosition: 'ThirdBase' }),
+        player({ id: 106, givenName: 'Finn', familyName: 'Short', primaryPosition: 'Shortstop' }),
+        player({ id: 107, givenName: 'Gray', familyName: 'Left', primaryPosition: 'LeftField' }),
+        player({ id: 108, givenName: 'Hayden', familyName: 'Center', primaryPosition: 'CenterField' }),
+        player({ id: 109, givenName: 'Indy', familyName: 'Right', primaryPosition: 'RightField' }),
+      ];
+    });
+    when('the player navigates to "/1/team/10/roster"', async () => {
+      renderAt('/1/team/10/roster');
+      await screen.findByTestId('roster-row-100');
+    });
+    // @spec ROSTUI-012
+    then('the roster rows are ordered C, 1B, 2B, 3B, SS, LF, CF, RF, P with player names alphabetized within each position', () => {
+      expect(screen.getAllByTestId(/roster-row-/).map((row) => row.getAttribute('data-testid')))
+        .toEqual(['roster-row-102', 'roster-row-100', 'roster-row-103', 'roster-row-104', 'roster-row-105', 'roster-row-106', 'roster-row-107', 'roster-row-108', 'roster-row-109', 'roster-row-101']);
+    });
   });
 
   test('Clicking a roster row\'s player name navigates to player detail', ({ given, and, when, then }) => {

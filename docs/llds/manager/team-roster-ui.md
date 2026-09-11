@@ -55,12 +55,13 @@ League standings (src/ui/pages/league.tsx) — team row click
   → TeamRoster mounts:
       fetch(Endpoints.GetTeamRoster.replace(':teamId', teamId))
         .then(r => r.ok ? r.json() : [])                        // non-ok → [] (degrades to empty, #147)
-      render flat table:
+      render flat table in the default primary-position order `C, 1B, 2B, 3B, SS, LF, CF, RF, P`:
+        within each primary-position group, sort by player name using a deterministic locale comparison # ROSTUI-012
         each RosterPlayer row:
           name → <Link to={`/${gwId}/player/${player.id}`}>     # ROSTUI-004 → player detail (#149)
           positionCoverage cell (abbreviated code badges; primary bold + secondaries dim)
           7 rating cells, tinted by value
-        sort/filter controls act on local state (no refetch)    # ROSTUI-003
+        an explicit sort control replaces the default order and acts on local state (no refetch) # ROSTUI-003, ROSTUI-012
 ```
 
 ### Key decisions embedded in this flow
@@ -85,6 +86,8 @@ League standings (src/ui/pages/league.tsx) — team row click
 | u6 | `positionCoverage` threshold mismatch with player detail | Both views derive coverage from the same `≥ COVERAGE_THRESHOLD` rule (roster-read-api #147 corrigendum; detail derives client-side from the 9-key map) — same language, no mismatch. Calibration → #136. | — |
 | u7 | Switching among Calendar, Roster, and Lineup | Every tab and the shared tab bar use the 960px canvas. The roster table scrolls horizontally inside its own wrapper if needed, so route changes cannot recenter the shell content column. | ROSTUI-010 |
 | u8 | A raw `PlayerPosition` enum value reaches the roster row | Render its shared acronym label in a compact badge; never expose the full enum name in Coverage. | ROSTUI-011 |
+| u9 | Multiple players share a primary defensive position | Order the tied group by complete display name with a stable player-id final tie-breaker. | ROSTUI-012 |
+| u10 | A user selects a column sort after the initial render | Use the selected local sort order over the primary-position default; do not fetch roster data again. | ROSTUI-003, ROSTUI-012 |
 
 ## Traceability
 
