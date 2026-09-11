@@ -36,11 +36,11 @@ Feature: Team Hub & Roster View UI
 
   # ─── Roster Rendering ───────────────────────────────────────────────────────
 
-  @spec:ROSTUI-008
+  @spec:ROSTUI-008 @spec:ROSTUI-011
   Scenario: The roster renders as a flat table with the positions-coverage cell as organizer
     Given GET /api/team/10/roster returns a multi-position Player covering Shortstop and ThirdBase
     When the player navigates to "/1/team/10/roster"
-    Then the roster table shows that Player's row with both positions in the coverage cell
+    Then the roster table shows that Player's row with abbreviated position badges in the coverage cell
     And the primary position is bolded and the secondary is dimmed
 
   @spec:ROSTUI-009

@@ -3,6 +3,7 @@ import { Link, useLoaderData, useParams } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { PlayerDetail as PlayerDetailRecord, PlayerPosition } from '../../api/models';
 import { Card, PageContainer } from '../components/ui';
+import { positionLabels } from '../position-labels';
 
 type Tab = 'overview' | 'positions' | 'pitches';
 type PositionView = 'field' | 'bars' | 'pills';
@@ -11,10 +12,6 @@ const ratings: Array<{ key: keyof Pick<PlayerDetailRecord, 'contact' | 'power' |
   { key: 'contact', label: 'CON' }, { key: 'power', label: 'POW' }, { key: 'armStrength', label: 'ARM' },
   { key: 'accuracy', label: 'ACC' }, { key: 'reaction', label: 'REA' }, { key: 'vision', label: 'VIS' }, { key: 'discipline', label: 'DIS' },
 ];
-
-const positionLabels: Record<PlayerPosition, string> = {
-  Pitcher: 'P', Catcher: 'C', FirstBase: '1B', SecondBase: '2B', ThirdBase: '3B', Shortstop: 'SS', LeftField: 'LF', CenterField: 'CF', RightField: 'RF',
-};
 
 const fieldPositions: Record<PlayerPosition, React.CSSProperties> = {
   Pitcher: { left: '50%', top: '64%' }, Catcher: { left: '50%', top: '84%' }, FirstBase: { left: '72%', top: '62%' }, SecondBase: { left: '60%', top: '48%' },

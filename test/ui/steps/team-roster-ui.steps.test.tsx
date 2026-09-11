@@ -1,30 +1,12 @@
-// @spec ROSTUI-001..ROSTUI-010
+// @spec ROSTUI-001..ROSTUI-011
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { RosterPlayer } from '../../../src/api/models';
 import routes from '../../../src/ui/routes';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/team-roster-ui.feature'));
-
-type RosterPlayer = {
-  id: number;
-  givenName: string;
-  familyName: string;
-  countryCode: string;
-  bats: 'R' | 'L' | 'S';
-  throws: 'R' | 'L';
-  age: number;
-  primaryPosition: string;
-  positionCoverage: string[];
-  contact: number;
-  power: number;
-  armStrength: number;
-  accuracy: number;
-  reaction: number;
-  vision: number;
-  discipline: number;
-};
 
 let roster: RosterPlayer[] = [];
 let rosterStatus = 200;
@@ -38,8 +20,9 @@ const player = (overrides: Partial<RosterPlayer> = {}): RosterPlayer => ({
   bats: 'R',
   throws: 'R',
   age: 24,
-  primaryPosition: 'SS',
-  positionCoverage: ['SS'],
+  primaryPosition: 'Shortstop',
+  positionCoverage: ['Shortstop'],
+  positions: { Pitcher: 0, Catcher: 0, FirstBase: 0, SecondBase: 0, ThirdBase: 0, Shortstop: 70, LeftField: 0, CenterField: 0, RightField: 0 },
   contact: 70,
   power: 65,
   armStrength: 60,
@@ -52,14 +35,14 @@ const player = (overrides: Partial<RosterPlayer> = {}): RosterPlayer => ({
 
 let router: ReturnType<typeof createMemoryRouter>;
 
-// @spec ROSTUI-001,ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-005,ROSTUI-006,ROSTUI-007,ROSTUI-008,ROSTUI-009,RLDRUI-006
+// @spec ROSTUI-001,ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-005,ROSTUI-006,ROSTUI-007,ROSTUI-008,ROSTUI-009,ROSTUI-011,RLDRUI-006
 const renderAt = async (entry: string) => {
   router = createMemoryRouter(routes, { initialEntries: [entry] });
   render(<RouterProvider router={router} />);
   await screen.findByTestId('app-shell');
 };
 
-// @spec ROSTUI-001,ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-005,ROSTUI-006,ROSTUI-007,ROSTUI-008,ROSTUI-009
+// @spec ROSTUI-001,ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-005,ROSTUI-006,ROSTUI-007,ROSTUI-008,ROSTUI-009,ROSTUI-011
 const installFetch = () => {
   global.fetch = jest.fn((input: RequestInfo | URL) => {
     const url = input.toString();
@@ -137,19 +120,24 @@ defineFeature(feature, (test) => {
     given('GameWorld 1 exists', () => {});
     and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
     // @spec ROSTUI-008
-    given('GET /api/team/10/roster returns a multi-position Player covering Shortstop and ThirdBase', () => { roster = [player({ positionCoverage: ['SS', '3B'] })]; });
+    given('GET /api/team/10/roster returns a multi-position Player covering Shortstop and ThirdBase', () => { roster = [player({ primaryPosition: 'Shortstop', positionCoverage: ['Shortstop', 'ThirdBase'] })]; });
     when('the player navigates to "/1/team/10/roster"', () => renderAt('/1/team/10/roster'));
     // @spec ROSTUI-008
-    then('the roster table shows that Player\'s row with both positions in the coverage cell', async () => {
+    then('the roster table shows that Player\'s row with abbreviated position badges in the coverage cell', async () => {
       const row = await screen.findByTestId('roster-row-100');
-      expect(within(row).getByTestId('position-coverage-100')).toHaveTextContent('SS');
-      expect(within(row).getByTestId('position-coverage-100')).toHaveTextContent('3B');
+      const coverage = within(row).getByTestId('position-coverage-100');
+      expect(coverage).toHaveTextContent('SS');
+      expect(coverage).toHaveTextContent('3B');
+      expect(coverage).not.toHaveTextContent('Shortstop');
+      expect(coverage).not.toHaveTextContent('ThirdBase');
+      expect(within(coverage).getByTestId('position-primary-100')).toHaveStyle({ borderRadius: '999px' });
+      expect(within(coverage).getByTestId('position-secondary-100-ThirdBase')).toHaveStyle({ borderRadius: '999px' });
       expect(screen.queryByRole('columnheader', { name: 'Pos' })).toBeNull();
     });
-    // @spec ROSTUI-008
+    // @spec ROSTUI-008,ROSTUI-011
     and('the primary position is bolded and the secondary is dimmed', () => {
       expect(screen.getByTestId('position-primary-100')).toHaveStyle({ fontWeight: 700 });
-      expect(screen.getByTestId('position-secondary-100-3B')).toHaveStyle({ color: '#888' });
+      expect(screen.getByTestId('position-secondary-100-ThirdBase')).toHaveStyle({ color: '#888' });
     });
   });
 
