@@ -11,10 +11,10 @@ and season-lifecycle display (`src/ui/pages/league.tsx`, `src/ui/pages/game-worl
 | UI-002 | WHEN both Leagues in a GameWorld are decided THE GameWorld hub SHALL show a computed `Season Complete` block naming both champions; WHILE only one is decided THE hub SHALL show that champion and `In progress` for the other | [x] |
 | UI-003 | WHEN a League page's champion-producing division is decided THE UI SHALL disable that page's simulate-triggering control while leaving team-click navigation and bracket expand-on-click interactive | [ ] — gap found during #229, see note below |
 | UI-004 | WHEN a user navigates to a team's calendar THE system SHALL show that team's games across all leagues in the GameWorld at route `/:gwId/team/:teamId/calendar`, with no `leagueId` scoping | [x] |
-| UI-005 | WHEN a Division's `structure` is `KNOCKOUT` THE Division card SHALL render `BracketView` grouped by round instead of `StandingsTable` | [x] |
-| UI-006 | WHEN a round contains byes THE `BracketView` SHALL group them under a "Byes (N)" subheading listing team names inline | [x] |
-| UI-007 | WHEN a tie has more than one leg THE `BracketView` SHALL render one row per series with per-game scores, expandable on click to one row per game | [x] |
-| UI-008 | WHEN a KNOCKOUT division has no games yet THE `BracketView` SHALL show the existing "No bracket yet — season not started." empty state with the `TeamRoster` grid; WHEN resolved rounds exist but the next round has not been generated yet THE `BracketView` SHALL show a `Next: <label> — games pending` placeholder row after the resolved rounds | [x] |
+| UI-005 | WHEN a Division's `structure` is `KNOCKOUT` THE Division card SHALL render `BracketView` grouped by round instead of `StandingsTable` | [x] — superseded by BRKT-001, BRKT-002 |
+| UI-006 | WHEN a round contains byes THE `BracketView` SHALL group them under a "Byes (N)" subheading listing team names inline | [x] — superseded by BRKT-003 |
+| UI-007 | WHEN a tie has more than one leg THE `BracketView` SHALL render one row per series with per-game scores, expandable on click to one row per game | [x] — superseded by BRKT-004 |
+| UI-008 | WHEN a KNOCKOUT division has no games yet THE `BracketView` SHALL show the existing "No bracket yet — season not started." empty state with the `TeamRoster` grid; WHEN resolved rounds exist but the next round has not been generated yet THE `BracketView` SHALL show a `Next: <label> — games pending` placeholder row after the resolved rounds | [x] — superseded by BRKT-001, BRKT-002 |
 | UI-009 | WHEN "Simulate Today" is triggered from `AppHeader` THE system SHALL advance games across both the League and the League Cup in the same batch, with no competition-specific change required | [ ] |
 | UI-010 | WHEN a team's calendar includes a knockout bye row THE UI SHALL render the opponent as `Bye`, omit the scoreline, and count that row as played rather than scheduled | [x] → #52 |
 
