@@ -1,4 +1,4 @@
-// @spec TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-006
+// @spec TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-006,TODAYUI-007,TODAYUI-008
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { render, screen, waitFor, within } from '@testing-library/react';
@@ -28,7 +28,8 @@ let fetchCalls: string[] = [];
 let seasonInProgress = true;
 let worldCurrentDate: string | null = '2025-06-10';
 
-const game = (gameId: number, scheduledDate: string): MockGame => ({
+// @spec TODAYUI-003,TODAYUI-004,TODAYUI-007,TODAYUI-008
+const game = (gameId: number, scheduledDate: string, overrides: Partial<MockGame> = {}): MockGame => ({
   gameId,
   scheduledDate,
   homeTeamId: gameId * 10,
@@ -41,9 +42,10 @@ const game = (gameId: number, scheduledDate: string): MockGame => ({
   homeTeamResult: null,
   awayTeamResult: null,
   status: 'SCHEDULED',
+  ...overrides,
 });
 
-// @spec TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-006
+// @spec TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-006,TODAYUI-007,TODAYUI-008
 const installFetch = () => {
   global.fetch = jest.fn((input: RequestInfo | URL) => {
     const url = typeof input === 'string' ? input : input.toString();
@@ -77,7 +79,7 @@ const installFetch = () => {
   }) as jest.Mock;
 };
 
-// @spec TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005
+// @spec TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-006,TODAYUI-007,TODAYUI-008
 const renderGameWorld = async () => {
   const router = createMemoryRouter(routes, { initialEntries: ['/1'] });
   render(<RouterProvider router={router} />);
@@ -135,6 +137,67 @@ defineFeature(feature, (test) => {
     and('the Today section shows an "American League" sub-block listing its one game', async () => {
       const block = await screen.findByTestId('today-league-2');
       expect(within(block).getByTestId('today-game-201')).toBeInTheDocument();
+    });
+  });
+
+  test('A Today game renders as a scoreboard banner', ({ given, when, then }) => {
+    given('GameWorld 1 has an in-progress season with League 1 named "National League" and League 2 named "American League"', () => {});
+    // @spec TODAYUI-007
+    given('GET /api/league/1/today returns a completed game won by the home team', () => {
+      todayResponses['1'] = {
+        status: 200,
+        games: [game(101, '2025-06-10', {
+          homeTeamName: 'New York Mets',
+          awayTeamName: 'Los Angeles Dodgers',
+          homeTeamResult: 5,
+          awayTeamResult: 3,
+          status: 'COMPLETED',
+        })],
+      };
+    });
+    when('the GameWorld 1 home page loads', renderGameWorld);
+
+    // @spec TODAYUI-007
+    then('the game renders a scoreboard banner with Final status, compact context, text badges, team names, and scores', async () => {
+      const banner = await screen.findByTestId('today-scoreboard-101');
+      expect(within(banner).getByText('Final')).toBeInTheDocument();
+      expect(within(banner).getByText('East Division · Round 1 · 2025-06-10')).toBeInTheDocument();
+      expect(within(banner).getByTestId('today-team-badge-101-home')).toHaveTextContent('NYM');
+      expect(within(banner).getByTestId('today-team-badge-101-away')).toHaveTextContent('LAD');
+      expect(within(banner).getByTestId('today-team-name-101-home')).toHaveTextContent('New York Mets');
+      expect(within(banner).getByTestId('today-team-name-101-away')).toHaveTextContent('Los Angeles Dodgers');
+      expect(within(banner).getByTestId('today-team-score-101-home')).toHaveTextContent('5');
+      expect(within(banner).getByTestId('today-team-score-101-away')).toHaveTextContent('3');
+    });
+  });
+
+  test('A scoreboard banner identifies only the derived winner', ({ given, when, then }) => {
+    given('GameWorld 1 has an in-progress season with League 1 named "National League" and League 2 named "American League"', () => {});
+    // @spec TODAYUI-008
+    given('GET /api/league/1/today returns completed home-win, away-win, tied, and missing-score games', () => {
+      todayResponses['1'] = {
+        status: 200,
+        games: [
+          game(101, '2025-06-10', { homeTeamResult: 5, awayTeamResult: 3, status: 'COMPLETED' }),
+          game(102, '2025-06-10', { homeTeamResult: 1, awayTeamResult: 2, status: 'COMPLETED' }),
+          game(103, '2025-06-10', { homeTeamResult: 4, awayTeamResult: 4, status: 'COMPLETED' }),
+          game(104, '2025-06-10', { homeTeamResult: null, awayTeamResult: 2, status: 'COMPLETED' }),
+        ],
+      };
+    });
+    when('the GameWorld 1 home page loads', renderGameWorld);
+
+    // @spec TODAYUI-008
+    then('only the winning lane of each unequal completed game has a winner indicator', async () => {
+      await screen.findByTestId('today-scoreboard-101');
+      expect(screen.getByTestId('today-winner-101-home')).toHaveTextContent('W');
+      expect(screen.queryByTestId('today-winner-101-away')).toBeNull();
+      expect(screen.getByTestId('today-winner-102-away')).toHaveTextContent('W');
+      expect(screen.queryByTestId('today-winner-102-home')).toBeNull();
+      expect(screen.queryByTestId('today-winner-103-home')).toBeNull();
+      expect(screen.queryByTestId('today-winner-103-away')).toBeNull();
+      expect(screen.queryByTestId('today-winner-104-home')).toBeNull();
+      expect(screen.queryByTestId('today-winner-104-away')).toBeNull();
     });
   });
 
