@@ -198,7 +198,7 @@ Feature: Team Lineup View UI
     And the manager drags player 1 onto player 10
     Then player 10 fills player 1's starter slot and player 1 fills player 10's bench slot
 
-  @spec:LINEUI-015
+  @spec:LINEUI-015 @spec:BLUX-005
   Scenario: A manager combines drag and picker edits before saving once
     Given GameWorld 1 has Team 10 as its managed club
     And GET /api/team/10/lineup returns a DH-off active lineup
