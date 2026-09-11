@@ -50,10 +50,10 @@ Feature: Simulate Game UI
     And the button label changes to "Simulating…"
 
   @spec:SIMUI-013
-  Scenario: Batch simulation succeeds with no skipped games and auto-dismisses
+  Scenario: Batch simulation succeeds with no later games and auto-dismisses
     Given the player clicks "Simulate Today"
     When POST /api/gameWorld/1/simulate returns 200 with simulated 2 games and skipped 0
-    Then a summary "2 simulated · 0 skipped" is briefly shown
+    Then a summary "2 simulated · No later games scheduled" is briefly shown
     And the summary auto-dismisses after approximately 3 seconds
     And the "Simulate Today" button returns to its idle enabled state
 

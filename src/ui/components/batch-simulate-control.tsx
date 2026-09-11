@@ -1,10 +1,10 @@
-// @spec SIMUI-009..SIMUI-018,SCL-014
+// @spec SIMUI-009..SIMUI-018,SIMUI-029,SCL-014
 import React, { useEffect, useState } from 'react';
 import { useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 
 type BatchStatus = 'idle' | 'submitting' | 'success-clean' | 'success-skipped' | 'error';
-type BatchResult = { simulated: unknown[]; skipped: unknown[] };
+type BatchResult = { simulated: unknown[]; skipped: { reason?: string }[]; nextDate?: string | null };
 
 type BatchSimulateControlProps = {
   // Peer (rapid) control is in flight → lock this control (RSSUI-006).
@@ -13,7 +13,7 @@ type BatchSimulateControlProps = {
   onBusyChange?: (busy: boolean) => void;
 };
 
-// @spec SIMUI-009..SIMUI-018,SCL-014
+// @spec SIMUI-009..SIMUI-018,SIMUI-029,SCL-014
 const BatchSimulateControl = ({ disabled = false, onBusyChange }: BatchSimulateControlProps = {}) => {
   // @spec RLDRUI-001,RLDRUI-003
   const gw = useRouteLoaderData('gwId') as any;
@@ -45,8 +45,11 @@ const BatchSimulateControl = ({ disabled = false, onBusyChange }: BatchSimulateC
       .then((result: BatchResult) => {
         const simulated = result?.simulated ?? [];
         const skipped = result?.skipped ?? [];
-        setBatchResult({ simulated, skipped });
-        transition(skipped.length === 0 ? 'success-clean' : 'success-skipped');
+        setBatchResult({ simulated, skipped, nextDate: result?.nextDate });
+        // @spec SIMUI-029 — future-date and already-completed ledger entries are expected
+        // after a successful day and do not merit the old persistent failure warning.
+        const hasProgressBlocker = skipped.some((entry) => entry.reason === 'game in progress');
+        transition(hasProgressBlocker ? 'success-skipped' : 'success-clean');
         revalidate();
       })
       .catch((err) => {
@@ -60,7 +63,8 @@ const BatchSimulateControl = ({ disabled = false, onBusyChange }: BatchSimulateC
     return <button data-testid="batch-simulate" disabled>Simulating…</button>;
   }
   if (batchStatus === 'success-clean') {
-    return <span>{batchResult?.simulated.length ?? 0} simulated · {batchResult?.skipped.length ?? 0} skipped</span>;
+    const nextGameDay = batchResult?.nextDate;
+    return <span>{batchResult?.simulated.length ?? 0} simulated · {nextGameDay ? `Next game day: ${nextGameDay}` : 'No later games scheduled'}</span>;
   }
   if (batchStatus === 'success-skipped') {
     const count = batchResult?.skipped.length ?? 0;

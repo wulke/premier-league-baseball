@@ -263,6 +263,35 @@ const GameFactory = (id?: number) => {
       return { simulated, skipped };
     },
 
+    // @spec SIM-019,SIM-020 — Simulate Today owns one player-facing day: complete the
+    // current batch, then move to the earliest later date only when no reachable game
+    // at or before today remains unresolved. The generic simulateBatch stays date-bounded
+    // so rapidSimulateSeason can retain ownership of its multi-day loop.
+    simulateToday: async (gwId: number) => {
+      const result = await GameFactory().simulateBatch(gwId);
+      const gameWorld = await db.models.GameWorld.findByPk(gwId);
+      const currentDate = gameWorld?.dataValues.currentDate;
+      if (currentDate == null) return { ...result, nextDate: null };
+
+      const reachableGames = await loadReachableGames(gwId);
+      const unresolvedAtCurrentDate = reachableGames.some((game: any) =>
+        game.status !== 'COMPLETED'
+        && game.scheduledDate != null
+        && toDateStr(game.scheduledDate) <= currentDate,
+      );
+      if (unresolvedAtCurrentDate) return { ...result, nextDate: null };
+
+      const nextDate = reachableGames
+        .filter((game: any) => game.status !== 'COMPLETED'
+          && game.scheduledDate != null
+          && toDateStr(game.scheduledDate) > currentDate)
+        .map((game: any) => toDateStr(game.scheduledDate))
+        .sort()[0] ?? null;
+
+      if (nextDate != null) await GameWorldFactory(gwId).advanceCurrentDate(nextDate);
+      return { ...result, nextDate };
+    },
+
     // @spec RSS-001,RSS-002,RSS-003,RSS-004,RSS-005,RSS-006,MSS-009 rapidSimulateSeason:
     // fast-forward an entire GameWorld's remaining season by repeatedly simulating the
     // current date's batch and advancing currentDate to the next distinct scheduledDate

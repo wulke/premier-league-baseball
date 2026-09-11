@@ -412,15 +412,18 @@ const registerSteps = ({ given, when, then, and }: any) => {
     expect(getSkippedGames(world)).toHaveLength(0);
   });
 
+  // @spec SIM-019,SIM-020
   then(/^the GameWorld currentDate is "([^"]+)"$/, async (expectedDate: string) => {
     const gameWorld = await db.models.GameWorld.findByPk(scenarioWorld.gameWorldId);
     expect(gameWorld?.dataValues.currentDate).toBe(expectedDate);
   });
 
+  // @spec SIM-019
   then(/^the response nextDate is "([^"]+)"$/, (expectedDate: string) => {
     expect((scenarioWorld.response?.body as any)?.nextDate).toBe(expectedDate);
   });
 
+  // @spec SIM-019,SIM-020
   then('the response nextDate is null', () => {
     expect((scenarioWorld.response?.body as any)?.nextDate).toBeNull();
   });

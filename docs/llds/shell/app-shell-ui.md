@@ -30,9 +30,9 @@ features and render their existing content inside this shell.
   WORLD / COMPETITIONS / dimmed fog trio), the app mark, and world-level display (current date
   chip). Consumes `useGameWorldContext()`. Active highlighting derived from the router.
 - **`BatchSimulateControl`** (`src/ui/components/batch-simulate-control.tsx`, **NEW — RELOCATED**):
-  the existing batch "Simulate Today" state machine (idle/submitting/success-clean/
-  success-skipped/error + `invalidate()`), extracted verbatim from `AppHeader` into its own
-  component and rendered inside the rail's WORLD section.
+  the batch "Simulate Today" state machine (idle/submitting/success-clean/
+  success-skipped/error), rendered inside the rail's WORLD section. Successful daily progression
+  names the returned next game day; only an in-progress blocker produces a persistent warning.
 - **Routing** (`src/ui/routes.tsx`, **MODIFIED**): a pathless layout route carries `AppShell` and
   wraps Home + the `:gwId` subtree; `GameWorldLayout` is removed (its provider duty absorbed by the
   shell).

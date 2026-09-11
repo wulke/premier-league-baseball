@@ -289,7 +289,7 @@ given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
     world.batchResponse = {
       status: 200,
       simulated: Array.from({ length: Number(simulated) }, () => ({})),
-      skipped: Array.from({ length: Number(skipped) }, () => ({})),
+      skipped: Array.from({ length: Number(skipped) }, () => ({ reason: 'game in progress' })),
     };
     // SIMUI-013 relies on the ~3s auto-dismiss timer — switch to fake timers BEFORE
     // flushing so the component schedules that timer under the fake clock.
@@ -326,6 +326,7 @@ given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
     expect(screen.queryByTestId('batch-simulate')).toBeNull();
   });
 
+  // @spec SIMUI-029
   when(/^POST \/api\/gameWorld\/(\d+)\/simulate returns 200 with simulated (\d+) games?, skipped (\d+) future games?, and nextDate "([^"]+)"$/, async (_id: string, simulated: string, skipped: string, nextDate: string) => {
     world.batchResponse = {
       status: 200,
@@ -338,6 +339,7 @@ given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
     await flush();
   });
 
+  // @spec SIMUI-029
   then('no warning indicating games could not be simulated is shown', () => {
     expect(screen.queryByText(/could not be simulated/i)).toBeNull();
   });
