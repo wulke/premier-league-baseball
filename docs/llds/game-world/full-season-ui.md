@@ -53,7 +53,13 @@ the team/year across leagues; the UI simply stops passing it.
 consumed for the page fetch and breadcrumb, so a direct visit to `/:gwId/team/:teamId/calendar`
 renders the combined season schedule with no missing-param fallback path.
 
-### `BracketView` (new component, `src/ui/pages/league.tsx` or extracted `src/ui/components/bracket-view.tsx`)
+### `BracketView` (superseded for tree rendering)
+
+Decision #39's `BracketView` render details below are superseded by
+[`docs/llds/league/bracket-tree-ui.md`](../league/bracket-tree-ui.md). That LLD owns the
+round-column tree, bye-node, connector, responsive-scroll, winner-treatment, and component
+extraction decisions. This document remains authoritative for the surrounding division branch,
+champion banner, lifecycle, and calendar decisions.
 
 Consumes the per-division entry from `GetLeagueBracket` (`docs/llds/league/bracket-api.md`):
 
