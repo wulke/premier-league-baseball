@@ -5,7 +5,7 @@ import { RosterPlayer } from '../../api/models';
 import { RosterTable } from '../components/roster-table';
 import { PageContainer } from '../components/ui';
 
-// @spec ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-008,ROSTUI-009,ROSTUI-010,XFERUI-005
+// @spec ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-008,ROSTUI-009,ROSTUI-010,ROSTUI-012,XFERUI-005
 const TeamRoster = () => {
   const { gwId, teamId } = useParams();
   // @spec RLDRUI-001
@@ -37,6 +37,7 @@ const TeamRoster = () => {
         players={players}
         gwId={gwId}
         testIdPrefix="roster"
+        defaultSort="primaryPosition"
         actions={isManagedTeam ? [
           { testId: 'release-action', label: 'Release', onClick: (playerId) => postTransferAction(Endpoints.ReleasePlayer, playerId) },
           { testId: 'renew-action', label: 'Renew', onClick: (playerId) => postTransferAction(Endpoints.RenewPlayer, playerId) },

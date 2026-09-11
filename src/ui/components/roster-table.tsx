@@ -5,6 +5,7 @@ import { positionLabels } from '../position-labels';
 import { Button, Input, Table, Td, Th, Tr } from './ui';
 
 type SortKey = 'name' | 'age' | 'primaryPosition';
+type DefaultSort = 'name' | 'primaryPosition';
 type SortDirection = 'asc' | 'desc';
 
 const ratings: Array<{ key: keyof Pick<RosterPlayer, 'contact' | 'power' | 'armStrength' | 'accuracy' | 'reaction' | 'vision' | 'discipline'>; label: string }> = [
@@ -18,6 +19,7 @@ const ratings: Array<{ key: keyof Pick<RosterPlayer, 'contact' | 'power' | 'armS
 ];
 
 const playerName = (player: RosterPlayer) => `${player.givenName} ${player.familyName}`;
+const primaryPositionOrder = ['Catcher', 'FirstBase', 'SecondBase', 'ThirdBase', 'Shortstop', 'LeftField', 'CenterField', 'RightField', 'Pitcher'] as const;
 
 const ratingTint = (rating: number) => {
   const hue = Math.round(Math.max(0, Math.min(100, rating)) * 1.2);
@@ -34,6 +36,15 @@ const comparePlayers = (left: RosterPlayer, right: RosterPlayer, key: SortKey, d
   return direction === 'asc' ? comparison : -comparison;
 };
 
+// @spec ROSTUI-012
+const compareByPrimaryPosition = (left: RosterPlayer, right: RosterPlayer) => {
+  const positionDifference = primaryPositionOrder.indexOf(left.primaryPosition) - primaryPositionOrder.indexOf(right.primaryPosition);
+  if (positionDifference !== 0) return positionDifference;
+
+  const nameDifference = playerName(left).localeCompare(playerName(right));
+  return nameDifference !== 0 ? nameDifference : left.id - right.id;
+};
+
 interface RowAction {
   testId: string;
   label: string;
@@ -45,22 +56,25 @@ interface RosterTableProps {
   gwId?: string;
   testIdPrefix: string;
   actions?: RowAction[];
+  defaultSort?: DefaultSort;
 }
 
-// @spec ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-008,ROSTUI-009,ROSTUI-011 — the shared flat-table
+// @spec ROSTUI-002,ROSTUI-003,ROSTUI-004,ROSTUI-008,ROSTUI-009,ROSTUI-011,ROSTUI-012 — the shared flat-table
 // renderer for a RosterPlayer[] list. Reused by the Team Roster view and the Transfers
 // free-agent market (contract-lifecycle.md's getRoster()/getFreeAgents() share the same
 // row shape, so the UI layer mirrors that reuse rather than re-deriving a second table).
-const RosterTable = ({ players, gwId, testIdPrefix, actions }: RosterTableProps) => {
+const RosterTable = ({ players, gwId, testIdPrefix, actions, defaultSort = 'name' }: RosterTableProps) => {
   const [filter, setFilter] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortKey, setSortKey] = useState<SortKey | null>(defaultSort === 'primaryPosition' ? null : 'name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const visiblePlayers = useMemo(() => {
     const query = filter.trim().toLowerCase();
     return players
       .filter((player) => !query || [playerName(player), player.primaryPosition, ...player.positionCoverage].join(' ').toLowerCase().includes(query))
-      .sort((left, right) => comparePlayers(left, right, sortKey, sortDirection));
+      .sort((left, right) => sortKey
+        ? comparePlayers(left, right, sortKey, sortDirection)
+        : compareByPrimaryPosition(left, right));
   }, [filter, players, sortDirection, sortKey]);
 
   const changeSort = (key: SortKey) => {

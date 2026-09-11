@@ -173,7 +173,10 @@ defineFeature(feature, (test) => {
     and('no second GET /api/team/10/roster request is made', () => expect(requests.filter((url) => url === '/api/team/10/roster')).toHaveLength(1));
   });
 
-  test('My Club roster defaults to primary defensive position and player name order', ({ given, when, then }) => {
+  // @spec ROSTUI-012
+  test('My Club roster defaults to primary defensive position and player name order', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {});
+    and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
     given('GET /api/team/10/roster returns Players with mixed primary defensive positions and matching-position names', () => {
       roster = [
         player({ id: 100, givenName: 'Zane', familyName: 'Catcher', primaryPosition: 'Catcher' }),
