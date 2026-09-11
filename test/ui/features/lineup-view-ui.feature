@@ -231,6 +231,31 @@ Feature: Team Lineup View UI
     And the manager drags player 1 onto player 2 without a readable drag payload
     Then the starter slots for players 1 and 2 are swapped
 
+  @spec:BLUX-001 @spec:BLUX-002 @spec:BLUX-004
+  Scenario: Eligible lineup drag gives source and valid target feedback only
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager drags player 1 over player 2
+    Then player 1 has the greyed-out drag source placeholder
+    And player 2 has the prospective swap target highlight
+    When the manager moves the drag over pitcher player 9
+    And pitcher and bullpen rows have no drag feedback affordance
+
+  @spec:BLUX-003
+  Scenario: Eligible lineup drag feedback clears on drop and drag end
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup returns a DH-off active lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the manager enters lineup edit mode
+    And the manager drops player 1 onto player 2
+    Then neither player has drag feedback
+    When the manager drags player 1 over player 2 and ends the drag
+    Then neither player has drag feedback
+
   @spec:LINEUI-010 @spec:LINEUI-015
   Scenario: Edit selectors replace duplicated row labels
     Given GameWorld 1 has Team 10 as its managed club

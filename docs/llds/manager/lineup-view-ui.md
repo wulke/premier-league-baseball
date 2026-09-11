@@ -66,6 +66,11 @@ The drag payload is the source draft entry index; dropping it on another eligibl
 same player-ID slot-swap mutation used by the per-row picker. Drag state is transient UI event
 data only: it is never a second draft, request, or save path.
 
+For #290 backlog-1, that transient state also records the eligible source and the eligible row
+currently under the drag. The source keeps its slot geometry but renders as a grey placeholder;
+the prospective target receives a highlighted treatment. Both markers are cleared by `drop` and
+`dragend` (including browser drag cancellation), before any existing slot-swap mutation runs.
+
 ## Logic Flow
 
 ```
@@ -87,6 +92,8 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
       STARTER rows sorted by battingOrder (unchanged from pre-#225 behavior)
       render: Tag | Order | Player | Position (DH label when fieldingPosition === null) | picker (managed editable rows only)  # LINEUI-002/003
       append BENCH rows, then BULLPEN rows (Order/Position columns blank)               # LINEUI-007
+  → `dragstart` records the eligible source slot; `dragover` records a distinct eligible target and renders source/target feedback # BLUX-001, BLUX-002
+  → `drop` or `dragend` clears transient feedback; a valid drop then swaps playerIds in the selected and target slots; no fetch # BLUX-003
   → selecting a picker or dropping an eligible row on another swaps playerIds in the selected and target slots; no fetch       # LINEUI-010, LINEUI-015
   → Save Lineup PUTs `{ entries: draft }`; successful save replaces read/draft state    # LINEUI-009
   → rejected PUT keeps draft and shows its error; server state is unchanged              # LINEUI-011
@@ -139,6 +146,8 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
 | u16 | A drag edit and picker edit occur before save | Both call the same slot-swap mutation over the one draft; the existing Save Lineup PUT and validator gate serialize the composed draft once. | LINEUI-015 |
 | u17 | A drop has no valid lineup-entry drag payload | Ignore a drop not initiated by this lineup and leave the draft unchanged. Retain the source slot locally throughout a row-initiated drag so browsers that omit custom MIME data can still complete its swap. | LINEUI-015 |
 | u18 | The manager edits a starter or bench row | Make the entire eligible row the drag source. On Defensive rows, place the fielding-position picker where the read-only position label appears and show the player name once. On Batting and defensive bench rows, place the slot-occupant picker where the read-only player name appears rather than duplicating it. Keep role controls available later in Defensive rows. | LINEUI-010, LINEUI-015 |
+| u19 | An eligible row is dragged across another eligible row | Retain the source row's space with grey placeholder styling and highlight only the current distinct eligible target; no draft mutation occurs until drop. | BLUX-001, BLUX-002 |
+| u20 | Drag ends, is cancelled, is dropped, or crosses a pitcher/bullpen/non-managed row | Clear source/target state on drop/dragend. Ineligible rows receive neither drag handlers nor feedback, and an external or invalid drag cannot create a target marker. | BLUX-003, BLUX-004 |
 
 ## Traceability
 
@@ -147,7 +156,7 @@ user opens Team Hub → Lineup tab (route unchanged: /:gwId/team/:teamId/lineup)
 | HLD | [`docs/high-level-design.md`](../high-level-design.md#hld-lineup-view--defensive--batting-tabs) |
 | **This LLD** | `docs/llds/manager/lineup-view-ui.md` |
 | Sibling LLDs | `docs/llds/manager/lineup-read-api.md` (lineup endpoint, unchanged), `docs/llds/manager/roster-read-api.md` (`positions` amendment, ROST-011) |
-| EARS | `docs/specs/manager/lineup-view-ui-specs.md` — `LINEUI-001`..; `docs/specs/manager/lineup-edit-specs.md` — `LEDIT-001`.. |
+| EARS | `docs/specs/manager/lineup-view-ui-specs.md` — `LINEUI-001`.., `BLUX-001`..; `docs/specs/manager/lineup-edit-specs.md` — `LEDIT-001`.. |
 | Gherkin | `test/ui/features/lineup-view-ui.feature` |
 | Code | `src/ui/routes.tsx`, `src/ui/pages/team-hub.tsx`, `src/ui/pages/team-lineup.tsx`, `src/db/domain/team.ts` (`getRoster`), `src/api/models.ts` (`RosterPlayer`) |
 | Decision record | #138, #200 (original) · #225 (this redesign) |
