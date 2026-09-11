@@ -20,6 +20,14 @@ and League Cup templates, and the offline badge-fetch/build pipeline (`src/api/m
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
+**No Gherkin for this file.** Every `BADGE-*` requirement is a config/data-shape or offline-script
+concern with no player-facing flow through `src/api/handlers.ts` — creating a GameWorld already
+exercises the same `POST /api/gameWorld/new` path regardless of pool size (proven by the existing
+full-season BDD coverage). Per `backend-standards.md` §4 and the `game-world-templates` precedent
+(`GWT-*`'s config-surface assertions live in `test/db/domain/game-world-templates.test.ts`, not a
+`.feature`), these specs bind to plain unit/config-surface tests at stage 5:
+`test/db/domain/team-badges-pyramid.test.ts`.
+
 ## Traceability
 
 - HLD: [`docs/high-level-design.md` — Real Team Badges & Full English Pyramid](../../high-level-design.md#hld-real-team-badges--full-english-pyramid)
