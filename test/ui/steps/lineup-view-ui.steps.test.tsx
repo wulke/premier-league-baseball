@@ -1,4 +1,4 @@
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014,LINEUI-015,GBULL-006
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014,LINEUI-015,BLUX-001,BLUX-002,BLUX-003,BLUX-004,BLUX-005,GBULL-006
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -72,6 +72,17 @@ const dragPlayerOnto = (sourcePlayerId: number, targetPlayerId: number) => {
   const target = screen.getByTestId(targetPlayerId <= 9 ? `defensive-row-${targetPlayerId}` : `bench-row-${targetPlayerId}`);
   fireEvent.dragOver(target, { dataTransfer });
   fireEvent.drop(target, { dataTransfer });
+};
+
+// @spec BLUX-001,BLUX-002,BLUX-003 — keep the transferable object stable across a partial drag lifecycle.
+const lineupDrag = (sourcePlayerId: number, targetPlayerId: number) => {
+  const values = new Map<string, string>();
+  const dataTransfer = { setData: (type: string, value: string) => values.set(type, value), getData: (type: string) => values.get(type) ?? '' };
+  const source = screen.getByTestId(sourcePlayerId <= 9 ? `defensive-row-${sourcePlayerId}` : `bench-row-${sourcePlayerId}`);
+  const target = screen.getByTestId(targetPlayerId <= 9 ? `defensive-row-${targetPlayerId}` : `bench-row-${targetPlayerId}`);
+  fireEvent.dragStart(source, { dataTransfer });
+  fireEvent.dragOver(target, { dataTransfer });
+  return { source, target, dataTransfer };
 };
 
 // @spec LINEUI-015 — some browsers do not make custom MIME data readable on drop.
@@ -423,6 +434,40 @@ defineFeature(feature, (test) => {
     and('the manager drags player 1 onto player 2 without a readable drag payload', () => dragPlayerOntoWithoutReadablePayload(1, 2));
     // @spec LINEUI-015
     then('the starter slots for players 1 and 2 are swapped', () => { expect(within(slot(0)).getByRole('link')).toHaveTextContent('Player 2'); expect(within(slot(1)).getByRole('link')).toHaveTextContent('Player 1'); });
+  });
+
+  test('Eligible lineup drag gives source and valid target feedback only', ({ given, and, when, then }) => {
+    let activeDrag: ReturnType<typeof lineupDrag>;
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    and('the manager drags player 1 over player 2', () => { activeDrag = lineupDrag(1, 2); });
+    // @spec BLUX-001
+    then('player 1 has the greyed-out drag source placeholder', () => expect(screen.getByTestId('defensive-row-1')).toHaveAttribute('data-drag-source', 'true'));
+    // @spec BLUX-002
+    and('player 2 has the prospective swap target highlight', () => expect(screen.getByTestId('defensive-row-2')).toHaveAttribute('data-drag-target', 'true'));
+    when('the manager moves the drag over pitcher player 9', () => fireEvent.dragOver(screen.getByTestId('defensive-row-9'), { dataTransfer: activeDrag.dataTransfer }));
+    // @spec BLUX-004
+    and('pitcher and bullpen rows have no drag feedback affordance', () => { expect(screen.getByTestId('defensive-row-9')).not.toHaveAttribute('data-drag-source'); expect(screen.getByTestId('bullpen-row-12')).not.toHaveAttribute('data-drag-target'); });
+  });
+
+  test('Eligible lineup drag feedback clears on drop and drag end', ({ given, and, when, then }) => {
+    let activeDrag: ReturnType<typeof lineupDrag>;
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    and('GET /api/team/10/lineup returns a DH-off active lineup', () => { lineup = dhOff(); });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the manager enters lineup edit mode', () => fireEvent.click(screen.getByRole('button', { name: 'Edit Lineup' })));
+    and('the manager drops player 1 onto player 2', () => { activeDrag = lineupDrag(1, 2); fireEvent.drop(activeDrag.target, { dataTransfer: activeDrag.dataTransfer }); });
+    // @spec BLUX-003
+    then('neither player has drag feedback', () => { expect(screen.getByTestId('defensive-row-1')).not.toHaveAttribute('data-drag-source'); expect(screen.getByTestId('defensive-row-2')).not.toHaveAttribute('data-drag-target'); });
+    when('the manager drags player 1 over player 2 and ends the drag', () => { activeDrag = lineupDrag(1, 2); fireEvent.dragEnd(activeDrag.source, { dataTransfer: activeDrag.dataTransfer }); });
+    // @spec BLUX-003
+    then('neither player has drag feedback', () => { expect(screen.getByTestId('defensive-row-1')).not.toHaveAttribute('data-drag-source'); expect(screen.getByTestId('defensive-row-2')).not.toHaveAttribute('data-drag-target'); });
   });
 
   test('Edit selectors replace duplicated row labels', ({ given, and, when, then }) => {
