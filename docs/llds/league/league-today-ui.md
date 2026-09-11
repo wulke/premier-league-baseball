@@ -1,91 +1,115 @@
-# LLD: GameWorld Home "Today" Section (`game-world.tsx`)
+# LLD: GameWorld Home "Today" Scoreboard (`game-world.tsx`)
 
-> Backend LLD (sibling): [`league-today.md`](./league-today.md) ·
-> EARS: `docs/specs/league/league-today-ui-specs.md` (`TODAYUI-001`..`TODAYUI-006`) ·
-> Gherkin: `test/ui/features/league-today-ui.feature` ·
-> Decision record: [#101](https://github.com/wulke/premier-league-baseball/issues/101), resolved via `/grill-me`
+> Backend LLD (unchanged sibling): [`league-today.md`](./league-today.md) ·
+> EARS: `docs/specs/league/league-today-ui-specs.md` (`TODAYUI-001`..`TODAYUI-008`) ·
+> Existing Gherkin: `test/ui/features/league-today-ui.feature` ·
+> Decision records: [#101](https://github.com/wulke/premier-league-baseball/issues/101), [#301](https://github.com/wulke/premier-league-baseball/issues/301)
 
 ## Scope
 
-Adds a "Today" section to the GameWorld home page (`src/ui/pages/game-world.tsx`), between the
-existing "Season" section and the "Leagues" list section. Calls the new
-`GET /api/league/:leagueId/today` endpoint (backend LLD) once per league, reusing the same
-per-league `Promise.all` fetch group the page already runs for `GetLeague`/`GetLeagueBracket`
-(season-summary champion lookup) — one more per-league call fits the existing pattern.
+Revise the GameWorld home page's inline "Today" presentation from tall game cards to a dense,
+horizontal banner-style scoreboard. The section remains between "Season" and "Leagues", fetches
+the existing `GET /api/league/:leagueId/today` endpoint once per league, and preserves the current
+per-league grouping, backend chronological order, and empty-state omission behavior.
+
+This is a presentation-only change. It consumes the existing `TeamSeasonGame` fields
+(`homeTeamName`, `awayTeamName`, `homeTeamResult`, `awayTeamResult`, `status`, and `divisionName`;
+plus the existing `scheduledDate` and `roundLabel` context) without an API, schema, logo, or
+branding change. The backend sibling LLD is deliberately not changed.
+
+## LID Gate
+
+This revision is the design and EARS gate for #301. `TODAYUI-007` and `TODAYUI-008` remain active
+until the LLD/EARS review is approved; no UI test or implementation work is in scope for this issue.
+The later implementation issue must add Red scenarios for both IDs before changing
+`src/ui/pages/game-world.tsx`.
 
 ## Interface / Data Model
 
-### `game-world.tsx` (MODIFIED)
+### Existing input (unchanged)
 
 ```ts
 type LeagueTodaySummary = {
   leagueId: number;
   leagueName: string;
-  games: TeamSeasonGame[];   // already sorted ascending by scheduledDate (backend-sorted)
+  games: TeamSeasonGame[]; // backend-sorted ascending by scheduledDate
 };
-
-// NEW state, populated alongside the existing leagueSeasonSummary effect:
-//   leagueTodaySummary: LeagueTodaySummary[]
 ```
 
-No new component is introduced — the section renders inline in `game-world.tsx`, matching the
-existing "Season"/"Leagues" sections' inline-JSX style on this page rather than extracting a
-component prematurely.
+No new request, persisted state, component boundary, or backend type is introduced. The section
+continues to render inline in `game-world.tsx`.
+
+### Presentation-only derived values
+
+```ts
+type ScoreboardOutcome = 'home' | 'away' | 'none';
+
+teamBadgeText(name: string): string;
+// Use the initials of non-empty whitespace-delimited name words (for example,
+// "New York Mets" -> "NYM"). If no word is available, use "?". This is a
+// text placeholder, not a logo or a team-branding contract.
+
+scoreboardOutcome(game: TeamSeasonGame): ScoreboardOutcome;
+// Return 'home' or 'away' only when status is COMPLETED, both results are
+// non-null, and one result is greater. Return 'none' for scheduled/in-progress,
+// missing-score, and tied-result cases.
+```
+
+The derived values are computed in the client render path from the API response. They are not
+written back to state or sent to the server.
 
 ## Logic Flow
 
 ```
-1. Existing effect (game-world.tsx, gated on gw?.config?.inProgress and gw.Leagues.length > 0)
-   is extended: for each league, add a third parallel fetch alongside GetLeague/GetLeagueBracket:
+1. Fetch and summary construction remain unchanged:
+   - when the season is in progress and currentDate exists, fetch /today once per league
+     alongside GetLeague/GetLeagueBracket; a non-ok/network response becomes []
+   - preserve backend game order; build LeagueTodaySummary per league
+                                                               # TODAYUI-001,TODAYUI-002,TODAYUI-006
 
-     // TODAYUI-006: a null currentDate makes the request a guaranteed 422 (TODAY-002)
-     // that only produces server-side log noise — the fetch is skipped entirely and
-     // the league behaves as an empty window.
-     gw?.currentDate == null
-       ? Promise.resolve([])
-       : fetch(Endpoints.GetLeagueToday.replace(':leagueId', String(leagueRow.id)))
-           .then((response) => (response.ok ? response.json() : []))
-           // non-ok (e.g. 422, or any network error) resolves to [] rather than
-           // rejecting — a league with no "today" data behaves identically to a
-           // league with an empty window.                                              # TODAYUI-002
+2. Select leagues with games:
+     leaguesWithGames = leagueTodaySummary.filter((league) => league.games.length > 0)
+   If none exist, omit the whole Today section. Otherwise render it between Season and Leagues,
+   retaining one league sub-block in the response's chronological game order.
+                                                               # TODAYUI-003,TODAYUI-004,TODAYUI-005
 
-2. Build leagueTodaySummary from the per-league results:
-     { leagueId, leagueName: leagueRow.config?.name ?? `League ${leagueRow.id}`, games }
-   games arrive pre-sorted from the backend (TODAY-005) — no client-side re-sort.            # TODAYUI-001
+3. For each game, render one horizontal scoreboard banner (not a vertically stacked detail card):
+   - compact context: divisionName and, when present, roundLabel/scheduledDate
+   - status: render "Final" for COMPLETED; otherwise render the current status label
+   - two aligned team lanes: a text badge from teamBadgeText(name), team name, and score
+   - completed score: homeTeamResult and awayTeamResult; unavailable scores render an em dash
+   - no logo image, team-color, or external asset is requested; badge text is the v1 placeholder
+                                                               # TODAYUI-007
 
-3. Render (between the Season section and the Leagues section):
-     leaguesWithGames = leagueTodaySummary.filter(l => l.games.length > 0)
-     IF leaguesWithGames.length === 0 -> render nothing (whole Today section omitted)         # TODAYUI-005
-     ELSE:
-       <section> "Today"
-         FOR each league in leaguesWithGames:
-           sub-block header: league.leagueName
-           list of league.games, each row showing:
-             scheduledDate, homeTeamName vs awayTeamName, divisionName/roundLabel,
-             status, and (if COMPLETED) homeTeamResult–awayTeamResult
-                                                                                    # TODAYUI-003,TODAYUI-004
+4. Derive outcome from the completed numeric scores. Mark exactly the winning team lane with a
+   non-colour-only winner indicator (for example, a visible "W" marker plus stronger text weight).
+   A tied, missing, scheduled, or in-progress result receives no winner marker.
+                                                               # TODAYUI-008
 ```
 
-Leagues with `games.length === 0` are simply absent from `leaguesWithGames` — no explicit
-"no games" placeholder block is rendered per league (settled decision: omit rather than show an
-empty message).
+The banners may wrap on narrow viewports, but each game remains a single visual tile with the two
+team lanes and scores paired together; responsive wrapping must not revert to the former full-detail
+card layout.
 
 ## Edge Case Probe
 
 | # | Condition | Handling | Spec |
 |---|---|---|---|
-| u1 | A league's `/today` fetch fails (network error, or 422 because the GameWorld has no `currentDate` configured) | Resolved to `[]` in the fetch chain itself (step 1), identical to how the existing champion-lookup fetch in this same effect already defaults to `{}`/`[]` on non-ok — no new error UI, no console noise beyond the existing `.catch` at the `Promise.all` level. | TODAYUI-002 |
-| u2 | GameWorld season not in progress (`gw.config.inProgress` false) | The whole effect (all three per-league fetches) already short-circuits to empty state today — `leagueTodaySummary` stays `[]`, Today section renders nothing. No new gating needed. | TODAYUI-005 |
-| u3 | A league has games, but all of them are older than the window on a stale read (race between `currentDate` changing and this fetch) | Not specifically guarded — the backend is the source of truth for the window; a stale response before invalidation just shows a slightly outdated Today slate until the next fetch, same staleness characteristics as the existing champion/bracket summary already has. | — |
-| u4 | Many leagues, each with several games — visual noise | Not addressed in this pass; each league's block just renders its full window list. No per-league cap or "show more" was requested. | TODAYUI-003 |
+| u1 | A league's `/today` fetch fails, is non-ok, or `currentDate` is unavailable | Keep the established degrade-to-empty behavior; no Today error UI or request for a null `currentDate`. | TODAYUI-002, TODAYUI-006 |
+| u2 | No league, or a particular league, has games | Keep the established omission rules: omit empty league sub-blocks and omit Today entirely when all are empty. | TODAYUI-004, TODAYUI-005 |
+| u3 | A completed game has equal or missing results | Render the available score values (or em dash), but derive `none` and display no winner marker. The UI does not invent a winner. | TODAYUI-008 |
+| u4 | A scheduled or in-progress game has null results | Render its current status and em-dash score placeholders; no winner marker. | TODAYUI-007, TODAYUI-008 |
+| u5 | Team-name data has multiple words, extra whitespace, or is empty | Derive initials from non-empty words; use `?` when no initials can be formed. Never request a logo or add a branding fallback. | TODAYUI-007 |
+| u6 | Many games or narrow viewport | Retain the dense banner tile per game; normal responsive wrapping/scroll containment may be used, but no per-league cap or "show more" control is introduced. | TODAYUI-007 |
 
 ## Traceability
 
 | Layer | Artifact |
 |---|---|
-| Backend sibling LLD | `docs/llds/league/league-today.md` |
+| Backend sibling LLD (unchanged) | `docs/llds/league/league-today.md` |
 | **This LLD** | `docs/llds/league/league-today-ui.md` |
-| EARS | `docs/specs/league/league-today-ui-specs.md` — `TODAYUI-001`..`TODAYUI-005` |
-| Gherkin | `test/ui/features/league-today-ui.feature` |
-| Code | `src/ui/pages/game-world.tsx` |
-| Decision record | [#101](https://github.com/wulke/premier-league-baseball/issues/101) |
+| EARS | `docs/specs/league/league-today-ui-specs.md` — `TODAYUI-001`..`TODAYUI-008` |
+| Existing Gherkin | `test/ui/features/league-today-ui.feature` — `TODAYUI-001`..`TODAYUI-006` |
+| Future Gherkin | new scoreboard scenarios for `TODAYUI-007`, `TODAYUI-008` |
+| Future code | `src/ui/pages/game-world.tsx` |
+| Decision records | [#101](https://github.com/wulke/premier-league-baseball/issues/101), [#301](https://github.com/wulke/premier-league-baseball/issues/301) |
