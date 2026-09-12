@@ -99,6 +99,7 @@ defineFeature(feature, (test) => {
       const card = within(bracketCard());
       expect(card.getByText('No bracket yet — season not started.')).toBeInTheDocument();
       expect(card.getByRole('button', { name: 'Chelsea' })).toBeInTheDocument();
+      expect(card.getByTestId('team-grid-badge-203')).toBeInTheDocument();
     });
     and('the bracket tree does not render a tree shell', () => expect(within(bracketCard()).queryByTestId('bracket-tree')).toBeNull());
   });
