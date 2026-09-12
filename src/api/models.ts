@@ -1,3 +1,6 @@
+// @spec BADGE-009 — real 92-club English pyramid, replacing the england-44 fictional stub.
+import { England92Teams } from './team-pools/england-92';
+
 // @spec GWT-001 — `GameWorldType` is the *runnable* identity (only worlds that
 // actually simulate get an arm). The old Champions League graduates from a
 // registry-only pressure-test config (#85) to a pickable world here (#87).
@@ -23,6 +26,7 @@ const DefaultStandingsConfig: StandingsConfig = {
 interface TeamStanding {
   teamId: number;
   teamName: string;
+  teamBadge?: string; // @spec BADGEUI-005
   played: number;
   won: number;
   drawn: number;
@@ -39,8 +43,10 @@ interface TeamSeasonGame {
   scheduledDate: string | null;
   homeTeamId: number;
   homeTeamName: string;
+  homeTeamBadge?: string; // @spec BADGEUI-005
   awayTeamId: number | null;
   awayTeamName: string;
+  awayTeamBadge?: string | null; // @spec BADGEUI-005
   divisionId: number;
   divisionName: string;
   roundLabel?: string | null;
@@ -52,6 +58,7 @@ interface TeamSeasonGame {
 interface TeamSeasonSchedule {
   teamId: number;
   teamName: string;
+  teamBadge?: string; // @spec BADGEUI-005
   games: TeamSeasonGame[];
 }
 
@@ -385,8 +392,14 @@ const validateLeagueConfig = (config: LeagueConfig): void => {
     throw Error('League config requires exactly one final-stage isTopTier division');
   }
 };
+// @spec BADGE-007,BADGE-008 — `key`/`badge` are optional so every other pool (e.g. `europe-32`)
+// compiles unchanged. `badge` is a pure function of `key` (`/badges/<key>.png`) computed wherever
+// a TeamConfig is authored — its file's actual existence on disk is a build/script-time concern,
+// never encoded here (see team-badges-pyramid.md's Key Decisions).
 interface TeamConfig {
   name: string;
+  key?: string;
+  badge?: string;
 };
 
 enum LeagueType {
@@ -395,61 +408,17 @@ enum LeagueType {
 };
 
 // --- Named team pools (#85) --------------------------------------------------
-// Decoupled from `GameWorldType`, symmetric with LeagueTemplates. `england-44`
+// Decoupled from `GameWorldType`, symmetric with LeagueTemplates. `england-92`
 // backs the Premier League world; `europe-32` backs the old Champions League
 // world (#87 pickability). `mlb-30` populates when its world runs (builder map).
 // #283: pools are referenced by the League templates that own them (TLO-002),
 // so this map is declared before LeagueTemplates.
-// @spec GWT-001
+// @spec GWT-001,BADGE-009 — real top-4-tier English pyramid (92 clubs), replacing the
+// fictional/misspelled 'england-44' stub. Club/crest data lives in ./team-pools/england-92.ts.
 const TeamPools: Record<string, TeamConfig[]> = {
-  'england-44': [
-    'Manchester City',
-    'Liverpool',
-    'Brighton Hove & Albion',
-    'Arsenal',
-    'Tottenham',
-    'Aston Villa',
-    'West Ham United',
-    'Newcastle United',
-    'Manchester United',
-    'Crystal Palace',
-    'Fulham',
-    'Nottingham Forest',
-    'Brentford',
-    'Chelsea',
-    'Everton',
-    'Wovles',
-    'Bournemouth',
-    'Luton Town',
-    'Burnely',
-    'Sheffield United',
-    'Leceister City',
-    'Ipswich Town',
-    'Preston North End',
-    'Hull City',
-    'Sudnerland',
-    'Leeds United',
-    'Cardiff City',
-    'Norwich City',
-    'Bristol City',
-    'Birmingham City',
-    'Milwall',
-    'Plymouth Argyle',
-    'West Bromwich Albion',
-    'Blackburn Rovers',
-    'Southamptom',
-    'Watford',
-    'Huddersfield Town',
-    'Coventry City',
-    'Queens Park Rangers',
-    'Stoke City',
-    'Swansea City',
-    'Middlesbrough',
-    'Rotherham United',
-    'Sheffield Wednesday',
-  ].map((name): TeamConfig => ({ name })),
+  'england-92': England92Teams,
   // @spec GWT-001 — 32 stub European clubs; group divisions reference indices 0..31.
-  // Name-only, symmetric with england-44; roster realism is the factory's concern.
+  // Name-only (no key/badge) — roster realism is the factory's concern.
   'europe-32': [
     'Real Madrid',
     'FC Barcelona',
@@ -552,22 +521,39 @@ const LeagueTemplates: Record<string, LeagueConfig> = {
   // @spec TLO-002 — the Premier League owns its pool; the cup borrows it whole via
   // externalTeams (strictly-prior key reference), replacing the old index-overlapping
   // of a world-level flat array (#283).
+  // @spec BADGE-006,BADGE-009 — real top-4-tier English pyramid (92 clubs), replacing the
+  // fictional 44-team stub. The 4 slices are contiguous/non-overlapping over [0, 92) and only
+  // the Premier League division is isTopTier.
   'premier-league': {
     key: 'premier-league',
     name: GameWorldType.PremierLeague,
     type: LeagueType.League,
-    teams: TeamPools['england-44'],
+    teams: TeamPools['england-92'],
     stages: [{ id: 'regular-season', name: 'Regular Season', divisions: [
       {
         name: GameWorldType.PremierLeague,
-        defaultTeams: [...Array(44).keys()].slice(0, 20),
+        defaultTeams: [...Array(92).keys()].slice(0, 20),
         format: STANDARD_LEAGUE_FORMAT,
         schedulingConfig: PL_SCHEDULING,
         isTopTier: true,
       },
       {
         name: 'Championship',
-        defaultTeams: [...Array(44).keys()].slice(20, 44),
+        defaultTeams: [...Array(92).keys()].slice(20, 44),
+        format: STANDARD_LEAGUE_FORMAT,
+        schedulingConfig: PL_SCHEDULING,
+        isTopTier: false,
+      },
+      {
+        name: 'League One',
+        defaultTeams: [...Array(92).keys()].slice(44, 68),
+        format: STANDARD_LEAGUE_FORMAT,
+        schedulingConfig: PL_SCHEDULING,
+        isTopTier: false,
+      },
+      {
+        name: 'League Two',
+        defaultTeams: [...Array(92).keys()].slice(68, 92),
         format: STANDARD_LEAGUE_FORMAT,
         schedulingConfig: PL_SCHEDULING,
         isTopTier: false,
@@ -581,8 +567,10 @@ const LeagueTemplates: Record<string, LeagueConfig> = {
     externalTeams: 'premier-league',
     stages: [{ id: 'cup', name: 'League Cup', divisions: [
       {
+        // @spec BADGE-005 — widened from 44 to all 92; existing knockout bye/power-of-2
+        // generation requires no change to accept the larger field.
         name: '1st Round',
-        defaultTeams: [...Array(44).keys()],
+        defaultTeams: [...Array(92).keys()],
         format: STANDARD_CUP_FORMAT,
         schedulingConfig: LC_SCHEDULING,
         isTopTier: true,

@@ -5,6 +5,7 @@ import { getChampionDivisionId, getChampionTeamName } from '../champion';
 import { TeamSeasonGame } from '../../api/models';
 import { NotificationStream } from './notification-stream';
 import { Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
+import { TeamCrest } from '../components/team-crest';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
 type LeagueSeasonSummary = {
@@ -19,12 +20,6 @@ type LeagueTodaySummary = {
 };
 
 type ScoreboardOutcome = 'home' | 'away' | 'none';
-
-// @spec TODAYUI-007
-const teamBadgeText = (name: string): string => {
-  const initials = name.trim().split(/\s+/).filter(Boolean).map((word) => word[0]).join('');
-  return initials || '?';
-};
 
 // @spec TODAYUI-008
 const scoreboardOutcome = (game: TeamSeasonGame): ScoreboardOutcome => {
@@ -275,7 +270,7 @@ const GameWorld = () => {
                     const outcome = scoreboardOutcome(game);
                     const context = [game.divisionName, game.roundLabel, game.scheduledDate].filter(Boolean).join(' · ');
                     const statusLabel = game.status === 'COMPLETED' ? 'Final' : game.status;
-                    const teamLane = (side: 'home' | 'away', teamName: string, result: number | null) => {
+                    const teamLane = (side: 'home' | 'away', teamName: string, badge: string | null | undefined, result: number | null) => {
                       const isWinner = outcome === side;
                       return (
                         <div
@@ -283,9 +278,8 @@ const GameWorld = () => {
                           data-testid={`today-team-lane-${game.gameId}-${side}`}
                           style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr) auto 18px', gap: '8px', alignItems: 'center', minWidth: 0, fontWeight: isWinner ? 700 : 400 }}
                         >
-                          <span data-testid={`today-team-badge-${game.gameId}-${side}`} style={{ display: 'inline-grid', placeItems: 'center', width: '26px', height: '26px', borderRadius: '4px', background: '#edf1eb', color: '#344634', fontSize: '0.68rem', fontWeight: 700 }}>
-                            {teamBadgeText(teamName)}
-                          </span>
+                          {/* @spec BADGEUI-009 */}
+                          <TeamCrest name={teamName} badge={badge} testId={`today-team-badge-${game.gameId}-${side}`} />
                           <span data-testid={`today-team-name-${game.gameId}-${side}`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {teamName}
                           </span>
@@ -306,8 +300,8 @@ const GameWorld = () => {
                           <div style={{ fontSize: '0.75rem', color: '#666' }}>{context || 'TBD'}</div>
                           <div style={{ justifySelf: 'end', fontSize: '0.75rem', fontWeight: 700, color: '#555', textTransform: 'uppercase' }}>{statusLabel}</div>
                           <div style={{ display: 'grid', gap: '5px', gridColumn: '1 / -1' }}>
-                            {teamLane('home', game.homeTeamName, game.homeTeamResult)}
-                            {teamLane('away', game.awayTeamName, game.awayTeamResult)}
+                            {teamLane('home', game.homeTeamName, game.homeTeamBadge, game.homeTeamResult)}
+                            {teamLane('away', game.awayTeamName, game.awayTeamBadge, game.awayTeamResult)}
                           </div>
                         </div>
                       </div>

@@ -72,9 +72,9 @@ const registerSteps = ({ given, when, then }: any) => {
 
   then('the response is a 500 error', () => expect(response?.statusCode).toBe(500));
 
-  then('the response includes an array of 2 leagues and an array of 44 teams', () => {
+  then('the response includes an array of 2 leagues and an array of 92 teams', () => {
     expect(response?.body.leagues).toHaveLength(2);
-    expect(response?.body.teams).toHaveLength(44);
+    expect(response?.body.teams).toHaveLength(92);
   });
 
   then('the persisted GameWorld config has inProgress false', async () => {

@@ -4,6 +4,7 @@ import { useLoaderData, useNavigate, useParams } from 'react-router';
 import { Collapsible } from 'radix-ui';
 import { formatLeagueChampionBanner, getChampionBracket, getChampionTeamName } from '../champion';
 import { Badge, Button, Card, PageContainer, SectionLabel, Table, Td, Th, Tr } from '../components/ui';
+import { TeamCrest } from '../components/team-crest';
 
 const StandingsTable = ({
   standings,
@@ -29,8 +30,12 @@ const StandingsTable = ({
           <Td align="left">
             <Button
               intent="ghost"
+              aria-label={row.teamName}
               onClick={() => onTeamClick(row.teamId)}
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
                 fontWeight: 600,
                 fontSize: '0.875rem',
                 textDecoration: 'underline',
@@ -38,6 +43,8 @@ const StandingsTable = ({
                 textUnderlineOffset: '3px',
               }}
             >
+              {/* @spec BADGEUI-005,BADGEUI-006 */}
+              <TeamCrest name={row.teamName} badge={row.teamBadge} size={22} testId={`standings-team-badge-${row.teamId}`} />
               {row.teamName}
             </Button>
           </Td>
@@ -69,10 +76,12 @@ const TeamRoster = ({
         intent="secondary"
         aria-label={team.config?.name ?? `Team ${team.id}`}
         onClick={() => onTeamClick(team.id)}
-        style={{ borderColor: '#e0e0e0', padding: '8px 12px', textAlign: 'left', fontSize: '0.85rem', fontWeight: 500 }}
+        style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: '#e0e0e0', padding: '8px 12px', textAlign: 'left', fontSize: '0.85rem', fontWeight: 500 }}
       >
-        {team.config?.name ?? `Team ${team.id}`}
-        <span style={{ float: 'right', color: '#aaa', fontSize: '0.75rem' }}>→</span>
+        {/* @spec BADGEUI-007 */}
+        <TeamCrest name={team.config?.name ?? `Team ${team.id}`} badge={team.config?.badge} size={22} testId={`team-grid-badge-${team.id}`} />
+        <span style={{ flex: 1 }}>{team.config?.name ?? `Team ${team.id}`}</span>
+        <span style={{ color: '#aaa', fontSize: '0.75rem' }}>→</span>
       </Button>
     ))}
   </div>

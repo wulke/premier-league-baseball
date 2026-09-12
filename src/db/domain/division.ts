@@ -198,6 +198,7 @@ const DivisionFactory = (id?: number): IDivision => {
       return {
         teamId: dsData.teamId,
         teamName: dsData.Team.config.name,
+        teamBadge: dsData.Team.config.badge, // @spec BADGEUI-005
         played, won, drawn, lost, runsFor, runsAgainst,
         runDifference: runsFor - runsAgainst,
         points: standingsConfig.mode === 'table'

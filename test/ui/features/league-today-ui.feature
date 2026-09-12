@@ -26,6 +26,7 @@ Feature: GameWorld Home "Today" Section
     And the Today section shows an "American League" sub-block listing its one game
 
   @spec:TODAYUI-007
+  @spec:BADGEUI-004
   Scenario: A Today game renders as a scoreboard banner
     Given GET /api/league/1/today returns a completed game won by the home team
     When the GameWorld 1 home page loads

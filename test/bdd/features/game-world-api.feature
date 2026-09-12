@@ -20,7 +20,7 @@ Feature: GameWorld collection API (list + create)
   @spec:GWA-003
   Scenario: Creating a world from a template persists it with leagues and teams
     When the player creates a GameWorld from the default Premier League template
-    Then the response includes an array of 2 leagues and an array of 44 teams
+    Then the response includes an array of 2 leagues and an array of 92 teams
     And the persisted GameWorld config has inProgress false
     And the persisted GameWorld year column keeps its default
 

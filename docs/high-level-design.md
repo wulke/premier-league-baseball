@@ -1181,3 +1181,130 @@ Future, separately designed enhancement:
 - New UI placeholders, visual redesign, prefetch-on-hover behavior, or route-animation work.
 - Selecting or configuring a client cache library, including React Query, cache keys, stale times, persistence, mutation invalidation, and stale-while-revalidate mechanics.
 - Page-specific loader signatures, error boundaries, data dependencies, and implementation sequencing. These belong to follow-on LLD/EARS issues after this HLD is approved.
+
+---
+
+# HLD: Real Team Badges & Full English Pyramid
+
+> Consolidated in place of a wayfinder map since this is a small, self-contained personal-project
+> feature with no fog left to chart — the two architectural decisions (badge sourcing/storage,
+> pyramid depth) were resolved directly with the user. It is a **data + presentation** feature: no
+> new schema table, no simulation/domain-logic change. It builds on the existing `TeamConfig`/
+> `TeamPools`/`LeagueTemplates` seam from [HLD: Game-world templates](#hld-game-world-templates-pickable-old-champions-league)
+> and the `LeagueConfig`/`DivisionConfig` shape from [HLD: Full Season Simulation](#hld-full-season-simulation-league--league-cup).
+
+## Goal
+
+Replace the Premier League world's current fictional/misspelled 44-team, 2-division stub
+(`TeamPools['england-44']`) with the real top 4 tiers of English football — Premier League,
+Championship, League One, League Two (92 real clubs) — and give every team a real crest, sourced
+once from Wikimedia Commons and shipped as a static in-repo asset, rendered wherever a team's
+identity is already shown in the UI.
+
+## Strategy
+
+- **Options (badge sourcing/storage)**:
+  - Option A: Store a Wikimedia Commons URL per team; `<img>` hotlinks it at runtime.
+  - Option B (chosen): A one-time offline script downloads each club's crest and commits it as a
+    static asset under `src/ui/assets/badges/`; `TeamConfig.badge` stores the bundled relative
+    asset path, resolved at Parcel build time like any other static import.
+  - **Decision**: Option B, per user direction — no runtime network dependency, works offline,
+    immune to hotlink-blocking or upstream URL changes, and keeps rendering as simple/local as the
+    rest of the UI's asset handling.
+
+- **Options (stable team identity key)**:
+  - Option A: Derive a lookup slug from `TeamConfig.name` at render/build time (kebab-case).
+  - Option B (chosen): Add an explicit `key: string` field to `TeamConfig`, mirroring the existing
+    `LeagueConfig.key` pattern.
+  - **Decision**: Option B. Real club names contain characters that make slug derivation lossy or
+    ambiguous (`&`, apostrophes, `Nottingham Forest` vs `Forest Green Rovers`); a real field also
+    decouples the badge filename and any future real-data linking from the display string, which
+    the app is already free to reformat.
+
+- **Options (pyramid depth)**:
+  - Option A: Top 5 tiers (adds the National League, 116+ clubs).
+  - Option B (chosen): Top 4 tiers — Premier League (20), Championship (24), League One (24),
+    League Two (24) = 92 clubs.
+  - **Decision**: Option B, per user direction — matches the traditional "Football League" scope
+    with well-documented, stable club lists, without pulling in semi-pro tier volatility.
+
+- **Options (pool/division structuring for the larger pyramid)**:
+  - Option A: Four separate named `TeamPools` entries, one per tier.
+  - Option B (chosen): One flat 92-team pool (renamed from `england-44`), sliced into 4 divisions
+    by index via `defaultTeams: [...Array(92).keys()].slice(a, b)` — exactly today's pattern,
+    just two more divisions and a larger range.
+  - **Decision**: Option B. No behavior needs per-tier pool identity (the pool is just an ordered
+    team list); reusing the existing single-pool-plus-slicing shape is the smaller, less novel
+    change and keeps `LeagueTemplates['premier-league']` internally consistent with how it already
+    works today.
+
+## Architecture
+
+### Components
+
+- **Config** (`src/api/models.ts`, MODIFIED — additive + data replacement):
+  - `TeamConfig` gains `key: string` and `badge?: string`.
+  - The `england-44` pool is replaced by a 92-real-club pool (tentatively re-keyed, e.g.
+    `england-92`) covering the 4 tiers, each entry carrying `key`, real `name`, and `badge`.
+  - `LeagueTemplates['premier-league']` gains two more divisions (League One, League Two) in its
+    existing single `regular-season` stage, index-sliced 0–20/20–44/44–68/68–92; only the Premier
+    League division keeps `isTopTier: true`.
+  - `LeagueTemplates['league-cup']`'s `defaultTeams: [...Array(44).keys()]` becomes
+    `[...Array(92).keys()]` (unchanged mechanics — the existing power-of-2/bye knockout logic from
+    [HLD: Full Season Simulation](#hld-full-season-simulation-league--league-cup) already handles
+    non-power-of-2 fields).
+- **Badge asset pipeline** (NEW, offline tooling — not part of the app runtime or test suite): a
+  one-time script that fetches each club's crest from Wikimedia Commons by `key` and writes it to
+  `src/ui/assets/badges/<key>.<ext>`; output is committed to the repo like any other asset. Re-run
+  manually if a club's badge needs to change — not wired into build/CI.
+- **Frontend**: a new shared `TeamCrest` component (`src/ui/components/team-crest.tsx`) resolving
+  `team.config?.badge` to a bundled image with a text-initial fallback for any team missing one;
+  rendered alongside existing team-name renderings (standings rows, team hub identity strip,
+  league/division team lists) — exact call sites enumerated at LLD.
+
+### Flow
+
+```
+Offline (developer-run, once): fetch-team-badges script
+  → for each of 92 real clubs (by key): download crest from Wikimedia Commons
+  → write src/ui/assets/badges/<key>.<ext>, commit to repo
+
+Config (build-time, in src/api/models.ts):
+  england-92 pool: 92 TeamConfig entries { key, name, badge: 'assets/badges/<key>.<ext>' }
+  LeagueTemplates['premier-league']: 4 divisions slicing the 92-team pool (20/24/24/24)
+  LeagueTemplates['league-cup']: defaultTeams widened to all 92
+
+Runtime (unchanged path): GameWorldFactory().create()
+  → LeagueFactory().createContainer → TeamFactory × 92 (persists TeamConfig incl. key/badge into Team.config JSON)
+  → LeagueFactory(id).createDivisions (4 PL divisions + 1 widened Cup division)
+
+UI: wherever a team identity renders today
+  → <TeamCrest team={team} /> resolves team.config.badge → bundled image (fallback: initials)
+```
+
+### Key Trade-offs
+
+- **`badge` stays in `Team.config` JSON, not a real column**: per `backend-standards.md` §2, no
+  domain logic branches on it, no DB constraint or query needs to filter/sort/index on it — a pure
+  display concern, same as everything else already living in `config`.
+- **Static, committed assets over hotlinking**: larger repo/diff size (92 images) and a manual
+  re-run step if a badge needs updating, accepted in exchange for zero runtime network dependency
+  and no hotlink-fragility — consistent with the user's explicit sourcing decision.
+- **One flat pool + index slicing, not per-tier pools**: keeps the change mechanically identical to
+  today's `england-44` pattern (smaller diff, no new pool-composition concept), at the cost of the
+  division boundaries (0–20/20–44/44–68/68–92) being implicit index ranges rather than named tiers
+  — acceptable since `LeagueTemplates` already encodes tier identity via each `DivisionConfig.name`.
+- **League Cup widens to the full 92-team field unchanged**: no new cup-scoping decision (e.g.
+  "Cup only for top 2 tiers") is introduced — out of scope below.
+
+### Out of scope
+
+- Promotion/relegation between the 4 tiers — inherited exclusion from
+  [HLD: Full Season Simulation](#hld-full-season-simulation-league--league-cup); still unaddressed.
+- Restricting the League Cup field to a subset of tiers (e.g. top-2-tiers-only) — the Cup simply
+  widens to all 92 teams as today's `externalTeams` borrowing already implies.
+- Real player rosters/identities for the 92 real clubs — `PlayerFactory` generation is unaffected
+  and stays fully synthetic (per [HLD: Team Roster & Player Visibility](#hld-team-roster--player-visibility)).
+- Any other `GameWorldType` (Champions League's `europe-32`, MLB) — unaffected, unchanged.
+- A general badge-upload/management UI — badges are a build-time data asset, not a user-editable
+  feature.

@@ -8,7 +8,8 @@
     }
   },
   "scripts": {
-    "build": "npx parcel build src/ui/index.html --no-cache && tsc",
+    "build": "npx parcel build src/ui/index.html --no-cache && rm -rf dist/ui/badges && mkdir -p dist/ui/badges && cp -r src/ui/assets/badges/. dist/ui/badges/ && tsc",
+    "fetch-team-badges": "npx ts-node tools/fetch-team-badges.ts",
     "build:clean": "npm run clean && npm run build",
     "build:docker": "docker build -t premier-league-baseball .",
     "clean": "rm -rf dist",

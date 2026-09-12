@@ -238,13 +238,13 @@ const TeamFactory = (id?: number): ITeam => {
       }
 
       // 6. Bulk-fetch all referenced team names
-      const teamMap = new Map<number, string>();
+      const teamMap = new Map<number, { name: string; badge?: string }>();
       if (teamIdSet.size > 0) {
         const teams = await db.models.Team.findAll({
           where: { id: { [Op.in]: Array.from(teamIdSet) } },
         }).then((results) => results.map(({ dataValues }) => dataValues));
 
-        teams.forEach((t) => teamMap.set(t.id, t.config?.name ?? `Team ${t.id}`));
+        teams.forEach((t) => teamMap.set(t.id, { name: t.config?.name ?? `Team ${t.id}`, badge: t.config?.badge }));
       }
 
       // 7. Build structured response
@@ -254,9 +254,11 @@ const TeamFactory = (id?: number): ITeam => {
         year,
         scheduledDate: game.scheduledDate ? new Date(game.scheduledDate).toISOString() : null,
         homeTeamId: game.homeTeam,
-        homeTeamName: teamMap.get(game.homeTeam) ?? `Team ${game.homeTeam}`,
+        homeTeamName: teamMap.get(game.homeTeam)?.name ?? `Team ${game.homeTeam}`,
+        homeTeamBadge: teamMap.get(game.homeTeam)?.badge, // @spec BADGEUI-005
         awayTeamId: game.awayTeam,
-        awayTeamName: game.awayTeam == null ? 'Bye' : (teamMap.get(game.awayTeam) ?? `Team ${game.awayTeam}`),
+        awayTeamName: game.awayTeam == null ? 'Bye' : (teamMap.get(game.awayTeam)?.name ?? `Team ${game.awayTeam}`),
+        awayTeamBadge: game.awayTeam == null ? null : teamMap.get(game.awayTeam)?.badge, // @spec BADGEUI-005
         divisionId,
         divisionName,
         roundLabel: (() => {
@@ -279,6 +281,7 @@ const TeamFactory = (id?: number): ITeam => {
       return {
         teamId: id!,
         teamName: team.config?.name ?? `Team ${id}`,
+        teamBadge: team.config?.badge, // @spec BADGEUI-005
         games,
       };
     },
