@@ -282,8 +282,8 @@ describe('Player model + attribute schema', () => {
     }
   });
 
-  // @spec XFER-021 — not Gherkin-routed (internal refactor, no observable behavior change).
-  it('@spec XFER-021 generated Contracts end on the shared SEASON_END anchor', async () => {
+  // @spec XFER-021,XFER-024 — XFER-024's exact weight mapping is acceptance-tested in Gherkin.
+  it('@spec XFER-021 @spec XFER-024 generated Contracts end on the shared SEASON_END anchor', async () => {
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2053 }).then(({ dataValues }) => dataValues);
     const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
     const team = await db.models.Team.create({
@@ -295,7 +295,10 @@ describe('Player model + attribute schema', () => {
     const players = await PlayerFactory().generateRoster(team.id, gameWorld.id);
     const contract = await db.models.Contract.findOne({ where: { playerId: players[0].id } });
 
-    expect(new Date(contract!.dataValues.endDate).toISOString().slice(0, 10))
-      .toBe(new Date(Date.UTC(gameWorld.year, SEASON_END_MONTH, SEASON_END_DAY)).toISOString().slice(0, 10));
+    const endDate = new Date(contract!.dataValues.endDate);
+    expect(endDate.getUTCMonth()).toBe(SEASON_END_MONTH);
+    expect(endDate.getUTCDate()).toBe(SEASON_END_DAY);
+    expect(endDate.getUTCFullYear()).toBeGreaterThanOrEqual(gameWorld.year);
+    expect(endDate.getUTCFullYear()).toBeLessThanOrEqual(gameWorld.year + 3);
   });
 });

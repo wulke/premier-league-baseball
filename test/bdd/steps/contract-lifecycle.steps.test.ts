@@ -86,7 +86,12 @@ const registerSteps = ({ given, when, then }: any) => {
   });
 
   given(/^Team (\d+) belongs to GameWorld (\d+)$/, async (teamId: string, gwId: string) => {
-    await db.models.Team.findOrCreate({ where: { id: Number(teamId) }, defaults: { gameWorldId: Number(gwId), config: { name: `Team ${teamId}` } } });
+    const homeLeague = await db.models.League.findOne({ where: { gameWorldId: Number(gwId) } })
+      ?? await db.models.League.create({ gameWorldId: Number(gwId), config: { name: 'Fixture League' } });
+    await db.models.Team.findOrCreate({
+      where: { id: Number(teamId) },
+      defaults: { gameWorldId: Number(gwId), homeLeagueId: homeLeague.dataValues.id, config: { name: `Team ${teamId}` } },
+    });
   });
 
   given(/^Team (\d+) has a roster of generated Players with identity and Contracts$/, async (teamId: string) => {
@@ -97,9 +102,9 @@ const registerSteps = ({ given, when, then }: any) => {
 
   // @spec XFER-024
   given(/^Team (\d+) has (\d+) new roster Players in GameWorld (\d+)$/, async (teamId: string, count: string, gwId: string) => {
-    await Promise.all(Array.from({ length: Number(count) }, (_, index) => (
-      ensurePlayer(1000 + index, Number(gwId), Number(teamId))
-    )));
+    for (let index = 0; index < Number(count); index += 1) {
+      await ensurePlayer(1000 + index, Number(gwId), Number(teamId));
+    }
     world.initialRosterPlayerIds = await db.models.Player.findAll({
       where: { gameWorldId: Number(gwId), teamId: Number(teamId), id: { [Op.gte]: 1000 } },
       order: [['id', 'ASC']],

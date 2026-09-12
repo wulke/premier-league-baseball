@@ -32,10 +32,10 @@ current-membership read helper's promotion into `TeamFactory.getRoster()` /
 | XFER-021 | WHEN initial roster generation (`generateRoster()`) issues its starting Contract rows THE system SHALL delegate the write to a `ContractFactory`-owned writer and derive each term's end date from the same `SEASON_END_MONTH`/`SEASON_END_DAY` constants XFER-020 uses | [x] → #238 |
 | XFER-022 | WHEN composing a team roster (`TeamFactory.getRoster()`) THE system SHALL include, per player, only the Contract that covers `GameWorld.currentDate` — superseding ROST-004's unfiltered v1 behavior | [x] → #237 |
 | XFER-023 | WHEN a client requests `GET /api/gameWorld/:gwId/free-agents` THE system SHALL return one row per Player in that GameWorld with no Contract covering `GameWorld.currentDate`, serialized with the same row shape and derivation `TeamFactory.getRoster()` uses | [x] → #237 |
-| XFER-024 | WHEN a new GameWorld's initial rosters are generated THE system SHALL mint each Contract for a weighted 1–4 season term (40% / 30% / 20% / 10%), starting March 1 of the GameWorld year and ending October 31 of the selected end-year; THE system SHALL NOT migrate or backfill existing GameWorld Contracts | [ ] → #239 |
+| XFER-024 | WHEN a new GameWorld's initial rosters are generated THE system SHALL mint each Contract for a weighted 1–4 season term (40% / 30% / 20% / 10%), starting March 1 of the GameWorld year and ending October 31 of the selected end-year; THE system SHALL NOT migrate or backfill existing GameWorld Contracts | [x] → #239 |
 
-All rows except `XFER-024` are Implemented (`[x] → #237`) — this map introduces the write surface itself,
-so none were ever Deferred. `XFER-013`/`XFER-017` supersede `PCON-007` (`docs/specs/player/player-contracts-specs.md`,
+All rows are Implemented (`[x]`) — this map introduces the write surface itself, so none were ever
+Deferred. `XFER-013`/`XFER-017` supersede `PCON-007` (`docs/specs/player/player-contracts-specs.md`,
 flipped from Deferred to Implemented by this map — see its Traceability note); `XFER-022` supersedes
 `ROST-004` (`docs/specs/manager/roster-read-api-specs.md`, likewise flipped). `PCON-006` is also flipped from
 Deferred to Implemented: this map is the code path that makes contract-expiry-driven free-agency
