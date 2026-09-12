@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { BracketRound, BracketTie, DivisionStandings, LeagueDivisionBracket, TeamStanding } from '../../api/models';
+import { DivisionStandings, LeagueDivisionBracket, TeamStanding } from '../../api/models';
 import { useLoaderData, useNavigate, useParams } from 'react-router';
 import { Collapsible } from 'radix-ui';
 import { formatLeagueChampionBanner, getChampionBracket, getChampionTeamName } from '../champion';
 import { Badge, Button, Card, PageContainer, SectionLabel, Table, Td, Th, Tr } from '../components/ui';
 import { TeamCrest } from '../components/team-crest';
+import { BracketView } from '../components/bracket-view';
+import { TeamRosterGrid } from '../components/team-roster-grid';
 
 const StandingsTable = ({
   standings,
@@ -62,69 +64,6 @@ const StandingsTable = ({
   </Table>
 );
 
-const TeamRoster = ({
-  teams,
-  onTeamClick,
-}: {
-  teams: any[];
-  onTeamClick: (teamId: number) => void;
-}) => (
-  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '6px', padding: '4px 0' }}>
-    {teams.map((team) => (
-      <Button
-        key={team.id}
-        intent="secondary"
-        aria-label={team.config?.name ?? `Team ${team.id}`}
-        onClick={() => onTeamClick(team.id)}
-        style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: '#e0e0e0', padding: '8px 12px', textAlign: 'left', fontSize: '0.85rem', fontWeight: 500 }}
-      >
-        {/* @spec BADGEUI-007 */}
-        <TeamCrest name={team.config?.name ?? `Team ${team.id}`} badge={team.config?.badge} size={22} testId={`team-grid-badge-${team.id}`} />
-        <span style={{ flex: 1 }}>{team.config?.name ?? `Team ${team.id}`}</span>
-        <span style={{ color: '#aaa', fontSize: '0.75rem' }}>→</span>
-      </Button>
-    ))}
-  </div>
-);
-
-const isPendingRound = (round: BracketRound) =>
-  round.status === 'PENDING' && round.ties.every((tie) => tie.games.length === 0);
-
-const getSeriesScoreText = (tie: Extract<BracketTie, { kind: 'SERIES' }>) =>
-  tie.games.map((game) => {
-    const teamAScore = game.homeTeamId === tie.teamA.teamId ? game.homeTeamResult : game.awayTeamResult;
-    const teamBScore = game.homeTeamId === tie.teamB.teamId ? game.homeTeamResult : game.awayTeamResult;
-    return `${teamAScore ?? '–'}–${teamBScore ?? '–'}`;
-  }).join(', ');
-
-const getSeriesWins = (tie: Extract<BracketTie, { kind: 'SERIES' }>) => {
-  let teamAWins = 0;
-  let teamBWins = 0;
-
-  for (const game of tie.games) {
-    if (game.homeTeamResult == null || game.awayTeamResult == null) continue;
-    if (game.homeTeamResult === game.awayTeamResult) continue;
-
-    const winnerId = game.homeTeamResult > game.awayTeamResult ? game.homeTeamId : game.awayTeamId;
-    if (winnerId === tie.teamA.teamId) teamAWins += 1;
-    if (winnerId === tie.teamB.teamId) teamBWins += 1;
-  }
-
-  return `${teamAWins}–${teamBWins}`;
-};
-
-const getSeriesSummary = (tie: Extract<BracketTie, { kind: 'SERIES' }>) => {
-  const scoreText = getSeriesScoreText(tie);
-  const winnerName = tie.winnerTeamId === tie.teamA.teamId ? tie.teamA.teamName : tie.teamB.teamName;
-  const winnerText = winnerName ? ` ✓ ${winnerName} (${getSeriesWins(tie)})` : '';
-  return `${tie.teamA.teamName ?? 'TBD'} [${scoreText}] ${tie.teamB.teamName ?? 'TBD'}${winnerText}`;
-};
-
-const getGameSummary = (tie: Extract<BracketTie, { kind: 'SERIES' }>, gameIndex: number) => {
-  const game = tie.games[gameIndex];
-  return `Game ${gameIndex + 1}: ${game.homeTeamName} ${game.homeTeamResult ?? '–'}–${game.awayTeamResult ?? '–'} ${game.awayTeamName ?? 'TBD'}`;
-};
-
 // @spec MSUI-002
 const getSeededFromGroupsLabel = (league: any, division: any): string | null => {
   const selection = division.config?.seedingSelection;
@@ -132,108 +71,6 @@ const getSeededFromGroupsLabel = (league: any, division: any): string | null => 
 
   const sourceStage = league.config?.stages?.find((stage: any) => stage.id === selection.fromStage);
   return `Seeded from completed ${sourceStage?.name ?? 'group stage'}`;
-};
-
-// @spec UI-005,UI-006,UI-007,UI-008
-const BracketView = ({
-  rounds,
-  teams,
-  onTeamClick,
-}: {
-  rounds: BracketRound[];
-  teams: any[];
-  onTeamClick: (teamId: number) => void;
-}) => {
-  const [expandedSeries, setExpandedSeries] = useState<Record<string, boolean>>({});
-
-  if (rounds.length === 0) {
-    return (
-      <>
-        <p style={{ margin: '0 0 10px', fontSize: '0.8rem', color: '#888' }}>
-          No bracket yet — season not started.
-        </p>
-        <TeamRoster teams={teams} onTeamClick={onTeamClick} />
-      </>
-    );
-  }
-
-  const pendingRoundIndex = rounds.findIndex(isPendingRound);
-  const visibleRounds = pendingRoundIndex === -1 ? rounds : rounds.slice(0, pendingRoundIndex);
-  const pendingRound = pendingRoundIndex === -1 ? null : rounds[pendingRoundIndex];
-
-  return (
-    <div style={{ display: 'grid', gap: '14px' }}>
-      {visibleRounds.map((round, roundIndex) => {
-        const byes = round.ties.filter((tie): tie is Extract<BracketTie, { kind: 'BYE' }> => tie.kind === 'BYE');
-        const series = round.ties.filter((tie): tie is Extract<BracketTie, { kind: 'SERIES' }> => tie.kind === 'SERIES');
-        const nextRoundLabel = rounds[roundIndex + 1]?.label ?? 'next round';
-
-        return (
-          <section key={`${round.round}-${round.label}`} style={{ display: 'grid', gap: '10px' }}>
-            <SectionLabel style={{ color: '#666' }}>
-              {round.label}
-            </SectionLabel>
-
-            {byes.length > 0 && (
-              <Card style={{ display: 'grid', gap: '6px', padding: '10px 12px', background: '#fafafa', borderRadius: '4px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#555' }}>
-                  Byes ({byes.length}) — auto-advanced to {nextRoundLabel}
-                </div>
-                <div style={{ fontSize: '0.875rem', color: '#222' }}>
-                  {byes.map((tie) => tie.teamA.teamName).filter(Boolean).join(', ')}
-                </div>
-              </Card>
-            )}
-
-            {series.map((tie, tieIndex) => {
-              const seriesKey = `${round.round}-${tie.teamA.teamId ?? 'a'}-${tie.teamB.teamId ?? 'b'}-${tieIndex}`;
-              const isExpanded = expandedSeries[seriesKey] ?? false;
-
-              return (
-                <Card key={seriesKey} style={{ borderRadius: '4px', overflow: 'hidden' }}>
-                  <Button
-                    intent="ghost"
-                    onClick={() => setExpandedSeries((current) => ({ ...current, [seriesKey]: !isExpanded }))}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      textAlign: 'left',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '12px',
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    <span>{getSeriesSummary(tie)}</span>
-                    <span style={{ color: '#777', fontSize: '0.78rem', fontWeight: 600 }}>
-                      {isExpanded ? 'Hide games' : 'Show games'}
-                    </span>
-                  </Button>
-
-                  {isExpanded && (
-                    <div style={{ borderTop: '1px solid #eee', padding: '8px 12px', display: 'grid', gap: '8px', background: '#fcfcfc' }}>
-                      {tie.games.map((game, gameIndex) => (
-                        <div key={game.gameId} style={{ fontSize: '0.84rem', color: '#333' }}>
-                          {getGameSummary(tie, gameIndex)}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              );
-            })}
-          </section>
-        );
-      })}
-
-      {pendingRound && (
-        <Card dashed style={{ padding: '10px 12px', borderRadius: '4px', fontSize: '0.85rem', textAlign: 'left' }}>
-          Next: {pendingRound.label} — games pending
-        </Card>
-      )}
-    </div>
-  );
 };
 
 // @spec UI-005,UI-006,UI-007,UI-008,MSUI-001,MSUI-002
@@ -309,7 +146,7 @@ const Division = ({
                 <p style={{ margin: '0 0 10px', fontSize: '0.8rem', color: '#888' }}>
                   No standings yet — season not started.
                 </p>
-                <TeamRoster teams={division.Teams ?? []} onTeamClick={onTeamClick} />
+                <TeamRosterGrid teams={division.Teams ?? []} onTeamClick={onTeamClick} />
               </>
             )}
           </div>
