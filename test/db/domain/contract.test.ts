@@ -1,4 +1,4 @@
-// @spec PCON-006,PCON-008,PCON-009,PCON-010,XFER-021,GWD-002
+// @spec PCON-006,PCON-008,PCON-009,PCON-010,XFER-021,XFER-024,GWD-002
 import db from '../../../src/db/client';
 import { PlayerAttributes } from '../../../src/api/models';
 import {
@@ -120,8 +120,8 @@ describe('Contract model schema', () => {
     expect(MAX_ROSTER_SIZE).toBe(30);
   });
 
-  // @spec XFER-021,GWD-002
-  it('@spec XFER-021 @spec GWD-002 owns initial roster minting and GameWorld cascade deletion', async () => {
+  // @spec XFER-021,XFER-024,GWD-002
+  it('@spec XFER-021 @spec XFER-024 @spec GWD-002 owns initial roster minting and GameWorld cascade deletion', async () => {
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2054 }).then(({ dataValues }) => dataValues);
     const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
     const team = await db.models.Team.create({
@@ -136,7 +136,7 @@ describe('Contract model schema', () => {
       ...playerIdentity,
     }).then(({ dataValues }) => dataValues);
 
-    await createInitialRosterContracts(team.id, [player.id], gameWorld.year);
+    await createInitialRosterContracts(team.id, [player.id], gameWorld.year, {}, () => 0);
 
     await expect(db.models.Contract.findOne({ where: { playerId: player.id } })).resolves.toMatchObject({
       dataValues: {

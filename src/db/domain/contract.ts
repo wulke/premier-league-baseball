@@ -70,22 +70,37 @@ const toContractRecord = (contract: any): ContractRecord => {
   };
 };
 
-// @spec XFER-021 — Contract-owned initial-roster writer. PlayerFactory orchestrates this
-// inside its existing Team creation transaction but never writes Contract rows itself.
+// @spec XFER-024 — New GameWorld roster terms are a one-time weighted draw: 40/30/20/10
+// for one through four seasons. Boundaries intentionally assign 0.40/0.70/0.90 to the next band.
+const initialTermYears = (random: () => number = Math.random): number => {
+  const roll = random();
+  if (roll < 0.4) return 1;
+  if (roll < 0.7) return 2;
+  if (roll < 0.9) return 3;
+  return 4;
+};
+
+// @spec XFER-021,XFER-024 — Contract-owned initial-roster writer. PlayerFactory orchestrates this
+// inside its existing Team creation transaction but never writes Contract rows itself. Each term is
+// selected once at new-roster minting; no existing Contract is migrated, backfilled, or re-rolled.
 const createInitialRosterContracts = async (
   teamId: number,
   playerIds: number[],
   gameWorldYear: number,
   options: ContractWriteOptions = {},
+  random: () => number = Math.random,
 ): Promise<any[]> => {
   if (playerIds.length === 0) return [];
   return db.models.Contract.bulkCreate(
-    playerIds.map((playerId) => ({
-      playerId,
-      teamId,
-      startDate: new Date(Date.UTC(gameWorldYear, 2, 1)),
-      endDate: new Date(Date.UTC(gameWorldYear, SEASON_END_MONTH, SEASON_END_DAY)),
-    })),
+    playerIds.map((playerId) => {
+      const termYears = initialTermYears(random);
+      return {
+        playerId,
+        teamId,
+        startDate: new Date(Date.UTC(gameWorldYear, 2, 1)),
+        endDate: new Date(Date.UTC(gameWorldYear + termYears - 1, SEASON_END_MONTH, SEASON_END_DAY)),
+      };
+    }),
     { transaction: options.transaction },
   );
 };
@@ -270,6 +285,7 @@ export {
   ContractFactory,
   createInitialRosterContracts,
   deleteForGameWorld,
+  initialTermYears,
   listForTeam,
   MAX_ROSTER_SIZE,
   MIN_ROSTER_SIZE,

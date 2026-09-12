@@ -71,9 +71,12 @@ function defaultSeasonEnd(fromDate: Date, gameWorldYear: number): Date {   // XF
 
 `PlayerFactory.generateRoster()` delegates its initial bulk mint to
 ContractFactory's `createInitialRosterContracts()` writer with its enclosing transaction. That
-ContractFactory-owned writer derives the term from `SEASON_END_MONTH`/`SEASON_END_DAY` directly
-(the term always starts at season generation, never crosses the November boundary, so it does not
-need `defaultSeasonEnd`'s year-rollover branch).                            # XFER-021
+ContractFactory-owned writer independently assigns each row a **1, 2, 3, or 4 season** initial
+term with weights **40%, 30%, 20%, and 10%**, respectively. Every row starts on March 1 of the
+GameWorld year and ends on the shared October 31 anchor in `gameWorldYear + termYears - 1`.
+The draw occurs only while minting a new GameWorld roster: Sign and Renew remain explicit,
+deterministic contract-management operations, and existing worlds receive neither a migration nor
+a backfill. Their established next-cutover expiry churn remains unchanged.       # XFER-021, XFER-024
 
 ### Authorization seam
 
@@ -252,6 +255,10 @@ GameWorldFactory(gwId).getFreeAgents():
   `deleteForGameWorld()` owns the GameWorld-cascade deletion. Other domain factories may
   orchestrate those writers inside their transactions but never mutate `db.models.Contract`
   directly.
+- **Initial term variety is generation-only.** The weighted draw is deliberately isolated in
+  `createInitialRosterContracts()` so it runs once for new rosters and never re-rolls during
+  sign/renew or an existing world's cutover. Preserving historical rows avoids an implicit
+  migration and lets existing one-year worlds churn exactly once under the accepted expiry flow.
 - **`effectiveDate` is never client input.** Resolved server-side from `GameWorld.currentDate` and
   threaded in as an ancestor value (backend-standards §1), so the "must equal `currentDate`"
   invariant is satisfied by construction rather than validated against a caller-supplied date.
@@ -293,6 +300,7 @@ GameWorldFactory(gwId).getFreeAgents():
 | e10 | `DEV_MODE` is set and a write targets a team with no `managedTeamId` set at all (`gw.managedTeamId === null`) | `assertManaged` returns immediately under `DEV_MODE` regardless of `managedTeamId`'s value — the bypass is unconditional identity-skipping, not a "matches null" special case. Every mutation invariant above still applies. | XFER-010 |
 | e11 | A write is attempted against a team the caller does not manage, with `DEV_MODE` unset | `DomainError('team is not managed by the player', 422)` before any `ContractFactory` call — no partial writes. | XFER-010 |
 | e12 | The active lineup, after Sign/Release, no longer has a valid 20–30-sized roster to draw from (e.g. Release drops a team below the fielding minimum) | **Not guarded by this LLD** — roster-size `[20, 30]` bounds are deliberately unvalidated everywhere (`PCON-005`, unchanged). If an active card exists, `repairActive()` fills every feasible vacancy and leaves any remainder invalid so the transfer commits; an invalid Pitcher entry projects `startingPitcherId: null`. If no active card exists, `generateActive()` still propagates its "Roster cannot fill the eight non-pitcher positions" error and rolls back the mutation transaction (XFER-011). | XFER-011, LEDIT-005, LEDIT-006, LEDIT-007 |
+| e13 | A world already exists with its original one-year generated Contracts | Do not migrate, backfill, or re-roll it. Its Contracts expire under the existing read-side and cutover behavior; only future `generateRoster()` calls use weighted initial terms. | XFER-024 |
 
 ## Traceability
 
@@ -302,7 +310,7 @@ GameWorldFactory(gwId).getFreeAgents():
 | **This LLD** | `docs/llds/player/contract-lifecycle.md` |
 | Sibling LLD | `docs/llds/manager/transfers-ui.md` (consumer) |
 | Amends | `docs/llds/player/player-contracts-roster.md` (PCON-006/007 activation), `docs/llds/manager/roster-read-api.md` (ROST-004 closure) |
-| EARS | `docs/specs/player/contract-lifecycle-specs.md` — `XFER-001`.. |
+| EARS | `docs/specs/player/contract-lifecycle-specs.md` — `XFER-001`..`XFER-024` |
 | Gherkin | `test/bdd/features/contract-lifecycle.feature` |
 | Code | `src/db/domain/contract.ts` (`ContractFactory`, `listForTeam`, `SEASON_END_MONTH/DAY`, `defaultSeasonEnd`, `reconcileTeamMemberships`), `src/db/domain/player.ts` (`toRosterPlayer` extraction), `src/db/domain/team.ts` (`getRoster` now reads via `ContractFactory`'s `listForTeam` instead of the `Team↔Contract` association, and filters to each player's current row), `src/db/domain/league.ts` (`cutover` sweep hook), `src/db/domain/game-world.ts` (`getFreeAgents`), `src/db/domain/lineup.ts` (`repairActive`, new), `src/api/endpoints.ts`, `src/api/router.ts`, `src/api/handlers.ts` (`signPlayer`, `releasePlayer`, `renewPlayer`, `getFreeAgents`, `assertManaged`) |
 | Decision record | [#140](https://github.com/wulke/premier-league-baseball/issues/140), [#237](https://github.com/wulke/premier-league-baseball/issues/237) |
