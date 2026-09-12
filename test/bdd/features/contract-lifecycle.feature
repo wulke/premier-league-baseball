@@ -221,6 +221,17 @@ Feature: Contract Lifecycle (Sign / Release / Renew)
     Then Player 100 appears exactly once in the roster
     And Player 100's row reflects the current Contract, not the ended one
 
+  # ─── Initial Generation Terms ───────────────────────────────────────────────
+
+  @spec:XFER-024
+  Scenario: Initial roster generation mints weighted season-aligned contract terms
+    Given Team 10 has 100 new roster Players in GameWorld 1
+    When initial roster Contracts are minted with 40 one-season, 30 two-season, 20 three-season, and 10 four-season term draws
+    Then 40 initial Contracts end on "2025-10-31"
+    And 30 initial Contracts end on "2026-10-31"
+    And 20 initial Contracts end on "2027-10-31"
+    And 10 initial Contracts end on "2028-10-31"
+
   # ─── Not Gherkin-Routed: SEASON_END constant reuse (XFER-021) ───────────────
   # No scenario: XFER-021 is an internal refactor (generateRoster() reusing the
   # same SEASON_END_MONTH/DAY constants Sign/Renew derive from) with no observably

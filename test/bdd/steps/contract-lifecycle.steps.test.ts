@@ -1,10 +1,10 @@
-// @spec XFER-001..XFER-020,XFER-022,XFER-023,LEDIT-005,LEDIT-006,LEDIT-007
+// @spec XFER-001..XFER-020,XFER-022..XFER-024,LEDIT-005,LEDIT-006,LEDIT-007
 // Contract lifecycle (sign/release/renew/cutover-sweep/free-agents/roster-filter) acceptance bindings.
 import path from 'path';
 import { Op } from 'sequelize';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
 import * as handlers from '../../../src/api/handlers';
-import { LeagueFactory, PlayerFactory, TeamFactory } from '../../../src/db/domain';
+import { createInitialRosterContracts, LeagueFactory, PlayerFactory, TeamFactory } from '../../../src/db/domain';
 import { DomainError } from '../../../src/db/domain/errors';
 import db from '../../../src/db/client';
 import { PlayerAttributes, PlayerPosition } from '../../../src/api/models';
@@ -20,6 +20,7 @@ interface ResponseState {
 interface WorldState {
   response?: ResponseState;
   lineupIdBefore?: number | null;
+  initialRosterPlayerIds?: number[];
 }
 
 let world: WorldState = {};
@@ -92,6 +93,26 @@ const registerSteps = ({ given, when, then }: any) => {
     await TeamFactory(Number(teamId)).getRoster().catch(() => undefined); // no-op guard if not yet queryable
     const gameWorld = await db.models.Team.findByPk(Number(teamId)).then((t) => t!.dataValues.gameWorldId);
     await PlayerFactory().generateRoster(Number(teamId), gameWorld, { gameWorldYear: 2025 });
+  });
+
+  // @spec XFER-024
+  given(/^Team (\d+) has (\d+) new roster Players in GameWorld (\d+)$/, async (teamId: string, count: string, gwId: string) => {
+    await Promise.all(Array.from({ length: Number(count) }, (_, index) => (
+      ensurePlayer(1000 + index, Number(gwId), Number(teamId))
+    )));
+    world.initialRosterPlayerIds = await db.models.Player.findAll({
+      where: { gameWorldId: Number(gwId), teamId: Number(teamId), id: { [Op.gte]: 1000 } },
+      order: [['id', 'ASC']],
+    }).then((players) => players.map((player: any) => player.dataValues.id));
+  });
+
+  // @spec XFER-024
+  when(/^initial roster Contracts are minted with 40 one-season, 30 two-season, 20 three-season, and 10 four-season term draws$/, async () => {
+    const termRolls = [
+      ...Array(40).fill(0.00), ...Array(30).fill(0.40),
+      ...Array(20).fill(0.70), ...Array(10).fill(0.90),
+    ];
+    await createInitialRosterContracts(10, world.initialRosterPlayerIds ?? [], 2025, {}, () => termRolls.shift()!);
   });
 
   given(/^Team (\d+)'s roster is trimmed to exactly 9 Players$/, async (teamId: string) => {
@@ -459,6 +480,16 @@ const registerSteps = ({ given, when, then }: any) => {
   then(/^Player (\d+)'s row reflects the current Contract, not the ended one$/, (playerId: string) => {
     const row = (world.response?.body ?? []).find((entry: any) => entry.id === Number(playerId));
     expect(row).toBeDefined();
+  });
+
+  // @spec XFER-024
+  then(/^(\d+) initial Contracts end on "([^"]+)"$/, async (count: string, endDate: string) => {
+    const contracts = await db.models.Contract.findAll({
+      where: { teamId: 10, playerId: { [Op.in]: world.initialRosterPlayerIds ?? [] } },
+    });
+    expect(contracts.filter((contract: any) => (
+      new Date(contract.dataValues.endDate).toISOString().slice(0, 10) === endDate
+    ))).toHaveLength(Number(count));
   });
 };
 
