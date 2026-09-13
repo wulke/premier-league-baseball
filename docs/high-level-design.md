@@ -1308,3 +1308,100 @@ UI: wherever a team identity renders today
 - Any other `GameWorldType` (Champions League's `europe-32`, MLB) — unaffected, unchanged.
 - A general badge-upload/management UI — badges are a build-time data asset, not a user-editable
   feature.
+
+---
+
+# HLD: Game World Home Page Overhaul
+
+> Backed by [Map: Game World Home Page Overhaul](https://github.com/wulke/premier-league-baseball/issues/325) — a wayfinder planning map whose 10 decisions (resolved via `/grill-me`, 2026-09-12, directly in the map body) are the source for this HLD, implemented across eight child tickets (#326–#333). This map assumes the existing `NotificationStream`, `TeamFactory`, and the managed-club claim flow (`team-hub.tsx`) are already on `main`; it restructures and extends them, it does not introduce them.
+
+## Goal
+
+Turn the Game World home page (`src/ui/pages/game-world.tsx`) from a mixed Season-status/Today-list/Leagues-list page into a club-centric "what do I need to do right now" surface, with "what happened" (activity log) as its secondary job. The literal ±3-day "Today" window — which reads as literal "today" without being labeled as a window — is replaced by an explicitly-windowed, cross-competition weekly calendar strip. Everything else on the page (season status, the redundant "Leagues" list, the unclaimed-team state) is reshaped around that same club-centric framing, without yet building any of the systems (action items, per-game detail) that don't exist in the codebase today.
+
+## Strategy
+
+- **Options (page scope: club-centric vs. league-wide)**:
+  - Option A: Keep the page iterating `gw.Leagues` and aggregating per-league data, as today.
+  - Option B (chosen): Scope the page to the single managed club (`GameWorld.managedTeamId`); query by team, not by league.
+  - **Decision**: Option B, decision 2. The page's job ("what do I need to do right now") is inherently club-scoped, not league-scoped — a manager cares about their own club's fixtures across every competition it's in, not a per-league breakdown. Avoids Manager-only naming/assumptions so a future Scout/Owner/Player home page could reuse the same shape, without building that generalization now.
+
+- **Options (calendar data source)**:
+  - Option A: Keep `LeagueFactory.getToday` (`src/db/domain/league.ts`), calling it once per league as `game-world.tsx` does today.
+  - Option B (chosen): Extend `TeamFactory.getSchedule` (`src/db/domain/team.ts`) — which already traverses every `Division`/`League` a team has played in when no `leagueId` filter is passed — with an optional `{ from, to }` date window, and tag each returned game with its competition.
+  - **Decision**: Option B, decisions 3 and 10 (#326). `getToday` is single-competition and hardcoded to ±3 days; re-deriving a cross-competition, arbitrary-range query on top of it would duplicate the cross-league traversal `getSchedule` already does for the full-season team calendar (`team-calendar.tsx`). Extending the existing method keeps one owner (`TeamFactory`, per backend-standards §1) for "this team's games," instead of two divergent query paths. `getToday` and its `GET /api/league/:leagueId/today` endpoint are removed as dead code once `game-world.tsx`'s per-league fetch — their only caller — is replaced.
+
+- **Options (season-bounds for clamping)**:
+  - Option A: Add a stored season start/end date (new column on `League` or `DivisionSeason`).
+  - Option B (chosen): Derive `seasonStart`/`seasonEnd` per-request as MIN/MAX `scheduledDate` across the team's current-year games, returned alongside the windowed games from the same extended `getSchedule` call.
+  - **Decision**: Option B, decision 3 (#326). No entity in the current data model owns "season start/end" as a fact (per `backend-standards.md` §2, a column only earns its place when domain logic branches on it or needs a DB constraint/index — clamping a client-side nav control does neither). Deriving it from already-scheduled games is free once the range query exists, and gets recomputed correctly for free after `newSeason()`.
+
+- **Options (day-cell entry model)**:
+  - Option A: A games-only list per day cell (`TeamSeasonGame[]`), matching what the data source naturally returns.
+  - Option B (chosen): A generic `DayEntry` union at the component level (`CalendarStrip` renders `DayEntry[]` per cell), with `GameDayEntry` as the only concrete variant shipped now, plus in-repo docs on registering a new type.
+  - **Decision**: Option B, decision 4 (#326). The map explicitly wants the extension point in place before a second entry type (training) exists, to avoid a rewrite of the rendering component later — a small abstraction cost accepted now on the strength of that stated future need, not a speculative one.
+
+- **Options (action-items panel scope)**:
+  - Option A: Design a real "requires action" system now (contracts/injuries/training surfacing here).
+  - Option B (chosen): Ship an empty, ready-for-content scaffold section; no backing data source.
+  - **Decision**: Option B, decision 5 (#327). None of contracts, injuries, or training exist as domain concepts in this codebase yet — there is nothing to surface. The scaffold reserves the layout slot and the "requires action" framing without inventing a system speculatively.
+
+- **Options (unclaimed-team home state)**:
+  - Option A: Build a new dedicated "pick a team" page/flow.
+  - Option B (chosen): A single "claim a team" prompt on the home page (in place of the calendar/action panel) linking into the existing `team-hub.tsx` claim affordance (`Endpoints.SetManagedClub`), reframed with "job market" copy.
+  - **Decision**: Option B, decisions 9 and 9b/#329 (#333, #329). `team-hub.tsx` is already the sole claim affordance (per its `MCLUI-001`/`MCLUI-002` precedent) — reusing it avoids a second, parallel claim flow. The copy reframe ("job market"/"available jobs") is presentation-only, no new mutation.
+
+- **Options (per-game click-through)**:
+  - Option A: Design a per-game detail endpoint/page now, as part of this map.
+  - Option B (chosen): Defer entirely; the calendar strip's game cells are display-only this map, tracked as a named placeholder (#330) for its own future HLD/LLD.
+  - **Decision**: Option B, decision 10. No per-game read endpoint exists today (only `SimulateGame`, a mutation) — designing a detail view's data shape is unrelated scope to the calendar strip itself and deserves its own HLD.
+
+## Architecture
+
+### Components
+
+- **`TeamFactory.getSchedule`** (existing, `src/db/domain/team.ts`, extended): gains optional `{ from, to }` window params — when passed, filters the existing cross-league game traversal to that range and additionally returns `seasonStart`/`seasonEnd`. `TeamSeasonGame` (`src/api/models.ts`) gains `leagueId`/`leagueName` fields — `divisionName` alone doesn't tag which competition (Premier League vs. League Cup) a game belongs to. See future `docs/llds/game-world/home-calendar-strip.md`.
+- **`GET /api/team/:teamId/calendar`** (existing endpoint, `src/api/router.ts`/`handlers.ts`, extended): accepts optional `from`/`to` query params, additive to the existing `leagueId` param — omitted, behavior is unchanged for `team-calendar.tsx`'s full-season view.
+- **`LeagueFactory.getToday`** and `GET /api/league/:leagueId/today` (existing, `src/db/domain/league.ts`): removed — their only caller (`game-world.tsx`'s per-league "Today" fetch) is replaced by the extended `getSchedule` call above.
+- **`CalendarStrip`** (new UI component, `src/ui/components/calendar-strip.tsx`): renders a rolling 7-day window anchored on `GameWorld.currentDate`, each day cell a generic `DayEntry[]` list (`GameDayEntry` the sole variant shipped). Prev/next navigation clamped client-side to `seasonStart`/`seasonEnd`. Ships with in-repo docs (code comment or short README section) on registering a new `DayEntry` type. Owns #326.
+- **Action-items panel** (new UI component, `src/ui/pages/game-world.tsx` or a co-located component): empty ready-for-content scaffold, no data source. Owns #327.
+- **Header season badge** (UI change to `game-world.tsx`): replaces the full Season-status `Card` section with a compact header badge, reusing the season-summary data (`leagueSeasonSummary`) already fetched for champion display. Owns #328.
+- **Page layout** (`game-world.tsx` restructure): drops the "Leagues" card-list section (sidebar nav already covers it); repositions `NotificationStream` below the calendar/action-items panel as "recent activity." Owns #332.
+- **Unclaimed-team home state** (UI change to `game-world.tsx`): when `gw.managedTeamId` is null, renders a single "claim a team" prompt in place of the calendar/action panel. Owns #333.
+- **`team-hub.tsx` copy reframe**: "job market"/"available jobs" language on the existing claim affordance, no behavior change. Owns #329.
+- **Per-game detail page & API**: explicitly out of scope — placeholder ticket #330, needs its own HLD/LLD.
+
+### Flow
+
+```
+GameWorld page loads, gw.managedTeamId set:
+  → GET /api/team/:managedTeamId/calendar?from=<windowStart>&to=<windowEnd>
+       (TeamFactory.getSchedule, extended: cross-competition, date-windowed,
+        games[] tagged with leagueId/leagueName, plus seasonStart/seasonEnd)
+  → CalendarStrip renders 7 day cells from GameWorld.currentDate,
+       each cell's DayEntry[] = that day's games, grouped by scheduledDate
+  → prev/next shifts the window and re-fetches, clamped client-side to
+       [seasonStart, seasonEnd]
+  → "Simulate Today" CTA (existing GameWorld batch-simulate mutation, #331)
+       stays a prominent call above the strip, unchanged wiring
+  → header season badge + NotificationStream render from data already fetched
+       for champion display / existing notification wiring
+
+GameWorld page loads, gw.managedTeamId null:
+  → single "claim a team" prompt, no calendar/action-panel fetch
+  → links into team-hub.tsx (reframed "job market" copy) to claim a team
+```
+
+### Key Trade-offs
+
+- **Season bounds derived per-request, not stored**: `seasonStart`/`seasonEnd` come from MIN/MAX `scheduledDate` over the team's own current-year games rather than a new column — no schema migration, but a team with no games scheduled this year has nothing to clamp against (an edge case left to the #326 LLD, not solved here).
+- **Action-items panel ships with no logic**: a layout commitment ahead of the systems (contracts/injuries/training) that would populate it — accepted so the page's structure doesn't need reshaping again when one of those systems eventually lands, at the cost of shipping a visibly empty section now.
+- **Generic `DayEntry` union for a single concrete variant**: a small abstraction cost today (the union type + registration docs) for extensibility the map explicitly wants ahead of the "training" entry type it names, not a speculative abstraction.
+- **`getSchedule` extended in place rather than a new method**: keeps one `TeamFactory` entry point for "this team's games" (full-season and windowed), at the cost of that method now branching on whether `{ from, to }` was passed — acceptable since the underlying cross-league traversal is identical either way.
+
+### Out of scope
+
+- **Per-game detail page & API** — #330, deferred to its own future HLD/LLD; no per-game read endpoint exists today.
+- **Any real "requires action" system** (contracts/injuries/training) — the action-items panel stays an empty scaffold until one of those domain concepts exists.
+- **Calendar-day action badges** (a secondary surface hinted at in decision 5) — not built; the action-items panel is the only surface this map ships.
+- **Multi-role home-page generalization** (Scout/Owner/Player) — decision 2 only asks this map avoid Manager-only naming/assumptions; no other role's home page is designed or built here.
