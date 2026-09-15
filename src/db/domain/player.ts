@@ -1,5 +1,6 @@
 import { Transaction } from 'sequelize';
-import { MatchRules, PlayerAttributes, PlayerDetail, PlayerPosition, PlayerRecord, RosterPlayer } from '../../api/models';
+import { MatchRules, PlayerAttributes, PlayerDetail, PlayerPosition, PlayerRecord, PlayerStatsSummary, RosterPlayer } from '../../api/models';
+import { Op, fn, col, literal } from 'sequelize';
 import { DomainError } from './errors';
 import db from '../client';
 import { createInitialRosterContracts, MAX_ROSTER_SIZE, MIN_ROSTER_SIZE } from './contract';
@@ -27,6 +28,7 @@ interface IPlayer {
   create: (gameWorldId: number, attributes: PlayerAttributes, teamId?: number | null, options?: CreatePlayerOptions) => Promise<PlayerRecord>;
   generateRoster: (teamId: number, gameWorldId: number, options?: GenerateRosterOptions) => Promise<PlayerRecord[]>;
   getDetail: (options: { currentDate?: Date | string; year: number; gwId?: number }) => Promise<PlayerDetail>;
+  getStats: (options: { grain: 'season' | 'career' | 'last10'; year: number; gwId?: number }) => Promise<PlayerStatsSummary | null>;
   setTeam: (teamId: number | null, options?: { transaction?: Transaction }) => Promise<void>;
 }
 
@@ -103,6 +105,18 @@ const resolveCurrentContract = (contracts: any[], currentDate: Date | string | u
 };
 
 const dateOnly = (value: Date | string) => new Date(value).toISOString().slice(0, 10);
+const rounded = (value: number) => Math.round(value * 10000) / 10000;
+// @spec PSTATQ-001,PSTATQ-002,PSTATQ-003,PSTAT-003
+const statsSummary = (row: any): PlayerStatsSummary | null => {
+  const v = row?.dataValues ?? row;
+  const g = Number(v?.G ?? 0); if (!g) return null;
+  const n = (key: string) => Number(v[key] ?? 0);
+  const AB = n('AB'), H = n('H'), BB = n('BB'), doubles = n('2B'), triples = n('3B'), HR = n('HR'), IP = n('IP');
+  const avg = AB ? rounded(H / AB) : null;
+  const obp = AB + BB ? rounded((H + BB) / (AB + BB)) : null;
+  const slg = AB ? rounded((H + doubles + 2 * triples + 3 * HR) / AB) : null;
+  return { batting: { G: g, AB, H, R: n('R'), RBI: n('RBI'), '2B': doubles, '3B': triples, HR, BB, SO: n('SO'), AVG: avg, OBP: obp, SLG: slg, OPS: obp == null || slg == null ? null : rounded(obp + slg) }, pitching: { G: g, GS: n('GS'), IP, H: n('pitchingH'), BB: n('pitchingBB'), SO: n('pitchingSO'), ER: n('ER'), ERA: IP ? rounded(9 * n('ER') / IP) : null, WHIP: IP ? rounded((n('pitchingBB') + n('pitchingH')) / IP) : null } };
+};
 
 const PlayerFactory = (playerId?: number): IPlayer => {
   // @spec PATTR-002,PATTR-003,PID-002,PID-005,PID-006,PID-009,PID-010
@@ -200,6 +214,17 @@ const PlayerFactory = (playerId?: number): IPlayer => {
           endDate: dateOnly(contract.endDate),
         } : null,
       };
+    },
+
+    // @spec PSTATQ-001,PSTATQ-002,PSTATQ-003,PSTAT-003
+    getStats: async ({ grain, year, gwId }): Promise<PlayerStatsSummary | null> => {
+      const player = await db.models.Player.findByPk(playerId);
+      if (!player || (gwId != null && player.dataValues.gameWorldId !== gwId)) throw new DomainError('Not found', 404);
+      const attributes: any[] = ['AB', 'H', 'R', 'RBI', '2B', '3B', 'HR', 'BB', 'SO', 'GS', 'IP', 'pitchingH', 'pitchingBB', 'pitchingSO', 'ER'].map((key) => [fn('SUM', col(key)), key]);
+      const gameInclude: any = { model: db.models.Game, attributes: [] };
+      if (grain === 'season') gameInclude.include = [{ model: db.models.DivisionSeason, attributes: [], where: { year }, through: { attributes: [] }, required: true }];
+      const row = await db.models.PlayerGameStats.findOne({ where: { playerId }, attributes: [[fn('COUNT', col('PlayerGameStats.id')), 'G'], ...attributes], include: [gameInclude], raw: true });
+      return statsSummary(row);
     },
 
     // @spec XFER-013,XFER-017 — the only sanctioned writer of Player.teamId outside

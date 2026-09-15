@@ -183,6 +183,11 @@ interface PlayerDetail {
   contract: { team: { id: number; name: string }; startDate: string; endDate: string } | null;
 }
 
+interface PlayerStatsSummary {
+  batting: Record<string, number | null>;
+  pitching: Record<string, number | null>;
+}
+
 // @spec NOTIF-007,NOTIF-010
 interface NotificationRow {
   id: number;
@@ -818,6 +823,7 @@ export {
   ActiveLineupEntry,
   GameLineupSnapshot,
   PlayerDetail,
+  PlayerStatsSummary,
   NotificationRow,
   DivisionStandings,
   BracketTeam,
