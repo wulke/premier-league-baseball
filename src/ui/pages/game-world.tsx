@@ -6,6 +6,7 @@ import { TeamSeasonGame } from '../../api/models';
 import { NotificationStream } from './notification-stream';
 import { Badge, Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
 import { CalendarStrip, DayEntry, addDays } from '../components/calendar-strip';
+import { ActionItemsPanel, ActionItem } from '../components/action-items-panel';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
 type LeagueSeasonSummary = {
@@ -14,7 +15,7 @@ type LeagueSeasonSummary = {
   championName: string | null;
 };
 
-// @spec LIFE-001,SHB-001,SHB-002,SHB-003
+// @spec LIFE-001,SHB-001,SHB-002,SHB-003,ACTUI-001,ACTUI-005
 const GameWorld = () => {
   const { gwId } = useParams();
   // @spec RLDRUI-001,RLDRUI-003
@@ -224,6 +225,11 @@ const GameWorld = () => {
             onWindowChange={fetchCalendar}
           />
         </section>
+      )}
+
+      {/* @spec ACTUI-001,ACTUI-005 — no real producer exists yet, so items is always empty. */}
+      {gw.managedTeamId != null && (
+        <ActionItemsPanel items={[] as ActionItem[]} />
       )}
 
       {/* Leagues Section */}
