@@ -137,6 +137,7 @@ per the anchoring rule below; it does not own `entries` or re-fetch itself — t
 | u6 | `gw.managedTeamId` is null | Not this component's concern — `game-world.tsx` renders the unclaimed-team prompt instead (owned by #333's sibling LLD) and never mounts `CalendarStrip`. | — (see #333) |
 | u7 | Rapid simulation is in flight while the home CTA is visible | The app-shell-level busy flag disables the home batch control, preserving the existing cross-control lock. | CALWUI-009 |
 | u8 | Today has no games | The today marker remains emphasized; the empty-cell treatment does not obscure which day the CTA operates on. | CALWUI-010 |
+| u9 | Batch simulation completes the season and revalidation changes `inProgress` to false | The banner wrapper is owned by `BatchSimulateControl`, whose terminal state stays mounted for its existing result/error feedback before it returns to idle. | CALWUI-009 |
 
 ## Traceability
 

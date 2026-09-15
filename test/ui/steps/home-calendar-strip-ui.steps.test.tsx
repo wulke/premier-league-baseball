@@ -27,6 +27,7 @@ const feature = loadFeature(path.resolve(__dirname, '../features/home-calendar-s
 let fetchCalls: string[] = [];
 let managedTeamId: number | null = null;
 let currentDate: string | null = null;
+let inProgress = true;
 let calendarResponse: { games: MockGame[]; seasonStart: string | null; seasonEnd: string | null } = {
   games: [], seasonStart: null, seasonEnd: null,
 };
@@ -66,7 +67,7 @@ const installFetch = () => {
         year: 2025,
         currentDate,
         managedTeamId,
-        config: { name: 'Test World', inProgress: true },
+        config: { name: 'Test World', inProgress },
         Leagues: [],
       });
     }
@@ -95,6 +96,7 @@ beforeEach(() => {
   fetchCalls = [];
   managedTeamId = null;
   currentDate = null;
+  inProgress = true;
   calendarResponse = { games: [], seasonStart: null, seasonEnd: null };
   installFetch();
 });
@@ -148,6 +150,25 @@ defineFeature(feature, (test) => {
       const strip = screen.getByTestId('calendar-strip');
       expect(within(banner).getByTestId('batch-simulate')).toBeEnabled();
       expect(banner.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+  });
+
+  test('A season-ending simulation retains its terminal feedback', ({ given, when, then }) => {
+    given('GameWorld 1 exists with an in-progress season and Team A as id 1', () => {});
+    given('GameWorld 1 has managedTeamId 1 and currentDate "2025-06-10"', () => {
+      managedTeamId = 1;
+      currentDate = '2025-06-10';
+    });
+    when('the player simulates the final game day and the season completes', async () => {
+      await renderGameWorld();
+      fireEvent.click(screen.getByTestId('batch-simulate'));
+      inProgress = false;
+    });
+
+    // @spec CALWUI-009
+    then('the Simulate Today banner retains the simulation result', async () => {
+      const banner = await screen.findByTestId('simulate-today-banner');
+      expect(await within(banner).findByText(/0 simulated/)).toBeInTheDocument();
     });
   });
 

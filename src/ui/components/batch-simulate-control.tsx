@@ -1,4 +1,4 @@
-// @spec SIMUI-009..SIMUI-018,SIMUI-029,SCL-014
+// @spec SIMUI-009..SIMUI-018,SIMUI-029,SCL-014,CALWUI-009
 import React, { useEffect, useState } from 'react';
 import { useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
@@ -11,10 +11,12 @@ type BatchSimulateControlProps = {
   disabled?: boolean;
   // Tell the shared parent (NavRail) when THIS control enters/leaves submitting.
   onBusyChange?: (busy: boolean) => void;
+  // Home-page placement wraps the same state machine in a primary CTA treatment.
+  prominent?: boolean;
 };
 
-// @spec SIMUI-009..SIMUI-018,SIMUI-029,SCL-014
-const BatchSimulateControl = ({ disabled = false, onBusyChange }: BatchSimulateControlProps = {}) => {
+// @spec SIMUI-009..SIMUI-018,SIMUI-029,SCL-014,CALWUI-009
+const BatchSimulateControl = ({ disabled = false, onBusyChange, prominent = false }: BatchSimulateControlProps = {}) => {
   // @spec RLDRUI-001,RLDRUI-003
   const gw = useRouteLoaderData('gwId') as any;
   const { revalidate } = useRevalidator();
@@ -57,20 +59,39 @@ const BatchSimulateControl = ({ disabled = false, onBusyChange }: BatchSimulateC
       });
   };
 
+  // @spec CALWUI-009 — wrapping happens inside the stateful control so a revalidation that
+  // closes the season cannot unmount success/error feedback before the player sees it.
+  const present = (content: React.ReactNode) => (prominent ? (
+    <div
+      data-testid="simulate-today-banner"
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px',
+        padding: '16px 20px', marginBottom: '14px', border: '1px solid #1f2937',
+        borderRadius: '8px', background: '#f1f5f9',
+      }}
+    >
+      <div>
+        <div style={{ fontWeight: 700 }}>Ready for today’s games?</div>
+        <div style={{ fontSize: '0.85rem', color: '#475569', marginTop: '2px' }}>Simulate the games scheduled for the current day.</div>
+      </div>
+      {content}
+    </div>
+  ) : content);
+
   if (!canBatch && batchStatus === 'idle') return null;
   if (batchStatus === 'submitting') {
-    return <button data-testid="batch-simulate" disabled>Simulating…</button>;
+    return present(<button data-testid="batch-simulate" disabled>Simulating…</button>);
   }
   if (batchStatus === 'success-clean') {
     const nextGameDay = batchResult?.nextDate;
-    return <span>{batchResult?.simulated.length ?? 0} simulated · {nextGameDay ? `Next game day: ${nextGameDay}` : 'No later games scheduled'}</span>;
+    return present(<span>{batchResult?.simulated.length ?? 0} simulated · {nextGameDay ? `Next game day: ${nextGameDay}` : 'No later games scheduled'}</span>);
   }
   if (batchStatus === 'success-skipped') {
     const count = batchResult?.skipped.length ?? 0;
-    return <span role="alert">{count} game{count === 1 ? '' : 's'} could not be simulated</span>;
+    return present(<span role="alert">{count} game{count === 1 ? '' : 's'} could not be simulated</span>);
   }
   if (batchStatus === 'error') {
-    return (
+    return present(
       <div>
         <span role="alert">Batch simulation failed.</span>
         <button onClick={runBatch}>Retry</button>
@@ -79,7 +100,7 @@ const BatchSimulateControl = ({ disabled = false, onBusyChange }: BatchSimulateC
   }
   // @spec RSSUI-006 — disabled while the peer (rapid) control is submitting. (This
   // branch is only reached when batchStatus === 'idle'; submitting returns earlier.)
-  return <button data-testid="batch-simulate" onClick={runBatch} disabled={disabled}>Simulate Today</button>;
+  return present(<button data-testid="batch-simulate" onClick={runBatch} disabled={disabled}>Simulate Today</button>);
 };
 
 export { BatchSimulateControl };

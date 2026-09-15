@@ -34,6 +34,12 @@ Feature: GameWorld Home Calendar Strip
     When the GameWorld 1 home page loads
     Then the Simulate Today banner appears above the calendar strip
 
+  @spec:CALWUI-009
+  Scenario: A season-ending simulation retains its terminal feedback
+    Given GameWorld 1 has managedTeamId 1 and currentDate "2025-06-10"
+    When the player simulates the final game day and the season completes
+    Then the Simulate Today banner retains the simulation result
+
   @spec:CALWUI-010
   Scenario: The current date is visually distinguished in the calendar strip
     Given GameWorld 1 has managedTeamId 1 and currentDate "2025-06-10"

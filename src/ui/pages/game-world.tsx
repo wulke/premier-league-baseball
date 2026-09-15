@@ -221,24 +221,9 @@ const GameWorld = () => {
             Calendar
           </SectionLabel>
 
-          {gw.config?.inProgress && (
-            /* @spec CALWUI-009 — the existing stateful control is promoted here without
-                changing its request, loading, disabled, result, or error behavior. */
-            <div
-              data-testid="simulate-today-banner"
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px',
-                padding: '16px 20px', marginBottom: '14px', border: '1px solid #1f2937',
-                borderRadius: '8px', background: '#f1f5f9',
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 700 }}>Ready for today’s games?</div>
-                <div style={{ fontSize: '0.85rem', color: '#475569', marginTop: '2px' }}>Simulate the games scheduled for the current day.</div>
-              </div>
-              <BatchSimulateControl disabled={simulateBusy} onBusyChange={setSimulateBusy} />
-            </div>
-          )}
+          {/* @spec CALWUI-009 — the existing stateful control owns its banner wrapper so a
+              season-ending revalidation retains terminal feedback rather than unmounting it. */}
+          <BatchSimulateControl prominent disabled={simulateBusy} onBusyChange={setSimulateBusy} />
 
           <CalendarStrip
             currentDate={gw.currentDate}
