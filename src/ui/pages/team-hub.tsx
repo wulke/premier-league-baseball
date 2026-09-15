@@ -75,7 +75,7 @@ const TeamHub = () => {
         {gwId && teamId && (
           <Button
             intent="secondary"
-            data-testid={isManaged ? 'resign-managed-club' : 'claim-managed-club'}
+            data-testid={isManaged ? 'leave-job' : 'take-job'}
             type="button"
             onClick={() => submitManagedClub(isManaged ? null : Number(teamId))}
             disabled={submitting}
