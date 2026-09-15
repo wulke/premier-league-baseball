@@ -8,6 +8,7 @@ export * from './lineup';
 export * from './league';
 export * from './notifications/notification';
 export * from './player';
+export * from './player-game-stats-writer';
 export * from './simulation/engine';
 export * from './simulation/random-engine';
 export * from './simulation/seed';
