@@ -523,6 +523,81 @@ simulate / simulateBatch
   factory directly (matching `test/db/domain/game.test.ts` precedent, e.g. PID-005). Exposing a
   seed via API would leak a test concern into the contract.
 
+---
+
+# HLD: Per-Player Game Event Writer (Box-Score Distributor)
+
+> Parent: [Player stats UI](https://github.com/wulke/premier-league-baseball/issues/139) ·
+> Ticket: [#216](https://github.com/wulke/premier-league-baseball/issues/216).
+>
+> **Status: Approved design; ready for implementation.**
+
+## Goal
+
+Create the first `PlayerGameStats` writer when a game completes. It is deliberately a
+**box-score distributor**, not a play-by-play simulation: it post-processes the completed
+team score from the #190 `SimulationEngine` and writes plausible-looking, per-player counting
+stats from frozen game lineups. It is a stepping stone to the attribute-driven per-PA engine in
+#191/#192, which will eventually replace fabricated distribution with generated events.
+
+## Strategy
+
+- **Options**:
+  - Option A: make `SimulationEngine` emit player events now.
+  - Option B (chosen): retain the #190 engine's pure `SimulationResult { homeTeamResult,
+    awayTeamResult }` seam and add a completion-hook writer that distributes those results.
+- **Decision**: Option B. The random score engine has no player/attribute inputs from which to
+  derive meaningful plate appearances. Keeping it score-only protects the strategy seam while
+  allowing the game-grain stats table and downstream UI work to begin. #191/#192 can later
+  substitute true event output without moving guards or game-completion ownership.
+
+## Architecture
+
+### Components
+
+- **`GameFactory` completion path**: after its guarded score write succeeds, it invokes the
+  player-game-stats completion hook for both the single and batch paths, alongside existing
+  competition completion hooks. The hook sees the persisted game and the engine result; it does
+  not participate in score production.
+- **`TeamFactory(teamId).snapshotForGame(gameId)`**: the completion hook first freezes each
+  team's active lineup if necessary, then reads that per-game lineup. `LineupEntry` supplies the
+  fixed batting order, starter role/fielding position, and derivable `startingPitcherId`; this
+  turns the currently read-driven snapshot primitive into authoritative game input.
+- **`PlayerGameStatsWriter`** (planned domain component): independently handles each team side,
+  distributes the score-side batting line and fabricated pitching line among snapshot
+  participants, then uses plain `create()`/`bulkCreate()` rows. Its `(playerId, gameId)` unique
+  index is the intentional double-completion guard; there is no upsert or re-simulation path.
+
+### Flow
+
+```
+GameFactory completes a game (single or batch)
+  → SimulationEngine already returned { homeTeamResult, awayTeamResult }
+  → persist Game result/status through the existing guarded path
+  → for home side and away side independently:
+       snapshotForGame(gameId) → read frozen lineup
+       IF lineup is missing or incomplete: silently skip this team side
+       ELSE distribute exact team R plus fabricated batting/pitching counts
+            → bulkCreate one PlayerGameStats row per participating player
+  → existing bracket/season/stage completion hooks continue
+```
+
+### Key Trade-offs
+
+- **Frozen lineup, not live roster**: the snapshot is the historical game input, so later active
+  lineup edits cannot rewrite attribution. Completion-time snapshotting also covers games never
+  opened through the next-game lineup UI.
+- **Silent side-local skip**: an absent or incomplete lineup produces no rows for that team only;
+  it never blocks the completed score or invents a fake player assignment. Lineup-submission
+  guardrails are later work.
+- **Only runs reconcile**: each batting side's `SUM(R)` exactly equals its corresponding engine
+  score. All other counts, including `RBI`, extra-base hits, and pitching lines, are fabricated
+  independently and have no realism caps or cross-stat reconciliation. In particular, IP need
+  not total nine.
+- **Surface duplicate writes**: plain inserts intentionally let the existing unique index throw
+  if completion fires twice. Treating that as an error exposes a completion-path bug instead of
+  hiding it with an upsert.
+
 # HLD: Route-Loader Data Migration
 
 > Backed by [Map: Route-loader migration for click-to-render lag](https://github.com/wulke/premier-league-baseball/issues/229)
