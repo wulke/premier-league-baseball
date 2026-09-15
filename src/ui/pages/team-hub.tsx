@@ -12,9 +12,10 @@ const TeamHub = () => {
   const [submitting, setSubmitting] = useState(false);
   const basePath = `/${gwId}/team/${teamId}`;
 
-  // MCLUI-001/MCLUI-002 — the hub is the sole claim affordance. `managedTeamId` arrives via
+  // MCLUI-001/MCLUI-002 — the hub is the sole job-market affordance. `managedTeamId` arrives via
   // the GET /api/gameWorld/:gwId payload (MCLB-002); it is `undefined` while the context loads,
-  // so an unclaimed (or still-loading) hub shows "Claim as My Club".
+  // so an unclaimed (or still-loading) hub shows "Take this job". Every team remains available;
+  // this vocabulary does not add AI-manager availability logic.
   const managedTeamId = gw?.managedTeamId;
   const isManaged = managedTeamId != null && managedTeamId === Number(teamId);
 
@@ -41,6 +42,13 @@ const TeamHub = () => {
 
   return (
     <>
+      <header style={{ maxWidth: '960px', margin: '0 auto', padding: '20px 24px 0' }}>
+        {/* @spec MCLUI-001 — copy-only job-market framing; availability remains unconditional. */}
+        <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700 }}>Job Market</h1>
+        <p style={{ margin: '4px 0 0', color: '#666', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Available Jobs
+        </p>
+      </header>
       <nav
         data-testid="team-hub-tabs"
         aria-label="Team sections"
@@ -67,7 +75,7 @@ const TeamHub = () => {
         {gwId && teamId && (
           <Button
             intent="secondary"
-            data-testid={isManaged ? 'resign-managed-club' : 'claim-managed-club'}
+            data-testid={isManaged ? 'leave-job' : 'take-job'}
             type="button"
             onClick={() => submitManagedClub(isManaged ? null : Number(teamId))}
             disabled={submitting}
@@ -82,7 +90,7 @@ const TeamHub = () => {
               color: isManaged ? '#666' : '#222',
             }}
           >
-            {isManaged ? 'Stop managing' : 'Claim as My Club'}
+            {isManaged ? 'Leave this job' : 'Take this job'}
           </Button>
         )}
       </nav>
