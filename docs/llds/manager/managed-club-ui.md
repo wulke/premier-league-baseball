@@ -2,6 +2,7 @@
 
 > Map: [#137 — "My Club" concept](https://github.com/wulke/premier-league-baseball/issues/137) ·
 > Delivery: [#153](https://github.com/wulke/premier-league-baseball/issues/153) ·
+> Copy update: [#329](https://github.com/wulke/premier-league-baseball/issues/329) ·
 > Backend sibling LLD: [`managed-club-pointer.md`](./managed-club-pointer.md) ·
 > EARS: `docs/specs/manager/managed-club-ui-specs.md` (`MCLUI-001`..`MCLUI-006`) ·
 > HLD: [`high-level-design.md` — App Shell fog trio](../high-level-design.md)
@@ -11,8 +12,10 @@
 Wires the **managed-club identity/navigation pin** to the pointer delivered in the backend
 slice ([#152](https://github.com/wulke/premier-league-baseball/issues/152)). Two surfaces only:
 
-1. **Claim/resign on the team hub** (#149 / #171) — a "Claim as My Club" / "Stop managing"
-   action that calls the setter, then re-reads `managedTeamId` from the game-world context.
+1. **Job-market action on the team hub** (#149 / #171 / #329) — a "Job Market" / "Available Jobs"
+   framing with a "Take this job" / "Leave this job" action that calls the setter, then re-reads
+   `managedTeamId` from the game-world context. All teams remain available in this MVP; AI-managed
+   teams and selective availability are out of scope.
 2. **Nav-rail trio wiring** (`src/ui/components/nav-rail.tsx`, test IDs `nav-fog-*`) — when a
    club is claimed, "My Club" and "Roster" light up as links to the managed team's symmetric
    surfaces from map #135; "Transfers" stays dimmed (no transfers surface yet → #140).
@@ -41,7 +44,8 @@ game-mode field, null-state discoverability UI, or an "apply/interview" gate —
 The action is a single button whose label/behavior flips on `isManaged`; a `submitting` guard
 prevents double-fire. `gw`/`teamId` may be briefly out of sync on first paint (context loading
 or `teamId` not yet parsed); `isManaged` is simply false until both are present, so an unclaimed
-hub shows "Claim as My Club" and a claimed hub shows "Stop managing" once the GET resolves.
+hub frames the team as an available job and shows "Take this job"; a claimed hub shows "Leave this
+job" once the GET resolves. This is vocabulary only: it does not filter teams or alter the setter.
 
 ### Nav-rail trio (`src/ui/components/nav-rail.tsx`)
 
@@ -65,7 +69,8 @@ no bespoke manager page.
 TeamHub (src/ui/pages/team-hub.tsx) renders inside AppShell (GameWorldProvider):
   reads gw.managedTeamId + teamId from route/context
   isManaged = managedTeamId === Number(teamId)
-  render hub header: tab bar + (isManaged ? "Stop managing" : "Claim as My Club")
+  render hub header: "Job Market" / "Available Jobs" + tab bar +
+    (isManaged ? "Leave this job" : "Take this job")
   on click:
     POST /api/gameWorld/:gwId/managed-club { teamId: isManaged ? null : Number(teamId) }   // MCLUI-001/002
       → on response: invalidate()                                                          // MCLUI-003
@@ -80,8 +85,11 @@ NavRail (src/ui/components/nav-rail.tsx):
 
 ### Key decisions embedded in this flow
 
-- **The hub, not the rail, is the sole claim affordance** — discovery rests entirely on the
-  team-hub Claim button; the unclaimed rail offers no new affordance (map #137 null-state decision).
+- **The hub, not the rail, is the sole job-taking affordance** — discovery rests entirely on the
+  team-hub action; the unclaimed rail offers no new affordance (map #137 null-state decision).
+- **Vocabulary is preparatory, not eligibility logic** — every team remains an available job in
+  this slice. A future AI-manager map may filter the market, but this copy change must not add
+  availability data, filtering, or endpoint behavior.
 - **`invalidate()` is the reflect mechanism** — the setter's response body is not trusted to
   patch local state; the context re-GETs and `managedTeamId` flows back through `gw`, so the hub
   action and the rail update from one source of truth (MCLUI-003). Matches the App Shell LLD
@@ -93,12 +101,12 @@ NavRail (src/ui/components/nav-rail.tsx):
 
 | # | Condition | Handling | Spec |
 |---|---|---|---|
-| u1 | Context still loading (`gw` null) on first hub paint | `managedTeamId` is `undefined` → `isManaged` false → "Claim as My Club" renders; flips to "Stop managing" once the GET resolves if this team is managed. | MCLUI-001/002 |
+| u1 | Context still loading (`gw` null) on first hub paint | `managedTeamId` is `undefined` → `isManaged` false → the team renders as an available job with "Take this job"; flips to "Leave this job" once the GET resolves if this team is managed. | MCLUI-001/002 |
 | u2 | Setter returns 4xx/422 (e.g. foreign team) | `invalidate()` still re-GETs; the pointer is unchanged server-side, so the UI reverts to the prior state. No bespoke error UI in MVP (frictionless posture; MCLUI-006). | MCLUI-003/006 |
 | u3 | User double-clicks the action | A `submitting` guard disables the button while the POST is in flight. | MCLUI-001/002 |
 | u4 | Nav rail on the Home route (`/`, no `gwId`) | `gw` is null → trio stays dimmed (`nav-fog-*`); no managed-club links render outside a world. | MCLUI-005 |
 | u5 | "Transfers" item | Always dimmed — no transfers surface exists yet (#140). Never lights up in this slice. | MCLUI-005 |
-| u6 | Direct nav to a non-managed team's hub | `isManaged` false → "Claim as My Club"; claiming it re-points `managedTeamId` away from any prior club (lifelong-mutable, map #137). | MCLUI-001 |
+| u6 | Direct nav to a non-managed team's hub | `isManaged` false → "Take this job"; taking it re-points `managedTeamId` away from any prior club (lifelong-mutable, map #137). | MCLUI-001 |
 
 ## Traceability
 

@@ -68,18 +68,22 @@ const registerSteps = ({ given, when, then }: any) => {
   given('GameWorld 1 has Team 10 as its managed club', () => { world.managedTeamId = 10; });
 
   when("the player navigates to Team 10's hub", () => renderAt('/1/team/10/roster'));
-  when('the player claims Team 10 as their club', async () => {
-    fireEvent.click(await screen.findByRole('button', { name: 'Claim as My Club' }));
+  when("the player takes Team 10's job", async () => {
+    fireEvent.click(await screen.findByRole('button', { name: 'Take this job' }));
   });
-  when('the player resigns from managing Team 10', async () => {
-    fireEvent.click(await screen.findByRole('button', { name: 'Stop managing' }));
+  when("the player leaves Team 10's job", async () => {
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave this job' }));
   });
 
-  then('the hub shows a "Claim as My Club" action', async () => {
-    expect(await screen.findByRole('button', { name: 'Claim as My Club' })).toBeInTheDocument();
+  then('the hub shows the "Job Market" / "Available Jobs" framing', async () => {
+    expect(await screen.findByRole('heading', { name: 'Job Market' })).toBeInTheDocument();
+    expect(screen.getByText('Available Jobs')).toBeInTheDocument();
   });
-  then('the hub shows a "Stop managing" action', async () => {
-    expect(await screen.findByRole('button', { name: 'Stop managing' })).toBeInTheDocument();
+  then('the hub shows a "Take this job" action', async () => {
+    expect(await screen.findByRole('button', { name: 'Take this job' })).toBeInTheDocument();
+  });
+  then('the hub shows a "Leave this job" action', async () => {
+    expect(await screen.findByRole('button', { name: 'Leave this job' })).toBeInTheDocument();
   });
   then(/^the client POSTs managed-club with teamId (null|\d+)$/, (teamId: string) => {
     const last = posted[posted.length - 1];
@@ -87,17 +91,17 @@ const registerSteps = ({ given, when, then }: any) => {
     const expected = teamId === 'null' ? null : Number(teamId);
     expect(last.body).toEqual({ teamId: expected });
   });
-  then('the hub shows a "Stop managing" action without a full reload', async () => {
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Stop managing' })).toBeInTheDocument());
+  then('the hub shows a "Leave this job" action without a full reload', async () => {
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Leave this job' })).toBeInTheDocument());
     // MCLUI-003 — the reflect came from a context re-GET (initial mount + invalidate), not a reload.
     expect(gameWorldGets).toBeGreaterThanOrEqual(2);
   });
-  then('the hub shows a "Claim as My Club" action without a full reload', async () => {
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Claim as My Club' })).toBeInTheDocument());
+  then('the hub shows a "Take this job" action without a full reload', async () => {
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Take this job' })).toBeInTheDocument());
     expect(gameWorldGets).toBeGreaterThanOrEqual(2);
   });
-  then('the claim is accepted with no confirmation or interview gate', async () => {
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Stop managing' })).toBeInTheDocument());
+  then('the job is accepted with no confirmation or interview gate', async () => {
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Leave this job' })).toBeInTheDocument());
     expect(posted.some((p) => p.url === '/api/gameWorld/1/managed-club')).toBe(true);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
