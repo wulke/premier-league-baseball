@@ -6,9 +6,11 @@
 
 ## Scope
 
-Defines the storage grain and column set for Player stats. Covers schema shape only — **no write path
-exists yet**; writes are deferred until a future map wires real per-player game events into
-`SimulationEngine` (which stays random, unchanged by this map).
+Defines the storage grain and column set for Player stats. This schema map did not implement a
+writer. The approved first write-path design is now
+[`player-game-stats-writer.md`](./player-game-stats-writer.md): a temporary box-score distributor
+hooked after #190's score-only `SimulationEngine`, blocked by #277. It will be superseded by
+#191/#192's real per-player play-by-play events.
 
 ## Interface / Data Model
 
@@ -74,14 +76,13 @@ G(rows)    = COUNT(rows)
 `rows` is the `PlayerGameStats` set for the requested window: all rows for career, rows joined to
 `Game`s within the target `year` for season.
 
-### Write-timing (deferred)
+### Write-timing
 
-No write path exists in this map. The intended future flow (not implemented here):
-
-```
-Game completes with real per-player events (future SimulationEngine capability)
-  → for each participating Player: upsert PlayerGameStats{ playerId, gameId, ...counting stats }
-```
+The first planned writer is a post-score box-score distributor, not a `SimulationEngine` event
+producer. It snapshots each team lineup at completion, silently skips a missing/incomplete side,
+and uses plain inserts (not upserts); see
+[`player-game-stats-writer.md`](./player-game-stats-writer.md). #191/#192 will later replace this
+temporary attribution source with real play-by-play events.
 
 ## Edge Case Probe
 
