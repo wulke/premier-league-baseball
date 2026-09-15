@@ -190,6 +190,12 @@ router.get(Endpoints.GetPlayerDetail, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
+router.get(Endpoints.GetPlayerStats, async (req: any, res: any) => {
+  // @spec PSTATQ-001,PSTATQ-002,PSTATQ-003
+  await handlers.getPlayerStats(Number(req.params.playerId), req.query.grain, req.query.gwId == null ? undefined : Number(req.query.gwId))
+    .then((response) => res.send(response)).catch((error) => sendError(res, error));
+});
+
 router.get(Endpoints.GetGameWorldNotifications, async (req: any, res: any) => {
   // @spec NOTIF-003,NOTIF-006,NOTIF-007
   const since = req.query.since == null ? undefined : Number(req.query.since);

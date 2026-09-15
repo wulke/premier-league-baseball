@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLoaderData, useParams } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { PlayerDetail as PlayerDetailRecord, PlayerPosition } from '../../api/models';
 import { Card, PageContainer } from '../components/ui';
 import { positionLabels } from '../position-labels';
 
-type Tab = 'overview' | 'positions' | 'pitches';
+type Tab = 'overview' | 'positions' | 'pitches' | 'stats';
 type PositionView = 'field' | 'bars' | 'pills';
 
 const ratings: Array<{ key: keyof Pick<PlayerDetailRecord, 'contact' | 'power' | 'armStrength' | 'accuracy' | 'reaction' | 'vision' | 'discipline'>; label: string }> = [
@@ -67,6 +67,13 @@ const Positions = ({ player }: { player: PlayerDetailRecord }) => {
 
 const Pitches = ({ player }: { player: PlayerDetailRecord }) => <div data-testid="pitch-repertoire" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>{player.pitches.map((pitch) => <Panel key={pitch.type}><div data-testid={`pitch-card-${pitch.type}`}><h2 style={{ marginTop: 0, fontSize: '1rem' }}>{pitch.type}</h2>{([['VEL', pitch.velocity], ['CTL', pitch.control], ['SPN', pitch.spin]] as Array<[string, number]>).map(([label, value]) => <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', padding: '4px', background: ratingTint(value) }}><strong>{label}</strong><span>{value}</span></div>)}</div></Panel>)}</div>;
 
+// @spec PSTATUI-001,PSTATQ-001,PSTATQ-002,PSTATQ-003
+const Stats = ({ playerId, gwId }: { playerId: string | undefined; gwId: string | undefined }) => {
+  const [grain, setGrain] = useState<'season' | 'career'>('season'); const [stats, setStats] = useState<any>(); const [error, setError] = useState(false);
+  useEffect(() => { let active = true; setStats(undefined); setError(false); fetch(`/api/player/${playerId}/stats?gwId=${gwId}&grain=${grain}`).then((r) => { if (!r.ok) throw Error('stats request failed'); return r.json(); }).then((value) => active && setStats(value)).catch(() => active && setError(true)); return () => { active = false; }; }, [playerId, gwId, grain]);
+  return <div data-testid="player-stats"><div role="group" aria-label="Stats grain">{(['season', 'career'] as const).map((key) => <button key={key} type="button" aria-pressed={grain === key} onClick={() => setGrain(key)}>{key === 'season' ? 'Season' : 'Career'}</button>)}</div>{error ? <p data-testid="player-stats-error">Stats are unavailable right now.</p> : stats === undefined ? <p>Loading stats…</p> : stats == null ? <p data-testid="player-stats-empty">No stats recorded yet</p> : <>{(['batting', 'pitching'] as const).map((kind) => <Panel key={kind}><h2>{kind === 'batting' ? 'Batting' : 'Pitching'}</h2><dl data-testid={`${kind}-stats`}>{Object.entries(stats[kind] as Record<string, React.ReactNode>).map(([key, value]) => <React.Fragment key={key}><dt>{key}</dt><dd>{value ?? '—'}</dd></React.Fragment>)}</dl></Panel>)}</>}</div>;
+};
+
 const chipStyle: React.CSSProperties = { display: 'inline-block', padding: '3px 8px', border: '1px solid #aaa', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 700, background: '#f6f6f6' };
 
 // @spec PDETUI-001,PDETUI-002,PDETUI-003,PDETUI-004,PDETUI-005,PDETUI-006,PDETUI-007,PDETUI-008,PDETUI-009
@@ -78,11 +85,11 @@ const PlayerDetail = () => {
   if (!player) return <main data-testid="player-not-found" style={{ padding: '24px' }}><h1>Player not found</h1><p>This player is unavailable in this game world.</p></main>;
   const pitchable = player.primaryPosition === 'Pitcher';
   const ovr = displayOvr(player);
-  const tabs: Array<[Tab, string]> = [['overview', 'Overview'], ['positions', 'Positions'], ...(pitchable ? [['pitches', 'Pitch repertoire'] as [Tab, string]] : [])];
+  const tabs: Array<[Tab, string]> = [['overview', 'Overview'], ['stats', 'Stats'], ['positions', 'Positions'], ...(pitchable ? [['pitches', 'Pitch repertoire'] as [Tab, string]] : [])];
   return <PageContainer as="main" style={{ maxWidth: '1000px', padding: '24px 24px 48px' }}>
     <header data-testid="player-masthead" style={{ borderBottom: '1px solid #ddd', paddingBottom: '16px', marginBottom: '16px' }}><div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}><h1 style={{ margin: 0, fontSize: '1.65rem' }}>{displayName(player)}</h1><span data-testid="primary-position-badge" style={{ ...chipStyle, background: affinityTint(player.positions[player.primaryPosition]), borderColor: '#466c4b', color: '#132717' }}>{positionLabels[player.primaryPosition]}</span><output data-testid="display-ovr-badge" style={chipStyle}>OVR: {ovr}</output>{player.contract ? <Link to={`/${gwId}/team/${player.contract.team.id}`}>{player.contract.team.name}</Link> : <span data-testid="free-agent-chip" style={chipStyle}>Free Agent</span>}</div><p style={{ margin: '8px 0 0', color: '#666' }}>{countryFlag(player.countryCode)} {player.countryCode} · Bats {player.bats} / Throws {player.throws} · Age {player.age} ({player.birthDate})</p></header>
     <nav aria-label="Player detail tabs" style={{ display: 'flex', gap: '4px', borderBottom: '1px solid #ddd', marginBottom: '20px' }}>{tabs.map(([key, label]) => <button key={key} type="button" aria-pressed={tab === key} onClick={() => setTab(key)} style={{ padding: '9px 13px', border: 'none', borderBottom: tab === key ? '3px solid #222' : '3px solid transparent', background: 'none', cursor: 'pointer', fontWeight: tab === key ? 700 : 400 }}>{label}</button>)}</nav>
-    {tab === 'overview' && <Overview player={player} />}{tab === 'positions' && <Positions player={player} />}{tab === 'pitches' && pitchable && <Pitches player={player} />}
+    {tab === 'overview' && <Overview player={player} />}{tab === 'stats' && <Stats playerId={playerId} gwId={gwId} />}{tab === 'positions' && <Positions player={player} />}{tab === 'pitches' && pitchable && <Pitches player={player} />}
   </PageContainer>;
 };
 

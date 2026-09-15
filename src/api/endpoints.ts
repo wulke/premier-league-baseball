@@ -31,6 +31,7 @@ const enum Endpoints {
   SaveTeamGameLineup = '/api/team/:teamId/lineup/:gameId',
   // @spec PDET-001,PDET-002,PDET-003,PDET-004,PDET-007,PDET-008,PDET-010,PDET-011
   GetPlayerDetail = '/api/player/:playerId',
+  GetPlayerStats = '/api/player/:playerId/stats',
   // @spec GWA-003,GWA-004,GWA-005
   NewGameWorld = '/api/gameWorld/new',
   // @spec MCLB-003,MCLB-004,MCLB-005
