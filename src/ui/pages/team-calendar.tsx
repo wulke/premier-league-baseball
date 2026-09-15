@@ -4,6 +4,7 @@ import { Endpoints } from '../../api/endpoints';
 import { TeamSeasonCalendar, TeamSeasonGame } from '../../api/models';
 import { Button, ErrorText, PageContainer, SectionLabel } from '../components/ui';
 import { TeamCrest } from '../components/team-crest';
+import { formatUtcDate } from '../format-date';
 
 type CalendarFilter = 'all' | 'scheduled' | 'played';
 type SimulateRowStatus = 'idle' | 'loading' | 'error';
@@ -20,13 +21,11 @@ const gameSort = (a: TeamSeasonGame, b: TeamSeasonGame): number => {
 
 const formatGameDate = (value: string | null): string => {
   if (!value) return 'TBD';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'TBD';
-  return parsed.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return formatUtcDate(value, { weekday: 'short', month: 'short', day: 'numeric' }) ?? 'TBD';
 };
 
 const monthLabel = (value: string): string =>
-  new Date(value).toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
+  formatUtcDate(value, { year: 'numeric', month: 'long' }) ?? 'Unscheduled';
 
 const GameRow = ({
   game,
