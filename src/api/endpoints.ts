@@ -9,8 +9,6 @@ const enum Endpoints {
   GetLeagueBracket = '/api/league/:leagueId/bracket',
   // @spec LRD-003,LRD-004,LRD-005
   GetLeagueStandings = '/api/league/:leagueId/standings',
-  // @spec TODAY-001,TODAY-002,TODAY-003,TODAY-004,TODAY-005,TODAY-006,TODAY-007
-  GetLeagueToday = '/api/league/:leagueId/today',
   // @spec LRD-001,LRD-002
   GetLeague = '/api/league/:leagueId',
   // @spec SCL-015
@@ -19,7 +17,7 @@ const enum Endpoints {
   LeagueSeasonStart = '/api/league/:leagueId/season/start',
   // @spec SCL-017
   UpdateDivisionSchedulingConfig = '/api/division/:divisionId/config',
-  // @spec TSCH-001,TSCH-002,TSCH-003,TSCH-004
+  // @spec TSCH-001,TSCH-002,TSCH-003,TSCH-004,CALW-001,CALW-002,CALW-003,CALW-004,CALW-005,CALW-006,CALW-007,CALW-008,CALW-009
   GetTeamSchedule = '/api/team/:teamId/calendar',
   // @spec ROST-001,ROST-002,ROST-003,ROST-005,ROST-007,ROST-008,ROST-009,ROST-010
   GetTeamRoster = '/api/team/:teamId/roster',

@@ -43,12 +43,6 @@ router.get(Endpoints.GetLeagueStandings, async (req: any, res: any) => {
     .catch((error) => sendError(res, error));
 });
 
-router.get(Endpoints.GetLeagueToday, async (req: any, res: any) => {
-  // @spec TODAY-001,TODAY-002,TODAY-003,TODAY-004,TODAY-005,TODAY-006,TODAY-007
-  await handlers.getLeagueToday(Number(req.params.leagueId))
-    .then((response) => res.send(response))
-    .catch((error) => sendError(res, error));
-});
 
 router.get(Endpoints.GetLeagueBracket, async (req: any, res: any) => {
   // @spec API-001,API-002,API-003,API-004
@@ -135,12 +129,16 @@ router.patch(Endpoints.UpdateDivisionSchedulingConfig, async (req: any, res: any
 });
 
 router.get(Endpoints.GetTeamSchedule, async (req: any, res: any) => {
-  // @spec TSCH-001,TSCH-002,TSCH-003,TSCH-004
+  // @spec TSCH-001,TSCH-002,TSCH-003,TSCH-004,CALW-001,CALW-002,CALW-003,CALW-004,CALW-005,CALW-006,CALW-007,CALW-008,CALW-009
   const teamId = Number(req.params.teamId);
   const gwId = Number(req.query.gwId);
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : undefined;
+  // CALW-007: a lone from/to is treated as no range — only build one when both are present.
+  const range = (req.query.from && req.query.to)
+    ? { from: String(req.query.from), to: String(req.query.to) }
+    : undefined;
 
-  await handlers.getTeamSchedule(teamId, gwId, leagueId)
+  await handlers.getTeamSchedule(teamId, gwId, leagueId, range)
     .then((response) => res.send(response))
     .catch((error) => sendError(res, error));
 });

@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Endpoints } from '../../api/endpoints';
 import { useParams, useNavigate, useRevalidator, useRouteLoaderData } from 'react-router';
 import { getChampionDivisionId, getChampionTeamName } from '../champion';
 import { TeamSeasonGame } from '../../api/models';
 import { NotificationStream } from './notification-stream';
 import { Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
-import { TeamCrest } from '../components/team-crest';
+import { CalendarStrip, DayEntry, addDays } from '../components/calendar-strip';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
 type LeagueSeasonSummary = {
@@ -13,23 +13,8 @@ type LeagueSeasonSummary = {
   leagueName: string;
   championName: string | null;
 };
-type LeagueTodaySummary = {
-  leagueId: number;
-  leagueName: string;
-  games: TeamSeasonGame[];
-};
 
-type ScoreboardOutcome = 'home' | 'away' | 'none';
-
-// @spec TODAYUI-008
-const scoreboardOutcome = (game: TeamSeasonGame): ScoreboardOutcome => {
-  if (game.status !== 'COMPLETED' || game.homeTeamResult == null || game.awayTeamResult == null) return 'none';
-  if (game.homeTeamResult > game.awayTeamResult) return 'home';
-  if (game.awayTeamResult > game.homeTeamResult) return 'away';
-  return 'none';
-};
-
-// @spec UI-002,LIFE-001,TODAYUI-001,TODAYUI-002,TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-006,TODAYUI-007,TODAYUI-008
+// @spec UI-002,LIFE-001
 const GameWorld = () => {
   const { gwId } = useParams();
   // @spec RLDRUI-001,RLDRUI-003
@@ -38,20 +23,19 @@ const GameWorld = () => {
   const [startSeasonStatus, setStartSeasonStatus] = useState<StartSeasonStatus>('idle');
   const [startSeasonError, setStartSeasonError] = useState<string | null>(null);
   const [leagueSeasonSummary, setLeagueSeasonSummary] = useState<LeagueSeasonSummary[]>([]);
-  const [leagueTodaySummary, setLeagueTodaySummary] = useState<LeagueTodaySummary[]>([]);
+  const [calendarEntries, setCalendarEntries] = useState<DayEntry[]>([]);
+  const [seasonBounds, setSeasonBounds] = useState<{ start: string | null; end: string | null }>({ start: null, end: null });
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!gwId || !gw?.config?.inProgress) {
       setLeagueSeasonSummary([]);
-      setLeagueTodaySummary([]);
       return;
     }
 
     const leagues: any[] = gw.Leagues ?? [];
     if (leagues.length === 0) {
       setLeagueSeasonSummary([]);
-      setLeagueTodaySummary([]);
       return;
     }
 
@@ -59,11 +43,7 @@ const GameWorld = () => {
 
     Promise.all(
       leagues.map(async (leagueRow) => {
-        // @spec TODAYUI-001,TODAYUI-002,TODAYUI-006
-        // TODAYUI-006: a null currentDate guarantees TODAY-002's 422 — skip the
-        // request (and the server-side log noise it produces) and treat the league
-        // as an empty window instead.
-        const [leagueResponse, bracketResponse, games] = await Promise.all([
+        const [leagueResponse, bracketResponse] = await Promise.all([
           fetch(Endpoints.GetLeague.replace(':leagueId', String(leagueRow.id)), {
             method: 'GET',
             mode: 'cors',
@@ -74,15 +54,6 @@ const GameWorld = () => {
             mode: 'cors',
             headers: { 'Content-Type': 'application/json' },
           }).then((response) => (response.ok ? response.json() : [])),
-          gw?.currentDate == null
-            ? Promise.resolve([])
-            : fetch(Endpoints.GetLeagueToday.replace(':leagueId', String(leagueRow.id)), {
-              method: 'GET',
-              mode: 'cors',
-              headers: { 'Content-Type': 'application/json' },
-            })
-              .then((response) => (response.ok ? response.json() : []))
-              .catch(() => []),
         ]);
 
         const championDivisionId = getChampionDivisionId(leagueResponse);
@@ -90,39 +61,61 @@ const GameWorld = () => {
           ? bracketResponse.find((entry: any) => entry.divisionId === championDivisionId)
           : null;
 
-        const leagueName = leagueRow.config?.name ?? `League ${leagueRow.id}`;
         return {
-          season: {
-            leagueId: leagueRow.id,
-            leagueName,
-            championName: getChampionTeamName(leagueResponse, championDivision ? [championDivision] : []),
-          },
-          today: {
-            leagueId: leagueRow.id,
-            leagueName,
-            games: Array.isArray(games) ? games : [],
-          },
+          leagueId: leagueRow.id,
+          leagueName: leagueRow.config?.name ?? `League ${leagueRow.id}`,
+          championName: getChampionTeamName(leagueResponse, championDivision ? [championDivision] : []),
         };
       }),
     )
       .then((summary) => {
-        if (!cancelled) {
-          setLeagueSeasonSummary(summary.map(({ season }) => season));
-          setLeagueTodaySummary(summary.map(({ today }) => today));
-        }
+        if (!cancelled) setLeagueSeasonSummary(summary);
       })
       .catch((error) => {
         console.error(error);
-        if (!cancelled) {
-          setLeagueSeasonSummary([]);
-          setLeagueTodaySummary([]);
-        }
+        if (!cancelled) setLeagueSeasonSummary([]);
       });
 
     return () => {
       cancelled = true;
     };
   }, [gw, gwId]);
+
+  // @spec CALWUI-002 — fetches and maps a window of the managed club's cross-competition
+  // calendar; CalendarStrip's prev/next calls this again with a shifted window.
+  const fetchCalendar = useCallback(async (from: string, to: string) => {
+    if (!gwId || gw?.managedTeamId == null) return;
+    try {
+      const response = await fetch(
+        `${Endpoints.GetTeamSchedule.replace(':teamId', String(gw.managedTeamId))}?gwId=${gwId}&from=${from}&to=${to}`,
+        { method: 'GET', mode: 'cors', headers: { 'Content-Type': 'application/json' } },
+      );
+      const body = response.ok ? await response.json() : null;
+      const games: TeamSeasonGame[] = Array.isArray(body?.games) ? body.games : [];
+      setCalendarEntries(games.map((game) => ({
+        kind: 'game' as const,
+        id: `game-${game.gameId}`,
+        date: (game.scheduledDate ?? '').slice(0, 10),
+        game,
+      })));
+      setSeasonBounds({ start: body?.seasonStart ?? null, end: body?.seasonEnd ?? null });
+    } catch (error) {
+      console.error(error);
+      setCalendarEntries([]);
+      setSeasonBounds({ start: null, end: null });
+    }
+  }, [gwId, gw?.managedTeamId]);
+
+  // @spec CALWUI-001,CALWUI-007 — centered ±3-day window anchored on currentDate; skipped
+  // entirely (no fetch, no CalendarStrip) when managedTeamId or currentDate is unset.
+  useEffect(() => {
+    if (gw?.managedTeamId == null || gw?.currentDate == null) {
+      setCalendarEntries([]);
+      setSeasonBounds({ start: null, end: null });
+      return;
+    }
+    fetchCalendar(addDays(gw.currentDate, -3), addDays(gw.currentDate, 3));
+  }, [gw?.managedTeamId, gw?.currentDate, fetchCalendar]);
 
   // @spec SCL-016
   const startNewSeason = async () => {
@@ -162,8 +155,6 @@ const GameWorld = () => {
   const seasonSummaryText = leagueSeasonSummary.map((league) =>
     league.championName ? `🏆 ${league.leagueName}: ${league.championName}` : `${league.leagueName}: In progress`,
   ).join(' · ');
-  // @spec TODAYUI-003,TODAYUI-004,TODAYUI-005
-  const leaguesWithTodayGames = leagueTodaySummary.filter((league) => league.games.length > 0);
 
   return (
     <PageContainer>
@@ -251,66 +242,20 @@ const GameWorld = () => {
         </Card>
       </section>
 
-      {/* @spec TODAYUI-003,TODAYUI-004,TODAYUI-005,TODAYUI-007,TODAYUI-008 */}
-      {leaguesWithTodayGames.length > 0 && (
-        <section data-testid="today-section" style={{ marginBottom: '40px' }}>
+      {/* @spec CALWUI-001,CALWUI-002,CALWUI-003,CALWUI-004,CALWUI-005,CALWUI-006,CALWUI-007 */}
+      {gw.managedTeamId != null && gw.currentDate != null && (
+        <section data-testid="calendar-section" style={{ marginBottom: '40px' }}>
           <SectionLabel style={{ marginBottom: '12px' }}>
-            Today
+            Calendar
           </SectionLabel>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {leaguesWithTodayGames.map((league) => (
-              <div key={league.leagueId} data-testid={`today-league-${league.leagueId}`}>
-                <h3 style={{ margin: '0 0 8px', fontSize: '0.95rem', fontWeight: 700 }}>
-                  {league.leagueName}
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {league.games.map((game) => {
-                    // @spec TODAYUI-007,TODAYUI-008
-                    const outcome = scoreboardOutcome(game);
-                    const context = [game.divisionName, game.roundLabel, game.scheduledDate].filter(Boolean).join(' · ');
-                    const statusLabel = game.status === 'COMPLETED' ? 'Final' : game.status;
-                    const teamLane = (side: 'home' | 'away', teamName: string, badge: string | null | undefined, result: number | null) => {
-                      const isWinner = outcome === side;
-                      return (
-                        <div
-                          key={side}
-                          data-testid={`today-team-lane-${game.gameId}-${side}`}
-                          style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr) auto 18px', gap: '8px', alignItems: 'center', minWidth: 0, fontWeight: isWinner ? 700 : 400 }}
-                        >
-                          {/* @spec BADGEUI-009 */}
-                          <TeamCrest name={teamName} badge={badge} testId={`today-team-badge-${game.gameId}-${side}`} />
-                          <span data-testid={`today-team-name-${game.gameId}-${side}`} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {teamName}
-                          </span>
-                          <span data-testid={`today-team-score-${game.gameId}-${side}`} style={{ minWidth: '16px', textAlign: 'right', fontWeight: 700 }}>
-                            {result ?? '—'}
-                          </span>
-                          {isWinner ? <span data-testid={`today-winner-${game.gameId}-${side}`} aria-label={`${teamName} won`}>W</span> : <span aria-hidden="true" />}
-                        </div>
-                      );
-                    };
-
-                    return (
-                      <div key={game.gameId} data-testid={`today-game-${game.gameId}`}>
-                        <div
-                          data-testid={`today-scoreboard-${game.gameId}`}
-                          style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) minmax(180px, 1fr)', gap: '12px 20px', alignItems: 'center', padding: '10px 12px', border: '1px solid #dfe5dc', borderRadius: '6px', background: '#fff' }}
-                        >
-                          <div style={{ fontSize: '0.75rem', color: '#666' }}>{context || 'TBD'}</div>
-                          <div style={{ justifySelf: 'end', fontSize: '0.75rem', fontWeight: 700, color: '#555', textTransform: 'uppercase' }}>{statusLabel}</div>
-                          <div style={{ display: 'grid', gap: '5px', gridColumn: '1 / -1' }}>
-                            {teamLane('home', game.homeTeamName, game.homeTeamBadge, game.homeTeamResult)}
-                            {teamLane('away', game.awayTeamName, game.awayTeamBadge, game.awayTeamResult)}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
+          <CalendarStrip
+            currentDate={gw.currentDate}
+            seasonStart={seasonBounds.start}
+            seasonEnd={seasonBounds.end}
+            entries={calendarEntries}
+            onWindowChange={fetchCalendar}
+          />
         </section>
       )}
 

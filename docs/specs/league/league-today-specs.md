@@ -3,6 +3,13 @@
 Backend requirements for the League-level rolling-window snapshot endpoint
 (`GET /api/league/:leagueId/today`, `src/api/handlers.ts`, `src/db/domain/league.ts`).
 
+**Superseded and removed by [#326](https://github.com/wulke/premier-league-baseball/issues/326).**
+`GET /api/league/:leagueId/today`, `LeagueFactory.getToday`, and their tests no longer exist in
+the codebase — replaced by the team-level, cross-competition, arbitrary-range query in
+`docs/specs/game-world/home-calendar-strip-specs.md` (`CALW-001`..). Retained below as the
+historical record of the pre-#326 behavior; rows are left `[x]` rather than relabeled, matching
+how this repo records other supersessions (e.g. `ROST-004`/`XFER-022`).
+
 | ID | Requirement | Status |
 |---|---|---|
 | TODAY-001 | WHEN GET /api/league/:leagueId/today is called IF no League with that id exists THE system SHALL reject the request | [x] → #110 |

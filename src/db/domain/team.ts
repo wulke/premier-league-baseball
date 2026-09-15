@@ -9,7 +9,7 @@ import { validateLineup, resolveMatchRules } from './lineup';
 
 interface ITeam {
   create: (gwId: number, config: TeamConfig, options: TeamCreateOptions) => any;
-  getSchedule: (gwId: number, leagueId?: number) => Promise<TeamSeasonCalendar>;
+  getSchedule: (gwId: number, leagueId?: number, range?: { from: string; to: string }) => Promise<TeamSeasonCalendar>;
   getRoster: () => Promise<RosterPlayer[]>;
   snapshotForGame: (gameId: number) => Promise<GameLineupSnapshot>;
   getNextScheduledGame: () => Promise<NextScheduledGame | null>;
@@ -164,8 +164,12 @@ const TeamFactory = (id?: number): ITeam => {
       }
     }),
 
-    // @spec SCL-010,SCL-011
-    getSchedule: async (gwId: number, leagueId?: number): Promise<TeamSeasonCalendar> => {
+    // @spec SCL-010,SCL-011,CALW-001,CALW-002,CALW-003,CALW-004,CALW-005,CALW-006,CALW-007,CALW-008,CALW-009
+    getSchedule: async (
+      gwId: number,
+      leagueId?: number,
+      range?: { from: string; to: string },
+    ): Promise<TeamSeasonCalendar> => {
       // 1. Verify the GameWorld; its year is only a legacy fallback for pre-migration League rows.
       const gameWorld = await db.models.GameWorld.findByPk(gwId).then((gw) => {
         if (!gw) throw Error(`GameWorld '${gwId}' not found`);
@@ -189,12 +193,19 @@ const TeamFactory = (id?: number): ITeam => {
         include: [{ model: db.models.League, where: { gameWorldId: gwId } }],
       });
       const divisionIdsByYear = new Map<number, number[]>();
+      // @spec CALW-003 — captured alongside divisionIdsByYear since the League is already
+      // `include`d here for gameWorldId scoping; carried forward to tag each game below.
+      const divisionLeagueMap = new Map<number, { leagueId: number; leagueName: string }>();
       divisions.forEach((division) => {
         const divisionLeagueId = division.dataValues.leagueId;
         if (leagueId != null && divisionLeagueId !== leagueId) return;
         const league = division.dataValues.League?.dataValues ?? division.dataValues.League;
         const year = league.year ?? gameWorld.year;
         divisionIdsByYear.set(year, [...(divisionIdsByYear.get(year) ?? []), division.dataValues.id]);
+        divisionLeagueMap.set(division.dataValues.id, {
+          leagueId: divisionLeagueId,
+          leagueName: league.config?.name ?? `League ${divisionLeagueId}`,
+        });
       });
 
       // 4. Batch the season and bracket-size queries by effective League year.
@@ -261,6 +272,8 @@ const TeamFactory = (id?: number): ITeam => {
         awayTeamBadge: game.awayTeam == null ? null : teamMap.get(game.awayTeam)?.badge, // @spec BADGEUI-005
         divisionId,
         divisionName,
+        leagueId: divisionLeagueMap.get(divisionId)!.leagueId, // @spec CALW-003
+        leagueName: divisionLeagueMap.get(divisionId)!.leagueName, // @spec CALW-003
         roundLabel: (() => {
           if (game.round == null) return null;
 
@@ -278,11 +291,30 @@ const TeamFactory = (id?: number): ITeam => {
         status: game.status,
       }));
 
+      // @spec CALW-002,CALW-009 — derived from the FULL (unwindowed) games array, so a
+      // caller can clamp navigation regardless of whether `range` was supplied.
+      const scheduledDates = games.map((g) => g.scheduledDate).filter((d): d is string => d != null);
+      const seasonStart = scheduledDates.length ? scheduledDates.reduce((a, b) => (a < b ? a : b)) : null;
+      const seasonEnd = scheduledDates.length ? scheduledDates.reduce((a, b) => (a > b ? a : b)) : null;
+
+      // @spec CALW-001,CALW-006,CALW-007,CALW-008 — both from/to required (the router only
+      // builds `range` when both are present); Date parsing means a malformed from/to (or a
+      // reversed range) simply matches nothing rather than throwing (CALW-005).
+      const windowedGames = range == null ? games : games.filter((g) => {
+        if (g.scheduledDate == null) return false;
+        const date = new Date(g.scheduledDate);
+        const from = new Date(`${range.from}T00:00:00.000Z`);
+        const to = new Date(`${range.to}T23:59:59.999Z`);
+        return date >= from && date <= to;
+      });
+
       return {
         teamId: id!,
         teamName: team.config?.name ?? `Team ${id}`,
         teamBadge: team.config?.badge, // @spec BADGEUI-005
-        games,
+        games: windowedGames,
+        seasonStart,
+        seasonEnd,
       };
     },
 
