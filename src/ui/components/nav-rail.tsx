@@ -1,10 +1,11 @@
 // @spec SHELL-004..SHELL-011
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation, useParams, useRouteLoaderData } from 'react-router';
 import { BatchSimulateControl } from './batch-simulate-control';
 import { RapidSimulateControl } from './rapid-simulate-control';
 import { SectionLabel } from './ui';
 import { formatUtcDate } from '../format-date';
+import { useSimulateBusy } from './simulate-busy-context';
 
 // @spec SIMUI-006
 const formatCurrentDate = (currentDate: string) =>
@@ -26,8 +27,8 @@ const NavRail = () => {
   const gw = useRouteLoaderData('gwId') as any;
   const { pathname } = useLocation();
   const { gwId, leagueId } = useParams();
-  // @spec RSSUI-006 — shared busy flag so the batch + rapid controls can lock each other.
-  const [simulateBusy, setSimulateBusy] = useState(false);
+  // @spec CALWUI-009,RSSUI-006 — shared with the home-page CTA through AppShell.
+  const { simulateBusy, setSimulateBusy } = useSimulateBusy();
   const worldActive = Boolean(gwId && pathname === `/${gwId}`);
   const leagues = Array.isArray(gw?.Leagues) ? gw.Leagues : [];
   // @spec MCLUI-004,MCLUI-005 — the managed-club trio lights up only when a club is claimed.
@@ -59,7 +60,9 @@ const NavRail = () => {
           <span data-testid="nav-current-date" style={{ display: 'block', color: '#888', fontSize: '0.85rem', margin: '4px 0 10px' }}>
             {gw.currentDate ? formatCurrentDate(gw.currentDate) : 'No date set'}
           </span>
-          <BatchSimulateControl disabled={simulateBusy} onBusyChange={setSimulateBusy} />
+          {/* @spec CALWUI-009 — the home route promotes this exact control into its primary
+              CTA banner; retain the rail affordance on other scoped routes. */}
+          {(!worldActive || gw?.managedTeamId == null) && <BatchSimulateControl disabled={simulateBusy} onBusyChange={setSimulateBusy} />}
           <RapidSimulateControl disabled={simulateBusy} onBusyChange={setSimulateBusy} />
         </section>
       )}
