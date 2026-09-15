@@ -1,4 +1,4 @@
-// @spec:UI-001 @spec:UI-002 @spec:UI-003 @spec:UI-004 @spec:UI-005 @spec:UI-006 @spec:UI-007 @spec:UI-008 @spec:UI-010 @spec:LIFE-001,RLDRUI-006
+// @spec:UI-001 @spec:UI-003 @spec:UI-004 @spec:UI-005 @spec:UI-006 @spec:UI-007 @spec:UI-008 @spec:UI-010 @spec:LIFE-001 @spec:SHB-001 @spec:SHB-002 @spec:SHB-003,RLDRUI-006
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -692,7 +692,7 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('GameWorld hub shows one decided champion while the other competition remains in progress', ({ given, when, then, and }) => {
+  test('GameWorld header badge shows an active season in progress', ({ given, when, then, and }) => {
     given(/^a GameWorld with id (\d+) exists for the full-season UI$/, () => {
       /* fetch mock provides the fixture */
     });
@@ -706,26 +706,18 @@ defineFeature(feature, (test) => {
       await renderGameWorld();
     });
 
-    then(/^the Season block shows "([^"]+)"$/, async (text: string) => {
+    then(/^the Season header badge shows "([^"]+)"$/, async (text: string) => {
       await waitFor(() => {
-        expect(screen.getByText(new RegExp(escapeRegExp(text)))).toBeInTheDocument();
+        expect(screen.getByTestId('season-header-badge')).toHaveTextContent(text);
       });
     });
 
-    and(/^the Season block shows "([^"]+)"$/, async (text: string) => {
-      await waitFor(() => {
-        expect(screen.getByText(new RegExp(escapeRegExp(text)))).toBeInTheDocument();
-      });
-    });
-
-    and(/^the Season block shows "([^"]+)"$/, async (text: string) => {
-      await waitFor(() => {
-        expect(screen.getByText(new RegExp(escapeRegExp(text)))).toBeInTheDocument();
-      });
+    and('the GameWorld page does not render the Season card', () => {
+      expect(screen.queryByTestId('season-section')).toBeNull();
     });
   });
 
-  test('GameWorld hub shows Season Complete once both competitions are decided', ({ given, when, then, and }) => {
+  test('GameWorld header badge shows a completed season', ({ given, when, then, and }) => {
     given(/^a GameWorld with id (\d+) exists for the full-season UI$/, () => {
       /* fetch mock provides the fixture */
     });
@@ -739,21 +731,37 @@ defineFeature(feature, (test) => {
       await renderGameWorld();
     });
 
-    then(/^the Season block shows "([^"]+)"$/, async (text: string) => {
+    then(/^the Season header badge shows "([^"]+)"$/, async (text: string) => {
       await waitFor(() => {
-        expect(screen.getByText(new RegExp(escapeRegExp(text)))).toBeInTheDocument();
+        expect(screen.getByTestId('season-header-badge')).toHaveTextContent(text);
       });
     });
 
-    and(/^the Season block shows "([^"]+)"$/, async (text: string) => {
-      await waitFor(() => {
-        expect(screen.getByText(new RegExp(escapeRegExp(text)))).toBeInTheDocument();
-      });
+    and('the GameWorld page does not render the Season card', () => {
+      expect(screen.queryByTestId('season-section')).toBeNull();
     });
+  });
 
-    and(/^the Season block shows "([^"]+)"$/, async (text: string) => {
+  test('GameWorld header retains the start-season flow when no season is active', ({ given, when, then, and }) => {
+    given(/^a GameWorld with id (\d+) exists for the full-season UI$/, () => {});
+    given('the GameWorld page has no active season', () => {
+      currentGameWorldPayload.config.inProgress = false;
+      currentGameWorldPayload.currentDate = null as any;
+    });
+    when('the GameWorld page renders', async () => { await renderGameWorld(); });
+    then(/^the Season header badge shows "([^"]+)"$/, (text: string) => {
+      expect(screen.getByTestId('season-header-badge')).toHaveTextContent(text);
+    });
+    and(/^the header offers "([^"]+)"$/, (text: string) => {
+      expect(screen.getByRole('button', { name: text })).toBeInTheDocument();
+    });
+    when(/^the player confirms starting Season (\d+) from the header$/, (year: string) => {
+      fireEvent.click(screen.getByRole('button', { name: `Start Season ${year}` }));
+      fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
+    });
+    then('the season-start request is submitted for every league', async () => {
       await waitFor(() => {
-        expect(screen.getByText(new RegExp(escapeRegExp(text)))).toBeInTheDocument();
+        expect(fetchCalls.filter(({ method, url }) => method === 'POST' && /\/season\/start$/.test(url))).toHaveLength(2);
       });
     });
   });

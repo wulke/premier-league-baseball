@@ -11,6 +11,6 @@
 ## Traceability
 
 - LLD: `docs/llds/game-world/season-header-badge.md`
-- Gherkin: `test/ui/features/season-header-badge-ui.feature`
-- Tests: `test/ui/steps/season-header-badge-ui.steps.test.tsx`
+- Gherkin: `test/ui/features/full-season-ui.feature`
+- Tests: `test/ui/steps/full-season-ui.steps.test.tsx`
 - Code: `src/ui/pages/game-world.tsx`

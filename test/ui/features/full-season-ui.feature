@@ -69,18 +69,25 @@ Feature: Full-Season UI
     When the player expands the "Manchester City" knockout series
     Then the "League Cup" card shows game score "Game 1: Manchester City 2–1 Leeds United"
 
-  @spec:UI-002 @spec:LIFE-001
-  Scenario: GameWorld hub shows one decided champion while the other competition remains in progress
+  @spec:SHB-001 @spec:LIFE-001
+  Scenario: GameWorld header badge shows an active season in progress
     Given the GameWorld page loads with only the league champion decided
     When the GameWorld page renders
-    Then the Season block shows "Season 2025 — In Progress"
-    And the Season block shows "🏆 Premier League: River City"
-    And the Season block shows "League Cup: In progress"
+    Then the Season header badge shows "Season 2025 · In Progress"
+    And the GameWorld page does not render the Season card
 
-  @spec:UI-002 @spec:LIFE-001
-  Scenario: GameWorld hub shows Season Complete once both competitions are decided
+  @spec:SHB-001 @spec:LIFE-001
+  Scenario: GameWorld header badge shows a completed season
     Given the GameWorld page loads with both league champions decided
     When the GameWorld page renders
-    Then the Season block shows "Season 2025 — Complete"
-    And the Season block shows "🏆 Premier League: River City"
-    And the Season block shows "🏆 League Cup: Manchester City"
+    Then the Season header badge shows "Season 2025 · Complete"
+    And the GameWorld page does not render the Season card
+
+  @spec:SHB-002 @spec:SHB-003
+  Scenario: GameWorld header retains the start-season flow when no season is active
+    Given the GameWorld page has no active season
+    When the GameWorld page renders
+    Then the Season header badge shows "Season 2026 · Ready to Start"
+    And the header offers "Start Season 2026"
+    When the player confirms starting Season 2026 from the header
+    Then the season-start request is submitted for every league
