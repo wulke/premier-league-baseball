@@ -4,16 +4,11 @@ import { Link, useLocation, useParams, useRouteLoaderData } from 'react-router';
 import { BatchSimulateControl } from './batch-simulate-control';
 import { RapidSimulateControl } from './rapid-simulate-control';
 import { SectionLabel } from './ui';
+import { formatUtcDate } from '../format-date';
 
 // @spec SIMUI-006
-const formatCurrentDate = (currentDate: string) => {
-  const [year, month, day] = currentDate.split('-').map(Number);
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(year, month - 1, day));
-};
+const formatCurrentDate = (currentDate: string) =>
+  formatUtcDate(currentDate, { month: 'short', day: 'numeric', year: 'numeric' }) ?? currentDate;
 
 // @spec MCLUI-004 — the claimed trio's link style: legible (not dimmed) but distinct from the
 // WORLD/COMPETITIONS links, signalling these are manager-scoped redirects.

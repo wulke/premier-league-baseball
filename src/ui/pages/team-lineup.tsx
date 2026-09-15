@@ -4,6 +4,7 @@ import { Endpoints } from '../../api/endpoints';
 import { ActiveLineupEntry, PlayerPosition, RosterPlayer, TeamLineup } from '../../api/models';
 import { Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
 import { useLineupDragSource } from '../hooks/use-lineup-drag-source';
+import { formatUtcDate } from '../format-date';
 
 type LineupTab = 'DEFENSIVE' | 'BATTING' | 'BULLPEN';
 type DraftRole = ActiveLineupEntry['role'] | 'UNASSIGNED';
@@ -230,7 +231,7 @@ const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, erro
   const slotRows = entries.map((entry, index) => ({ entry, index })).filter(({ entry }) => entry.role === 'BENCH' || entry.role === 'BULLPEN' || (entry.role === 'STARTER' && entry.fieldingPosition === 'Pitcher'));
   const benchPlayerIds = new Set(entries.filter((entry) => entry.role === 'BENCH').map((entry) => entry.playerId));
   const defensiveStarterIds = new Set(entries.filter((entry) => entry.role === 'STARTER' && entry.fieldingPosition !== 'Pitcher').map((entry) => entry.playerId));
-  return <Card as="section" data-testid="bullpen-game-lineup" style={panelStyle}><SectionLabel>Next game: vs {game.game.opponentName} · {game.game.scheduledDate ? new Date(game.game.scheduledDate).toLocaleDateString() : 'Date TBD'}</SectionLabel>
+  return <Card as="section" data-testid="bullpen-game-lineup" style={panelStyle}><SectionLabel>Next game: vs {game.game.opponentName} · {game.game.scheduledDate ? (formatUtcDate(game.game.scheduledDate) ?? 'Date TBD') : 'Date TBD'}</SectionLabel>
     {slotRows.map(({ entry, index }) => {
       // @spec GBULL-006 — only pitchers can occupy the designated starter/active-reliever
       // slots. Keep an existing legacy occupant visible even if its current roster profile is bad.
