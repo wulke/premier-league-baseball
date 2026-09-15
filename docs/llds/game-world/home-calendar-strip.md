@@ -109,12 +109,14 @@ two harmless extra fields rather than a conditional contract.
 
 8. seasonStart = games.length ? min(games.map(g => g.scheduledDate).filter(notNull)) : null
    seasonEnd   = games.length ? max(...) : null
-   — computed over the FULL (unwindowed) games array, before any range filter        # CALW-002
+   — computed over the FULL (unwindowed) games array, before any range filter        # CALW-002,CALW-009
 
-9. IF range is provided:
+9. IF range is omitted: games stays the full array from step 7 (bounds from step 8
+     are still returned)                                                          # CALW-001
+   IF range is provided (both from and to present):
      games = games.filter(g =>
        g.scheduledDate != null && g.scheduledDate >= range.from && g.scheduledDate <= range.to
-     )                                                                    # CALW-001,CALW-006
+     )                                                                    # CALW-008,CALW-006
      — plain string comparison on 'YYYY-MM-DD', no date parsing/coercion and no
        validation of from/to, consistent with TSCH-003's implicit-validation
        convention (backend-standards §3: no explicit param validation at the
@@ -158,7 +160,7 @@ two harmless extra fields rather than a conditional contract.
 | **This LLD** | `docs/llds/game-world/home-calendar-strip.md` |
 | UI sibling LLD | `docs/llds/game-world/home-calendar-strip-ui.md` |
 | Upstream (referenced, not restated) | `docs/specs/manager/team-schedule-read-api-specs.md` (`TSCH-001`..`TSCH-004`) |
-| EARS | `docs/specs/game-world/home-calendar-strip-specs.md` — `CALW-001`..`CALW-007` |
+| EARS | `docs/specs/game-world/home-calendar-strip-specs.md` — `CALW-001`..`CALW-009` |
 | Gherkin | `test/bdd/features/home-calendar-strip.feature` |
 | Code | `src/api/endpoints.ts` (`GetTeamSchedule` doc comment), `src/api/router.ts` (query parsing), `src/api/handlers.ts` (`getTeamSchedule`), `src/db/domain/team.ts` (`TeamFactory.getSchedule`), `src/api/models.ts` (`TeamSeasonGame`, `TeamSeasonSchedule`) — plus removal of `src/db/domain/league.ts` (`LeagueFactory.getToday`), `src/api/endpoints.ts` (`GetLeagueToday`), its router route and handler |
 | Decision record | [#325](https://github.com/wulke/premier-league-baseball/issues/325), [#326](https://github.com/wulke/premier-league-baseball/issues/326) |
