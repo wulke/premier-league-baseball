@@ -16,6 +16,8 @@ supersedes and removes.
 | CALWUI-006 | WHEN a next/prev shift would move the window beyond `seasonEnd` or before `seasonStart` (including when either bound is `null`) THE system SHALL disable that direction and SHALL NOT fetch or render an out-of-season window | [ ] |
 | CALWUI-007 | WHEN the GameWorld home page loads IF `gw.currentDate` is null THE system SHALL NOT fetch the calendar and SHALL NOT render CalendarStrip, mirroring the pre-existing `currentDate`-unset gap | [ ] |
 | CALWUI-008 | WHEN CalendarStrip replaces the prior "Today" section THE system SHALL remove the old per-league "Today" `useEffect`/fetch block, the `LeagueTodaySummary` type and state, and the TODAYUI-driven scoreboard rendering from `game-world.tsx` in full | [ ] |
+| CALWUI-009 | WHEN the GameWorld home page renders IF the existing batch-simulation guard permits it THE system SHALL render the existing "Simulate Today" control in a distinct primary-action banner immediately above CalendarStrip, without changing its loading, disabled, result, or error behavior | [ ] → #331 |
+| CALWUI-010 | WHEN CalendarStrip renders a date equal to GameWorld `currentDate` THE system SHALL visually distinguish that day cell from the other calendar dates, including when it has no entries | [ ] → #331 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 

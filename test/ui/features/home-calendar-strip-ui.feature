@@ -28,6 +28,18 @@ Feature: GameWorld Home Calendar Strip
     When the GameWorld 1 home page loads
     Then the calendar strip shows an entry for game 42 on "2025-06-09"
 
+  @spec:CALWUI-009
+  Scenario: Simulate Today is promoted above the calendar strip on the home page
+    Given GameWorld 1 has managedTeamId 1 and currentDate "2025-06-10"
+    When the GameWorld 1 home page loads
+    Then the Simulate Today banner appears above the calendar strip
+
+  @spec:CALWUI-010
+  Scenario: The current date is visually distinguished in the calendar strip
+    Given GameWorld 1 has managedTeamId 1 and currentDate "2025-06-10"
+    When the GameWorld 1 home page loads
+    Then the "2025-06-10" calendar day is highlighted as today
+
   @spec:CALWUI-003
   Scenario: A day with no games still renders as a visibly empty cell
     Given GameWorld 1 has managedTeamId 1 and currentDate "2025-06-10"

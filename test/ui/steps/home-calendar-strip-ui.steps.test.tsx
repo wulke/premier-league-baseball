@@ -1,4 +1,4 @@
-// @spec CALWUI-001,CALWUI-002,CALWUI-003,CALWUI-004,CALWUI-005,CALWUI-006,CALWUI-007,CALWUI-008
+// @spec CALWUI-001,CALWUI-002,CALWUI-003,CALWUI-004,CALWUI-005,CALWUI-006,CALWUI-007,CALWUI-008,CALWUI-009,CALWUI-010
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
@@ -131,6 +131,37 @@ defineFeature(feature, (test) => {
     then('the calendar strip shows an entry for game 42 on "2025-06-09"', async () => {
       const cell = await screen.findByTestId('calendar-day-2025-06-09');
       expect(within(cell).getByTestId('calendar-entry-game-42')).toBeInTheDocument();
+    });
+  });
+
+  test('Simulate Today is promoted above the calendar strip on the home page', ({ given, when, then }) => {
+    given('GameWorld 1 exists with an in-progress season and Team A as id 1', () => {});
+    given('GameWorld 1 has managedTeamId 1 and currentDate "2025-06-10"', () => {
+      managedTeamId = 1;
+      currentDate = '2025-06-10';
+    });
+    when('the GameWorld 1 home page loads', renderGameWorld);
+
+    // @spec CALWUI-009
+    then('the Simulate Today banner appears above the calendar strip', async () => {
+      const banner = await screen.findByTestId('simulate-today-banner');
+      const strip = screen.getByTestId('calendar-strip');
+      expect(within(banner).getByTestId('batch-simulate')).toBeEnabled();
+      expect(banner.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+  });
+
+  test('The current date is visually distinguished in the calendar strip', ({ given, when, then }) => {
+    given('GameWorld 1 exists with an in-progress season and Team A as id 1', () => {});
+    given('GameWorld 1 has managedTeamId 1 and currentDate "2025-06-10"', () => {
+      managedTeamId = 1;
+      currentDate = '2025-06-10';
+    });
+    when('the GameWorld 1 home page loads', renderGameWorld);
+
+    // @spec CALWUI-010
+    then('the "2025-06-10" calendar day is highlighted as today', async () => {
+      expect(await screen.findByTestId('calendar-day-2025-06-10')).toHaveAttribute('data-today', 'true');
     });
   });
 

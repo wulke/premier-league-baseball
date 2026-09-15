@@ -1,7 +1,7 @@
 # LLD: Home Calendar Strip — UI Component (`game-world.tsx`)
 
 > Backend LLD (sibling): [`home-calendar-strip.md`](./home-calendar-strip.md) ·
-> EARS: `docs/specs/game-world/home-calendar-strip-ui-specs.md` (`CALWUI-001`..`CALWUI-008`) ·
+> EARS: `docs/specs/game-world/home-calendar-strip-ui-specs.md` (`CALWUI-001`..`CALWUI-010`) ·
 > Decision record: [#325](https://github.com/wulke/premier-league-baseball/issues/325), [#326](https://github.com/wulke/premier-league-baseball/issues/326)
 
 ## Scope
@@ -13,8 +13,6 @@ fed by the extended `GET /api/team/:teamId/calendar` (see backend sibling LLD), 
 navigation clamped to the team's season bounds.
 
 Out of scope (each a sibling ticket/LLD of its own, per the HLD):
-- The "Simulate Today" CTA's own promotion/placement — #331. This LLD assumes it renders somewhere
-  above the strip, unchanged.
 - The action-items panel scaffold — #327.
 - The header season badge and dropped "Leagues" card list — #328, #332.
 - The unclaimed-team ("claim a team") home state — #333. This LLD assumes `CalendarStrip` is only
@@ -100,6 +98,17 @@ per the anchoring rule below; it does not own `entries` or re-fetch itself — t
 5. The old "Today" useEffect/fetch block, `LeagueTodaySummary` type/state, and
    the TODAYUI-scoreboard rendering it drove are removed from game-world.tsx
    in full — no dead code, no feature flag                                       # CALWUI-008
+
+6. Home-page simulation CTA: IF the existing batch-simulation guard permits the control,
+   render the existing `BatchSimulateControl` inside a visually distinct primary-action banner
+   immediately before `CalendarStrip`. The banner changes only home-page presentation: its
+   request, submitting, disabled, result, and error state machine stay unchanged. On non-home
+   routes the NavRail placement remains available; it is omitted from the rail on the home route
+   to avoid duplicate controls.                                                   # CALWUI-009
+
+7. Current-day orientation: IF a rendered calendar date equals `currentDate`, render that cell
+   with a dedicated current-day marker and emphasized border/surface, even when it has no
+   entries.                                                                       # CALWUI-010
 ```
 
 ### Key decisions embedded in this flow
@@ -126,6 +135,8 @@ per the anchoring rule below; it does not own `entries` or re-fetch itself — t
 | u4 | `seasonStart`/`seasonEnd` are both `null` (team has no games at all this GameWorld year) | Both nav directions disabled; the strip still renders its 7 (all-empty) cells around `currentDate`. | CALWUI-006 |
 | u5 | `gw.currentDate` is null | No fetch attempted; the calendar section is omitted from the page entirely (pre-existing gap, unchanged from today's guard). | CALWUI-007 |
 | u6 | `gw.managedTeamId` is null | Not this component's concern — `game-world.tsx` renders the unclaimed-team prompt instead (owned by #333's sibling LLD) and never mounts `CalendarStrip`. | — (see #333) |
+| u7 | Rapid simulation is in flight while the home CTA is visible | The app-shell-level busy flag disables the home batch control, preserving the existing cross-control lock. | CALWUI-009 |
+| u8 | Today has no games | The today marker remains emphasized; the empty-cell treatment does not obscure which day the CTA operates on. | CALWUI-010 |
 
 ## Traceability
 
@@ -133,7 +144,7 @@ per the anchoring rule below; it does not own `entries` or re-fetch itself — t
 |---|---|
 | Backend sibling LLD | `docs/llds/game-world/home-calendar-strip.md` |
 | **This LLD** | `docs/llds/game-world/home-calendar-strip-ui.md` |
-| EARS | `docs/specs/game-world/home-calendar-strip-ui-specs.md` — `CALWUI-001`..`CALWUI-008` |
+| EARS | `docs/specs/game-world/home-calendar-strip-ui-specs.md` — `CALWUI-001`..`CALWUI-010` |
 | Gherkin | `test/ui/features/home-calendar-strip-ui.feature` |
 | Code | `src/ui/pages/game-world.tsx`, `src/ui/components/calendar-strip.tsx` (new) |
 | Decision record | [#325](https://github.com/wulke/premier-league-baseball/issues/325), [#326](https://github.com/wulke/premier-league-baseball/issues/326) |
