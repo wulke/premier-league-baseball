@@ -96,7 +96,14 @@ Reads the top-level `champion` field from the relevant `GetLeagueBracket` divisi
 banner per League (top-tier division only for a round-robin League; trivially the single division
 for a Cup), not one per Division card.
 
-### GameWorld hub "Season Complete" block (new, `src/ui/pages/game-world.tsx`)
+### GameWorld hub season status (superseded)
+
+The former body-level Season block is superseded by the compact header badge in
+[`season-header-badge.md`](./season-header-badge.md) (SHB-001..003, #328). The bracket-derived
+completion semantics remain unchanged; only the presentation and start-season entry point move.
+
+<details>
+<summary>Historical body-block design</summary>
 
 ```ts
 // Existing "Season — In Progress" block becomes computed from live league bracket fetches:
@@ -115,6 +122,8 @@ const seasonComplete = seasonSummary.every((league) => league.champion != null);
 
 League list rows (name + type badge + `→`) are unchanged — no per-row champion chip, since the
 Season block above already names both champions once decided.
+
+</details>
 
 ## Logic Flow
 
