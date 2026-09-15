@@ -162,11 +162,7 @@ const getPlayerDetail = async (playerId: number, gwId?: number) => {
 // @spec PSTATQ-001,PSTATQ-002,PSTATQ-003
 const getPlayerStats = async (playerId: number, grain: 'season' | 'career' | 'last10' = 'season', gwId?: number) => {
   if (!['season', 'career', 'last10'].includes(grain)) throw new DomainError('invalid stats grain', 422);
-  const player = await db.models.Player.findByPk(playerId);
-  if (!player || (gwId != null && player.dataValues.gameWorldId !== gwId)) throw new DomainError('Not found', 404);
-  const world = await db.models.GameWorld.findByPk(player.dataValues.gameWorldId);
-  if (!world) throw new DomainError('Not found', 404);
-  return PlayerFactory(playerId).getStats({ grain, year: world.dataValues.year, gwId });
+  return PlayerFactory(playerId).getStats({ grain, gwId });
 };
 
 // @spec XFER-010,LEDIT-002 — common Team/GameWorld resolution and managed-club gate for

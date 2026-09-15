@@ -4,7 +4,7 @@
 
 `GET /api/player/:playerId/stats?grain=season|career|last10` returns one batting block and one pitching block. `season` joins `PlayerGameStats → Game → DivisionSeasonGame → DivisionSeason` and filters the current GameWorld year; `career` is unfiltered; `last10` orders completed game rows by game date and limits to ten.
 
-The query uses Sequelize `fn('SUM')`, `fn('COUNT')`, `col`, and database ordering, never a JavaScript reduction. Future filters extend the internal `{ grain, filters }` query spec with `opponentTeamId` or `pitcherId`; opponent needs explicit integer `Game.homeTeamId`/`awayTeamId` predicates because those are not associations.
+The query uses Sequelize `fn('SUM')`, `fn('COUNT')`, `col`, and database ordering, never a JavaScript reduction. Future filters extend the internal `{ grain, filters }` query spec with `opponentTeamId` or `pitcherId`; opponent needs explicit integer `Game.homeTeam`/`awayTeam` predicates because those are not associations.
 
 ## Logic Flow
 
