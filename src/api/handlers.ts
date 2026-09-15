@@ -35,11 +35,6 @@ const getLeagueStandings = async (leagueId: number) => {
   return await LeagueFactory(leagueId).getStandings();
 };
 
-// @spec TODAY-001,TODAY-002,TODAY-003,TODAY-004,TODAY-005,TODAY-006,TODAY-007
-const getLeagueToday = async (leagueId: number) => {
-  return await LeagueFactory(leagueId).getToday();
-};
-
 // @spec API-001,API-002,API-003,API-004
 const getLeagueBracket = async (leagueId: number) => {
   return await LeagueFactory(leagueId).getBracket();
@@ -99,9 +94,14 @@ const rapidSimulateSeason = async (gwId: number) => {
   return await GameFactory().rapidSimulateSeason(gwId);
 };
 
-// @spec TSCH-001,TSCH-002,TSCH-003,TSCH-004
-const getTeamSchedule = async (teamId: number, gwId: number, leagueId?: number) => {
-  return await TeamFactory(teamId).getSchedule(gwId, leagueId);
+// @spec TSCH-001,TSCH-002,TSCH-003,TSCH-004,CALW-001,CALW-002,CALW-003,CALW-004,CALW-005,CALW-006,CALW-007,CALW-008,CALW-009
+const getTeamSchedule = async (
+  teamId: number,
+  gwId: number,
+  leagueId?: number,
+  range?: { from: string; to: string },
+) => {
+  return await TeamFactory(teamId).getSchedule(gwId, leagueId, range);
 };
 
 // @spec ROST-001,ROST-002,ROST-003,ROST-005,ROST-007,ROST-008,ROST-009,ROST-010
@@ -248,7 +248,6 @@ export {
   getLeagueBracket,
   getLeague,
   getLeagueStandings,
-  getLeagueToday,
   getTeamSchedule,
   getTeamRoster,
   getTeamLineup,

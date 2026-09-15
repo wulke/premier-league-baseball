@@ -12,7 +12,9 @@ type StandingRow = { teamId: number; teamName: string; teamBadge?: string };
 let standings: StandingRow[] = [];
 let leagueTeams: { id: number; name: string; badge?: string }[] = [];
 let calendarFixture: any = null;
-let todayGames: any[] = [];
+let managedCalendarGames: any[] = [];
+let managedTeamId: number | null = null;
+let currentDate = '2025-06-10';
 let fetchCalls: string[] = [];
 
 const buildStanding = (teamId: number, teamName: string, teamBadge?: string) => ({
@@ -32,7 +34,8 @@ const installFetch = () => {
       return response({
         id: 1,
         year: 2025,
-        currentDate: '2025-06-10',
+        currentDate,
+        managedTeamId,
         config: { name: 'Test World', inProgress: true },
         Leagues: [
           { id: 1, config: { name: 'National League' } },
@@ -40,8 +43,9 @@ const installFetch = () => {
         ],
       });
     }
-    if (/\/api\/league\/1\/today$/.test(url)) return response(todayGames);
-    if (/\/api\/league\/2\/today$/.test(url)) return response([]);
+    if (/\/api\/team\/1\/calendar/.test(url)) {
+      return response({ teamId: 1, teamName: 'Team A', games: managedCalendarGames, seasonStart: null, seasonEnd: null });
+    }
     if (/\/api\/league\/1\/standings$/.test(url)) {
       return response(standings.length > 0 ? [{ divisionId: 11, divisionName: 'Division One', standings }] : []);
     }
@@ -89,7 +93,9 @@ beforeEach(() => {
   standings = [];
   leagueTeams = [];
   calendarFixture = null;
-  todayGames = [];
+  managedCalendarGames = [];
+  managedTeamId = null;
+  currentDate = '2025-06-10';
   fetchCalls = [];
   installFetch();
 });
@@ -132,21 +138,24 @@ defineFeature(feature, (test) => {
   });
 
   test('A knockout bye slot\'s initials render the same as any name-only team', ({ given, and, when, then }) => {
-    given('GameWorld 1 has an in-progress season with League 1 named "National League" and League 2 named "American League"', () => {});
+    given(/^GameWorld 1 has managedTeamId (\d+) and currentDate "([^"]+)"$/, (teamId: string, date: string) => {
+      managedTeamId = Number(teamId);
+      currentDate = date;
+    });
     // @spec BADGEUI-003
-    and('GET /api/league/1/today returns a completed knockout bye game', () => {
-      todayGames = [{
-        gameId: 501, year: 2025, scheduledDate: '2025-05-01',
+    and('GET /api/team/1/calendar returns a completed knockout bye game', () => {
+      managedCalendarGames = [{
+        gameId: 501, year: 2025, scheduledDate: '2025-05-01T00:00:00.000Z',
         homeTeamId: 7, homeTeamName: 'River City', homeTeamBadge: undefined,
         awayTeamId: null, awayTeamName: 'Bye', awayTeamBadge: null,
-        divisionId: 22, divisionName: 'League Cup', roundLabel: '1st Round',
+        divisionId: 22, divisionName: 'League Cup', leagueId: 1, leagueName: 'National League', roundLabel: '1st Round',
         homeTeamResult: 1, awayTeamResult: null, status: 'COMPLETED',
       }];
     });
     when('the GameWorld 1 home page loads', renderGameWorld);
     // @spec BADGEUI-003
-    then(/^the bye lane shows text initials "([^"]+)"$/, async (initials: string) => {
-      expect(await screen.findByTestId('today-team-badge-501-away')).toHaveTextContent(initials);
+    then(/^the bye entry shows text initials "([^"]+)"$/, async (initials: string) => {
+      expect(await screen.findByTestId('calendar-entry-badge-501-away')).toHaveTextContent(initials);
     });
   });
 
@@ -195,27 +204,30 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('A Today scoreboard banner renders each team\'s crest when one is available', ({ given, and, when, then }) => {
-    given('GameWorld 1 has an in-progress season with League 1 named "National League" and League 2 named "American League"', () => {});
-    and(/^GET \/api\/league\/1\/today returns a completed game between "([^"]+)" \(badge "([^"]+)"\) and "([^"]+)" \(badge "([^"]+)"\)$/,
+  test('A calendar strip entry renders each team\'s crest when one is available', ({ given, and, when, then }) => {
+    given(/^GameWorld 1 has managedTeamId (\d+) and currentDate "([^"]+)"$/, (teamId: string, date: string) => {
+      managedTeamId = Number(teamId);
+      currentDate = date;
+    });
+    and(/^GET \/api\/team\/1\/calendar returns a completed game between "([^"]+)" \(badge "([^"]+)"\) and "([^"]+)" \(badge "([^"]+)"\)$/,
       (homeName: string, homeBadge: string, awayName: string, awayBadge: string) => {
-        todayGames = [{
-          gameId: 601, year: 2025, scheduledDate: '2025-06-10',
+        managedCalendarGames = [{
+          gameId: 601, year: 2025, scheduledDate: '2025-06-10T00:00:00.000Z',
           homeTeamId: 1, homeTeamName: homeName, homeTeamBadge: homeBadge,
           awayTeamId: 2, awayTeamName: awayName, awayTeamBadge: awayBadge,
-          divisionId: 11, divisionName: 'Division One', roundLabel: 'Round 1',
+          divisionId: 11, divisionName: 'Division One', leagueId: 1, leagueName: 'National League', roundLabel: 'Round 1',
           homeTeamResult: 2, awayTeamResult: 1, status: 'COMPLETED',
         }];
       });
     when('the GameWorld 1 home page loads', renderGameWorld);
     // @spec BADGEUI-009
-    then(/^the scoreboard banner shows a crest image with src "([^"]+)" for "([^"]+)"$/, async (src: string) => {
-      const img = await screen.findByTestId('today-team-badge-601-home');
+    then(/^the calendar entry shows a crest image with src "([^"]+)" for "([^"]+)"$/, async (src: string) => {
+      const img = await screen.findByTestId('calendar-entry-badge-601-home');
       expect(img).toHaveAttribute('src', src);
     });
     // @spec BADGEUI-009
-    and(/^the scoreboard banner shows a crest image with src "([^"]+)" for "([^"]+)"$/, async (src: string) => {
-      const img = screen.getByTestId('today-team-badge-601-away');
+    and(/^the calendar entry shows a crest image with src "([^"]+)" for "([^"]+)"$/, async (src: string) => {
+      const img = screen.getByTestId('calendar-entry-badge-601-away');
       expect(img).toHaveAttribute('src', src);
     });
   });

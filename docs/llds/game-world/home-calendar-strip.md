@@ -77,8 +77,9 @@ interface TeamSeasonSchedule {
   teamBadge?: string;
   games: TeamSeasonGame[];
   seasonStart: string | null;   // NEW — MIN(scheduledDate) over the team's full current-year
-                                 //       games (unwindowed), 'YYYY-MM-DD'; null if no games
-  seasonEnd: string | null;     // NEW — MAX(scheduledDate), same scope; null if no games
+                                 //       games (unwindowed), same ISO-timestamp shape as
+                                 //       TeamSeasonGame.scheduledDate; null if no games
+  seasonEnd: string | null;     // NEW — MAX(scheduledDate), same scope/shape; null if no games
 }
 
 type TeamSeasonCalendar = TeamSeasonSchedule;   // unchanged alias
@@ -114,13 +115,18 @@ two harmless extra fields rather than a conditional contract.
 9. IF range is omitted: games stays the full array from step 7 (bounds from step 8
      are still returned)                                                          # CALW-001
    IF range is provided (both from and to present):
-     games = games.filter(g =>
-       g.scheduledDate != null && g.scheduledDate >= range.from && g.scheduledDate <= range.to
-     )                                                                    # CALW-008,CALW-006
-     — plain string comparison on 'YYYY-MM-DD', no date parsing/coercion and no
-       validation of from/to, consistent with TSCH-003's implicit-validation
-       convention (backend-standards §3: no explicit param validation at the
-       router). A malformed or reversed range simply yields fewer/zero rows.     # CALW-005
+     from = new Date(`${range.from}T00:00:00.000Z`)
+     to   = new Date(`${range.to}T23:59:59.999Z`)
+     games = games.filter(g => g.scheduledDate != null
+       && new Date(g.scheduledDate) >= from && new Date(g.scheduledDate) <= to)
+                                                                            # CALW-008,CALW-006
+     — `scheduledDate` on a built `TeamSeasonGame` is already a full ISO timestamp
+       (TSCH's existing `.toISOString()` shape, not a bare 'YYYY-MM-DD'), so the window
+       is compared as parsed Dates, not raw strings. No validation of from/to is added
+       (backend-standards §3: no explicit param validation at the router) — a malformed
+       from/to parses to `Invalid Date`, and any comparison against it is `false`, so it
+       simply matches nothing rather than throwing; a reversed range matches nothing for
+       the same reason (no date can be both `>= from` and `<= to`).              # CALW-005
 
 10. return { teamId, teamName, teamBadge, games, seasonStart, seasonEnd }
 ```
@@ -148,7 +154,7 @@ two harmless extra fields rather than a conditional contract.
 | e2 | Team has zero games in the GameWorld's current year | `games: []`, `seasonStart: null`, `seasonEnd: null` — no division/DivisionSeason short-circuit changes from TSCH's existing `[]`-returning paths. | CALW-002 |
 | e3 | Team's games span multiple Leagues (e.g. Premier League + League Cup) in the requested window | Each game tagged with its own `leagueId`/`leagueName` via `divisionLeagueMap`, independent of `divisionName`. | CALW-003 |
 | e4 | A knockout bye (`awayTeam` null) falls inside the window | Unchanged `Bye`/no-scoreline handling (TSCH-004); included or excluded by `scheduledDate` like any other game. | CALW-004 |
-| e5 | `from`/`to` are present but not valid `YYYY-MM-DD` strings | No thrown error — string comparison against a malformed value simply yields an empty or partial `games` array; no new validation is introduced (backend-standards §3). | CALW-005 |
+| e5 | `from`/`to` are present but not valid `YYYY-MM-DD` strings | No thrown error — a malformed value parses to `Invalid Date`, so every comparison against it is `false` and the filter simply matches nothing (or partially, if only one of `from`/`to` is malformed); no new validation is introduced (backend-standards §3). | CALW-005 |
 | e6 | `from` sorts after `to` (reversed/garbage range) | `games` filters to `[]` — no special-cased error, same as any other range that matches nothing. | CALW-006 |
 | e7 | Only one of `from`/`to` is supplied | Router only builds `range` when both are present; a lone param is treated as no range — behaves as e1. | CALW-007 |
 

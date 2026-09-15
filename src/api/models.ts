@@ -49,6 +49,8 @@ interface TeamSeasonGame {
   awayTeamBadge?: string | null; // @spec BADGEUI-005
   divisionId: number;
   divisionName: string;
+  leagueId: number; // @spec CALW-003
+  leagueName: string; // @spec CALW-003
   roundLabel?: string | null;
   homeTeamResult: number | null;
   awayTeamResult: number | null;
@@ -60,6 +62,8 @@ interface TeamSeasonSchedule {
   teamName: string;
   teamBadge?: string; // @spec BADGEUI-005
   games: TeamSeasonGame[];
+  seasonStart: string | null; // @spec CALW-002,CALW-009
+  seasonEnd: string | null; // @spec CALW-002,CALW-009
 }
 
 type TeamSeasonCalendar = TeamSeasonSchedule;

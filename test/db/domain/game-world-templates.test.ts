@@ -1,6 +1,6 @@
 // @spec GWT-001,GWT-002,GWT-003,GWT-005 — pickable old Champions League world acceptance
 import db from '../../../src/db/client';
-import { GameWorldFactory, LeagueFactory } from '../../../src/db/domain';
+import { GameWorldFactory, LeagueFactory, TeamFactory } from '../../../src/db/domain';
 import { GameFactory } from '../../../src/db/domain/game';
 import {
   DefaultWorlds,
@@ -98,10 +98,8 @@ describe('live templates carry scheduling so a started world has a currentDate',
     expect(games.length).toBeGreaterThan(0);
     expect(games.every((game: any) => game.dataValues.scheduledDate != null)).toBe(true);
 
-    // TODAY-002's 422 precondition is gone: /today resolves (to an array) for every started league
-    for (const league of created.leagues) {
-      const today = await LeagueFactory(league.id).getToday();
-      expect(Array.isArray(today)).toBe(true);
-    }
+    // CALW-001: the calendar (today's replacement for /today) resolves for a dated club
+    const schedule = await TeamFactory(created.teams[0].id).getSchedule(created.id);
+    expect(Array.isArray(schedule.games)).toBe(true);
   }, 60000);
 });

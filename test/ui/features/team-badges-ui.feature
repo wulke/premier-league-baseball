@@ -3,7 +3,7 @@ Feature: Team Crest Rendering
   Real club crests, downloaded once from Wikimedia Commons and shipped as static assets, render
   next to a team's name wherever that team's identity already appears — the League standings
   table, a division's team-list grid, the team-calendar identity header, and the GameWorld home
-  "Today" scoreboard. A team with no crest, or whose crest image fails to load, falls back to the
+  calendar strip. A team with no crest, or whose crest image fails to load, falls back to the
   existing text-initials placeholder rather than a broken-image icon.
 
   # ─── Fallback Behavior ───────────────────────────────────────────────────────
@@ -24,10 +24,10 @@ Feature: Team Crest Rendering
 
   @spec:BADGEUI-003
   Scenario: A knockout bye slot's initials render the same as any name-only team
-    Given GameWorld 1 has an in-progress season with League 1 named "National League" and League 2 named "American League"
-    And GET /api/league/1/today returns a completed knockout bye game
+    Given GameWorld 1 has managedTeamId 1 and currentDate "2025-05-01"
+    And GET /api/team/1/calendar returns a completed knockout bye game
     When the GameWorld 1 home page loads
-    Then the bye lane shows text initials "B"
+    Then the bye entry shows text initials "B"
 
   # ─── Standings Table ─────────────────────────────────────────────────────────
 
@@ -58,16 +58,16 @@ Feature: Team Crest Rendering
     Then the page header shows a crest image with src "/badges/arsenal.png"
     And the page header shows the team name "Arsenal"
 
-  # ─── Today Scoreboard ────────────────────────────────────────────────────────
+  # ─── Home Calendar Strip ─────────────────────────────────────────────────────
 
   @spec:BADGEUI-005
   @spec:BADGEUI-009
-  Scenario: A Today scoreboard banner renders each team's crest when one is available
-    Given GameWorld 1 has an in-progress season with League 1 named "National League" and League 2 named "American League"
-    And GET /api/league/1/today returns a completed game between "Arsenal" (badge "/badges/arsenal.png") and "Chelsea" (badge "/badges/chelsea.png")
+  Scenario: A calendar strip entry renders each team's crest when one is available
+    Given GameWorld 1 has managedTeamId 1 and currentDate "2025-06-10"
+    And GET /api/team/1/calendar returns a completed game between "Arsenal" (badge "/badges/arsenal.png") and "Chelsea" (badge "/badges/chelsea.png")
     When the GameWorld 1 home page loads
-    Then the scoreboard banner shows a crest image with src "/badges/arsenal.png" for "Arsenal"
-    And the scoreboard banner shows a crest image with src "/badges/chelsea.png" for "Chelsea"
+    Then the calendar entry shows a crest image with src "/badges/arsenal.png" for "Arsenal"
+    And the calendar entry shows a crest image with src "/badges/chelsea.png" for "Chelsea"
 
   # ─── Deferred: BracketView / knockout series team names (→ future map) ──────
   # No scenario in v1: the knockout BracketView surface (docs/llds/league/knockout-bracket.md,

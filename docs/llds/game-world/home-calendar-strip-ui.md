@@ -39,7 +39,8 @@ type DayEntry = GameDayEntry;   // | TrainingDayEntry, etc. — future variants 
 interface GameDayEntry {
   kind: 'game';
   id: string;        // `game-${game.gameId}` — stable React key
-  date: string;       // game.scheduledDate, 'YYYY-MM-DD' — the grouping key
+  date: string;       // game.scheduledDate.slice(0, 10) — 'YYYY-MM-DD' grouping key,
+                       // derived from the backend's ISO-timestamp scheduledDate
   game: TeamSeasonGame;   // existing type, now carrying leagueId/leagueName (backend LLD)
 }
 ```
@@ -70,7 +71,7 @@ per the anchoring rule below; it does not own `entries` or re-fetch itself — t
          "Today" list                                                    # CALWUI-001
      GET /api/team/:managedTeamId/calendar?gwId=...&from=windowStart&to=windowEnd
      → { games, seasonStart, seasonEnd }
-     entries = games.map(g => ({ kind: 'game', id: `game-${g.gameId}`, date: g.scheduledDate, game: g }))
+     entries = games.map(g => ({ kind: 'game', id: `game-${g.gameId}`, date: g.scheduledDate!.slice(0, 10), game: g }))
                                                                             # CALWUI-002
 
 2. CalendarStrip renders 7 date cells for [windowStart..windowEnd]:

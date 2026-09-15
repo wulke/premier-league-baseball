@@ -13,7 +13,7 @@ one club's games across every competition in a given range. `TSCH-001`..`TSCH-00
 | CALW-002 | WHEN GET /api/team/:teamId/calendar is called IF the team has no games in the GameWorld's current year THE system SHALL return `games: []`, `seasonStart: null`, and `seasonEnd: null` | [ ] |
 | CALW-003 | WHEN GET /api/team/:teamId/calendar returns games THE system SHALL tag each game with the `leagueId` and `leagueName` of its owning League, independent of `divisionName` | [ ] |
 | CALW-004 | WHEN a returned game is a knockout bye (`awayTeam` null) THE system SHALL preserve the existing `Bye`/no-scoreline handling (TSCH-004) unchanged, whether or not a range was applied | [ ] |
-| CALW-005 | WHEN GET /api/team/:teamId/calendar is called WITH `from` and/or `to` values that are not valid `YYYY-MM-DD` strings THE system SHALL NOT raise a validation error, comparing them as plain strings and returning whatever games happen to match | [ ] |
+| CALW-005 | WHEN GET /api/team/:teamId/calendar is called WITH `from` and/or `to` values that are not valid `YYYY-MM-DD` strings THE system SHALL NOT raise a validation error, parsing the malformed value as a Date (which matches nothing) rather than throwing | [ ] |
 | CALW-006 | WHEN GET /api/team/:teamId/calendar is called WITH `from` sorting after `to` THE system SHALL return `games: []` with no special-cased error | [ ] |
 | CALW-007 | WHEN GET /api/team/:teamId/calendar is called WITH only one of `from`/`to` present THE system SHALL treat the range as absent, behaving per CALW-001 | [ ] |
 | CALW-008 | WHEN GET /api/team/:teamId/calendar is called WITH both `from` and `to` present THE system SHALL return only games whose `scheduledDate` falls within `[from, to]` inclusive | [ ] |
