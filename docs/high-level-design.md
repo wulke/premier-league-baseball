@@ -528,11 +528,9 @@ simulate / simulateBatch
 # HLD: Per-Player Game Event Writer (Box-Score Distributor)
 
 > Parent: [Player stats UI](https://github.com/wulke/premier-league-baseball/issues/139) ·
-> Ticket: [#216](https://github.com/wulke/premier-league-baseball/issues/216) ·
-> Prerequisite: [#277](https://github.com/wulke/premier-league-baseball/issues/277) adds the
-> `2B`/`3B` schema columns required by this writer.
+> Ticket: [#216](https://github.com/wulke/premier-league-baseball/issues/216).
 >
-> **Status: Approved design; implementation is blocked by #277.**
+> **Status: Approved design; ready for implementation.**
 
 ## Goal
 

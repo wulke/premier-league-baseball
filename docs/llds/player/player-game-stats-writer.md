@@ -1,11 +1,10 @@
 # LLD: Per-Player Game Event Writer (Box-Score Distributor)
 
 > Upstream: [HLD: Per-Player Game Event Writer](../../high-level-design.md#hld-per-player-game-event-writer-box-score-distributor) ·
-> EARS: `docs/specs/player/player-game-stats-writer-specs.md` (`PGSW-001`..`PGSW-006`) ·
-> Prerequisite: [#277](https://github.com/wulke/premier-league-baseball/issues/277) ·
+> EARS: `docs/specs/player/player-game-stats-writer-specs.md` (`PGSW-001`..`PGSW-005`) ·
 > Successor: #191/#192 replace this distributor with attribute-driven play-by-play output.
 >
-> **Status: Approved design; implementation is blocked by #277.**
+> **Status: Approved design; ready for implementation.**
 
 ## Interface / Data Model
 
@@ -101,13 +100,12 @@ index and throws. This is intentional: no completed-game re-simulation flow exis
 | No bullpen pitchers | Starter receives all generated IP and is the only pitching participant. | PGSW-004 |
 | `teamRuns` is zero | Allocate zero `R` exactly; all other fabricated counts may still be non-zero. | PGSW-003 |
 | Completion writes twice for a game | Do not upsert or swallow it; the unique index throws and exposes the completion bug. | PGSW-005 |
-| #277 has not landed | Do not implement the writer: `2B` and `3B` are required output columns. | PGSW-006 |
 
 ## Traceability
 
 | Layer | Artifact |
 |---|---|
 | HLD | `docs/high-level-design.md` — Per-Player Game Event Writer (Box-Score Distributor) |
-| EARS | `docs/specs/player/player-game-stats-writer-specs.md` — `PGSW-001`..`PGSW-006` |
+| EARS | `docs/specs/player/player-game-stats-writer-specs.md` — `PGSW-001`..`PGSW-005` |
 | Future tests | Backend Gherkin plus domain tests for snapshot reuse, silent skips, run reconciliation, IP ownership, and duplicate-write surfacing |
 | Planned code | `src/db/domain/game.ts`, new player-game-stats writer domain module, `src/db/model/player-game-stats.ts` |

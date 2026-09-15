@@ -1,8 +1,7 @@
 # Specs: Per-Player Game Event Writer (Box-Score Distributor)
 
-Backend requirements for the first `PlayerGameStats` write path. Implementation is blocked by
-[#277](https://github.com/wulke/premier-league-baseball/issues/277); this is a temporary
-box-score distributor, to be superseded by #191/#192 play-by-play simulation.
+Backend requirements for the first `PlayerGameStats` write path. This is a temporary box-score
+distributor, to be superseded by #191/#192 play-by-play simulation.
 
 | ID | Requirement | Status |
 |---|---|---|
@@ -11,7 +10,6 @@ box-score distributor, to be superseded by #191/#192 play-by-play simulation.
 | PGSW-003 | WHEN the box-score distributor writes a complete team's batting rows THE system SHALL distribute `AB`, `H`, `R`, `RBI`, `HR`, `2B`, `3B`, `BB`, and `SO` among its ordered batting starters with earlier batting-order slots favored, and SHALL make `SUM(R)` exactly equal that team's `SimulationResult` score | [ ] → #216 |
 | PGSW-004 | WHEN the box-score distributor writes a complete team's pitching rows THE system SHALL set `GS` only for the lineup's starting pitcher, give that pitcher most generated `IP`, distribute any remaining pitching line among frozen bullpen pitchers, and merge batting and pitching values into one row for a two-way participant | [ ] → #216 |
 | PGSW-005 | WHEN player game-stat writing is invoked more than once for the same player and game THE system SHALL use normal create semantics and SHALL surface the existing `(playerId, gameId)` uniqueness failure rather than upserting or suppressing it | [ ] → #216 |
-| PGSW-006 | WHEN implementing the distributor before `PlayerGameStats` has `2B` and `3B` columns THE system SHALL defer the writer until #277 supplies those required batting outputs | [D] → #216, blocked by #277 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 

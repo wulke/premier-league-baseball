@@ -9,7 +9,7 @@
 Defines the storage grain and column set for Player stats. This schema map did not implement a
 writer. The approved first write-path design is now
 [`player-game-stats-writer.md`](./player-game-stats-writer.md): a temporary box-score distributor
-hooked after #190's score-only `SimulationEngine`, blocked by #277. It will be superseded by
+hooked after #190's score-only `SimulationEngine`. It will be superseded by
 #191/#192's real per-player play-by-play events.
 
 ## Interface / Data Model
