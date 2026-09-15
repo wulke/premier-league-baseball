@@ -6,7 +6,7 @@ import { TeamSeasonGame } from '../../api/models';
 import { NotificationStream } from './notification-stream';
 import { Badge, Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
 import { CalendarStrip, DayEntry, addDays } from '../components/calendar-strip';
-import { ActionItemsPanel, ActionItem } from '../components/action-items-panel';
+import { ActionItemsPanel } from '../components/action-items-panel';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
 type LeagueSeasonSummary = {
@@ -227,9 +227,15 @@ const GameWorld = () => {
         </section>
       )}
 
-      {/* @spec ACTUI-001,ACTUI-005 — no real producer exists yet, so items is always empty. */}
+      {/* @spec ACTUI-001,ACTUI-005 — no real producer exists yet, so items is always empty.
+          Intentionally NOT gated on gw.currentDate (unlike the Calendar section above): the
+          panel's whole purpose is to visibly prove out the "ready for content" scaffold, which
+          it can't do if it's hidden behind the same currentDate gap the Calendar section is
+          gated on (currentDate is never set by any code path after newSeason() today — see
+          docs/llds/game-world/action-items-panel-ui.md). So the panel can currently render
+          without a Calendar section above it; that's accepted, not accidental. */}
       {gw.managedTeamId != null && (
-        <ActionItemsPanel items={[] as ActionItem[]} />
+        <ActionItemsPanel items={[]} />
       )}
 
       {/* Leagues Section */}

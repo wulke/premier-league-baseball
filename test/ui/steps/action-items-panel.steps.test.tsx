@@ -81,7 +81,7 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('Items are sorted by severity, most urgent first', ({ given, when, then }) => {
+  test('Items are sorted by severity, most urgent first', ({ given, when, then, and }) => {
     given('GameWorld 1 exists with an in-progress season and Team A as id 1', () => {});
     given('the Action Items panel is showing a "warning" item "Low squad depth", a "critical" item "Player suspended", and an "info" item "New scouting report" in that order', () => {
       items = [
@@ -97,6 +97,13 @@ defineFeature(feature, (test) => {
     then('the items appear in the order "Player suspended", "Low squad depth", "New scouting report"', () => {
       const labels = screen.getAllByTestId(/^action-item-label-/).map((el) => el.textContent);
       expect(labels).toEqual(['Player suspended', 'Low squad depth', 'New scouting report']);
+    });
+
+    and('each item\'s severity badge is colored distinctly by severity', () => {
+      const criticalColor = screen.getByTestId('action-item-severity-suspended').style.color;
+      const warningColor = screen.getByTestId('action-item-severity-depth').style.color;
+      const infoColor = screen.getByTestId('action-item-severity-scouting').style.color;
+      expect(new Set([criticalColor, warningColor, infoColor]).size).toBe(3);
     });
   });
 

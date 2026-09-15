@@ -96,6 +96,14 @@ state, sorts and renders whatever `items` it is handed.
 4. gw.managedTeamId == null (pre-existing guard, matching CalendarStrip):
      ActionItemsPanel is not mounted at all — the unclaimed-team state
      (#333) owns what renders in its place                                # ACTUI-005
+
+Note: the mount guard is `managedTeamId != null` only — deliberately NOT also
+`currentDate != null` like CalendarStrip's guard. Since no code path sets
+`currentDate` after `newSeason()` today (a pre-existing gap, see project memory),
+requiring it here would mean the panel never renders in the current app at all,
+defeating this ticket's point of visibly proving the scaffold works. The
+consequence — the panel can appear without a Calendar section above it while
+that gap persists — is accepted, not accidental.
 ```
 
 ### Key decisions embedded in this flow

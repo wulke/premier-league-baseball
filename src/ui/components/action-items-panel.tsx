@@ -34,6 +34,15 @@ const SEVERITY_RANK: Record<ActionItemSeverity, number> = {
   info: 2,
 };
 
+// Literal colors, not stitches theme tokens: the theme has no warning/info palette yet
+// (only danger*), and these three are used nowhere else — not worth growing the shared
+// theme for a scaffold with no real producer yet.
+const SEVERITY_BADGE_STYLE: Record<ActionItemSeverity, { color: string; borderColor: string }> = {
+  critical: { color: '#b00020', borderColor: '#e0a3ac' },
+  warning: { color: '#8a5a00', borderColor: '#e0c28a' },
+  info: { color: '#666', borderColor: '#ccc' },
+};
+
 // @spec ACTUI-003 — stable sort: ties keep the caller's original relative order.
 const sortBySeverity = (items: ActionItem[]): ActionItem[] =>
   items
@@ -73,7 +82,9 @@ const ActionItemsPanel = ({ items }: ActionItemsPanelProps) => {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Badge data-testid={`action-item-severity-${item.id}`}>{item.severity}</Badge>
+                <Badge data-testid={`action-item-severity-${item.id}`} style={SEVERITY_BADGE_STYLE[item.severity]}>
+                  {item.severity}
+                </Badge>
                 <span data-testid={`action-item-label-${item.id}`} style={{ fontSize: '0.9rem' }}>
                   {item.label}
                 </span>

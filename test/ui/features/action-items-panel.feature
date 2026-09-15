@@ -34,6 +34,7 @@ Feature: Action Items Panel
     Given the Action Items panel is showing a "warning" item "Low squad depth", a "critical" item "Player suspended", and an "info" item "New scouting report" in that order
     When the panel renders
     Then the items appear in the order "Player suspended", "Low squad depth", "New scouting report"
+    And each item's severity badge is colored distinctly by severity
 
   @spec:ACTUI-003
   Scenario: Items with the same severity keep their given order
