@@ -34,6 +34,12 @@ Feature: Per-player game event writer
     When the game completes through batch simulation
     Then both teams have player game-stat rows for the game
 
+  @spec:PGSW-004
+  Scenario: A no-bullpen lineup gives every fabricated inning to its starter
+    Given a scheduled game has complete active lineups with no bullpen
+    When the game completes through single simulation
+    Then each no-bullpen starter owns all pitching innings
+
   @spec:PGSW-005
   Scenario: A duplicate writer invocation surfaces the unique constraint
     Given a scheduled game has complete active lineups for both teams

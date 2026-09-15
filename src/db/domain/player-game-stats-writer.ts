@@ -80,9 +80,15 @@ const writeSide = async (gameId: number, side: Side): Promise<void> => {
   const pitcherIds = [starterPitcherId, ...bullpen.map((entry: any) => entry.playerId)];
   const innings = 1 + generatedTotal();
   const starterInnings = Math.floor(innings / 2) + 1;
+  const bullpenPitcherIds = pitcherIds.slice(1);
   addStat(rows, starterPitcherId, 'GS', true);
   addStat(rows, starterPitcherId, 'IP', starterInnings);
-  allocate(innings - starterInnings, pitcherIds.slice(1)).forEach((value, playerId) => addStat(rows, playerId, 'IP', value));
+  // @spec PGSW-004 — with no bullpen, the starter owns the entire fabricated outing.
+  if (bullpenPitcherIds.length === 0) {
+    addStat(rows, starterPitcherId, 'IP', innings - starterInnings);
+  } else {
+    allocate(innings - starterInnings, bullpenPitcherIds).forEach((value, playerId) => addStat(rows, playerId, 'IP', value));
+  }
   for (const [stat, total] of Object.entries({ pitchingH: generatedTotal(), pitchingBB: generatedTotal(), pitchingSO: generatedTotal(), ER: generatedTotal() })) {
     allocate(total, pitcherIds).forEach((value, playerId) => addStat(rows, playerId, stat, value));
   }

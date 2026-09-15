@@ -25,12 +25,12 @@ const createPlayer = async (teamId: number, gameWorldId: number, index: number) 
 );
 
 // @spec PGSW-001,PGSW-003,PGSW-004 — complete frozen-lineup fixture.
-const createCompleteLineup = async (team: any, gameWorldId: number) => {
-  const players = await Promise.all(Array.from({ length: 10 }, (_, index) => createPlayer(team.id, gameWorldId, index + 1)));
+const createCompleteLineup = async (team: any, gameWorldId: number, includeBullpen = true) => {
+  const players = await Promise.all(Array.from({ length: includeBullpen ? 10 : 9 }, (_, index) => createPlayer(team.id, gameWorldId, index + 1)));
   const lineup = await db.models.Lineup.create({ teamId: team.id, gameWorldId }).then(({ dataValues }: any) => dataValues);
   await db.models.LineupEntry.bulkCreate([
     ...positions.map((fieldingPosition, index) => ({ lineupId: lineup.id, playerId: players[index].id, role: 'STARTER', battingOrder: index + 1, fieldingPosition })),
-    { lineupId: lineup.id, playerId: players[9].id, role: 'BULLPEN', battingOrder: null, fieldingPosition: null },
+    ...(includeBullpen ? [{ lineupId: lineup.id, playerId: players[9].id, role: 'BULLPEN', battingOrder: null, fieldingPosition: null }] : []),
   ]);
   return players;
 };
@@ -64,6 +64,12 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
     const gameWorldId = await createGame();
     homePlayers = await createCompleteLineup(homeTeam, gameWorldId);
     awayPlayers = await createCompleteLineup(awayTeam, gameWorldId);
+  });
+  // @spec PGSW-004
+  given('a scheduled game has complete active lineups with no bullpen', async () => {
+    const gameWorldId = await createGame();
+    homePlayers = await createCompleteLineup(homeTeam, gameWorldId, false);
+    awayPlayers = await createCompleteLineup(awayTeam, gameWorldId, false);
   });
   // @spec PGSW-002
   given('a scheduled game has a complete home lineup and no away lineup', async () => {
@@ -119,6 +125,16 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
     const starters = [homePlayers[0].id, awayPlayers[0].id];
     await expect(db.models.PlayerGameStats.count({ where: { gameId: game.id, GS: true } })).resolves.toBe(2);
     await expect(db.models.PlayerGameStats.count({ where: { gameId: game.id, playerId: starters, GS: true } })).resolves.toBe(2);
+  });
+  // @spec PGSW-004
+  then('each no-bullpen starter owns all pitching innings', async () => {
+    for (const players of [homePlayers, awayPlayers]) {
+      const rows = await db.models.PlayerGameStats.findAll({ where: { gameId: game.id, playerId: players.map(({ id }) => id) } })
+        .then((result: any[]) => result.map(({ dataValues }) => dataValues));
+      const starter = rows.find((row: any) => row.GS);
+      expect(starter.IP).toBeGreaterThan(0);
+      expect(rows.reduce((sum: number, row: any) => sum + row.IP, 0)).toBe(starter.IP);
+    }
   });
   // @spec PGSW-002
   then('the completed game has player game-stat rows only for the home team', async () => {
