@@ -1,7 +1,9 @@
 // @spec SHELL-001,SHELL-002,SHELL-011,RLDRUI-003
+import React, { useState } from 'react';
 import { Outlet } from 'react-router';
 import { useRevalidator } from 'react-router';
 import { NavRail } from './nav-rail';
+import { SimulateBusyContext } from './simulate-busy-context';
 
 // @spec RLDRUI-003 — test-only hook: simulate an externally-triggered refresh of the gw loader.
 const ShellInvalidateProbe = () => {
@@ -16,15 +18,21 @@ const ShellInvalidateProbe = () => {
   );
 };
 
-// @spec SHELL-001,SHELL-002,SHELL-011
-const AppShell = () => (
-  <div data-testid="app-shell" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-    <NavRail />
-    <main style={{ flex: 1, minWidth: 0, height: '100vh', overflowY: 'auto' }}>
-      <ShellInvalidateProbe />
-      <Outlet />
-    </main>
-  </div>
-);
+// @spec SHELL-001,SHELL-002,SHELL-011,CALWUI-009,RSSUI-006
+const AppShell = () => {
+  const [simulateBusy, setSimulateBusy] = useState(false);
+
+  return (
+    <SimulateBusyContext.Provider value={{ simulateBusy, setSimulateBusy }}>
+      <div data-testid="app-shell" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+        <NavRail />
+        <main style={{ flex: 1, minWidth: 0, height: '100vh', overflowY: 'auto' }}>
+          <ShellInvalidateProbe />
+          <Outlet />
+        </main>
+      </div>
+    </SimulateBusyContext.Provider>
+  );
+};
 
 export { AppShell };

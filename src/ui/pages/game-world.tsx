@@ -7,6 +7,8 @@ import { NotificationStream } from './notification-stream';
 import { Badge, Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
 import { CalendarStrip, DayEntry, addDays } from '../components/calendar-strip';
 import { ActionItemsPanel } from '../components/action-items-panel';
+import { BatchSimulateControl } from '../components/batch-simulate-control';
+import { useSimulateBusy } from '../components/simulate-busy-context';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
 type LeagueSeasonSummary = {
@@ -27,6 +29,8 @@ const GameWorld = () => {
   const [calendarEntries, setCalendarEntries] = useState<DayEntry[]>([]);
   const [seasonBounds, setSeasonBounds] = useState<{ start: string | null; end: string | null }>({ start: null, end: null });
   const navigate = useNavigate();
+  // @spec CALWUI-009,RSSUI-006
+  const { simulateBusy, setSimulateBusy } = useSimulateBusy();
 
   useEffect(() => {
     if (!gwId || !gw?.config?.inProgress) {
@@ -216,6 +220,10 @@ const GameWorld = () => {
           <SectionLabel style={{ marginBottom: '12px' }}>
             Calendar
           </SectionLabel>
+
+          {/* @spec CALWUI-009 — the existing stateful control owns its banner wrapper so a
+              season-ending revalidation retains terminal feedback rather than unmounting it. */}
+          <BatchSimulateControl prominent disabled={simulateBusy} onBusyChange={setSimulateBusy} />
 
           <CalendarStrip
             currentDate={gw.currentDate}

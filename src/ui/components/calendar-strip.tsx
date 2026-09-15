@@ -106,22 +106,25 @@ const CalendarStrip = ({ currentDate, seasonStart, seasonEnd, entries, onWindowC
         {dates.map((date) => {
           const dayEntries = entriesByDate.get(date) ?? [];
           const isEmpty = dayEntries.length === 0;
+          // @spec CALWUI-010 — current day stays apparent even when it has no game entries.
+          const isToday = date === currentDate;
           return (
             <div
               key={date}
               data-testid={`calendar-day-${date}`}
               data-entry-count={dayEntries.length}
+              data-today={isToday ? 'true' : undefined}
               style={{
                 minHeight: '64px',
                 padding: '8px',
-                border: '1px solid #dfe5dc',
+                border: isToday ? '2px solid #1f2937' : '1px solid #dfe5dc',
                 borderRadius: '6px',
-                background: isEmpty ? '#f7f9f6' : '#fff',
-                opacity: isEmpty ? 0.55 : 1,
+                background: isToday ? '#e0f2fe' : (isEmpty ? '#f7f9f6' : '#fff'),
+                opacity: isToday ? 1 : (isEmpty ? 0.55 : 1),
               }}
             >
               <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#777', marginBottom: '4px' }}>
-                {date === currentDate ? `${date} (Today)` : date}
+                {isToday ? `${date} (Today)` : date}
               </div>
               {dayEntries.map((entry) => (
                 <div key={entry.id} data-testid={`calendar-entry-${entry.id}`}>
