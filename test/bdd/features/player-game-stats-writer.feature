@@ -17,7 +17,26 @@ Feature: Per-player game event writer
     Then the completed game has player game-stat rows only for the home team
 
   @spec:PGSW-002
+  Scenario: One incomplete lineup silently skips only that side
+    Given a scheduled game has a complete home lineup and an incomplete away lineup
+    When the game completes through single simulation
+    Then the completed game has player game-stat rows only for the home team
+
+  @spec:PGSW-002
   Scenario: Missing or incomplete lineups on both sides write no synthetic stats
     Given a scheduled game has no active lineups
     When the game completes through single simulation
     Then the completed game has no player game-stat rows
+
+  @spec:PGSW-001
+  Scenario: Batch completion freezes and attributes complete lineups
+    Given a scheduled game has complete active lineups for both teams
+    When the game completes through batch simulation
+    Then both teams have player game-stat rows for the game
+
+  @spec:PGSW-005
+  Scenario: A duplicate writer invocation surfaces the unique constraint
+    Given a scheduled game has complete active lineups for both teams
+    When the game completes through single simulation
+    And the player game-stat writer is invoked again
+    Then the duplicate writer invocation fails

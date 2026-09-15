@@ -8,6 +8,7 @@ import { resolveCrossStageAdvancement } from './stage-advancement';
 import { resolveSimulationEngine, SimulateOptions } from './simulation/engine';
 import { NotificationFactory } from './notifications/notification';
 import { GAME_RESULT, GameResultPayload } from './notifications/game-result-notification';
+import { PlayerGameStatsWriter } from './player-game-stats-writer';
 
 const toDateStr = (d: any): string => new Date(d).toISOString().slice(0, 10);
 
@@ -125,6 +126,11 @@ const GameFactory = (id?: number) => {
       }
 
       const updated = await db.models.Game.findByPk(id);
+      // @spec PGSW-001,PGSW-002,PGSW-003,PGSW-004,PGSW-005 — completion-time
+      // attribution consumes frozen lineups after the guarded score write, never the engine.
+      await PlayerGameStatsWriter().writeForCompletedGame({
+        gameId: id!, homeTeamId: homeTeam, awayTeamId: awayTeam, result: { homeTeamResult, awayTeamResult },
+      });
       // @spec CUP-001,LCH-002,MSS-006,MSS-007 round-robin / knockout / stage completion hooks (single-game path)
       await resolveKnockoutGameCompletion(id!);
       await resolveRoundRobinGameCompletion(id!);
@@ -255,6 +261,12 @@ const GameFactory = (id?: number) => {
       for (const sim of simulated) {
         if (advanced.has(sim.id)) continue;
         advanced.add(sim.id);
+        // @spec PGSW-001,PGSW-002,PGSW-003,PGSW-004,PGSW-005 — each committed batch
+        // result receives the same post-score attribution as single-game simulation.
+        await PlayerGameStatsWriter().writeForCompletedGame({
+          gameId: sim.id, homeTeamId: sim.homeTeam, awayTeamId: sim.awayTeam,
+          result: { homeTeamResult: sim.homeTeamResult, awayTeamResult: sim.awayTeamResult },
+        });
         await resolveKnockoutGameCompletion(sim.id);
         await resolveRoundRobinGameCompletion(sim.id);
         await resolveCrossStageAdvancement(sim.id);

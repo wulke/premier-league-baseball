@@ -4,7 +4,7 @@
 > EARS: `docs/specs/player/player-game-stats-writer-specs.md` (`PGSW-001`..`PGSW-005`) ·
 > Successor: #191/#192 replace this distributor with attribute-driven play-by-play output.
 >
-> **Status: Approved design; ready for implementation.**
+> **Status: Implemented by #217.**
 
 ## Interface / Data Model
 
@@ -107,5 +107,5 @@ index and throws. This is intentional: no completed-game re-simulation flow exis
 |---|---|
 | HLD | `docs/high-level-design.md` — Per-Player Game Event Writer (Box-Score Distributor) |
 | EARS | `docs/specs/player/player-game-stats-writer-specs.md` — `PGSW-001`..`PGSW-005` |
-| Future tests | Backend Gherkin plus domain tests for snapshot reuse, silent skips, run reconciliation, IP ownership, and duplicate-write surfacing |
-| Planned code | `src/db/domain/game.ts`, new player-game-stats writer domain module, `src/db/model/player-game-stats.ts` |
+| Tests | `test/bdd/features/player-game-stats-writer.feature` plus its step bindings cover single/batch snapshotting, silent side-local skips, run reconciliation, IP ownership, and duplicate-write surfacing |
+| Code | `src/db/domain/game.ts`, `src/db/domain/player-game-stats-writer.ts`, `src/db/model/player-game-stats.ts` |
