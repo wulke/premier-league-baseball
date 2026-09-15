@@ -712,8 +712,8 @@ defineFeature(feature, (test) => {
       });
     });
 
-    and('the GameWorld page does not render the Season card', () => {
-      expect(screen.queryByTestId('season-section')).toBeNull();
+    and('the GameWorld page does not show the Season champion summary', () => {
+      expect(screen.queryByText(/🏆 Premier League: River City/)).toBeNull();
     });
   });
 
@@ -737,8 +737,8 @@ defineFeature(feature, (test) => {
       });
     });
 
-    and('the GameWorld page does not render the Season card', () => {
-      expect(screen.queryByTestId('season-section')).toBeNull();
+    and('the GameWorld page does not show the Season champion summary', () => {
+      expect(screen.queryByText(/🏆 Premier League: River City/)).toBeNull();
     });
   });
 

@@ -74,14 +74,14 @@ Feature: Full-Season UI
     Given the GameWorld page loads with only the league champion decided
     When the GameWorld page renders
     Then the Season header badge shows "Season 2025 · In Progress"
-    And the GameWorld page does not render the Season card
+    And the GameWorld page does not show the Season champion summary
 
   @spec:SHB-001 @spec:LIFE-001
   Scenario: GameWorld header badge shows a completed season
     Given the GameWorld page loads with both league champions decided
     When the GameWorld page renders
     Then the Season header badge shows "Season 2025 · Complete"
-    And the GameWorld page does not render the Season card
+    And the GameWorld page does not show the Season champion summary
 
   @spec:SHB-002 @spec:SHB-003
   Scenario: GameWorld header retains the start-season flow when no season is active
