@@ -4,7 +4,7 @@ import { useParams, useNavigate, useRevalidator, useRouteLoaderData } from 'reac
 import { getChampionDivisionId, getChampionTeamName } from '../champion';
 import { TeamSeasonGame } from '../../api/models';
 import { NotificationStream } from './notification-stream';
-import { Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
+import { Badge, Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
 import { CalendarStrip, DayEntry, addDays } from '../components/calendar-strip';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
@@ -14,7 +14,7 @@ type LeagueSeasonSummary = {
   championName: string | null;
 };
 
-// @spec UI-002,LIFE-001
+// @spec LIFE-001,SHB-001,SHB-002,SHB-003
 const GameWorld = () => {
   const { gwId } = useParams();
   // @spec RLDRUI-001,RLDRUI-003
@@ -117,7 +117,7 @@ const GameWorld = () => {
     fetchCalendar(addDays(gw.currentDate, -3), addDays(gw.currentDate, 3));
   }, [gw?.managedTeamId, gw?.currentDate, fetchCalendar]);
 
-  // @spec SCL-016
+  // @spec SCL-016,SHB-003
   const startNewSeason = async () => {
     if (!gwId || leagues.length === 0) return;
     setStartSeasonStatus('submitting');
@@ -152,95 +152,62 @@ const GameWorld = () => {
   const nextYear = gw.year + 1;
   const leagues: any[] = gw.Leagues ?? [];
   const seasonComplete = leagueSeasonSummary.length > 0 && leagueSeasonSummary.every((league) => league.championName);
-  const seasonSummaryText = leagueSeasonSummary.map((league) =>
-    league.championName ? `🏆 ${league.leagueName}: ${league.championName}` : `${league.leagueName}: In progress`,
-  ).join(' · ');
+  const seasonLabel = gw.config?.inProgress
+    ? `Season ${gw.year} · ${seasonComplete ? 'Complete' : 'In Progress'}`
+    : `Season ${nextYear} · Ready to Start`;
 
   return (
     <PageContainer>
 
       {/* Game World Identity */}
       <div style={{ marginBottom: '36px' }}>
-        <h1 style={{ margin: '0 0 6px', fontSize: '1.6rem', fontWeight: 700 }}>
-          {gw.config?.name ?? `Game World ${gwId}`}
-        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+          <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 700 }}>
+            {gw.config?.name ?? `Game World ${gwId}`}
+          </h1>
+          {/* @spec SHB-001,SHB-002 */}
+          <Badge data-testid="season-header-badge">{seasonLabel}</Badge>
+        </div>
         <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
           {leagues.length} league{leagues.length !== 1 ? 's' : ''}
           &nbsp;&nbsp;·&nbsp;&nbsp;
           Current year: {gw.year}
         </p>
+        {!gw.config?.inProgress && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', marginTop: '14px' }}>
+            {/* @spec SHB-002,SHB-003 */}
+            {startSeasonStatus === 'idle' && (
+              <Button intent="primary" onClick={() => setStartSeasonStatus('confirming')} size="sm">
+                Start Season {nextYear}
+              </Button>
+            )}
+
+            {startSeasonStatus === 'confirming' && (
+              <>
+                <span style={{ fontSize: '0.9rem', color: '#555' }}>
+                  Start Season {nextYear}? This will create division season entries and schedule all games.
+                </span>
+                <Button intent="primary" onClick={startNewSeason} size="sm">Confirm</Button>
+                <Button intent="secondary" onClick={() => setStartSeasonStatus('idle')} size="sm">Cancel</Button>
+              </>
+            )}
+
+            {startSeasonStatus === 'submitting' && (
+              <span style={{ fontSize: '0.9rem', color: '#555' }}>Creating season schedule…</span>
+            )}
+
+            {startSeasonStatus === 'error' && (
+              <>
+                <ErrorText style={{ fontSize: '0.9rem' }}>{startSeasonError}</ErrorText>
+                <Button intent="secondary" onClick={() => setStartSeasonStatus('confirming')} size="sm">Retry</Button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* @spec NOTIFUI-007 */}
       <NotificationStream gwId={Number(gwId)} managedTeamId={gw.managedTeamId ?? null} />
-
-      {/* Season Section */}
-      <section style={{ marginBottom: '40px' }}>
-        <SectionLabel style={{ marginBottom: '12px' }}>
-          Season
-        </SectionLabel>
-
-        <Card style={{ padding: '20px' }}>
-          {gw.config?.inProgress ? (
-            <>
-              <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '6px' }}>
-                Season {gw.year} — {seasonComplete ? 'Complete' : 'In Progress'}
-              </div>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: '#555' }}>
-                {seasonSummaryText || 'Navigate to a league below to view standings and simulate games.'}
-              </p>
-            </>
-          ) : (
-            <>
-              <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '4px' }}>
-                No active season
-              </div>
-              <p style={{ margin: '0 0 16px', fontSize: '0.9rem', color: '#555' }}>
-                Ready to begin Season {nextYear}.
-              </p>
-
-              {startSeasonStatus === 'idle' && (
-                <Button intent="primary" onClick={() => setStartSeasonStatus('confirming')} style={{ padding: '9px 20px', fontSize: '0.9rem' }}>
-                  Start Season {nextYear}
-                </Button>
-              )}
-
-              {startSeasonStatus === 'confirming' && (
-                <div style={{ borderTop: '1px solid #eee', paddingTop: '16px' }}>
-                  <p style={{ margin: '0 0 14px', fontSize: '0.9rem' }}>
-                    Start Season {nextYear}? This will create division season entries and schedule all games.
-                  </p>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <Button intent="primary" onClick={startNewSeason}>
-                      Confirm
-                    </Button>
-                    <Button intent="secondary" onClick={() => setStartSeasonStatus('idle')}>
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {startSeasonStatus === 'submitting' && (
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#555' }}>
-                  Creating season schedule…
-                </p>
-              )}
-
-              {startSeasonStatus === 'error' && (
-                <div>
-                  <ErrorText style={{ display: 'block', marginBottom: '12px', fontSize: '0.9rem' }}>
-                    {startSeasonError}
-                  </ErrorText>
-                  <Button intent="secondary" onClick={() => setStartSeasonStatus('confirming')}>
-                    Retry
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </Card>
-      </section>
 
       {/* @spec CALWUI-001,CALWUI-002,CALWUI-003,CALWUI-004,CALWUI-005,CALWUI-006,CALWUI-007 */}
       {gw.managedTeamId != null && gw.currentDate != null && (
