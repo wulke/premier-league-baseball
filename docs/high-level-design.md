@@ -470,6 +470,12 @@ home form: user selects "Champions League" template
 > Ticket: [Engine strategy seam](https://github.com/wulke/premier-league-baseball/issues/190) —
 > the tracer bullet for the attribute-driven engine. Subsequent stages (LLD corrigendum, EARS
 > `SIM-016..018`, tests, code) follow through the LID Arrow of Intent on top of this HLD.
+>
+> **See also:** [HLD: Event, Grading & Reward Architecture](./high-level-design-event-grading-reward.md)
+> — a standalone sibling document covering the generic Event → Grading → Reward seam
+> (`src/db/domain/events/`) that sits alongside this engine, validated against baseball's
+> in-game event chain and upstream of [#191](https://github.com/wulke/premier-league-baseball/issues/191)
+> (this map's framework milestone).
 
 ## Goal
 Make score production a **swappable strategy** and a **reproducible computation**: extract a
