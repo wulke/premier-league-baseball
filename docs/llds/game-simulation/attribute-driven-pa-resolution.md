@@ -245,18 +245,23 @@ unaffected, per the additive-extension convention already used for `Player.attri
 2. innings = ctx.matchRules?.innings ?? DefaultMatchRules.innings   # PARP-010
 3. rng = mulberry32(deriveGameSeed(this.seed ?? Date.now(), ctx.gameId))   # reuses #190's infra
 4. eventChain: EventEnvelope<...>[] = []; sequence = 0
-   battingIndex = { away: 0, home: 0 }   # persists across innings, wraps mod 9 — PARP-008
+   battingIndexByTeamId = { [away.teamId]: 0, [home.teamId]: 0 }   # keyed by teamId, NOT by
+                                                                     # the 'away'/'home' half-label
+                                                                     # or the team object itself —
+                                                                     # persists across innings,
+                                                                     # wraps mod 9 — PARP-008
 5. for inning in 1..innings:                                        # PARP-010
      for half of ['top', 'bottom']:
        battingTeam  = half === 'top' ? away : home
        pitchingTeam = half === 'top' ? home : away
-       pitcherId = pitchingTeam.startingPitcherId                   # single pitcher, no bullpen
+       pitcherEntry = pitchingTeam.battingOrder.find(e => e.playerId === pitchingTeam.startingPitcherId)  # resolves the bare id to its SyntheticLineupEntry (and thus .attributes)
+       pitcherId = pitcherEntry.playerId                            # single pitcher, no bullpen
        bases = { first: null, second: null, third: null }
        outs = 0
        while outs < 3:                                              # PARP-009
-         entry = battingTeam.battingOrder[battingIndex[battingTeam] % 9]
-         battingIndex[battingTeam] += 1
-         outcome = resolvePA({ batter: entry.attributes, pitcher: <pitcher entry>.attributes, rng })  # PARP-002, one rng() draw — PARP-016
+         entry = battingTeam.battingOrder[battingIndexByTeamId[battingTeam.teamId] % 9]
+         battingIndexByTeamId[battingTeam.teamId] += 1
+         outcome = resolvePA({ batter: entry.attributes, pitcher: pitcherEntry.attributes, rng })  # PARP-002, one rng() draw — PARP-016
          sequence += 1
          paEvent = { type: 'PlateAppearanceResolutionEvent', gameId: ctx.gameId, sequence,
                      causedByEventId: null,
@@ -351,7 +356,7 @@ unaffected, per the additive-extension convention already used for `Player.attri
 | e2 | `resolvePA` weight shift pushes an outcome's weight negative | Every shifted weight is floored at `0` before the cumulative distribution is normalized to sum `1`, so a large attribute differential can zero out (never invert) an outcome's probability. | PARP-003 |
 | e3 | Walk with runners on base | Force-advance cascades from first: the runner on first is always forced to second; the runner on second is forced to third only if first was occupied; the runner on third is forced home only if bases were loaded. An unforced runner holds. | PARP-004 |
 | e4 | Extra-base hit / HR with runners on | 1B/2B/3B advance every existing runner exactly N bases (1/2/3); HR clears the bases and scores the batter too — `advanceRunners` never leaves an occupied base behind a hit that should have cleared it. | PARP-005, PARP-006 |
-| e5 | Batting order across innings | `battingIndex` is per-team, initialized once, and never reset between innings — the 10th plate appearance of the game is order-index `9 % 9 = 0` (the leadoff hitter), matching real baseball's continuous batting order. | PARP-008 |
+| e5 | Batting order across innings | `battingIndexByTeamId` is keyed by `teamId` (never by the `'away'`/`'home'` half-label, and never by the team object itself), initialized once, and never reset between innings — the 10th plate appearance of the game is order-index `9 % 9 = 0` (the leadoff hitter), matching real baseball's continuous batting order. | PARP-008 |
 | e6 | `out` vs `SO` outcome and the out count | Both `out` and `SO` increment the half-inning's out counter identically (Depth 0 has no batted-ball detail distinguishing a strikeout from a ball-in-play out for *inning-ending* purposes) — the half-inning ends at exactly 3, never more. | PARP-009 |
 | e7 | Extra innings / ties | The loop runs exactly `innings` iterations regardless of score; there is no "if tied, keep playing" branch. A tied final score is returned as-is (map #136 decision #11 — decisiveness is a standings/bracket consumer concern). | PARP-010 |
 | e8 | Team score vs `RandomSimulationEngine`'s `[0,9]` range | `homeTeamResult`/`awayTeamResult` are now unbounded sums of real `R` events (no `* 10` ceiling) — a contract change *for this engine only*; `RandomSimulationEngine` is untouched and still returns `[0,9]`. Consumers that assumed the old range (if any) are #192's concern when this engine goes live. | PARP-011 |
