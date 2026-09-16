@@ -81,6 +81,13 @@ module.exports = (sequelize: any) => {
       allowNull: false,
       defaultValue: 0,
     },
+    // @spec PARP-014 — the stored integer primitive per map #136 decision #13; IP notation
+    // is derived at read (outsRecorded / 3). Not written by the legacy fabrication writer.
+    outsRecorded: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
     pitchingH: {
       type: DataTypes.INTEGER,
       allowNull: false,
