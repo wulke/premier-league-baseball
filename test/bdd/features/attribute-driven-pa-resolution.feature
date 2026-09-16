@@ -40,17 +40,18 @@ Feature: Attribute-driven PA-resolution pipeline
 
   @spec:PARP-005
   Scenario: A single advances every existing runner exactly one base
-    Given a batter at the plate with runners on first and second
+    Given a batter at the plate with runners on second and third
     When the plate appearance resolves to "1B"
-    Then the runner on second scores
-    And the runner on first advances to second
+    Then the runner on third scores
+    And the runner on second advances to third
     And the batter is placed on first
 
   @spec:PARP-005
   Scenario: A double advances every existing runner exactly two bases
-    Given a batter at the plate with a runner on first
+    Given a batter at the plate with runners on first and second
     When the plate appearance resolves to "2B"
-    Then the runner on first scores
+    Then the runner on second scores
+    And the runner on first advances to third
     And the batter is placed on second
 
   @spec:PARP-006
