@@ -27,12 +27,19 @@ not yet wired into `GameFactory`/`resolveSimulationEngine()` (see [#192](https:/
 | PARP-017 | WHEN a game is simulated by AttributeDrivenSimulationEngine with a pinned seed THE system SHALL reproduce an identical event chain and PlayerGameStats projection across runs and machines | [ ] |
 | PARP-018 | WHEN persistPlayerGameStats is called a second time for the same (playerId, gameId) THE system SHALL reject the write via the existing PlayerGameStats unique index rather than silently upserting | [ ] |
 
+`PARP-001` (attribute-read seam pass-through) and `PARP-003` (outcome-weight floor before
+normalizing) are internal algorithm invariants of `readAttribute`/`resolvePA` with no
+acceptance-level behavior distinct from what `PARP-002` already exercises end to end — bound to
+unit tests (`test/db/domain/attribute-read.test.ts`, `test/db/domain/pa-resolver.test.ts`), not
+Gherkin. Every other Active row has ≥1 scenario in `test/bdd/features/attribute-driven-pa-resolution.feature`.
+
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
 ## Traceability
 
 - HLD: [`docs/high-level-design.md` — Simulation Engine Strategy Seam](../high-level-design.md#hld-simulation-engine-strategy-seam), [`docs/high-level-design-event-grading-reward.md`](../high-level-design-event-grading-reward.md)
 - LLD: `docs/llds/game-simulation/attribute-driven-pa-resolution.md`
+- Gherkin: `test/bdd/features/attribute-driven-pa-resolution.feature` (`@spec:PARP-NNN` tag per scenario; `PARP-001`/`PARP-003` routed to unit tests instead, see above)
 - Sibling specs: `docs/specs/game-simulation/simulate-game-specs.md` (`SIM-001..020` — the seam this engine plugs into; unaffected by this stage)
 - Decision record: [Map: Attribute-driven Simulation Engine (#136)](https://github.com/wulke/premier-league-baseball/issues/136), [#191](https://github.com/wulke/premier-league-baseball/issues/191), [Map: Event, Grading & Reward Architecture (#218)](https://github.com/wulke/premier-league-baseball/issues/218)
 - Code: `src/db/domain/simulation/attribute-engine.ts`, `pa-resolver.ts`, `baserunning.ts`, `attribute-read.ts`, `stat-projection.ts`, `events.ts`; `src/db/domain/events/envelope.ts`; `src/db/domain/simulation/engine.ts` (MODIFIED, additive); `src/db/domain/player-game-stats-writer.ts` (MODIFIED, additive); `src/db/model/player-game-stats.ts` (MODIFIED — `outsRecorded` column); `src/api/models.ts` (MODIFIED — `MatchRules.innings`)
