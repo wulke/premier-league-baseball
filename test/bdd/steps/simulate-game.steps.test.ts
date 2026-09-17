@@ -27,6 +27,7 @@ interface WorldState {
   pinnedSeed?: number;
   firstPinnedScores?: { homeTeamResult: number; awayTeamResult: number };
   authoredPlayerIds?: { home: number[]; away: number[] };
+  dhPitcherIds?: number[];
   response?: ResponseState;
 }
 
@@ -76,6 +77,22 @@ const createAuthoredLineup = async (teamId: number, gameWorldId: number): Promis
     fieldingPosition,
   })));
   return players.map((player) => player.id);
+};
+
+// @spec SIM-021 — a DH lineup keeps its pitcher among starters but outside the batting order.
+const createDhAuthoredLineup = async (teamId: number, gameWorldId: number) => {
+  const positions = ['Catcher', 'FirstBase', 'SecondBase', 'ThirdBase', 'Shortstop', 'LeftField', 'CenterField', 'RightField', null, 'Pitcher'];
+  const players = await Promise.all(positions.map((_, index) => db.models.Player.create({
+    teamId, gameWorldId, givenName: `Dh${teamId}-${index}`, familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date('2000-01-01'),
+    attributes: { contact: 60, power: 60, armStrength: 60, accuracy: 60, reaction: 60, vision: 60, discipline: 60, positions: {}, pitches: [{ type: 'Fastball', velocity: 60, control: 60, spin: 60 }] },
+  }).then(({ dataValues }: any) => dataValues)));
+  const lineup = await db.models.Lineup.create({ teamId, gameWorldId }).then(({ dataValues }: any) => dataValues);
+  await db.models.LineupEntry.bulkCreate(positions.map((fieldingPosition, index) => ({
+    lineupId: lineup.id, playerId: players[index].id, role: 'STARTER',
+    battingOrder: fieldingPosition === 'Pitcher' ? null : index + 1,
+    fieldingPosition,
+  })));
+  return { playerIds: players.map((player) => player.id), pitcherId: players[9].id };
 };
 
 const createGame = async (
@@ -251,6 +268,16 @@ const registerSteps = ({ given, when, then, and }: any) => {
     };
   });
 
+  given('both teams have valid DH authored lineups', async () => {
+    const world = scenarioWorld;
+    const [home, away] = await Promise.all([
+      createDhAuthoredLineup(world.homeTeamId!, world.gameWorldId!),
+      createDhAuthoredLineup(world.awayTeamId!, world.gameWorldId!),
+    ]);
+    world.authoredPlayerIds = { home: home.playerIds, away: away.playerIds };
+    world.dhPitcherIds = [home.pitcherId, away.pitcherId];
+  });
+
   given(/^a Game exists with status "([^"]+)", scheduledDate "([^"]+)", homeTeamResult (\d+), awayTeamResult (\d+)$/, async (
     status: string, scheduledDate: string, homeTeamResult: string, awayTeamResult: string
   ) => {
@@ -392,6 +419,23 @@ const registerSteps = ({ given, when, then, and }: any) => {
   and("authored PlayerGameStats record the game's pitched outs", async () => {
     const world = scenarioWorld;
     await expect(db.models.PlayerGameStats.sum('outsRecorded', { where: { gameId: requireFocusGameId(world) } })).resolves.toBe(54);
+  });
+
+  then('each DH authored starter has a PlayerGameStats row for the game', async () => {
+    const world = scenarioWorld;
+    const ids = [...world.authoredPlayerIds!.home, ...world.authoredPlayerIds!.away];
+    await expect(db.models.PlayerGameStats.count({ where: { gameId: requireFocusGameId(world), playerId: ids } })).resolves.toBe(20);
+  });
+
+  and('each DH starting pitcher has pitching stats and no at-bats', async () => {
+    const rows = await db.models.PlayerGameStats.findAll({ where: { gameId: requireFocusGameId(scenarioWorld), playerId: scenarioWorld.dhPitcherIds! } })
+      .then((models: any[]) => models.map(({ dataValues }) => dataValues));
+    expect(rows).toHaveLength(2);
+    rows.forEach((row: any) => {
+      expect(row.GS).toBe(true);
+      expect(row.AB).toBe(0);
+      expect(row.outsRecorded).toBeGreaterThan(0);
+    });
   });
 
   then('the game result is unchanged', async () => {

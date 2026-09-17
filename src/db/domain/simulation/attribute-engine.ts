@@ -34,7 +34,7 @@ const battingOrderOf = (lineup: SyntheticLineup): SyntheticLineupEntry[] => (
   [...lineup.battingOrder].sort((a, b) => a.battingOrder - b.battingOrder)
 );
 
-const pitcherEntry = (lineup: SyntheticLineup): SyntheticLineupEntry => (
+const pitcherEntry = (lineup: SyntheticLineup): Pick<SyntheticLineupEntry, 'playerId' | 'attributes'> => (
   lineup.startingPitcher ?? lineup.battingOrder.find((entry) => entry.playerId === lineup.startingPitcherId)!
 );
 

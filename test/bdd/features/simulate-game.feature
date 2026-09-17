@@ -46,6 +46,15 @@ Feature: Simulate Game
     And each team's PlayerGameStats runs equal its completed game score
     And authored PlayerGameStats record the game's pitched outs
 
+  @spec:SIM-021
+  Scenario: DH authored lineups project a non-batting starting pitcher
+    Given a Game exists with status "SCHEDULED" and scheduledDate "2025-04-10"
+    And both teams have valid DH authored lineups
+    When the player simulates the game by id
+    Then the response is 200 with the updated game
+    And each DH authored starter has a PlayerGameStats row for the game
+    And each DH starting pitcher has pitching stats and no at-bats
+
   # ─── Single Game — Guard Failures ─────────────────────────────────────────────
 
   @spec:SIM-002
