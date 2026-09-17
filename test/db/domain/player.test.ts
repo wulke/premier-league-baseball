@@ -181,8 +181,8 @@ describe('Player model + attribute schema', () => {
     }
   });
 
-  // @spec PCON-001,PCON-003,PCON-004,PCON-007,PCON-008,PID-002,PID-006,PID-010
-  it('@spec PCON-001 @spec PCON-003 @spec PCON-004 @spec PCON-007 @spec PCON-008 @spec PID-002 @spec PID-006 @spec PID-010 generates a minimum-size roster with identity columns and DATE contracts', async () => {
+  // @spec PCON-001,PCON-003,PCON-004,PCON-007,PCON-008,PID-002,PID-006,PID-010,PARP-001
+  it('@spec PCON-001 @spec PCON-003 @spec PCON-004 @spec PCON-007 @spec PCON-008 @spec PID-002 @spec PID-006 @spec PID-010 @spec PARP-001 generates a minimum-size roster with identity columns, IV/EV baselines, and DATE contracts', async () => {
     const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2052 }).then(({ dataValues }) => dataValues);
     await db.models.League.bulkCreate([
@@ -230,6 +230,15 @@ describe('Player model + attribute schema', () => {
           reaction: 1,
           vision: 1,
           discipline: 1,
+          ivEv: {
+            contact: { iv: 1, ev: 0 },
+            power: { iv: 1, ev: 0 },
+            armStrength: { iv: 1, ev: 0 },
+            accuracy: { iv: 1, ev: 0 },
+            reaction: { iv: 1, ev: 0 },
+            vision: { iv: 1, ev: 0 },
+            discipline: { iv: 1, ev: 0 },
+          },
           positions: {
             Pitcher: 1,
             Catcher: 1,
