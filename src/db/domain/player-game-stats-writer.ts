@@ -1,7 +1,9 @@
+import { Transaction } from 'sequelize';
 import db from '../client';
 import { TeamFactory } from './team';
 import { DomainError } from './errors';
 import { SimulationResult } from './simulation/engine';
+import { PlayerGameStatsProjection } from './simulation/stat-projection';
 
 type Side = { teamId: number; runs: number };
 type PlayerStatRow = Record<string, number | boolean> & { playerId: number; gameId: number };
@@ -93,6 +95,16 @@ const writeSide = async (gameId: number, side: Side): Promise<void> => {
     allocate(total, pitcherIds).forEach((value, playerId) => addStat(rows, playerId, stat, value));
   }
   await db.models.PlayerGameStats.bulkCreate([...rows.values()]);
+};
+
+// @spec PARP-018 — model ownership stays with PlayerGameStatsWriter (backend-standards §1);
+// plain insert, same surface-duplicate-write posture as writeForCompletedGame (PGSW-005) —
+// the existing (playerId, gameId) unique index throws on a second call, by design.
+export const persistPlayerGameStats = async (
+  rows: PlayerGameStatsProjection[],
+  transaction?: Transaction,
+): Promise<void> => {
+  await db.models.PlayerGameStats.bulkCreate(rows as unknown as Record<string, unknown>[], { transaction });
 };
 
 // @spec PGSW-001,PGSW-002,PGSW-003,PGSW-004,PGSW-005

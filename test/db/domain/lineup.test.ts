@@ -87,7 +87,7 @@ describe('active lineup generation', () => {
       return db.models.Player.create({ gameWorldId: gw.id, teamId: team.id, attributes: playerAttributes, givenName: name, familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date('2000-01-01') }).then((row) => row.dataValues);
     }));
     const rules = resolveMatchRules({ matchRules: { dhEnabled: false, benchSize: 1, bullpenSize: 1 } }, { matchRules: { dhEnabled: true, benchSize: 5, bullpenSize: 7 } });
-    expect(rules).toEqual({ dhEnabled: true, benchSize: 5, bullpenSize: 7 });
+    expect(rules).toEqual({ dhEnabled: true, benchSize: 5, bullpenSize: 7, innings: 9 });
     const assignment = optimalFieldingAssignment(players.filter((player: any) => player.givenName === 'A' || player.givenName === 'B' || player.givenName.startsWith('F')));
     expect((assignment.find(({ position }) => position === 'SecondBase')?.player as any)?.givenName).toBe('B');
     expect((assignment.find(({ position }) => position === 'Shortstop')?.player as any)?.givenName).toBe('A');

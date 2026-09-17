@@ -304,9 +304,10 @@ interface MatchRules {
   dhEnabled: boolean;
   benchSize: number;
   bullpenSize: number;
+  innings?: number;   // @spec PARP-010 — Depth 0 config-driven inning boundary (map #136 decision #12); optional, defaults to 9 at the consumer
 }
 
-const DefaultMatchRules: MatchRules = { dhEnabled: false, benchSize: 5, bullpenSize: 7 };
+const DefaultMatchRules: MatchRules = { dhEnabled: false, benchSize: 5, bullpenSize: 7, innings: 9 };
 
 // #80,#84,#95 — `seedingSelection` lives on the *consuming* division and points,
 // by id only, at its source stage (and, for TIERED_RANK, the source tier). No
