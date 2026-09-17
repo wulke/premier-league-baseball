@@ -71,26 +71,33 @@ const allocateRosterSlots = (headcount: number): PlayerPosition[] => {
   ];
 };
 
-// @spec PCON-003
-const generatePlayerAttributes = (): PlayerAttributes => ({
-  contact: randomRating(),
-  power: randomRating(),
-  armStrength: randomRating(),
-  accuracy: randomRating(),
-  reaction: randomRating(),
-  vision: randomRating(),
-  discipline: randomRating(),
-  positions: PLAYER_POSITIONS.reduce<Record<PlayerPosition, number>>((positions, position) => {
-    positions[position] = randomRating();
-    return positions;
-  }, {} as Record<PlayerPosition, number>),
-  pitches: PLAYER_PITCH_TYPES.map((type) => ({
-    type,
-    velocity: randomRating(),
-    control: randomRating(),
-    spin: randomRating(),
-  })),
-});
+// @spec PCON-003,PARP-001 — new players persist innate baselines with zero earned effort;
+// the future event/reward writer, not generation, owns EV changes.
+const generatePlayerAttributes = (): PlayerAttributes => {
+  const ratings = {
+    contact: randomRating(), power: randomRating(), armStrength: randomRating(),
+    accuracy: randomRating(), reaction: randomRating(), vision: randomRating(), discipline: randomRating(),
+  };
+  return {
+    ...ratings,
+    ivEv: {
+      contact: { iv: ratings.contact, ev: 0 }, power: { iv: ratings.power, ev: 0 },
+      armStrength: { iv: ratings.armStrength, ev: 0 }, accuracy: { iv: ratings.accuracy, ev: 0 },
+      reaction: { iv: ratings.reaction, ev: 0 }, vision: { iv: ratings.vision, ev: 0 },
+      discipline: { iv: ratings.discipline, ev: 0 },
+    },
+    positions: PLAYER_POSITIONS.reduce<Record<PlayerPosition, number>>((positions, position) => {
+      positions[position] = randomRating();
+      return positions;
+    }, {} as Record<PlayerPosition, number>),
+    pitches: PLAYER_PITCH_TYPES.map((type) => ({
+      type,
+      velocity: randomRating(),
+      control: randomRating(),
+      spin: randomRating(),
+    })),
+  };
+};
 
 // @spec PDET-003,PDET-004
 const resolveCurrentContract = (contracts: any[], currentDate: Date | string | undefined, year: number): any | null => {

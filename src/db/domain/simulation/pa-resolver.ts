@@ -17,13 +17,17 @@ const BASE_WEIGHTS: Record<PAOutcome, number> = { BB: 8, SO: 20, out: 42, '1B': 
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
-// @spec PARP-002,PARP-003
+// @spec PARP-019 — #178's current-game combination: formula-local, EV-heavy, and never a
+// global effective rating. The legacy PA weights below consume this scalar only in this slot.
+const currentPARead = ({ iv, ev }: ReturnType<typeof readAttribute>): number => 0.3 * iv + 0.9 * ev;
+
+// @spec PARP-002,PARP-003,PARP-019
 export const resolvePA = ({ batter, pitcher, rng }: PAResolverInput): PAOutcome => {
-  const batterDiscipline = readAttribute(batter, 'discipline').iv;
-  const pitcherAccuracy = readAttribute(pitcher, 'accuracy').iv;
-  const batterContact = readAttribute(batter, 'contact').iv;
-  const pitcherArm = readAttribute(pitcher, 'armStrength').iv;
-  const batterPower = readAttribute(batter, 'power').iv;
+  const batterDiscipline = currentPARead(readAttribute(batter, 'discipline'));
+  const pitcherAccuracy = currentPARead(readAttribute(pitcher, 'accuracy'));
+  const batterContact = currentPARead(readAttribute(batter, 'contact'));
+  const pitcherArm = currentPARead(readAttribute(pitcher, 'armStrength'));
+  const batterPower = currentPARead(readAttribute(batter, 'power'));
 
   // Scaled to exceed BASE_WEIGHTS.BB (8) at the attribute extremes ([1,100]), so a large
   // enough differential can actually drive the BB weight below zero — otherwise PARP-003's

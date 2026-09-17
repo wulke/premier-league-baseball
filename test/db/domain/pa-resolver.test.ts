@@ -50,8 +50,8 @@ describe('resolvePA current-form IV/EV combination (PARP-019)', () => {
 
 describe('resolvePA outcome-weight floor (PARP-003)', () => {
   it('floors the BB weight to 0 at an extreme discipline/accuracy differential, so BB is never drawn', () => {
-    const batter = withAttributes({ discipline: 1 });
-    const pitcher = withAttributes({ accuracy: 100 });
+    const batter = withAttributes({ discipline: 1, ivEv: { discipline: { iv: 1, ev: -100 } } });
+    const pitcher = withAttributes({ accuracy: 100, ivEv: { accuracy: { iv: 100, ev: 100 } } });
     for (let step = 0; step <= 100; step += 1) {
       const roll = step / 100;
       const outcome = resolvePA({ batter, pitcher, rng: () => roll });

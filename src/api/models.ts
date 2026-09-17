@@ -81,6 +81,14 @@ type PlayerPosition =
 
 type PlayerPitchType = 'Fastball' | 'Curveball' | 'Slider' | 'Changeup';
 
+type PlayerSimulationAttributeKey =
+  'contact' | 'power' | 'armStrength' | 'accuracy' | 'reaction' | 'vision' | 'discipline';
+
+interface PlayerSimulationAttribute {
+  iv: number;
+  ev: number;
+}
+
 interface PlayerPitch {
   type: PlayerPitchType;
   velocity: number;
@@ -96,6 +104,9 @@ interface PlayerAttributes {
   reaction: number;
   vision: number;
   discipline: number;
+  // @spec PARP-001 — persisted simulation tuple; the scalar flat-seven values remain the
+  // display-compatible innate baselines while legacy JSON is supported by the read seam.
+  ivEv?: Partial<Record<PlayerSimulationAttributeKey, PlayerSimulationAttribute>>;
   positions: Record<PlayerPosition, number>;
   pitches: PlayerPitch[];
 }
@@ -816,6 +827,8 @@ export {
   PlayerPosition,
   PlayerPitchType,
   PlayerPitch,
+  PlayerSimulationAttributeKey,
+  PlayerSimulationAttribute,
   PlayerAttributes,
   PlayerRecord,
   RosterPlayer,

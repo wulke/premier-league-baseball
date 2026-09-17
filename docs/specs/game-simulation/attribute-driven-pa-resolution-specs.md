@@ -8,7 +8,7 @@ not yet wired into `GameFactory`/`resolveSimulationEngine()` (see [#192](https:/
 
 | ID | Requirement | Status |
 |---|---|---|
-| PARP-001 | WHEN the attribute-read seam reads a Player attribute for PA resolution THE system SHALL return its persisted `ivEv` pair as separate `iv` and `ev` values, never a pre-combined effective value; legacy attribute JSON without that pair SHALL read as the scalar `iv` and `0` `ev` | [ ] → #193 |
+| PARP-001 | WHEN the attribute-read seam reads a Player attribute for PA resolution THE system SHALL return its persisted `ivEv` pair as separate `iv` and `ev` values, never a pre-combined effective value; legacy attribute JSON without that pair SHALL read as the scalar `iv` and `0` `ev` | [x] → #193 |
 | PARP-002 | WHEN a plate appearance is resolved THE system SHALL produce exactly one of the outcomes {out, 1B, 2B, 3B, HR, BB, SO} by drawing once from a weighted distribution derived from the batter's and pitcher's attribute reads | [x] → #191 |
 | PARP-003 | WHEN an attribute differential shifts a PA-outcome weight below zero THE system SHALL floor that weight at zero before normalizing the distribution to sum to 1 | [x] → #191 |
 | PARP-004 | WHEN a plate appearance resolves to BB THE system SHALL advance the batter to first and force-advance existing runners only in the standard cascade (first always forced to second; second forced to third only if first was occupied; third forced home only if bases were loaded) | [x] → #191 |
@@ -26,7 +26,7 @@ not yet wired into `GameFactory`/`resolveSimulationEngine()` (see [#192](https:/
 | PARP-016 | WHEN a game is simulated by AttributeDrivenSimulationEngine THE system SHALL consume exactly one RNG draw per plate appearance and zero further RNG draws for baserunning or stat projection | [x] → #191 |
 | PARP-017 | WHEN a game is simulated by AttributeDrivenSimulationEngine with a pinned seed THE system SHALL reproduce an identical event chain and PlayerGameStats projection across runs and machines | [x] → #191 |
 | PARP-018 | WHEN persistPlayerGameStats is called a second time for the same (playerId, gameId) THE system SHALL reject the write via the existing PlayerGameStats unique index rather than silently upserting | [x] → #191 |
-| PARP-019 | WHEN PA resolution consumes an attribute IF its current-game formula is evaluated THE system SHALL use `0.3 × IV + 0.9 × EV` for that input, so equal-IV players with distinct earned effort can produce distinct seed-stable outcomes | [ ] → #193 |
+| PARP-019 | WHEN PA resolution consumes an attribute IF its current-game formula is evaluated THE system SHALL use `0.3 × IV + 0.9 × EV` for that input, so equal-IV players with distinct earned effort can produce distinct seed-stable outcomes | [x] → #193 |
 
 `PARP-001` (attribute-read seam pass-through) and `PARP-003` (outcome-weight floor before
 normalizing) are internal algorithm invariants of `readAttribute`/`resolvePA` with no
