@@ -8,7 +8,69 @@ import { resolveCrossStageAdvancement } from './stage-advancement';
 import { resolveSimulationEngine, SimulateOptions } from './simulation/engine';
 import { NotificationFactory } from './notifications/notification';
 import { GAME_RESULT, GameResultPayload } from './notifications/game-result-notification';
-import { PlayerGameStatsWriter } from './player-game-stats-writer';
+import { persistPlayerGameStats, PlayerGameStatsWriter } from './player-game-stats-writer';
+import { TeamFactory } from './team';
+import { resolveMatchRules } from './lineup';
+import { SyntheticLineup } from './simulation/synthetic-lineup';
+
+type AuthoredSimulationContext = {
+  lineups: { home: SyntheticLineup; away: SyntheticLineup };
+  matchRules: ReturnType<typeof resolveMatchRules>;
+};
+
+// @spec SIM-021,SIM-022 — bridge persisted, frozen authored lineups into the pure
+// AttributeDrivenSimulationEngine context. Legacy games without usable lineups deliberately
+// return undefined so the resolver selects RandomSimulationEngine's baseline behavior.
+const loadAuthoredSimulationContext = async (
+  gameId: number,
+  homeTeamId: number,
+  awayTeamId: number,
+): Promise<AuthoredSimulationContext | undefined> => {
+  try {
+    await TeamFactory(homeTeamId).snapshotForGame(gameId);
+    await TeamFactory(awayTeamId).snapshotForGame(gameId);
+    const [homeLineup, awayLineup, homeTeam] = await Promise.all([
+      TeamFactory(homeTeamId).getLineup({ gameId }),
+      TeamFactory(awayTeamId).getLineup({ gameId }),
+      db.models.Team.findByPk(homeTeamId),
+    ]);
+    if (!homeTeam || homeLineup.startingPitcherId == null || awayLineup.startingPitcherId == null) return undefined;
+
+    const toSynthetic = async (teamId: number, lineup: typeof homeLineup): Promise<SyntheticLineup | undefined> => {
+      const starters = lineup.starters.filter((entry) => entry.battingOrder != null);
+      if (starters.length !== 9 || starters.some((entry) => !entry.valid)) return undefined;
+      const playerIds = starters.map((entry) => entry.playerId);
+      const players = await db.models.Player.findAll({ where: { id: { [Op.in]: playerIds }, teamId } })
+        .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
+      if (players.length !== 9) return undefined;
+      const playerById = new Map(players.map((player: any) => [player.id, player]));
+      return {
+        teamId,
+        startingPitcherId: lineup.startingPitcherId!,
+        battingOrder: starters.map((entry) => {
+          const player = playerById.get(entry.playerId)!;
+          return {
+            playerId: entry.playerId,
+            battingOrder: entry.battingOrder!,
+            fieldingPosition: entry.fieldingPosition,
+            attributes: player.attributes,
+          };
+        }),
+      };
+    };
+
+    const [home, away] = await Promise.all([
+      toSynthetic(homeTeamId, homeLineup),
+      toSynthetic(awayTeamId, awayLineup),
+    ]);
+    if (!home || !away) return undefined;
+    const league = await db.models.League.findByPk(homeTeam.dataValues.homeLeagueId);
+    return { lineups: { home, away }, matchRules: resolveMatchRules(league?.dataValues.config) };
+  } catch (error) {
+    if (error instanceof DomainError) return undefined;
+    throw error;
+  }
+};
 
 const toDateStr = (d: any): string => new Date(d).toISOString().slice(0, 10);
 
@@ -73,7 +135,7 @@ const GameFactory = (id?: number) => {
     // result(): REMOVED (#190, LLD e4) — the unguarded blind-update path is deleted;
     // Game writes are reachable only through the guarded simulate paths below.
 
-    // @spec SIM-001,SIM-002,SIM-003,SIM-004,SIM-005,SIM-006,SIM-007,SIM-016
+    // @spec SIM-001,SIM-002,SIM-003,SIM-004,SIM-005,SIM-006,SIM-007,SIM-016,SIM-021,SIM-022
     simulate: async (options?: SimulateOptions) => {
       const game = await db.models.Game.findByPk(id);
       if (!game) throw new DomainError('the game was not found', 404);
@@ -114,8 +176,10 @@ const GameFactory = (id?: number) => {
 
       // @spec SIM-016 score production delegated to the SimulationEngine strategy
       // (seed domain-only — LLD e16; per-game derivation — e13/e14).
-      const { homeTeamResult, awayTeamResult } = resolveSimulationEngine(options?.seed)
-        .simulateGame({ gameId: id!, homeTeam, awayTeam });
+      const authoredContext = await loadAuthoredSimulationContext(id!, homeTeam, awayTeam);
+      const simulationResult = resolveSimulationEngine(options?.seed)
+        .simulateGame({ gameId: id!, homeTeam, awayTeam, ...authoredContext });
+      const { homeTeamResult, awayTeamResult } = simulationResult;
 
       const [affectedCount] = await db.models.Game.update(
         { homeTeamResult, awayTeamResult, status: 'COMPLETED' },
@@ -126,9 +190,10 @@ const GameFactory = (id?: number) => {
       }
 
       const updated = await db.models.Game.findByPk(id);
-      // @spec PGSW-001,PGSW-002,PGSW-003,PGSW-004,PGSW-005 — completion-time
-      // attribution consumes frozen lineups after the guarded score write, never the engine.
-      await PlayerGameStatsWriter().writeForCompletedGame({
+      // @spec SIM-021,SIM-022 — event-derived stats are the production path; the legacy
+      // writer remains only for pre-lineup games that selected the random fallback.
+      if (simulationResult.playerGameStats) await persistPlayerGameStats(simulationResult.playerGameStats);
+      else await PlayerGameStatsWriter().writeForCompletedGame({
         gameId: id!, homeTeamId: homeTeam, awayTeamId: awayTeam, result: { homeTeamResult, awayTeamResult },
       });
       // @spec CUP-001,LCH-002,MSS-006,MSS-007 round-robin / knockout / stage completion hooks (single-game path)
@@ -162,7 +227,7 @@ const GameFactory = (id?: number) => {
       return updated!.dataValues;
     },
 
-    // @spec SCL-013,SIM-011,SIM-012,SIM-013,SIM-014,SIM-016
+    // @spec SCL-013,SIM-011,SIM-012,SIM-013,SIM-014,SIM-015,SIM-016,SIM-021,SIM-022
     simulateBatch: async (gwId: number, endDate?: string, options?: SimulateOptions) => {
       const gameWorld = await db.models.GameWorld.findByPk(gwId);
       if (!gameWorld) throw new DomainError('the GameWorld was not found', 404);
@@ -214,6 +279,19 @@ const GameFactory = (id?: number) => {
       // order- and skip-independent (e14).
       const engine = resolveSimulationEngine(options?.seed);
 
+      // Snapshot creation owns its own transaction. Materialize authored contexts before the
+      // all-or-nothing result/stat transaction so SQLite never nests transactions; these
+      // snapshots are idempotent point-in-time inputs, not completion writes.
+      const authoredContexts = new Map<number, AuthoredSimulationContext | undefined>();
+      for (const game of games) {
+        const { status, scheduledDate } = game.dataValues;
+        if (status === 'COMPLETED' || status === 'IN_PROGRESS'
+          || (scheduledDate != null && toDateStr(scheduledDate) > effectiveEndDate)) continue;
+        authoredContexts.set(game.dataValues.id, await loadAuthoredSimulationContext(
+          game.dataValues.id, game.dataValues.homeTeam, game.dataValues.awayTeam,
+        ));
+      }
+
       const t = await db.transaction();
       try {
         for (const game of games) {
@@ -234,18 +312,27 @@ const GameFactory = (id?: number) => {
 
           // @spec SIM-016 per-game delegation — fresh seed per game in production,
           // pinned base seed in tests (SIM-017/SIM-018).
-          const { homeTeamResult, awayTeamResult } = engine.simulateGame({
+          const authoredContext = authoredContexts.get(game.dataValues.id);
+          const simulationResult = engine.simulateGame({
             gameId: game.dataValues.id,
             homeTeam: game.dataValues.homeTeam,
             awayTeam: game.dataValues.awayTeam,
+            ...authoredContext,
           });
+          const { homeTeamResult, awayTeamResult } = simulationResult;
 
           await db.models.Game.update(
             { homeTeamResult, awayTeamResult, status: 'COMPLETED' },
             { where: { id: game.dataValues.id }, transaction: t }
           );
 
-          simulated.push({ ...game.dataValues, homeTeamResult, awayTeamResult, status: 'COMPLETED' });
+          // @spec SIM-015,SIM-021 — score and event-projected player stats share the
+          // batch transaction, so a stat insert error rolls back every completed game.
+          if (simulationResult.playerGameStats) {
+            await persistPlayerGameStats(simulationResult.playerGameStats, t);
+          }
+
+          simulated.push({ ...game.dataValues, homeTeamResult, awayTeamResult, status: 'COMPLETED', playerGameStats: simulationResult.playerGameStats });
         }
 
         await t.commit();
@@ -261,9 +348,9 @@ const GameFactory = (id?: number) => {
       for (const sim of simulated) {
         if (advanced.has(sim.id)) continue;
         advanced.add(sim.id);
-        // @spec PGSW-001,PGSW-002,PGSW-003,PGSW-004,PGSW-005 — each committed batch
-        // result receives the same post-score attribution as single-game simulation.
-        await PlayerGameStatsWriter().writeForCompletedGame({
+        // @spec SIM-022 — event-derived stats were written in the transaction. Only the
+        // legacy random fallback receives post-commit fabricated attribution.
+        if (!sim.playerGameStats) await PlayerGameStatsWriter().writeForCompletedGame({
           gameId: sim.id, homeTeamId: sim.homeTeam, awayTeamId: sim.awayTeam,
           result: { homeTeamResult: sim.homeTeamResult, awayTeamResult: sim.awayTeamResult },
         });

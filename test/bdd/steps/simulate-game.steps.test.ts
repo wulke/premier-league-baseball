@@ -28,7 +28,6 @@ interface WorldState {
   firstPinnedScores?: { homeTeamResult: number; awayTeamResult: number };
   authoredPlayerIds?: { home: number[]; away: number[] };
   response?: ResponseState;
-  forceDbError: boolean;
 }
 
 // @spec SIM-001..SIM-020 (simulate-game acceptance)
@@ -37,7 +36,6 @@ const feature = loadFeature(path.resolve(__dirname, '../features/simulate-game.f
 const createWorld = (): WorldState => ({
   divisionSeasonIds: [],
   createdGameIds: [],
-  forceDbError: false,
 });
 let scenarioWorld = createWorld();
 
@@ -131,10 +129,6 @@ const simulateSingleGame = async (world: WorldState, gameId: number) => {
 };
 
 const simulateBatchGames = async (world: WorldState, gameWorldId: number, endDate?: string) => {
-  if (world.forceDbError) {
-    world.response = { statusCode: 500, error: new Error('Injected database error') };
-    return;
-  }
   try {
     const body = await simulateBatchGamesHandler(gameWorldId, endDate);
     world.response = { statusCode: 200, body };
@@ -300,8 +294,9 @@ const registerSteps = ({ given, when, then, and }: any) => {
   });
 
   given('a database error will occur mid-transaction', () => {
-    const world = scenarioWorld;
-    world.forceDbError = true;
+    // @spec SIM-015 — fail the production projection writer after Game.update has begun;
+    // the real batch transaction must then roll back scores *and* stat inserts.
+    jest.spyOn(db.models.PlayerGameStats, 'bulkCreate').mockRejectedValueOnce(new Error('Injected database error'));
   });
 
   when('the player simulates the game by id', async () => {
@@ -499,6 +494,10 @@ const registerSteps = ({ given, when, then, and }: any) => {
     });
   });
 
+  and('no PlayerGameStats rows are written', async () => {
+    await expect(db.models.PlayerGameStats.count()).resolves.toBe(0);
+  });
+
   then(/^the game result remains homeTeamResult (\d+) and awayTeamResult (\d+)$/, async (home: string, away: string) => {
     const world = scenarioWorld;
     const game = await readGame(requireFocusGameId(world));
@@ -579,6 +578,7 @@ const registerSteps = ({ given, when, then, and }: any) => {
 };
 
 beforeEach(async () => {
+  jest.restoreAllMocks();
   await db.sync({ force: true });
   scenarioWorld = createWorld();
 });

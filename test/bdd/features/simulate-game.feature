@@ -204,11 +204,13 @@ Feature: Simulate Game
   @spec:SIM-015
   Scenario: Database error during batch simulation rolls back all updates
     Given 3 Games exist with status "SCHEDULED" and scheduledDate "2025-04-10"
+    And both teams have valid authored lineups
     And a database error will occur mid-transaction
     When the player triggers batch simulation for GameWorld 1 with no endDate
     Then the response is a 500 error
     And all 3 games remain with status "SCHEDULED"
     And no homeTeamResult or awayTeamResult values are written
+    And no PlayerGameStats rows are written
 
   @spec:SIM-003
   Scenario: Simulating the same single game twice returns an error on the second attempt
