@@ -36,6 +36,25 @@ Feature: Simulate Game
     And the game status is "COMPLETED"
     And homeTeamResult and awayTeamResult are non-null integers
 
+  @spec:SIM-021
+  Scenario: Authored lineups drive live single-game simulation and player stats
+    Given a Game exists with status "SCHEDULED" and scheduledDate "2025-04-10"
+    And both teams have valid authored lineups
+    When the player simulates the game by id
+    Then the response is 200 with the updated game
+    And each authored starter has a PlayerGameStats row for the game
+    And each team's PlayerGameStats runs equal its completed game score
+    And authored PlayerGameStats record the game's pitched outs
+
+  @spec:SIM-021
+  Scenario: DH authored lineups project a non-batting starting pitcher
+    Given a Game exists with status "SCHEDULED" and scheduledDate "2025-04-10"
+    And both teams have valid DH authored lineups
+    When the player simulates the game by id
+    Then the response is 200 with the updated game
+    And each DH authored starter has a PlayerGameStats row for the game
+    And each DH starting pitcher has pitching stats and no at-bats
+
   # ─── Single Game — Guard Failures ─────────────────────────────────────────────
 
   @spec:SIM-002
@@ -84,6 +103,16 @@ Feature: Simulate Game
     Then the response is 200
     And all 3 games are returned as simulated
     And each game has status "COMPLETED" with non-null homeTeamResult and awayTeamResult
+
+  @spec:SIM-021
+  Scenario: Authored lineups drive live batch simulation and player stats
+    Given a Game exists with status "SCHEDULED" and scheduledDate "2025-04-10"
+    And both teams have valid authored lineups
+    When the player triggers batch simulation for GameWorld 1 with no endDate
+    Then the response is 200
+    And each authored starter has a PlayerGameStats row for the game
+    And each team's PlayerGameStats runs equal its completed game score
+    And authored PlayerGameStats record the game's pitched outs
 
   @spec:SIM-011
   Scenario: Simulate all games up to a specified endDate covering multiple days
@@ -184,11 +213,13 @@ Feature: Simulate Game
   @spec:SIM-015
   Scenario: Database error during batch simulation rolls back all updates
     Given 3 Games exist with status "SCHEDULED" and scheduledDate "2025-04-10"
+    And both teams have valid authored lineups
     And a database error will occur mid-transaction
     When the player triggers batch simulation for GameWorld 1 with no endDate
     Then the response is a 500 error
     And all 3 games remain with status "SCHEDULED"
     And no homeTeamResult or awayTeamResult values are written
+    And no PlayerGameStats rows are written
 
   @spec:SIM-003
   Scenario: Simulating the same single game twice returns an error on the second attempt

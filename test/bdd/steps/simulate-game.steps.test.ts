@@ -26,8 +26,9 @@ interface WorldState {
   preSimulationResult?: { homeTeamResult: number | null; awayTeamResult: number | null; status: string | null };
   pinnedSeed?: number;
   firstPinnedScores?: { homeTeamResult: number; awayTeamResult: number };
+  authoredPlayerIds?: { home: number[]; away: number[] };
+  dhPitcherIds?: number[];
   response?: ResponseState;
-  forceDbError: boolean;
 }
 
 // @spec SIM-001..SIM-020 (simulate-game acceptance)
@@ -36,7 +37,6 @@ const feature = loadFeature(path.resolve(__dirname, '../features/simulate-game.f
 const createWorld = (): WorldState => ({
   divisionSeasonIds: [],
   createdGameIds: [],
-  forceDbError: false,
 });
 let scenarioWorld = createWorld();
 
@@ -49,6 +49,50 @@ const readGame = async (id: number) => {
   const game = await db.models.Game.findByPk(id);
   if (!game) throw new Error(`Game '${id}' not found`);
   return game.dataValues;
+};
+
+// @spec SIM-021 — an authored, valid nine-starter input for the live engine path.
+const createAuthoredLineup = async (teamId: number, gameWorldId: number): Promise<number[]> => {
+  const positions = ['Pitcher', 'Catcher', 'FirstBase', 'SecondBase', 'ThirdBase', 'Shortstop', 'LeftField', 'CenterField', 'RightField'];
+  const players = await Promise.all(positions.map((_, index) => db.models.Player.create({
+    teamId,
+    gameWorldId,
+    givenName: `Sim${teamId}-${index}`,
+    familyName: 'Player',
+    countryCode: 'US',
+    bats: 'R',
+    throws: 'R',
+    birthDate: new Date('2000-01-01'),
+    attributes: {
+      contact: 60, power: 60, armStrength: 60, accuracy: 60, reaction: 60, vision: 60, discipline: 60,
+      positions: {}, pitches: [{ type: 'Fastball', velocity: 60, control: 60, spin: 60 }],
+    },
+  }).then(({ dataValues }: any) => dataValues)));
+  const lineup = await db.models.Lineup.create({ teamId, gameWorldId }).then(({ dataValues }: any) => dataValues);
+  await db.models.LineupEntry.bulkCreate(positions.map((fieldingPosition, index) => ({
+    lineupId: lineup.id,
+    playerId: players[index].id,
+    role: 'STARTER',
+    battingOrder: index + 1,
+    fieldingPosition,
+  })));
+  return players.map((player) => player.id);
+};
+
+// @spec SIM-021 — a DH lineup keeps its pitcher among starters but outside the batting order.
+const createDhAuthoredLineup = async (teamId: number, gameWorldId: number) => {
+  const positions = ['Catcher', 'FirstBase', 'SecondBase', 'ThirdBase', 'Shortstop', 'LeftField', 'CenterField', 'RightField', null, 'Pitcher'];
+  const players = await Promise.all(positions.map((_, index) => db.models.Player.create({
+    teamId, gameWorldId, givenName: `Dh${teamId}-${index}`, familyName: 'Player', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date('2000-01-01'),
+    attributes: { contact: 60, power: 60, armStrength: 60, accuracy: 60, reaction: 60, vision: 60, discipline: 60, positions: {}, pitches: [{ type: 'Fastball', velocity: 60, control: 60, spin: 60 }] },
+  }).then(({ dataValues }: any) => dataValues)));
+  const lineup = await db.models.Lineup.create({ teamId, gameWorldId }).then(({ dataValues }: any) => dataValues);
+  await db.models.LineupEntry.bulkCreate(positions.map((fieldingPosition, index) => ({
+    lineupId: lineup.id, playerId: players[index].id, role: 'STARTER',
+    battingOrder: fieldingPosition === 'Pitcher' ? null : index + 1,
+    fieldingPosition,
+  })));
+  return { playerIds: players.map((player) => player.id), pitcherId: players[9].id };
 };
 
 const createGame = async (
@@ -102,10 +146,6 @@ const simulateSingleGame = async (world: WorldState, gameId: number) => {
 };
 
 const simulateBatchGames = async (world: WorldState, gameWorldId: number, endDate?: string) => {
-  if (world.forceDbError) {
-    world.response = { statusCode: 500, error: new Error('Injected database error') };
-    return;
-  }
   try {
     const body = await simulateBatchGamesHandler(gameWorldId, endDate);
     world.response = { statusCode: 200, body };
@@ -220,6 +260,24 @@ const registerSteps = ({ given, when, then, and }: any) => {
     await createGame(world, status, null);
   });
 
+  given('both teams have valid authored lineups', async () => {
+    const world = scenarioWorld;
+    world.authoredPlayerIds = {
+      home: await createAuthoredLineup(world.homeTeamId!, world.gameWorldId!),
+      away: await createAuthoredLineup(world.awayTeamId!, world.gameWorldId!),
+    };
+  });
+
+  given('both teams have valid DH authored lineups', async () => {
+    const world = scenarioWorld;
+    const [home, away] = await Promise.all([
+      createDhAuthoredLineup(world.homeTeamId!, world.gameWorldId!),
+      createDhAuthoredLineup(world.awayTeamId!, world.gameWorldId!),
+    ]);
+    world.authoredPlayerIds = { home: home.playerIds, away: away.playerIds };
+    world.dhPitcherIds = [home.pitcherId, away.pitcherId];
+  });
+
   given(/^a Game exists with status "([^"]+)", scheduledDate "([^"]+)", homeTeamResult (\d+), awayTeamResult (\d+)$/, async (
     status: string, scheduledDate: string, homeTeamResult: string, awayTeamResult: string
   ) => {
@@ -263,8 +321,9 @@ const registerSteps = ({ given, when, then, and }: any) => {
   });
 
   given('a database error will occur mid-transaction', () => {
-    const world = scenarioWorld;
-    world.forceDbError = true;
+    // @spec SIM-015 — fail the production projection writer after Game.update has begun;
+    // the real batch transaction must then roll back scores *and* stat inserts.
+    jest.spyOn(db.models.PlayerGameStats, 'bulkCreate').mockRejectedValueOnce(new Error('Injected database error'));
   });
 
   when('the player simulates the game by id', async () => {
@@ -342,6 +401,41 @@ const registerSteps = ({ given, when, then, and }: any) => {
     const game = await readGame(requireFocusGameId(world));
     expect(Number.isInteger(game.homeTeamResult)).toBe(true);
     expect(Number.isInteger(game.awayTeamResult)).toBe(true);
+  });
+
+  then('each authored starter has a PlayerGameStats row for the game', async () => {
+    const world = scenarioWorld;
+    const ids = [...world.authoredPlayerIds!.home, ...world.authoredPlayerIds!.away];
+    await expect(db.models.PlayerGameStats.count({ where: { gameId: requireFocusGameId(world), playerId: ids } })).resolves.toBe(18);
+  });
+
+  and("each team's PlayerGameStats runs equal its completed game score", async () => {
+    const world = scenarioWorld;
+    const game = await readGame(requireFocusGameId(world));
+    await expect(db.models.PlayerGameStats.sum('R', { where: { gameId: game.id, playerId: world.authoredPlayerIds!.home } })).resolves.toBe(game.homeTeamResult);
+    await expect(db.models.PlayerGameStats.sum('R', { where: { gameId: game.id, playerId: world.authoredPlayerIds!.away } })).resolves.toBe(game.awayTeamResult);
+  });
+
+  and("authored PlayerGameStats record the game's pitched outs", async () => {
+    const world = scenarioWorld;
+    await expect(db.models.PlayerGameStats.sum('outsRecorded', { where: { gameId: requireFocusGameId(world) } })).resolves.toBe(54);
+  });
+
+  then('each DH authored starter has a PlayerGameStats row for the game', async () => {
+    const world = scenarioWorld;
+    const ids = [...world.authoredPlayerIds!.home, ...world.authoredPlayerIds!.away];
+    await expect(db.models.PlayerGameStats.count({ where: { gameId: requireFocusGameId(world), playerId: ids } })).resolves.toBe(20);
+  });
+
+  and('each DH starting pitcher has pitching stats and no at-bats', async () => {
+    const rows = await db.models.PlayerGameStats.findAll({ where: { gameId: requireFocusGameId(scenarioWorld), playerId: scenarioWorld.dhPitcherIds! } })
+      .then((models: any[]) => models.map(({ dataValues }) => dataValues));
+    expect(rows).toHaveLength(2);
+    rows.forEach((row: any) => {
+      expect(row.GS).toBe(true);
+      expect(row.AB).toBe(0);
+      expect(row.outsRecorded).toBeGreaterThan(0);
+    });
   });
 
   then('the game result is unchanged', async () => {
@@ -444,6 +538,10 @@ const registerSteps = ({ given, when, then, and }: any) => {
     });
   });
 
+  and('no PlayerGameStats rows are written', async () => {
+    await expect(db.models.PlayerGameStats.count()).resolves.toBe(0);
+  });
+
   then(/^the game result remains homeTeamResult (\d+) and awayTeamResult (\d+)$/, async (home: string, away: string) => {
     const world = scenarioWorld;
     const game = await readGame(requireFocusGameId(world));
@@ -524,6 +622,7 @@ const registerSteps = ({ given, when, then, and }: any) => {
 };
 
 beforeEach(async () => {
+  jest.restoreAllMocks();
   await db.sync({ force: true });
   scenarioWorld = createWorld();
 });

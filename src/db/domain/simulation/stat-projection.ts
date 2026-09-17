@@ -32,6 +32,7 @@ export const projectPlayerGameStats = (
 
   [lineups.home, lineups.away].forEach((lineup) => {
     lineup.battingOrder.forEach((entry) => ensure(entry.playerId, entry.playerId === lineup.startingPitcherId));
+    if (lineup.startingPitcher) ensure(lineup.startingPitcher.playerId, true);
   });
 
   // sequence => the PlateAppearanceResolutionContext that caused it (for RBI/ER attribution)
