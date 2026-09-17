@@ -296,3 +296,35 @@ Feature: Team Lineup View UI
     And the player opens the Bullpen tab
     And the manager drags bullpen player 12 onto bullpen player 13
     Then the next-game bullpen slots for players 12 and 13 are swapped
+
+  @spec:GBULL-007
+  Scenario: A manager swaps next-game SP, bullpen, and bench slots by drag and drop
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup/next-game returns a scheduled game lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the player opens the Bullpen tab
+    And the manager drags starting pitcher player 9 onto bullpen player 12
+    And the manager drags bullpen player 13 onto bench player 10
+    Then the next-game SP, bullpen, and bench slots retain both drag swaps
+
+  @spec:GBULL-007
+  Scenario: A manager combines Bullpen drag and picker edits before saving once
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup/next-game returns a scheduled game lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the player opens the Bullpen tab
+    And the manager drags bullpen player 12 onto bullpen player 13
+    And the manager picks player 13 for the starting pitcher slot
+    And the manager saves the game lineup
+    Then the one saved game lineup includes both the drag and picker swaps
+
+  @spec:GBULL-007
+  Scenario: A locked next game has no Bullpen drag or edit affordance
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup/next-game returns an in-progress game lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the player opens the Bullpen tab
+    Then next-game lineup rows are not draggable and have no picker or save control
