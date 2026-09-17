@@ -18,10 +18,20 @@ const validateLineup = (lineup: SyntheticLineup): void => {
   if (uniquePlayerIds.size !== 9) {
     throw new Error(`SyntheticLineup for team ${lineup.teamId} has duplicate playerIds`);
   }
+  const orderValues = lineup.battingOrder.map((entry) => entry.battingOrder).sort((a, b) => a - b);
+  if (!orderValues.every((order, index) => order === index + 1)) {
+    throw new Error(`SyntheticLineup for team ${lineup.teamId} must have battingOrder values 1..9`);
+  }
   if (!lineup.battingOrder.some((entry) => entry.playerId === lineup.startingPitcherId)) {
     throw new Error(`SyntheticLineup for team ${lineup.teamId} has no resolvable starting pitcher`);
   }
 };
+
+// The engine bats by each entry's own `battingOrder` field, not array position — a caller
+// (e.g. #192) is not required to hand the array in order (code review, PR #348).
+const battingOrderOf = (lineup: SyntheticLineup): SyntheticLineupEntry[] => (
+  [...lineup.battingOrder].sort((a, b) => a.battingOrder - b.battingOrder)
+);
 
 const pitcherEntry = (lineup: SyntheticLineup): SyntheticLineupEntry => (
   lineup.battingOrder.find((entry) => entry.playerId === lineup.startingPitcherId)!
@@ -43,6 +53,10 @@ export class AttributeDrivenSimulationEngine implements SimulationEngine {
     const eventChain: EventEnvelope<PlateAppearanceResolutionContext | BaserunningContext>[] = [];
     let sequence = 0;
     const battingIndexByTeamId: Record<number, number> = { [away.teamId]: 0, [home.teamId]: 0 };   // PARP-008
+    const battingOrderByTeamId: Record<number, SyntheticLineupEntry[]> = {
+      [away.teamId]: battingOrderOf(away),
+      [home.teamId]: battingOrderOf(home),
+    };
 
     for (let inning = 1; inning <= innings; inning += 1) {   // PARP-010
       for (const half of ['top', 'bottom'] as const) {
@@ -54,7 +68,7 @@ export class AttributeDrivenSimulationEngine implements SimulationEngine {
         let outs = 0;
 
         while (outs < 3) {   // PARP-009
-          const entry = battingTeam.battingOrder[battingIndexByTeamId[battingTeam.teamId] % 9];
+          const entry = battingOrderByTeamId[battingTeam.teamId][battingIndexByTeamId[battingTeam.teamId] % 9];
           battingIndexByTeamId[battingTeam.teamId] += 1;
 
           const outcome = resolvePA({ batter: entry.attributes, pitcher: pitcher.attributes, rng });   // PARP-002,016

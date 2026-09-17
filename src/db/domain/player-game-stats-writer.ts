@@ -104,7 +104,7 @@ export const persistPlayerGameStats = async (
   rows: PlayerGameStatsProjection[],
   transaction?: Transaction,
 ): Promise<void> => {
-  await db.models.PlayerGameStats.bulkCreate(rows as any[], { transaction });
+  await db.models.PlayerGameStats.bulkCreate(rows as unknown as Record<string, unknown>[], { transaction });
 };
 
 // @spec PGSW-001,PGSW-002,PGSW-003,PGSW-004,PGSW-005
