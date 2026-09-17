@@ -1,7 +1,7 @@
 import { resolvePA, PAOutcome } from '../../../src/db/domain';
 import { PlayerAttributes } from '../../../src/api/models';
 
-// @spec PARP-002,PARP-003 (resolvePA — unit level)
+// @spec PARP-002,PARP-003,PARP-019 (resolvePA — unit level)
 // Gherkin pairing: PARP-002 also has test/bdd/features/attribute-driven-pa-resolution.feature.
 // PARP-003 (outcome-weight floor before normalizing) has none — see
 // docs/specs/game-simulation/attribute-driven-pa-resolution-specs.md Traceability.
@@ -31,6 +31,20 @@ describe('resolvePA (PARP-002)', () => {
     const rng = () => { calls += 1; return 0.5; };
     resolvePA({ batter: withAttributes({}), pitcher: withAttributes({}), rng });
     expect(calls).toBe(1);
+  });
+});
+
+describe('resolvePA current-form IV/EV combination (PARP-019)', () => {
+  it('lets earned effort change the seed-stable outcome for equal innate ratings', () => {
+    const batter = withAttributes({
+      ivEv: { discipline: { iv: 50, ev: 50 } },
+    });
+    const pitcher = withAttributes({
+      ivEv: { accuracy: { iv: 50, ev: 0 } },
+    });
+
+    expect(resolvePA({ batter, pitcher, rng: () => 0.1 })).toBe('BB');
+    expect(resolvePA({ batter: withAttributes({}), pitcher: withAttributes({}), rng: () => 0.1 })).toBe('SO');
   });
 });
 

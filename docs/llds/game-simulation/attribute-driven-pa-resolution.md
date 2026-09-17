@@ -16,7 +16,7 @@ per-PA outcomes driven by player attributes, baserunners advanced for real, and 
 `PlayerGameStats` derived from the resulting event stream, with team score **emergent**
 (`ΣR`), not an independent draw. In scope:
 
-- The attribute-read seam (`(iv, ev)` tuple, flat-7 placeholder today).
+- The attribute-read seam (`(iv, ev)` tuple persisted alongside the legacy display ratings).
 - `resolvePA` — the coarse Depth-0 resolver producing the 7-outcome set.
 - The baserunner-advancement sub-slot (real `R`/`RBI`).
 - The inning-boundary loop (config-driven `innings`, ties allowed).
@@ -46,11 +46,9 @@ Explicitly **not** in scope, each named to its owner:
   **never consults the registry** (producers don't), so none of that machinery is a
   prerequisite here. Tracked as a follow-up LLD (`docs/llds/events/event-registry-and-grading.md`,
   not yet written) when a consumer actually needs to persist/grade the chain.
-- **Real `(IV, EV)` formulas** replacing the flat-7 placeholder —
-  [#193](https://github.com/wulke/premier-league-baseball/issues/193), gated on
-  [#178](https://github.com/wulke/premier-league-baseball/issues/178)'s go/no-go. The
-  attribute-read seam and `resolvePA`'s weight shifts here are the Depth-0 default
-  shape, not tuned/final coefficients.
+- Additional mechanic slots beyond the PA current-form read — a steal attempt remains a
+  Depth-2 event — are owned by their future depth slices. This LLD adopts the first
+  #178 worked-example consumer in the existing PA slot (#193).
 - **Lineup persistence, authoring, or the frozen-lineup snapshot** —
   [#138](https://github.com/wulke/premier-league-baseball/issues/138)/
   [HLD: Team Roster & Player Visibility](../high-level-design.md#hld-team-roster--player-visibility)'s
@@ -128,6 +126,25 @@ export interface PAResolverInput {
 
 export const resolvePA = (input: PAResolverInput): PAOutcome;
 ```
+
+### PA current-form combination catalog (`F-PARP-001`, #193)
+
+`Player.attributes.ivEv` persists a separate `{ iv, ev }` pair for each flat-seven simulation
+key. The existing scalar remains a display-compatible copy of innate `iv`. Freshly generated
+players begin with `ev: 0`; only the future event/reward writer may add earned effort, so
+generation never fabricates career history. Legacy JSON without `ivEv` reads as
+`{ iv: scalar, ev: 0 }` during the additive rollout.
+
+The PA resolver is a **today-game** consumer, following #178's worked steal/at-bat conclusion
+that earned effort carries more weight than innate potential. For each of its five inputs it uses:
+
+```
+currentPARead(attribute) = 0.3 × attribute.iv + 0.9 × attribute.ev
+```
+
+It then retains the Depth-0 PA weight shifts and one-RNG-draw contract. These coefficients are
+not a universal effective rating: a future scout, salary, or steal consumer must declare its own
+catalog entry.
 
 ```ts
 // src/db/domain/simulation/baserunning.ts (NEW)
@@ -352,7 +369,7 @@ unaffected, per the additive-extension convention already used for `Player.attri
 
 | # | Condition | Handling | Spec |
 |---|---|---|---|
-| e1 | Attribute-read seam bounds | `readAttribute` returns the raw stored scalar (already `[1,100]` from `randomRating()` at generation) with no additional clamping — the seam is a pure pass-through, `ev` is always `0` today. | PARP-001 |
+| e1 | Attribute-read seam bounds | `readAttribute` returns the persisted `ivEv` pair with no pre-combination. New generated players write an innate scalar/IV pair and neutral earned EV; legacy JSON falls back to the scalar IV and `0` EV. | PARP-001 |
 | e2 | `resolvePA` weight shift pushes an outcome's weight negative | Every shifted weight is floored at `0` before the cumulative distribution is normalized to sum `1`, so a large attribute differential can zero out (never invert) an outcome's probability. | PARP-003 |
 | e3 | Walk with runners on base | Force-advance cascades from first: the runner on first is always forced to second; the runner on second is forced to third only if first was occupied; the runner on third is forced home only if bases were loaded. An unforced runner holds. | PARP-004 |
 | e4 | Extra-base hit / HR with runners on | 1B/2B/3B advance every existing runner exactly N bases (1/2/3); HR clears the bases and scores the batter too — `advanceRunners` never leaves an occupied base behind a hit that should have cleared it. | PARP-005, PARP-006 |
@@ -366,6 +383,7 @@ unaffected, per the additive-extension convention already used for `Player.attri
 | e12 | Determinism / golden master | Exactly one `rng()` draw is consumed per plate appearance (`resolvePA` only); `advanceRunners` and `projectPlayerGameStats` are both pure functions of already-produced values with no further randomness — so a pinned `seed` reproduces an identical `eventChain` and `playerGameStats` projection across runs and machines, the same guarantee `SIM-017`/`SIM-018` give `RandomSimulationEngine`. | PARP-016, PARP-017 |
 | e13 | `persistPlayerGameStats` called twice for the same `(playerId, gameId)` | Plain `bulkCreate`, no upsert — the existing `PlayerGameStats` unique index throws on the second call. Matches the box-score distributor's "surface duplicate writes" posture (see [HLD: Per-Player Game Event Writer](../high-level-design.md#hld-per-player-game-event-writer-box-score-distributor)); this milestone introduces no new duplicate-write guard. | PARP-018 |
 | e14 | `outsRecorded` vs the legacy `IP` column on the same row | This projector writes `outsRecorded` only; it never sets `IP` (stays at its column default). A row written by the *existing* fabrication writer (`writeForCompletedGame`) sets `IP` and leaves `outsRecorded` at its default `0` — the two writers never populate the same game's rows today (this engine isn't wired into `GameFactory` yet), so there is no row with a meaningless mix of both. | — |
+| e15 | Equal-IV players have distinct earned effort | `F-PARP-001` produces distinct PA reads because its `0.9 × EV` term is nonzero; the resolver must not collapse both players back to the display scalar. | PARP-019 |
 
 ## Traceability
 
@@ -374,7 +392,7 @@ unaffected, per the additive-extension convention already used for `Player.attri
 | HLD | [HLD: Simulation Engine Strategy Seam](../high-level-design.md#hld-simulation-engine-strategy-seam), [HLD: Event, Grading & Reward Architecture](../high-level-design-event-grading-reward.md) |
 | **This LLD** | `docs/llds/game-simulation/attribute-driven-pa-resolution.md` |
 | Sibling LLDs | `docs/llds/game-simulation/game-simulation.md` (the seam this plugs into); `docs/llds/events/event-registry-and-grading.md` (TO BE PRODUCED — registry/grading/persistence, out of scope here) |
-| EARS | `docs/specs/game-simulation/attribute-driven-pa-resolution-specs.md` — `PARP-001`..`PARP-018` |
+| EARS | `docs/specs/game-simulation/attribute-driven-pa-resolution-specs.md` — `PARP-001`..`PARP-019` |
 | Gherkin | `test/bdd/features/attribute-driven-pa-resolution.feature` (domain-level; no API/UI surface changes in this slice) |
 | Code | `src/db/domain/simulation/attribute-engine.ts`, `pa-resolver.ts`, `baserunning.ts`, `attribute-read.ts`, `stat-projection.ts`, `events.ts`; `src/db/domain/events/envelope.ts`; `src/db/domain/simulation/engine.ts` (MODIFIED, additive); `src/db/domain/player-game-stats-writer.ts` (MODIFIED, additive); `src/db/model/player-game-stats.ts` (MODIFIED — `outsRecorded` column); `src/api/models.ts` (MODIFIED — `MatchRules.innings`) |
 | Decision record | [Map: Attribute-driven Simulation Engine (#136)](https://github.com/wulke/premier-league-baseball/issues/136), [#191](https://github.com/wulke/premier-league-baseball/issues/191), [Map: Event, Grading & Reward Architecture (#218)](https://github.com/wulke/premier-league-baseball/issues/218) |
