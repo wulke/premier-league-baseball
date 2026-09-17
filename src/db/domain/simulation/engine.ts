@@ -1,4 +1,8 @@
+import { MatchRules } from '../../../api/models';
 import { RandomSimulationEngine } from './random-engine';
+import { EventEnvelope } from '../events/envelope';
+import { SyntheticLineup } from './synthetic-lineup';
+import { PlayerGameStatsProjection } from './stat-projection';
 
 // @spec SIM-016 SimulationEngine strategy seam — GameFactory delegates score
 // production here (#190). The engine owns *what the score is*, never
@@ -10,12 +14,17 @@ export interface SimulationContext {
   gameId: number;
   homeTeam: number;
   awayTeam: number;
-  // #191/#192 grow this seam: lineups, attribute reads.
+  // @spec PARP-008,PARP-010 — additive, optional: RandomSimulationEngine reads neither.
+  lineups?: { home: SyntheticLineup; away: SyntheticLineup };
+  matchRules?: MatchRules;
 }
 
 export interface SimulationResult {
   homeTeamResult: number;
   awayTeamResult: number;
+  // @spec PARP-007,PARP-011,PARP-012 — additive, optional: RandomSimulationEngine sets neither.
+  eventChain?: EventEnvelope<unknown>[];
+  playerGameStats?: PlayerGameStatsProjection[];
 }
 
 export interface SimulationEngine {
