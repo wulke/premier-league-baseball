@@ -298,15 +298,25 @@ Feature: Team Lineup View UI
     Then the next-game bullpen slots for players 12 and 13 are swapped
 
   @spec:GBULL-007
-  Scenario: A manager swaps next-game SP, bullpen, and bench slots by drag and drop
+  Scenario: A manager swaps next-game SP, bullpen, and bench slots by compatible drag and drop
     Given GameWorld 1 has Team 10 as its managed club
     And GET /api/team/10/lineup/next-game returns a scheduled game lineup
     And GET /api/team/10/roster returns names and ratings for the active lineup
     When the player navigates to "/1/team/10/lineup"
     And the player opens the Bullpen tab
     And the manager drags starting pitcher player 9 onto bullpen player 12
+    And the manager drags bench player 10 onto bench player 11
+    Then the next-game SP, bullpen, and bench slots retain both compatible drag swaps
+
+  @spec:GBULL-007
+  Scenario: A cross-type Bullpen drop does not bypass picker eligibility
+    Given GameWorld 1 has Team 10 as its managed club
+    And GET /api/team/10/lineup/next-game returns a scheduled game lineup
+    And GET /api/team/10/roster returns names and ratings for the active lineup
+    When the player navigates to "/1/team/10/lineup"
+    And the player opens the Bullpen tab
     And the manager drags bullpen player 13 onto bench player 10
-    Then the next-game SP, bullpen, and bench slots retain both drag swaps
+    Then the next-game bullpen and bench slots retain their original assignments
 
   @spec:GBULL-007
   Scenario: A manager combines Bullpen drag and picker edits before saving once
