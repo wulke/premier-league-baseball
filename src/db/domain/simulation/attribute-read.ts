@@ -1,13 +1,12 @@
-import { PlayerAttributes } from '../../../api/models';
+import { PlayerAttributes, PlayerSimulationAttributeKey } from '../../../api/models';
 
 // @spec PARP-001 — never a pre-combined effective value (#179); each caller owns its own
-// combination. Today: flat-7 IV, EV = 0 (#191); real (IV,EV) formulas are #193's job.
-export type PlayerAttributeKey =
-  'contact' | 'power' | 'armStrength' | 'accuracy' | 'reaction' | 'vision' | 'discipline';
+// combination. Legacy scalar-only JSON remains readable as neutral-EV compatibility data.
+export type PlayerAttributeKey = PlayerSimulationAttributeKey;
 
 export interface AttributeRead { iv: number; ev: number; }
 
 export const readAttribute = (
   attributes: PlayerAttributes,
   key: PlayerAttributeKey,
-): AttributeRead => ({ iv: attributes[key], ev: 0 });
+): AttributeRead => attributes.ivEv?.[key] ?? { iv: attributes[key], ev: 0 };

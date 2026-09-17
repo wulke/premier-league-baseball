@@ -1,7 +1,7 @@
 import { resolvePA, PAOutcome } from '../../../src/db/domain';
 import { PlayerAttributes } from '../../../src/api/models';
 
-// @spec PARP-002,PARP-003 (resolvePA — unit level)
+// @spec PARP-002,PARP-003,PARP-019 (resolvePA — unit level)
 // Gherkin pairing: PARP-002 also has test/bdd/features/attribute-driven-pa-resolution.feature.
 // PARP-003 (outcome-weight floor before normalizing) has none — see
 // docs/specs/game-simulation/attribute-driven-pa-resolution-specs.md Traceability.
@@ -34,10 +34,24 @@ describe('resolvePA (PARP-002)', () => {
   });
 });
 
+describe('resolvePA current-form IV/EV combination (PARP-019)', () => {
+  it('lets earned effort change the seed-stable outcome for equal innate ratings', () => {
+    const batter = withAttributes({
+      ivEv: { discipline: { iv: 50, ev: 50 } },
+    });
+    const pitcher = withAttributes({
+      ivEv: { accuracy: { iv: 50, ev: 0 } },
+    });
+
+    expect(resolvePA({ batter, pitcher, rng: () => 0.1 })).toBe('BB');
+    expect(resolvePA({ batter: withAttributes({}), pitcher: withAttributes({}), rng: () => 0.1 })).toBe('SO');
+  });
+});
+
 describe('resolvePA outcome-weight floor (PARP-003)', () => {
   it('floors the BB weight to 0 at an extreme discipline/accuracy differential, so BB is never drawn', () => {
-    const batter = withAttributes({ discipline: 1 });
-    const pitcher = withAttributes({ accuracy: 100 });
+    const batter = withAttributes({ discipline: 1, ivEv: { discipline: { iv: 1, ev: -100 } } });
+    const pitcher = withAttributes({ accuracy: 100, ivEv: { accuracy: { iv: 100, ev: 100 } } });
     for (let step = 0; step <= 100; step += 1) {
       const roll = step / 100;
       const outcome = resolvePA({ batter, pitcher, rng: () => roll });
