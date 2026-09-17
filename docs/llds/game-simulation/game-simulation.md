@@ -183,7 +183,8 @@ BatchSimulateGames = '/api/gameWorld/:gwId/simulate'     // POST → handlers.si
         (comparison is lexicographic on 'YYYY-MM-DD' strings → chronological;
          '<=' therefore permits backfill of a missed/past date.)
 4. `snapshotForGame(gameId)` and `getLineup({ gameId })` materialize/read each side.
-   Load the nine starter Player rows and map persisted attributes to `SyntheticLineup`.
+   Load the nine batting starters plus the starting pitcher (which may be a tenth, DH-era
+   starter) and map persisted attributes to `SyntheticLineup`.
    Resolve match rules from the home team's home League. If either lineup cannot be materialized,
    omit `ctx.lineups` and retain the random baseline.                              # SIM-021/SIM-022
 5. engine = resolveSimulationEngine(options?.seed)

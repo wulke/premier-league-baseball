@@ -39,23 +39,23 @@ const loadAuthoredSimulationContext = async (
     const toSynthetic = async (teamId: number, lineup: typeof homeLineup): Promise<SyntheticLineup | undefined> => {
       const starters = lineup.starters.filter((entry) => entry.battingOrder != null);
       if (starters.length !== 9 || starters.some((entry) => !entry.valid)) return undefined;
-      const playerIds = starters.map((entry) => entry.playerId);
+      const playerIds = lineup.starters.map((entry) => entry.playerId);
       const players = await db.models.Player.findAll({ where: { id: { [Op.in]: playerIds }, teamId } })
         .then((rows: any[]) => rows.map(({ dataValues }) => dataValues));
-      if (players.length !== 9) return undefined;
+      if (players.length !== new Set(playerIds).size) return undefined;
       const playerById = new Map(players.map((player: any) => [player.id, player]));
+      const startingPitcher = lineup.starters.find((entry) => entry.playerId === lineup.startingPitcherId)!;
+      const toEntry = (entry: typeof starters[number]) => ({
+        playerId: entry.playerId,
+        battingOrder: entry.battingOrder!,
+        fieldingPosition: entry.fieldingPosition,
+        attributes: playerById.get(entry.playerId)!.attributes,
+      });
       return {
         teamId,
         startingPitcherId: lineup.startingPitcherId!,
-        battingOrder: starters.map((entry) => {
-          const player = playerById.get(entry.playerId)!;
-          return {
-            playerId: entry.playerId,
-            battingOrder: entry.battingOrder!,
-            fieldingPosition: entry.fieldingPosition,
-            attributes: player.attributes,
-          };
-        }),
+        battingOrder: starters.map(toEntry),
+        ...(startingPitcher.battingOrder == null ? { startingPitcher: toEntry(startingPitcher) } : {}),
       };
     };
 

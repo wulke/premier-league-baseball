@@ -22,7 +22,8 @@ const validateLineup = (lineup: SyntheticLineup): void => {
   if (!orderValues.every((order, index) => order === index + 1)) {
     throw new Error(`SyntheticLineup for team ${lineup.teamId} must have battingOrder values 1..9`);
   }
-  if (!lineup.battingOrder.some((entry) => entry.playerId === lineup.startingPitcherId)) {
+  if (!lineup.battingOrder.some((entry) => entry.playerId === lineup.startingPitcherId)
+    && lineup.startingPitcher?.playerId !== lineup.startingPitcherId) {
     throw new Error(`SyntheticLineup for team ${lineup.teamId} has no resolvable starting pitcher`);
   }
 };
@@ -34,7 +35,7 @@ const battingOrderOf = (lineup: SyntheticLineup): SyntheticLineupEntry[] => (
 );
 
 const pitcherEntry = (lineup: SyntheticLineup): SyntheticLineupEntry => (
-  lineup.battingOrder.find((entry) => entry.playerId === lineup.startingPitcherId)!
+  lineup.startingPitcher ?? lineup.battingOrder.find((entry) => entry.playerId === lineup.startingPitcherId)!
 );
 
 // @spec PARP-008,PARP-009,PARP-010,PARP-011,PARP-016,PARP-017

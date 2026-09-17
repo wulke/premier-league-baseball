@@ -13,4 +13,6 @@ export interface SyntheticLineup {
   teamId: number;
   battingOrder: SyntheticLineupEntry[];   // exactly 9 entries, unique playerIds (PARP-015)
   startingPitcherId: number;              // derived by the caller, never persisted separately
+  // A DH lineup's pitcher is not in its batting order but still supplies pitching attributes.
+  startingPitcher?: SyntheticLineupEntry;
 }
