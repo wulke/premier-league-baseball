@@ -20,8 +20,8 @@
 
 The domain logic that lets a player advance the season by simulating scheduled games:
 
-- **Single-game simulate** — `GameFactory(id).simulate()`: one guarded game → random score + `COMPLETED`.
-- **Batch simulate** — `GameFactory().simulateBatch(gwId, endDate?)`: every reachable, still-simulatable game in a GameWorld up to a date, in one transaction, with a skip ledger.
+- **Single-game simulate** — `GameFactory(id).simulate()`: one guarded game → attribute-derived score and player stats from frozen authored lineups, or the random baseline fallback + `COMPLETED` for an unconfigured legacy game.
+- **Batch simulate** — `GameFactory().simulateBatch(gwId, endDate?)`: every reachable, still-simulatable game in a GameWorld up to a date, with scores and attribute-derived stats in one transaction and a skip ledger.
 
 Status/date guards, the engine-delegated score production, and the transaction boundary all live
 in the domain layer. Score production itself is a swappable `SimulationEngine` strategy (#190); The API layer (`src/api/handlers.ts`, `src/api/router.ts`) is a thin pass-through and
@@ -72,7 +72,8 @@ export interface SimulationEngine {
 }
 
 export const resolveSimulationEngine = (seed?: number): SimulationEngine;
-// → RandomSimulationEngine today; the attribute-driven engine (#191) is the second impl
+// → AttributeDrivenSimulationEngine when ctx.lineups is present; RandomSimulationEngine is
+// the legacy fallback for unconfigured games.
 ```
 
 ```ts
@@ -181,11 +182,16 @@ BatchSimulateGames = '/api/gameWorld/:gwId/simulate'     // POST → handlers.si
             → throw DomainError('…scheduled for a future date', 422)              # SIM-005
         (comparison is lexicographic on 'YYYY-MM-DD' strings → chronological;
          '<=' therefore permits backfill of a missed/past date.)
-4. engine = resolveSimulationEngine(options?.seed)                                     # SIM-016
-   { homeTeamResult, awayTeamResult } = engine.simulateGame(
-       { gameId: id, homeTeam, awayTeam })       # homeTeam/awayTeam from the loaded row; [0,9] (e8)
-5. Game.update({ homeTeamResult, awayTeamResult, status: 'COMPLETED' }, { where: { id } })
-6. return (await Game.findByPk(id)).dataValues                                   // status now COMPLETED  # SIM-001
+4. `snapshotForGame(gameId)` and `getLineup({ gameId })` materialize/read each side.
+   Load the nine starter Player rows and map persisted attributes to `SyntheticLineup`.
+   Resolve match rules from the home team's home League. If either lineup cannot be materialized,
+   omit `ctx.lineups` and retain the random baseline.                              # SIM-021/SIM-022
+5. engine = resolveSimulationEngine(options?.seed)
+   result = engine.simulateGame({ gameId, homeTeam, awayTeam, lineups, matchRules }) # SIM-016
+6. Game.update({ result scores, status: 'COMPLETED' }, { where: { id } })
+   Persist `result.playerGameStats` directly when present; otherwise invoke the legacy
+   score-attribution writer.                                                       # SIM-021/SIM-022
+7. return (await Game.findByPk(id)).dataValues                                   // status now COMPLETED  # SIM-001
 ```
 
 No transaction wraps the single-row update (a single `UPDATE` is atomic by itself).
@@ -235,8 +241,9 @@ carry a time component) down to `'YYYY-MM-DD'` so it compares cleanly against th
 8. return { simulated, skipped }
 ```
 
-Only the `Game.update` writes run inside the transaction; the preceding reads do not. On rollback no
-`simulated` row is persisted, so the batch is all-or-nothing with respect to writes.
+The `Game.update` and attribute-derived `PlayerGameStats` writes run inside the transaction; the
+preceding reads do not. On rollback neither result nor stat row is persisted, so the batch is
+all-or-nothing with respect to authored live-simulation writes.
 
 ### `simulateToday(gwId)` — player-facing daily progression
 
@@ -282,7 +289,9 @@ Each row ties a condition to its handling and the EARS id that pins it.
 | e8 | Randomness range | Both results are integers in `[0, 9]`. Scores are unbounded above only by the literal `* 10`. Any change to the range is a contract change for downstream display/standings code. | SIM-001/011 |
 | e9 | New `status` enum value added later | The single-game guards are **explicit** equality checks (`=== 'COMPLETED'`, `=== 'IN_PROGRESS'`), not `!== 'SCHEDULED'`. A hypothetical fourth status would fall through unguarded. Today the `ENUM` has only three values, so `SCHEDULED` is the sole pass case — but re-express as `!== 'SCHEDULED'` if the enum grows. | SIM-003/004 |
 | e10 | Batch concurrency | A single transaction serializes the batch's own writes. There is no row/optimistic lock guarding a concurrent single-game `simulate()` of the same id racing a batch — last writer wins on `status`/results. Acceptable for the current single-player simulation model. | — |
-| e11 | DB error mid-batch | `catch` rolls the transaction back and rethrows; nothing in `simulated` persists. The API layer surfaces this as a `500`. The BDD exercises this via a forced-error step (`forceDbError`), not a domain-level injection. | SIM-015 |
+| e11 | DB error mid-batch | `catch` rolls the transaction back and rethrows; no Game score/status update or attribute-derived `PlayerGameStats` insert persists. The API layer surfaces this as a `500`. | SIM-015 |
+| e21 | Valid authored lineup | `snapshotForGame` creates an idempotent point-in-time lineup, then the nine valid starters and their persisted attributes become the pure engine context. Its event projection, not a fabricated allocation, writes the player rows. | SIM-021 |
+| e22 | Missing, stale, or incomplete authored lineup | Context materialization returns no lineups; the resolver selects `RandomSimulationEngine` and the existing fabrication writer, preserving legacy/unconfigured-game behavior. | SIM-022 |
 | e12 | Empty GameWorld (no leagues/divisions/seasons/games) | Each reachability layer early-returns `{ simulated: [], skipped: [] }` rather than throwing — an empty world is a successful no-op, not an error. | SIM-011 |
 | e13 | Same-millisecond `Date.now()` seeds within a batch | Production base seed is drawn per `simulateGame` call, so consecutive games in one loop share a millisecond. `deriveGameSeed(base, gameId)` mixes in `gameId` — unique per game ⇒ distinct RNG streams, no identical-score collisions. | SIM-016 |
 | e14 | Batch determinism vs loop order / skipped games | Each game's outcome is `f(base, gameId)` only — no shared stream. Reordering the loop, skipping games (already-completed / in-progress / future), or adding games to the world leaves every other game's pinned-seed score unchanged. Golden-master batch tests are stable under reachable-set drift. | SIM-017 |
@@ -301,7 +310,7 @@ Each row ties a condition to its handling and the EARS id that pins it.
 |---|---|
 | HLD | [`docs/high-level-design.md`](../high-level-design.md) |
 | **This LLD** | `docs/llds/game-simulation/game-simulation.md` |
-| EARS | `docs/specs/game-simulation/simulate-game-specs.md` — `SIM-001`..`SIM-020` |
+| EARS | `docs/specs/game-simulation/simulate-game-specs.md` — `SIM-001`..`SIM-022` |
 | Gherkin | `test/bdd/features/simulate-game.feature` (22 scenarios, one `@spec:SIM-###` tag per scenario; #190 adds engine-seam scenarios) |
 | Step defs | `test/bdd/steps/simulate-game.steps.test.ts` |
 | Code | `src/db/domain/game.ts` (`GameFactory.simulate`, `simulateBatch`, `simulateToday`), `src/db/domain/simulation/` (`engine.ts`, `seed.ts`, `random-engine.ts` — #190), `src/db/domain/game-world.ts` (`currentDate`), `src/db/domain/errors.ts` (`DomainError`), `src/api/handlers.ts` (`simulateGame`, `simulateBatchGames`) |

@@ -1,10 +1,10 @@
 # Specs: Simulate Game
 
-Backend requirements for single-game and batch game simulation (`GameFactory(id).simulate()` and `GameFactory().simulateBatch(gwId, endDate)` in `src/db/domain/game.ts`, exposed via `src/api/handlers.ts`). Score production is delegated to the swappable `SimulationEngine` strategy (`src/db/domain/simulation/`, #190) — the engine owns *what the score is*, never *whether/how it is written.
+Backend requirements for single-game and batch game simulation (`GameFactory(id).simulate()` and `GameFactory().simulateBatch(gwId, endDate)` in `src/db/domain/game.ts`, exposed via `src/api/handlers.ts`). Score production is delegated to the swappable `SimulationEngine` strategy (`src/db/domain/simulation/`, #190): valid authored per-game lineups select the attribute-driven engine; the random engine remains the legacy fallback for games without a usable lineup.
 
 | ID | Requirement | Status |
 |---|---|---|
-| SIM-001 | WHEN the player simulates a SCHEDULED game by id IF scheduledDate ≤ GameWorld currentDate THE system SHALL set status COMPLETED and populate both homeTeamResult and awayTeamResult with random integers | [x] |
+| SIM-001 | WHEN the player simulates a SCHEDULED game by id IF scheduledDate ≤ GameWorld currentDate THE system SHALL set status COMPLETED and populate both homeTeamResult and awayTeamResult from the selected SimulationEngine | [x] |
 | SIM-002 | WHEN the player simulates a game by id IF no game with that id exists THE system SHALL reject with a 404 error indicating the game was not found | [x] |
 | SIM-003 | WHEN the player simulates a game by id IF the game's status is COMPLETED THE system SHALL reject with a 422 error indicating the game has already been completed, leaving its result unchanged | [x] |
 | SIM-004 | WHEN the player simulates a game by id IF the game's status is IN_PROGRESS THE system SHALL reject with a 422 error indicating the game cannot be simulated in its current status | [x] |
@@ -14,16 +14,18 @@ Backend requirements for single-game and batch game simulation (`GameFactory(id)
 | SIM-008 | WHEN the player triggers batch simulation for a GameWorld IF no GameWorld with that id exists THE system SHALL reject with a 404 error indicating the GameWorld was not found | [x] |
 | SIM-009 | WHEN the player triggers batch simulation for a GameWorld IF the GameWorld's currentDate is null AND no endDate was provided THE system SHALL reject with a 422 error indicating the GameWorld has no current date configured | [x] |
 | SIM-010 | WHEN the player triggers batch simulation for a GameWorld with an endDate IF endDate is after the GameWorld's currentDate THE system SHALL reject with a 422 error indicating the endDate exceeds the GameWorld's current date | [x] |
-| SIM-011 | WHEN the player triggers batch simulation for a GameWorld THE system SHALL simulate every reachable game whose status is SCHEDULED and whose scheduledDate is on or before the effective end date (or which has no scheduledDate), setting status COMPLETED and populating random homeTeamResult/awayTeamResult, and return all of them in the response's simulated list | [x] |
+| SIM-011 | WHEN the player triggers batch simulation for a GameWorld THE system SHALL simulate every reachable game whose status is SCHEDULED and whose scheduledDate is on or before the effective end date (or which has no scheduledDate), setting status COMPLETED and populating SimulationEngine-derived results, and return all of them in the response's simulated list | [x] |
 | SIM-012 | WHEN the player triggers batch simulation IF a reachable game's status is already COMPLETED THE system SHALL skip it and return it in the response's skipped list with reason "already completed" | [x] |
 | SIM-013 | WHEN the player triggers batch simulation IF a reachable game's status is IN_PROGRESS THE system SHALL skip it and return it in the response's skipped list with reason "game in progress" | [x] |
 | SIM-014 | WHEN the player triggers batch simulation IF a reachable game's scheduledDate is after the effective end date THE system SHALL skip it and return it in the response's skipped list with reason "future date" | [x] |
-| SIM-015 | WHEN a database error occurs while writing batch simulation results THE system SHALL roll back the transaction, leaving all games in the batch unchanged with no result values written | [x] |
+| SIM-015 | WHEN a database error occurs while writing batch simulation results or attribute-derived PlayerGameStats THE system SHALL roll back the transaction, leaving all games in the batch unchanged with no result values or PlayerGameStats rows written | [x] → #192 |
 | SIM-016 | WHEN the system simulates a game, singly or in batch THE system SHALL produce that game's homeTeamResult and awayTeamResult by delegating to the configured SimulationEngine strategy, with guards, the transaction, and completion hooks remaining in GameFactory | [x] → #190 |
 | SIM-017 | WHEN a game or batch is simulated with a provided seed THE system SHALL derive each game's RNG stream deterministically from the seed and the gameId, so the same seed reproduces the same scores across runs and machines, independent of loop order and skipped games | [x] → #190 |
 | SIM-018 | WHEN a game is simulated without a provided seed THE system SHALL draw a fresh seed per game (current time mixed with gameId) so outcomes vary between simulations and no two games in a batch share a seed | [x] → #190 |
 | SIM-019 | WHEN the player triggers Simulate Today for a GameWorld THE system SHALL repeatedly simulate reachable SCHEDULED games on or before currentDate, including same-day games created by completion hooks, then advance currentDate to the earliest later scheduled date among remaining reachable non-COMPLETED games, return that date as nextDate, and leave currentDate unchanged with nextDate null when no later scheduled game exists | [x] → #293 |
 | SIM-020 | WHEN the player triggers Simulate Today IF a reachable non-COMPLETED non-SCHEDULED game scheduled on or before currentDate remains after batch simulation THE system SHALL leave currentDate unchanged and return nextDate null with progressBlocked true | [x] → #293 |
+| SIM-021 | WHEN the system simulates a game whose teams have valid authored lineups THE system SHALL snapshot those lineups for the game, load their persisted player attributes, and use AttributeDrivenSimulationEngine's projected scores and PlayerGameStats rows | [x] → #192 |
+| SIM-022 | WHEN the system simulates a game without usable authored lineups THE system SHALL retain RandomSimulationEngine and the legacy score-attribution writer as the fallback baseline | [x] → #192 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 

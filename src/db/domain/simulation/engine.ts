@@ -1,5 +1,6 @@
 import { MatchRules } from '../../../api/models';
 import { RandomSimulationEngine } from './random-engine';
+import { AttributeDrivenSimulationEngine } from './attribute-engine';
 import { EventEnvelope } from '../events/envelope';
 import { SyntheticLineup } from './synthetic-lineup';
 import { PlayerGameStatsProjection } from './stat-projection';
@@ -37,5 +38,12 @@ export interface SimulateOptions {
   seed?: number;
 }
 
-export const resolveSimulationEngine = (seed?: number): SimulationEngine =>
-  new RandomSimulationEngine(seed);
+// @spec SIM-016,SIM-021,SIM-022 — authored lineups select the production attribute engine;
+// the score-only random engine remains a pure fallback for legacy/unconfigured games.
+export const resolveSimulationEngine = (seed?: number): SimulationEngine => ({
+  simulateGame: (ctx: SimulationContext): SimulationResult => (
+    ctx.lineups
+      ? new AttributeDrivenSimulationEngine(seed).simulateGame(ctx)
+      : new RandomSimulationEngine(seed).simulateGame(ctx)
+  ),
+});
