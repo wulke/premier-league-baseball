@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import React from 'react';
 
-// @spec LINEUI-015,BLUX-001,BLUX-002,BLUX-003,GBULL-006 — one drag-source module for both the active-lineup
+// @spec LINEUI-015,BLUX-001,BLUX-002,BLUX-003,GBULL-006,GBULL-007 — one drag-source module for both the active-lineup
 // table and the next-game bullpen panel; retains the dragged index because some
 // browsers drop custom MIME data on drop.
 export const useLineupDragSource = (mimeType: string) => {
@@ -11,7 +11,7 @@ export const useLineupDragSource = (mimeType: string) => {
   // @spec BLUX-003 — all terminal drag paths discard purely presentational state.
   const clearDragState = () => { draggedIndex.current = null; setSourceIndex(null); setTargetIndex(null); };
 
-  // @spec LINEUI-015,BLUX-001,BLUX-002,BLUX-003,GBULL-006 — valid slots share payload, swap, and feedback lifecycle.
+  // @spec LINEUI-015,BLUX-001,BLUX-002,BLUX-003,GBULL-006,GBULL-007 — valid slots share payload, swap, and feedback lifecycle.
   const dragProps = (index: number, editable: boolean, onSwap: (sourceIndex: number, targetIndex: number) => void) => ({
     draggable: editable || undefined,
     onDragStart: editable ? (event: React.DragEvent<HTMLDivElement>) => {
