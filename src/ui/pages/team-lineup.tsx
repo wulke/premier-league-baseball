@@ -162,12 +162,14 @@ const TeamLineupView = () => {
     target.playerId = playerId;
     return next;
   });
-  // @spec GBULL-007 — every displayed fixed snapshot slot uses the active-lineup drag swap;
-  // role-specific picker eligibility remains separate from this interaction layer.
+  // @spec GBULL-007 — drag/drop keeps the picker-equivalent pitcher-versus-bench boundary;
+  // compatible fixed slots exchange occupants in the one snapshot draft.
   const swapGameSlots = (sourceIndex: number, targetIndex: number) => setGameDraft((current) => {
     const source = current[sourceIndex];
     const target = current[targetIndex];
-    if (!source || !target || sourceIndex === targetIndex) return current;
+    const isPitcherSlot = (entry: ActiveLineupEntry) => entry.role === 'BULLPEN' || (entry.role === 'STARTER' && entry.fieldingPosition === 'Pitcher');
+    const sameSlotType = source && target && (isPitcherSlot(source) === isPitcherSlot(target)) && ((source.role === 'BENCH') === (target.role === 'BENCH'));
+    if (!source || !target || sourceIndex === targetIndex || !sameSlotType) return current;
     const next = current.map((entry) => ({ ...entry }));
     [next[sourceIndex].playerId, next[targetIndex].playerId] = [next[targetIndex].playerId, next[sourceIndex].playerId];
     return next;
