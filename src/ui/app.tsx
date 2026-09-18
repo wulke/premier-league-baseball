@@ -2,6 +2,9 @@
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import routes from './routes';
+import { globalStyles } from './styles/stitches.config';
+
+globalStyles();
 
 const router = createBrowserRouter(routes);
 

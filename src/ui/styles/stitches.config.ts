@@ -57,7 +57,27 @@ const { styled, css, globalCss, keyframes, getCssText, theme, createTheme, confi
     shadows: {
       modal: '0 18px 40px rgba(0, 0, 0, 0.18)',
     },
+    fonts: {
+      heading: 'var(--font-heading, inherit)',
+      body: 'var(--font-body, inherit)',
+    },
   },
 });
 
-export { styled, css, globalCss, keyframes, getCssText, theme, createTheme, config };
+const globalStyles = globalCss({
+  ':root': {
+    '--font-heading': "'Rajdhani', sans-serif",
+    '--font-body': "'Inter', sans-serif",
+  },
+  body: {
+    fontFamily: 'var(--font-body)',
+  },
+  'button, input, select, textarea': {
+    fontFamily: 'inherit',
+  },
+  'h1, h2, h3, h4': {
+    fontFamily: 'var(--font-heading)',
+  },
+});
+
+export { styled, css, globalCss, globalStyles, keyframes, getCssText, theme, createTheme, config };
