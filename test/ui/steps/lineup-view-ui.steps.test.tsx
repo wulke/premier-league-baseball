@@ -1,4 +1,4 @@
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014,LINEUI-015,BLUX-001,BLUX-002,BLUX-003,BLUX-004,BLUX-005,GBULL-006
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014,LINEUI-015,BLUX-001,BLUX-002,BLUX-003,BLUX-004,BLUX-005,GBULL-006,GBULL-007
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -109,7 +109,7 @@ const slot = (entryIndex: number) => document.querySelector<HTMLElement>(`[data-
 // @spec GBULL-006 — game snapshot slots use their stable entry index for drag/drop swaps.
 const gameSlot = (entryIndex: number) => document.querySelector<HTMLElement>(`[data-game-slot-index="${entryIndex}"]`)!;
 
-// @spec GBULL-006 — JSDOM drag payload for next-game bullpen slot swaps.
+// @spec GBULL-006,GBULL-007 — JSDOM drag payload for next-game bullpen slot swaps.
 const dragBullpenPlayerOnto = (sourcePlayerId: number, targetPlayerId: number) => {
   const values = new Map<string, string>();
   const dataTransfer = { setData: (type: string, value: string) => values.set(type, value), getData: (type: string) => values.get(type) ?? '' };
@@ -521,5 +521,60 @@ defineFeature(feature, (test) => {
     and('the manager drags bullpen player 12 onto bullpen player 13', () => dragBullpenPlayerOnto(12, 13));
     // @spec GBULL-006
     then('the next-game bullpen slots for players 12 and 13 are swapped', () => { expect(within(gameSlot(11)).getByRole('link')).toHaveTextContent('Player 13'); expect(within(gameSlot(12)).getByRole('link')).toHaveTextContent('Player 12'); });
+  });
+
+  test('A manager swaps next-game SP, bullpen, and bench slots by compatible drag and drop', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    given('GET /api/team/10/lineup/next-game returns a scheduled game lineup', () => { nextGameLineup = { game: { id: 40, scheduledDate: '2025-04-05T00:00:00.000Z', status: 'SCHEDULED', opponentName: 'Rivertown' }, lineup: dhOff() }; });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the player opens the Bullpen tab', () => selectTab('Bullpen'));
+    and('the manager drags starting pitcher player 9 onto bullpen player 12', () => dragBullpenPlayerOnto(9, 12));
+    and('the manager drags bench player 10 onto bench player 11', () => dragBullpenPlayerOnto(10, 11));
+    // @spec GBULL-007
+    then('the next-game SP, bullpen, and bench slots retain both compatible drag swaps', () => { expect(within(gameSlot(8)).getByRole('link')).toHaveTextContent('Player 12'); expect(within(gameSlot(9)).getByRole('link')).toHaveTextContent('Player 11'); expect(within(gameSlot(10)).getByRole('link')).toHaveTextContent('Player 10'); expect(within(gameSlot(11)).getByRole('link')).toHaveTextContent('Player 9'); expect(within(gameSlot(12)).getByRole('link')).toHaveTextContent('Player 13'); });
+  });
+
+  test('A cross-type Bullpen drop does not bypass picker eligibility', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    given('GET /api/team/10/lineup/next-game returns a scheduled game lineup', () => { nextGameLineup = { game: { id: 40, scheduledDate: '2025-04-05T00:00:00.000Z', status: 'SCHEDULED', opponentName: 'Rivertown' }, lineup: dhOff() }; });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the player opens the Bullpen tab', () => selectTab('Bullpen'));
+    and('the manager drags bullpen player 13 onto bench player 10', () => dragBullpenPlayerOnto(13, 10));
+    // @spec GBULL-007
+    then('the next-game bullpen and bench slots retain their original assignments', () => { expect(within(gameSlot(9)).getByRole('link')).toHaveTextContent('Player 10'); expect(within(gameSlot(12)).getByRole('link')).toHaveTextContent('Player 13'); });
+  });
+
+  test('A manager combines Bullpen drag and picker edits before saving once', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    given('GET /api/team/10/lineup/next-game returns a scheduled game lineup', () => { nextGameLineup = { game: { id: 40, scheduledDate: '2025-04-05T00:00:00.000Z', status: 'SCHEDULED', opponentName: 'Rivertown' }, lineup: dhOff() }; });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the player opens the Bullpen tab', () => selectTab('Bullpen'));
+    and('the manager drags bullpen player 12 onto bullpen player 13', () => dragBullpenPlayerOnto(12, 13));
+    and('the manager picks player 13 for the starting pitcher slot', () => fireEvent.change(screen.getByRole('combobox', { name: /starting pitcher/i }), { target: { value: '13' } }));
+    and('the manager saves the game lineup', () => fireEvent.click(screen.getByRole('button', { name: 'Save game lineup' })));
+    // @spec GBULL-007
+    then('the one saved game lineup includes both the drag and picker swaps', async () => await waitFor(() => {
+      const call = (global.fetch as jest.Mock).mock.calls.find(([url, options]) => url === '/api/team/10/lineup/40' && options?.method === 'PATCH');
+      expect(call).toBeDefined();
+      const entries = JSON.parse(call![1].body).entries;
+      expect(entries[8].playerId).toBe(13); expect(entries[11].playerId).toBe(9); expect(entries[12].playerId).toBe(12);
+    }));
+  });
+
+  test('A locked next game has no Bullpen drag or edit affordance', ({ given, and, when, then }) => {
+    given('GameWorld 1 exists', () => {}); and('Team 10 "Manchester Mariners" belongs to GameWorld 1', () => {});
+    given('GameWorld 1 has Team 10 as its managed club', () => { managedTeamId = 10; });
+    given('GET /api/team/10/lineup/next-game returns an in-progress game lineup', () => { nextGameLineup = { game: { id: 40, scheduledDate: '2025-04-05T00:00:00.000Z', status: 'IN_PROGRESS', opponentName: 'Rivertown' }, lineup: dhOff() }; });
+    and('GET /api/team/10/roster returns names and ratings for the active lineup', () => { roster = makeRoster(); });
+    when('the player navigates to "/1/team/10/lineup"', () => renderAt('/1/team/10/lineup'));
+    and('the player opens the Bullpen tab', () => selectTab('Bullpen'));
+    // @spec GBULL-007
+    then('next-game lineup rows are not draggable and have no picker or save control', async () => await waitFor(() => { expect(gameSlot(8)).not.toHaveAttribute('draggable', 'true'); expect(screen.queryByRole('combobox', { name: /starting pitcher|bench|bullpen/i })).toBeNull(); expect(screen.queryByRole('button', { name: 'Save game lineup' })).toBeNull(); }));
   });
 });

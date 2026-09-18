@@ -51,7 +51,7 @@ const LineupPlayerLink = ({ playerId, players, gwId }: { playerId: number; playe
 // @spec LINEUI-015 — active-template slots that can exchange occupants through picker or drag.
 const isSwappableSlot = (entry: DraftEntry) => entry.role === 'BENCH' || (entry.role === 'STARTER' && entry.fieldingPosition !== 'Pitcher');
 
-// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014,LINEUI-015
+// @spec LINEUI-001,LINEUI-002,LINEUI-003,LINEUI-004,LINEUI-005,LINEUI-006,LINEUI-007,LINEUI-008,LINEUI-009,LINEUI-010,LINEUI-011,LINEUI-012,LINEUI-013,LINEUI-014,LINEUI-015,GBULL-007
 const TeamLineupView = () => {
   const { gwId, teamId } = useParams();
   const gameWorld = useRouteLoaderData('gwId') as any;
@@ -162,7 +162,8 @@ const TeamLineupView = () => {
     target.playerId = playerId;
     return next;
   });
-  // @spec GBULL-006 — drag/drop preserves the selectors' pitcher-slot versus bench-slot boundary.
+  // @spec GBULL-007 — drag/drop keeps the picker-equivalent pitcher-versus-bench boundary;
+  // compatible fixed slots exchange occupants in the one snapshot draft.
   const swapGameSlots = (sourceIndex: number, targetIndex: number) => setGameDraft((current) => {
     const source = current[sourceIndex];
     const target = current[targetIndex];
@@ -224,7 +225,7 @@ const TeamLineupView = () => {
   </PageContainer>;
 };
 
-// @spec GBULL-006
+// @spec GBULL-006,GBULL-007
 const GameBullpenPanel = ({ game, entries, players, roster, gwId, editable, error, onChange, onSwap, onSave }: { game: NextGameLineup | null; entries: ActiveLineupEntry[]; players: Map<number, RosterPlayer>; roster: RosterPlayer[]; gwId?: string; editable: boolean; error: string | null; onChange: (index: number, playerId: number) => void; onSwap: (sourceIndex: number, targetIndex: number) => void; onSave: () => void }) => {
   const gameLineupDrag = useLineupDragSource('application/x-game-lineup-entry-index');
   if (!game) return <Card as="section" data-testid="bullpen-empty" style={panelStyle}>No next scheduled game.</Card>;
