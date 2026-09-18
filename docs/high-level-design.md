@@ -35,6 +35,31 @@ Player action (row click or header batch click)
 
 ---
 
+# HLD: Durable Game Event Chain
+
+> Parent: [Map: Per-Game Visualization (Box Score, Play-by-Play & Pre-Game Prep)](https://github.com/wulke/premier-league-baseball/issues/350) · Ticket: [#351](https://github.com/wulke/premier-league-baseball/issues/351). The envelope contract was settled by [#220](https://github.com/wulke/premier-league-baseball/issues/220), [#221](https://github.com/wulke/premier-league-baseball/issues/221), and [#224](https://github.com/wulke/premier-league-baseball/issues/224).
+
+## Goal
+
+Retain an attribute-driven game's deterministic event chain as durable, replayable game data so
+play-by-play readers have an authoritative source without making the simulation engine impure.
+
+## Strategy
+
+- **Options**: discard the chain after stat projection, or persist the engine-returned envelopes at the existing `GameFactory` transaction seam.
+- **Decision**: persist the returned chain in a dedicated `GameEvents` table, alongside the existing in-transaction `PlayerGameStats` write. The pure engine continues to construct envelopes in memory; `GameFactory` remains the sole completion transaction owner.
+
+## Architecture
+
+`AttributeDrivenSimulationEngine` returns `SimulationResult.eventChain`; `GameFactory.simulate()`
+and `simulateBatch()` pass that array to the event-chain writer whenever it exists. Each row stores
+the settled envelope payload (`type`, `gameId`, monotonic `sequence`, nullable
+`causedByEventId`, and JSON `context`) and belongs to its `Game`. The table deliberately has no
+timestamp columns or generic entity reference. In batch simulation, the game score, projected
+player stats, and event rows commit or roll back together.
+
+---
+
 # HLD: Full Season Simulation (League + League Cup)
 
 > Backed by [Map: Simulate a full season (League + League Cup) MVP](https://github.com/wulke/premier-league-baseball/issues/32) — a wayfinder planning map whose eight resolved tickets (#33, #34, #35, #36, #39, #40, #41, #43) are the source decisions for this HLD. Sequenced after [HLD: Simulate Game](#hld-simulate-game) — this assumes single-competition simulate (single + batch) and its UI are already on `main`.

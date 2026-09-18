@@ -9,6 +9,7 @@ import { resolveSimulationEngine, SimulateOptions } from './simulation/engine';
 import { NotificationFactory } from './notifications/notification';
 import { GAME_RESULT, GameResultPayload } from './notifications/game-result-notification';
 import { persistPlayerGameStats, PlayerGameStatsWriter } from './player-game-stats-writer';
+import { persistGameEvents } from './event-chain-writer';
 import { TeamFactory } from './team';
 import { resolveMatchRules } from './lineup';
 import { SyntheticLineup } from './simulation/synthetic-lineup';
@@ -135,7 +136,7 @@ const GameFactory = (id?: number) => {
     // result(): REMOVED (#190, LLD e4) — the unguarded blind-update path is deleted;
     // Game writes are reachable only through the guarded simulate paths below.
 
-    // @spec SIM-001,SIM-002,SIM-003,SIM-004,SIM-005,SIM-006,SIM-007,SIM-016,SIM-021,SIM-022
+    // @spec SIM-001,SIM-002,SIM-003,SIM-004,SIM-005,SIM-006,SIM-007,SIM-016,SIM-021,SIM-022,ECP-002
     simulate: async (options?: SimulateOptions) => {
       const game = await db.models.Game.findByPk(id);
       if (!game) throw new DomainError('the game was not found', 404);
@@ -181,19 +182,20 @@ const GameFactory = (id?: number) => {
         .simulateGame({ gameId: id!, homeTeam, awayTeam, ...authoredContext });
       const { homeTeamResult, awayTeamResult } = simulationResult;
 
-      const [affectedCount] = await db.models.Game.update(
-        { homeTeamResult, awayTeamResult, status: 'COMPLETED' },
-        { where: { id, status: { [Op.ne]: 'COMPLETED' } } }
-      );
-      if (affectedCount === 0) {
-        throw new DomainError('the game has already been completed', 422);
-      }
-
-      const updated = await db.models.Game.findByPk(id);
-      // @spec SIM-021,SIM-022 — event-derived stats are the production path; the legacy
-      // writer remains only for pre-lineup games that selected the random fallback.
-      if (simulationResult.playerGameStats) await persistPlayerGameStats(simulationResult.playerGameStats);
-      else await PlayerGameStatsWriter().writeForCompletedGame({
+      // @spec ECP-002 — score, event-derived stats, and the durable chain share one completion
+      // transaction. Legacy random attribution remains after commit because it has no chain.
+      const updated = await db.transaction(async (transaction) => {
+        const [affectedCount] = await db.models.Game.update(
+          { homeTeamResult, awayTeamResult, status: 'COMPLETED' },
+          { where: { id, status: { [Op.ne]: 'COMPLETED' } }, transaction }
+        );
+        if (affectedCount === 0) throw new DomainError('the game has already been completed', 422);
+        const completedGame = await db.models.Game.findByPk(id, { transaction });
+        if (simulationResult.playerGameStats) await persistPlayerGameStats(simulationResult.playerGameStats, transaction);
+        if (simulationResult.eventChain) await persistGameEvents(simulationResult.eventChain, transaction);
+        return completedGame;
+      });
+      if (!simulationResult.playerGameStats) await PlayerGameStatsWriter().writeForCompletedGame({
         gameId: id!, homeTeamId: homeTeam, awayTeamId: awayTeam, result: { homeTeamResult, awayTeamResult },
       });
       // @spec CUP-001,LCH-002,MSS-006,MSS-007 round-robin / knockout / stage completion hooks (single-game path)
@@ -227,7 +229,7 @@ const GameFactory = (id?: number) => {
       return updated!.dataValues;
     },
 
-    // @spec SCL-013,SIM-011,SIM-012,SIM-013,SIM-014,SIM-015,SIM-016,SIM-021,SIM-022
+    // @spec SCL-013,SIM-011,SIM-012,SIM-013,SIM-014,SIM-015,SIM-016,SIM-021,SIM-022,ECP-002,ECP-003
     simulateBatch: async (gwId: number, endDate?: string, options?: SimulateOptions) => {
       const gameWorld = await db.models.GameWorld.findByPk(gwId);
       if (!gameWorld) throw new DomainError('the GameWorld was not found', 404);
@@ -326,11 +328,12 @@ const GameFactory = (id?: number) => {
             { where: { id: game.dataValues.id }, transaction: t }
           );
 
-          // @spec SIM-015,SIM-021 — score and event-projected player stats share the
-          // batch transaction, so a stat insert error rolls back every completed game.
+          // @spec SIM-015,SIM-021,ECP-002,ECP-003 — score, event-projected player stats, and
+          // the durable chain share the batch transaction, so any write error rolls back all.
           if (simulationResult.playerGameStats) {
             await persistPlayerGameStats(simulationResult.playerGameStats, t);
           }
+          if (simulationResult.eventChain) await persistGameEvents(simulationResult.eventChain, t);
 
           simulated.push({ ...game.dataValues, homeTeamResult, awayTeamResult, status: 'COMPLETED', playerGameStats: simulationResult.playerGameStats });
         }

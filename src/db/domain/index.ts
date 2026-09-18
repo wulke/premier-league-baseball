@@ -10,6 +10,7 @@ export * from './notifications/notification';
 export * from './player';
 export * from './player-game-stats-writer';
 export * from './events/envelope';
+export * from './event-chain-writer';
 export * from './simulation/attribute-engine';
 export * from './simulation/attribute-read';
 export * from './simulation/baserunning';
