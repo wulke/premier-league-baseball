@@ -184,22 +184,17 @@ const GameFactory = (id?: number) => {
 
       // @spec ECP-002 — score, event-derived stats, and the durable chain share one completion
       // transaction. Legacy random attribution remains after commit because it has no chain.
-      const transaction = await db.transaction();
-      let updated: any;
-      try {
+      const updated = await db.transaction(async (transaction) => {
         const [affectedCount] = await db.models.Game.update(
           { homeTeamResult, awayTeamResult, status: 'COMPLETED' },
           { where: { id, status: { [Op.ne]: 'COMPLETED' } }, transaction }
         );
         if (affectedCount === 0) throw new DomainError('the game has already been completed', 422);
-        updated = await db.models.Game.findByPk(id, { transaction });
+        const completedGame = await db.models.Game.findByPk(id, { transaction });
         if (simulationResult.playerGameStats) await persistPlayerGameStats(simulationResult.playerGameStats, transaction);
         if (simulationResult.eventChain) await persistGameEvents(simulationResult.eventChain, transaction);
-        await transaction.commit();
-      } catch (error) {
-        await transaction.rollback();
-        throw error;
-      }
+        return completedGame;
+      });
       if (!simulationResult.playerGameStats) await PlayerGameStatsWriter().writeForCompletedGame({
         gameId: id!, homeTeamId: homeTeam, awayTeamId: awayTeam, result: { homeTeamResult, awayTeamResult },
       });
