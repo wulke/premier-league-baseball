@@ -4,7 +4,7 @@ import { useParams, useNavigate, useRevalidator, useRouteLoaderData } from 'reac
 import { getChampionDivisionId, getChampionTeamName } from '../champion';
 import { TeamSeasonGame } from '../../api/models';
 import { NotificationStream } from './notification-stream';
-import { Badge, Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
+import { Badge, Button, ErrorText, PageContainer, SectionLabel } from '../components/ui';
 import { CalendarStrip, DayEntry, addDays } from '../components/calendar-strip';
 import { ActionItemsPanel } from '../components/action-items-panel';
 import { BatchSimulateControl } from '../components/batch-simulate-control';
@@ -17,7 +17,7 @@ type LeagueSeasonSummary = {
   championName: string | null;
 };
 
-// @spec LIFE-001,SHB-001,SHB-002,SHB-003,ACTUI-001,ACTUI-005
+// @spec LIFE-001,SHB-001,SHB-002,SHB-003,ACTUI-001,ACTUI-005,GWHOME-001,GWHOME-002,GWHOME-003
 const GameWorld = () => {
   const { gwId } = useParams();
   // @spec RLDRUI-001,RLDRUI-003
@@ -211,9 +211,6 @@ const GameWorld = () => {
         )}
       </div>
 
-      {/* @spec NOTIFUI-007 */}
-      <NotificationStream gwId={Number(gwId)} managedTeamId={gw.managedTeamId ?? null} />
-
       {/* @spec CALWUI-001,CALWUI-002,CALWUI-003,CALWUI-004,CALWUI-005,CALWUI-006,CALWUI-007 */}
       {gw.managedTeamId != null && gw.currentDate != null && (
         <section data-testid="calendar-section" style={{ marginBottom: '40px' }}>
@@ -246,39 +243,11 @@ const GameWorld = () => {
         <ActionItemsPanel items={[]} />
       )}
 
-      {/* Leagues Section */}
-      <section>
-        <SectionLabel style={{ marginBottom: '12px' }}>
-          Leagues
-        </SectionLabel>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {leagues.map((league) => (
-            <Card
-              key={league.id}
-              interactive
-              onClick={() => navigate(`/${gwId}/${league.id}`)}
-              style={{
-                padding: '16px 20px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>
-                  {league.config?.name ?? `League ${league.id}`}
-                </div>
-                {league.config?.type && (
-                  <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '2px' }}>
-                    {league.config.type}
-                  </div>
-                )}
-              </div>
-              <span style={{ color: '#aaa', fontSize: '1rem' }}>→</span>
-            </Card>
-          ))}
-        </div>
+      {/* @spec GWHOME-002,NOTIFUI-007 — parent-page placement only; NotificationStream's
+          fetch, SSE, filtering, and cleanup behavior stay owned by the component. */}
+      <section data-testid="recent-activity-section" style={{ marginBottom: '40px' }}>
+        <SectionLabel style={{ marginBottom: '12px' }}>Recent Activity</SectionLabel>
+        <NotificationStream gwId={Number(gwId)} managedTeamId={gw.managedTeamId ?? null} />
       </section>
     </PageContainer>
   );
