@@ -5,9 +5,9 @@ Frontend requirements for the unclaimed `GameWorld.managedTeamId` state on
 
 | ID | Requirement | Status |
 |---|---|---|
-| UNCLMUI-001 | WHEN the GameWorld home page renders IF `managedTeamId` is null THE system SHALL show one clear claim-a-team prompt in place of the Calendar and Action Items sections | [ ] → #333 |
-| UNCLMUI-002 | WHEN the unclaimed-team prompt renders IF the GameWorld has a competition THE system SHALL link to that competition's existing team list so the player can continue to `team-hub.tsx`'s claim action | [ ] → #333 |
-| UNCLMUI-003 | WHEN `managedTeamId` is non-null THE system SHALL retain the existing Calendar and Action Items layout and SHALL NOT render the unclaimed-team prompt | [ ] → #333 |
+| UNCLMUI-001 | WHEN the GameWorld home page renders IF `managedTeamId` is null THE system SHALL show one clear claim-a-team prompt in place of the Calendar and Action Items sections | [x] → #333 |
+| UNCLMUI-002 | WHEN the unclaimed-team prompt renders IF the GameWorld has a competition THE system SHALL link to that competition's existing team list so the player can continue to `team-hub.tsx`'s claim action | [x] → #333 |
+| UNCLMUI-003 | WHEN `managedTeamId` is non-null THE system SHALL retain the existing Calendar and Action Items layout and SHALL NOT render the unclaimed-team prompt | [x] → #333 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
