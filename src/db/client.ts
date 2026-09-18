@@ -48,6 +48,7 @@ const modelDefinitions = [
   require('./model/lineup-entry'),
   require('./model/contract'),
   require('./model/player-game-stats'),
+  require('./model/game-event'),
   require('./model/division'),
   require('./model/division-season'),
   require('./model/game'),

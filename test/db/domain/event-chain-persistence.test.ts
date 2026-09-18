@@ -60,6 +60,7 @@ describe('GameEvent persistence', () => {
     expect(attributes.createdAt).toBeUndefined();
     expect(attributes.updatedAt).toBeUndefined();
 
+    await db.models.Game.create({ id: 77, homeTeam: 1, awayTeam: 2 });
     await persistGameEvents([{
       type: 'PlateAppearanceResolutionEvent', gameId: 77, sequence: 1, causedByEventId: null,
       context: { batterId: 3, outcome: '1B' },
