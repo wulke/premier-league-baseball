@@ -5,9 +5,9 @@ intentionally do not alter `NotificationStream`'s own stream/data contract.
 
 | ID | Requirement | Status |
 |---|---|---|
-| GWHOME-001 | WHEN the GameWorld home page renders THE system SHALL NOT render the redundant `Leagues` competition-card section | [ ] → #332 |
-| GWHOME-002 | WHEN the GameWorld home page renders THE system SHALL render the existing `NotificationStream` in a `Recent Activity` section below the Calendar strip and Action Items panel, without changing the component's supplied `gwId` or `managedTeamId` | [ ] → #332 |
-| GWHOME-003 | WHEN a GameWorld has one or more leagues THE App Shell SHALL continue to render its existing `COMPETITIONS` navigation links for those leagues | [ ] → #332 |
+| GWHOME-001 | WHEN the GameWorld home page renders THE system SHALL NOT render the redundant `Leagues` competition-card section | [x] → #332 |
+| GWHOME-002 | WHEN the GameWorld home page renders THE system SHALL render the existing `NotificationStream` in a `Recent Activity` section below the Calendar strip and Action Items panel, without changing the component's supplied `gwId` or `managedTeamId` | [x] → #332 |
+| GWHOME-003 | WHEN a GameWorld has one or more leagues THE App Shell SHALL continue to render its existing `COMPETITIONS` navigation links for those leagues | [x] → #332 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
