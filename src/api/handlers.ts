@@ -113,8 +113,15 @@ const getTeamRoster = async (teamId: number, gwId?: number) => {
   return await TeamFactory(teamId).getRoster();
 };
 
-// @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004,LSNAP-004
+// @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004,LSNAP-004,PREGAME-002
 const getTeamLineup = async (teamId: number, gwId?: number, gameId?: number) => {
+  // @spec PREGAME-002 — opening prep freezes the existing active template once, before it is
+  // edited. This is the same snapshot consumed by GameFactory at simulation time.
+  if (gameId != null) {
+    const game = await db.models.Game.findByPk(gameId);
+    if (!game || (game.dataValues.homeTeam !== teamId && game.dataValues.awayTeam !== teamId)) throw new DomainError('Not found', 404);
+    await TeamFactory(teamId).snapshotForGame(gameId);
+  }
   return await TeamFactory(teamId).getLineup({ gwId, gameId });
 };
 

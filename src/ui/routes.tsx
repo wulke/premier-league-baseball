@@ -1,7 +1,7 @@
 // @spec RLDRUI-001,RLDRUI-002,RLDRUI-004,RLDRUI-006 (LLD: docs/llds/shell/route-loader-foundation-ui.md)
 import React from 'react';
 import { createRoutesFromElements, Navigate, Route, type LoaderFunctionArgs, type RouteObject } from 'react-router';
-import { GameWorld, Home, League, PlayerDetail, TeamCalendar, TeamHub, TeamLineupView, TeamRoster, Transfers } from './pages';
+import { GameWorld, Home, League, PlayerDetail, PreGamePrep, TeamCalendar, TeamHub, TeamLineupView, TeamRoster, Transfers } from './pages';
 import { AppShell } from './components/app-shell';
 import { Endpoints } from '../api/endpoints';
 
@@ -62,6 +62,23 @@ const leagueLoader = async ({ params, request }: LoaderFunctionArgs) => {
 };
 // @spec NAVLOAD-001,NAVLOAD-002,NAVLOAD-003
 const transfersLoader = ({ params, request }: LoaderFunctionArgs) => readJson(Endpoints.GetFreeAgents.replace(':gwId', params.gwId!), request, []);
+// @spec PREGAME-001,PREGAME-002,PREGAME-004 — calendar remains the game identity source; the
+// route consequently cannot expose another club's game under the managed-club surface.
+const preGamePrepLoader = async ({ params, request }: LoaderFunctionArgs) => {
+  const gwId = params.gwId!; const managedTeamId = (await gwLoader({ params, request } as LoaderFunctionArgs) as any)?.managedTeamId;
+  if (managedTeamId == null) return { game: null, lineup: null, roster: [], opponentRoster: [], standings: [] };
+  const schedule = await readJson(`${Endpoints.GetTeamSchedule.replace(':teamId', managedTeamId)}?${new URLSearchParams({ gwId, leagueId: params.leagueId! })}`, request, { games: [] });
+  const game = Array.isArray(schedule?.games) ? schedule.games.find((candidate: any) => String(candidate.gameId) === params.gameId) ?? null : null;
+  if (!game) return { game: null, lineup: null, roster: [], opponentRoster: [], standings: [] };
+  const opponentId = game.homeTeamId === managedTeamId ? game.awayTeamId : game.homeTeamId;
+  const [lineup, roster, opponentRoster, standings] = await Promise.all([
+    readJson(`${Endpoints.GetTeamLineup.replace(':teamId', managedTeamId)}?${new URLSearchParams({ gwId, gameId: params.gameId! })}`, request, null),
+    readJson(`${Endpoints.GetTeamRoster.replace(':teamId', managedTeamId)}?gwId=${gwId}`, request, []),
+    readJson(`${Endpoints.GetTeamRoster.replace(':teamId', opponentId)}?gwId=${gwId}`, request, []),
+    readJson(Endpoints.GetLeagueStandings.replace(':leagueId', params.leagueId!), request, []),
+  ]);
+  return { game, lineup, roster: Array.isArray(roster) ? roster : [], opponentRoster: Array.isArray(opponentRoster) ? opponentRoster : [], standings: Array.isArray(standings) ? standings : [] };
+};
 
 // @spec RLDRUI-006 — one shared RouteObject[], consumed by createBrowserRouter (app) and
 // createMemoryRouter (tests).
@@ -72,6 +89,8 @@ const routes: RouteObject[] = createRoutesFromElements(
     <Route path=":gwId" id="gwId" loader={gwLoader}>
       <Route index element={<GameWorld />} />
       <Route path=":leagueId" element={<League />} loader={leagueLoader} />
+      {/* @spec PREGAME-001,PREGAME-002,PREGAME-003,PREGAME-004 */}
+      <Route path=":leagueId/game/:gameId" element={<PreGamePrep />} loader={preGamePrepLoader} />
       {/* @spec XFERUI-001,XFERUI-002,XFERUI-003,XFERUI-004,XFERUI-006 */}
       <Route path="transfers" element={<Transfers />} loader={transfersLoader} />
       {/* @spec PDETUI-001,PDETUI-002,PDETUI-003,PDETUI-004,PDETUI-005,PDETUI-006,PDETUI-007,PDETUI-008,PDETUI-009 */}
