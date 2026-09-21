@@ -9,6 +9,7 @@ import { CalendarStrip, DayEntry, addDays } from '../components/calendar-strip';
 import { ActionItemsPanel } from '../components/action-items-panel';
 import { BatchSimulateControl } from '../components/batch-simulate-control';
 import { useSimulateBusy } from '../components/simulate-busy-context';
+import { useNextGameActionItems } from '../hooks/use-next-game-action-items';
 
 type StartSeasonStatus = 'idle' | 'confirming' | 'submitting' | 'success' | 'error';
 type LeagueSeasonSummary = {
@@ -48,6 +49,14 @@ const GameWorld = () => {
   const navigate = useNavigate();
   // @spec CALWUI-009,RSSUI-006
   const { simulateBusy, setSimulateBusy } = useSimulateBusy();
+  // @spec NGAI-001 — called unconditionally (before the `if (!gw)` guard below), matching the
+  // other gw-derived hooks in this component; the hook itself no-ops until gw resolves.
+  const nextGameActionItems = useNextGameActionItems(
+    gwId,
+    gw?.managedTeamId,
+    gw?.currentDate,
+    (gw?.Leagues ?? []).map((league: any) => ({ id: league.id, name: league.config?.name ?? `League ${league.id}` })),
+  );
 
   useEffect(() => {
     if (!gwId || !gw?.config?.inProgress) {
@@ -259,15 +268,14 @@ const GameWorld = () => {
         </section>
       )}
 
-      {/* @spec ACTUI-001,ACTUI-005 — no real producer exists yet, so items is always empty.
-          Intentionally NOT gated on gw.currentDate (unlike the Calendar section above): the
-          panel's whole purpose is to visibly prove out the "ready for content" scaffold, which
-          it can't do if it's hidden behind the same currentDate gap the Calendar section is
-          gated on (currentDate is never set by any code path after newSeason() today — see
-          docs/llds/game-world/action-items-panel-ui.md). So the panel can currently render
-          without a Calendar section above it; that's accepted, not accidental. */}
+      {/* @spec ACTUI-001,ACTUI-005,NGAI-001,NGAI-006 — nextGameActionItems is this panel's first
+          real producer (#366); still intentionally NOT gated on gw.currentDate (unlike the
+          Calendar section above), matching ACTUI-001's scaffold rationale — see
+          docs/llds/game-world/action-items-panel-ui.md. The producer itself only ever
+          surfaces items once currentDate is set (NGAI-003/NGAI-004), so this stays a no-op
+          until it is. */}
       {gw.managedTeamId != null && (
-        <ActionItemsPanel items={[]} />
+        <ActionItemsPanel items={nextGameActionItems} />
       )}
 
       {/* @spec GWHOME-002,NOTIFUI-007 — parent-page placement only; NotificationStream's
