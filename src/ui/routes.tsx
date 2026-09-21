@@ -69,7 +69,7 @@ const preGamePrepLoader = async ({ params, request }: LoaderFunctionArgs) => {
   if (managedTeamId == null) return { game: null, lineup: null, roster: [], opponentRoster: [], standings: [] };
   const schedule = await readJson(`${Endpoints.GetTeamSchedule.replace(':teamId', managedTeamId)}?${new URLSearchParams({ gwId, leagueId: params.leagueId! })}`, request, { games: [] });
   const game = Array.isArray(schedule?.games) ? schedule.games.find((candidate: any) => String(candidate.gameId) === params.gameId) ?? null : null;
-  if (!game) return { game: null, lineup: null, roster: [], opponentRoster: [], standings: [] };
+  if (!game || game.status !== 'SCHEDULED') return { game: null, lineup: null, roster: [], opponentRoster: [], standings: [] };
   const opponentId = game.homeTeamId === managedTeamId ? game.awayTeamId : game.homeTeamId;
   const [lineup, roster, opponentRoster, standings] = await Promise.all([
     readJson(`${Endpoints.GetTeamLineup.replace(':teamId', managedTeamId)}?${new URLSearchParams({ gwId, gameId: params.gameId! })}`, request, null),
