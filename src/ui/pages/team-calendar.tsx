@@ -31,7 +31,7 @@ const monthLabel = (value: string): string =>
 const gameLinkLabel = (game: TeamSeasonGame, currentDate: string | null): string => {
   if (game.status === 'IN_PROGRESS') return 'View';
   if (game.status === 'COMPLETED') return 'Review';
-  return game.scheduledDate && currentDate && game.scheduledDate <= currentDate ? 'Prep' : 'Preview';
+  return game.scheduledDate && currentDate && game.scheduledDate.slice(0, 10) <= currentDate ? 'Prep' : 'Preview';
 };
 
 const GameRow = ({
