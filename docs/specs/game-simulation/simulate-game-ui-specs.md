@@ -22,9 +22,9 @@ unchanged (it asserts score/button state, not the refresh mechanism).
 | SIMUI-025 | WHEN POST /api/game/:gameId/simulate returns a 4xx error THE system SHALL remove the spinner, show an error icon inline on the row, and leave the score unchanged | [ ] |
 | SIMUI-026 | WHEN a single-game simulation has failed IF the player does not navigate away or trigger a re-fetch THE system SHALL persist the error icon with no retry button | [ ] |
 | SIMUI-028 | WHEN a batch simulation completes IF a previously-SCHEDULED game was simulated THE system SHALL, after the TeamCalendar re-fetch, display that game's updated score and remove its "Simulate" button | [ ] |
-| SIMUI-029 | WHEN a GameRow renders on the managed team's own calendar (`teamId === gw.managedTeamId`) THE system SHALL render a link to `/:gwId/:leagueId/game/:gameId` built from that row's own `leagueId`/`gameId`, alongside the existing "Simulate" button/result cell | [ ] → #365 |
-| SIMUI-030 | WHEN a GameRow renders on a calendar that is not the managed team's own (`teamId !== gw.managedTeamId`) THE system SHALL NOT render the game-screen link on that row | [ ] → #365 |
-| SIMUI-031 | WHEN the managed team's GameRow link renders THE system SHALL label it "Prep" for SCHEDULED with `scheduledDate <= gw.currentDate`, "Preview" for SCHEDULED with `scheduledDate > gw.currentDate`, "View" for IN_PROGRESS, and "Review" for COMPLETED | [ ] → #365 |
+| SIMUI-029 | WHEN a GameRow renders on the managed team's own calendar (`teamId === gw.managedTeamId`) THE system SHALL render a link to `/:gwId/:leagueId/game/:gameId` built from that row's own `leagueId`/`gameId`, alongside the existing "Simulate" button/result cell | [x] → #365 |
+| SIMUI-030 | WHEN a GameRow renders on a calendar that is not the managed team's own (`teamId !== gw.managedTeamId`) THE system SHALL NOT render the game-screen link on that row | [x] → #365 |
+| SIMUI-031 | WHEN the managed team's GameRow link renders THE system SHALL label it "Prep" for SCHEDULED with `scheduledDate <= gw.currentDate`, "Preview" for SCHEDULED with `scheduledDate > gw.currentDate`, "View" for IN_PROGRESS, and "Review" for COMPLETED | [x] → #365 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred, `[~]` Retired (out of scope this branch).*
 
