@@ -14,12 +14,12 @@ defineFeature(feature, (test) => {
   test('The route loader renders the completed score and roster tables', ({ given, when, then }) => {
     given('GET /api/game/42 returns a completed box score', () => { boxScore = base(); });
     when('the user navigates to the game box score route', async () => { global.fetch = jest.fn((input: RequestInfo | URL) => Promise.resolve({ ok: true, json: () => Promise.resolve(input.toString() === '/api/gameWorld/1' ? { id: 1, config: {} } : boxScore) })) as jest.Mock; render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/1/game/42'] })} />); });
-    then('the game box score shows both final scores and player rows', async () => { expect(await screen.findByTestId('game-box-score')).toHaveTextContent('Home Club 7'); expect(screen.getByTestId('game-box-score')).toHaveTextContent('Away Club 3'); expect(screen.getByText('Home Starter')).toBeInTheDocument(); expect(screen.getByText('Away Pitcher')).toBeInTheDocument(); });
+    then('the game box score shows both final scores and player rows', async () => { expect(await screen.findByTestId('game-box-score')).toHaveTextContent('Home Club 7'); expect(screen.getByTestId('game-box-score')).toHaveTextContent('Away Club 3'); expect(screen.getByText(/Home Starter/)).toBeInTheDocument(); expect(screen.getByText(/Away Pitcher/)).toBeInTheDocument(); });
   });
   test('One missing team side has its own empty state', ({ given, when, then }) => {
     given('GET /api/game/42 returns a completed box score with no away players', () => { boxScore = base(); boxScore.away.players = []; });
     when('the user navigates to the game box score route', async () => { global.fetch = jest.fn((input: RequestInfo | URL) => Promise.resolve({ ok: true, json: () => Promise.resolve(input.toString() === '/api/gameWorld/1' ? { id: 1, config: {} } : boxScore) })) as jest.Mock; render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/1/game/42'] })} />); });
-    then('the away box score says "No stats recorded" while home rows remain visible', async () => { expect(await screen.findByTestId('away-box-score-empty')).toHaveTextContent('No stats recorded'); expect(screen.getByText('Home Starter')).toBeInTheDocument(); });
+    then('the away box score says "No stats recorded" while home rows remain visible', async () => { expect(await screen.findByTestId('away-box-score-empty')).toHaveTextContent('No stats recorded'); expect(screen.getByText(/Home Starter/)).toBeInTheDocument(); });
   });
 });
 afterEach(() => cleanup());

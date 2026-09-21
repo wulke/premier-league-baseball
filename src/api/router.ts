@@ -196,6 +196,13 @@ router.get(Endpoints.GetPlayerStats, async (req: any, res: any) => {
     .then((response) => res.send(response)).catch((error) => sendError(res, error));
 });
 
+router.get(Endpoints.GetGameBoxScore, async (req: any, res: any) => {
+  // @spec BOXS-001,BOXS-002,BOXS-003,BOXS-004,BOXS-005
+  await handlers.getGameBoxScore(Number(req.params.gameId))
+    .then((response) => res.send(response))
+    .catch((error) => sendError(res, error));
+});
+
 router.get(Endpoints.GetGameWorldNotifications, async (req: any, res: any) => {
   // @spec NOTIF-003,NOTIF-006,NOTIF-007
   const since = req.query.since == null ? undefined : Number(req.query.since);

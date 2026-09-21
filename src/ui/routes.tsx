@@ -1,7 +1,7 @@
 // @spec RLDRUI-001,RLDRUI-002,RLDRUI-004,RLDRUI-006 (LLD: docs/llds/shell/route-loader-foundation-ui.md)
 import React from 'react';
 import { createRoutesFromElements, Navigate, Route, type LoaderFunctionArgs, type RouteObject } from 'react-router';
-import { GameWorld, Home, League, PlayerDetail, PreGamePrep, TeamCalendar, TeamHub, TeamLineupView, TeamRoster, Transfers } from './pages';
+import { GameBoxScore, GameWorld, Home, League, PlayerDetail, PreGamePrep, TeamCalendar, TeamHub, TeamLineupView, TeamRoster, Transfers } from './pages';
 import { AppShell } from './components/app-shell';
 import { Endpoints } from '../api/endpoints';
 
@@ -30,6 +30,8 @@ const playerDetailLoader = async ({ params, request }: LoaderFunctionArgs) => {
   const player = await readJson(Endpoints.GetPlayerDetail.replace(':playerId', params.playerId!), request, null);
   return player && !Array.isArray(player) ? player : null;
 };
+// @spec BOXSUI-001,BOXSUI-002
+const gameBoxScoreLoader = ({ params, request }: LoaderFunctionArgs) => readJson(Endpoints.GetGameBoxScore.replace(':gameId', params.gameId!), request, null);
 // @spec NAVLOAD-001,NAVLOAD-002,NAVLOAD-003
 const teamRosterLoader = ({ params, request }: LoaderFunctionArgs) => readJson(Endpoints.GetTeamRoster.replace(':teamId', params.teamId!), request, []);
 // @spec NAVLOAD-001,NAVLOAD-002,NAVLOAD-003,NAVLOAD-007
@@ -102,6 +104,8 @@ const routes: RouteObject[] = createRoutesFromElements(
       <Route path="transfers" element={<Transfers />} loader={transfersLoader} />
       {/* @spec PDETUI-001,PDETUI-002,PDETUI-003,PDETUI-004,PDETUI-005,PDETUI-006,PDETUI-007,PDETUI-008,PDETUI-009 */}
       <Route path="player/:playerId" element={<PlayerDetail />} loader={playerDetailLoader} />
+      {/* @spec BOXSUI-001,BOXSUI-002 */}
+      <Route path="game/:gameId" element={<GameBoxScore />} loader={gameBoxScoreLoader} />
       {/* @spec ROSTUI-006,ROSTUI-007,LINEUI-001 */}
       <Route path="team/:teamId" element={<TeamHub />}>
         <Route index element={<Navigate to="calendar" replace />} />

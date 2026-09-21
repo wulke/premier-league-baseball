@@ -54,6 +54,8 @@ const enum Endpoints {
   RapidSimulateSeason = '/api/gameWorld/:gwId/rapid-simulate',
   // @spec SIM-001,SIM-002,SIM-003,SIM-004,SIM-005,SIM-006,SIM-007
   SimulateGame = '/api/game/:gameId/simulate',
+  // @spec BOXS-001,BOXS-002,BOXS-003,BOXS-004,BOXS-005
+  GetGameBoxScore = '/api/game/:gameId',
   // ViewGame = '/api/game/:gameId/view
   // PlayGame = '/api/game/:gameId/play
 };
