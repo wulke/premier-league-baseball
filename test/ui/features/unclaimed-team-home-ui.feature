@@ -10,6 +10,13 @@ Feature: Unclaimed-Team Game World Home
     Then one claim-a-team prompt is shown instead of the Calendar and Action Items sections
     And the prompt links to Premier League's team list for the existing Job Market claim flow
 
+  @spec:UNCLMUI-001 @spec:UNCLMUI-002
+  Scenario: An unclaimed world with no competitions avoids an invalid claim route
+    Given GameWorld 1 has no managed team and no competitions
+    When the player opens the GameWorld 1 home page
+    Then one claim-a-team prompt is shown instead of the Calendar and Action Items sections
+    And the prompt has no team-list link
+
   @spec:UNCLMUI-003
   Scenario: A claimed world retains the manager home layout
     Given GameWorld 1 has managed team 10 and Premier League competition 7

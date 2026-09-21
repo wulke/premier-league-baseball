@@ -173,6 +173,11 @@ const GameWorld = () => {
 
   const nextYear = gw.year + 1;
   const leagues: any[] = gw.Leagues ?? [];
+  // @spec UNCLMUI-002 — GameWorld's association read has no display-order contract, so use the
+  // lowest stable League id as the deterministic entry point to the existing TeamHub claim flow.
+  const claimLeagueId = leagues.reduce<number | undefined>((lowestId, league) =>
+    lowestId == null || league.id < lowestId ? league.id : lowestId,
+  undefined);
   const seasonComplete = leagueSeasonSummary.length > 0 && leagueSeasonSummary.every((league) => league.championName);
   const seasonLabel = gw.config?.inProgress
     ? `Season ${gw.year} · ${seasonComplete ? 'Complete' : 'In Progress'}`
@@ -230,7 +235,7 @@ const GameWorld = () => {
 
       {/* @spec UNCLMUI-001,UNCLMUI-002 — TeamHub remains the only claim mutation surface. */}
       {gw.managedTeamId == null && (
-        <ClaimTeamPrompt gwId={gwId!} leagueId={leagues[0]?.id} />
+        <ClaimTeamPrompt gwId={gwId!} leagueId={claimLeagueId} />
       )}
 
       {/* @spec CALWUI-001,CALWUI-002,CALWUI-003,CALWUI-004,CALWUI-005,CALWUI-006,CALWUI-007 */}

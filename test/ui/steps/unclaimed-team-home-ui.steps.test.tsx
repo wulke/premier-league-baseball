@@ -9,6 +9,7 @@ import { installEventSource } from '../test-utils';
 const feature = loadFeature(path.resolve(__dirname, '../features/unclaimed-team-home-ui.feature'));
 
 let managedTeamId: number | null = null;
+let leagues: any[] = [];
 
 const response = (body: unknown) => Promise.resolve({
   ok: true,
@@ -26,7 +27,7 @@ const installFetch = () => {
         currentDate: '2025-06-10',
         managedTeamId,
         config: { name: 'Test World', inProgress: true },
-        Leagues: [{ id: 7, config: { name: 'Premier League', type: 'League' } }],
+        Leagues: leagues,
       });
     }
     if (url === '/api/gameWorld/1/notifications') return response([]);
@@ -38,6 +39,10 @@ const installFetch = () => {
 
 beforeEach(() => {
   managedTeamId = null;
+  leagues = [
+    { id: 9, config: { name: 'League Cup', type: 'Cup' } },
+    { id: 7, config: { name: 'Premier League', type: 'League' } },
+  ];
   installFetch();
   installEventSource();
 });
@@ -62,6 +67,28 @@ defineFeature(feature, (test) => {
     // @spec UNCLMUI-002
     and("the prompt links to Premier League's team list for the existing Job Market claim flow", () => {
       expect(screen.getByTestId('claim-team-link')).toHaveAttribute('href', '/1/7');
+    });
+  });
+
+  test('An unclaimed world with no competitions avoids an invalid claim route', ({ given, when, then, and }) => {
+    given('GameWorld 1 has no managed team and no competitions', () => {
+      managedTeamId = null;
+      leagues = [];
+    });
+    when('the player opens the GameWorld 1 home page', async () => {
+      const router = createMemoryRouter(routes, { initialEntries: ['/1'] });
+      render(<RouterProvider router={router} />);
+      await screen.findByRole('heading', { name: 'Test World' });
+    });
+    // @spec UNCLMUI-001
+    then('one claim-a-team prompt is shown instead of the Calendar and Action Items sections', () => {
+      expect(screen.getAllByTestId('claim-team-prompt')).toHaveLength(1);
+      expect(screen.queryByTestId('calendar-section')).toBeNull();
+      expect(screen.queryByTestId('action-items-section')).toBeNull();
+    });
+    // @spec UNCLMUI-002
+    and('the prompt has no team-list link', () => {
+      expect(screen.queryByTestId('claim-team-link')).toBeNull();
     });
   });
 
