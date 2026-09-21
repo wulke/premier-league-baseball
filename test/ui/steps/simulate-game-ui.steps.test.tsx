@@ -1,4 +1,4 @@
-// @spec:SIMUI-009..SIMUI-029, RLDRUI-006 (simulate-game UI acceptance).
+// @spec:SIMUI-009..SIMUI-031, RLDRUI-006 (simulate-game UI acceptance).
 // SIMUI-006/007 (currentDate chip display) are implemented in app-shell-ui.steps.test.tsx.
 // Flow C (SIMUI-001..005) and SIMUI-015/018/027 are retired — GameWorldProvider is deleted;
 // see test/ui/features/route-loader-foundation-ui.feature (RLDRUI-001/002/003/005).
@@ -249,6 +249,11 @@ given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
     (world.gw as Record<string, unknown>).currentDate = null;
   });
 
+  // @spec SIMUI-029/030/031
+  given(/^the managed team is team (\d+)$/, (teamId: string) => {
+    (world.gw as Record<string, unknown>).managedTeamId = Number(teamId);
+  });
+
   when('AppHeader renders', async () => {
     await ensureAppHeader();
   });
@@ -413,6 +418,21 @@ given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
     expect(screen.queryAllByTestId(/^status-\d+$/)[0]).toBeInTheDocument();
   });
 
+  // @spec SIMUI-029/030/031
+  then('a game screen link is visible on the game row', () => {
+    expect(screen.queryAllByTestId(/^game-link-\d+$/)[0]).toBeInTheDocument();
+  });
+
+  // @spec SIMUI-030
+  then('no game screen link is visible on the game row', () => {
+    expect(screen.queryAllByTestId(/^game-link-\d+$/)).toHaveLength(0);
+  });
+
+  // @spec SIMUI-031
+  then(/^the game screen link is labeled "([^"]+)"$/, (label: string) => {
+    expect(screen.queryAllByTestId(/^game-link-\d+$/)[0]).toHaveTextContent(label);
+  });
+
   given(/^a "Simulate" button is visible for game (\d+)$/, async (gameId: string) => {
     world.games = [makeGame({ gameId: Number(gameId), status: 'SCHEDULED', scheduledDate: '2025-04-10' })];
     await ensureCalendar();
@@ -572,6 +592,8 @@ const makeGame = (overrides: Partial<Record<string, unknown>> & { gameId?: numbe
   awayTeamName: 'Away Team',
   divisionId: 1,
   divisionName: 'Test Division',
+  leagueId: 1,
+  leagueName: 'Test League',
   roundLabel: null,
   homeTeamResult: null,
   awayTeamResult: null,

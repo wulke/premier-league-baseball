@@ -177,6 +177,37 @@ Feature: Simulate Game UI
     And game 42 no longer shows a "Simulate" button
     And game 42 displays its simulated score
 
+  # ─── Flow A: TeamCalendar — Game Screen Link (map #350, issue #365) ───────────
+
+  @spec:SIMUI-029
+  Scenario: Game screen link appears on the managed team's own calendar row
+    Given the managed team is team 1
+    And a Game exists with status "SCHEDULED" and scheduledDate "2025-04-10"
+    When the TeamCalendar renders the GameRow for that game
+    Then a game screen link is visible on the game row
+
+  @spec:SIMUI-030
+  Scenario: Game screen link is absent from another team's calendar row
+    Given the managed team is team 9
+    And a Game exists with status "SCHEDULED" and scheduledDate "2025-04-10"
+    When the TeamCalendar renders the GameRow for that game
+    Then no game screen link is visible on the game row
+
+  @spec:SIMUI-031
+  Scenario Outline: Game screen link label reflects game state and readiness
+    Given the managed team is team 1
+    And gw.currentDate is "2025-04-10"
+    And a Game exists with status "<status>" and scheduledDate "<scheduledDate>"
+    When the TeamCalendar renders the GameRow for that game
+    Then the game screen link is labeled "<label>"
+
+    Examples:
+      | status      | scheduledDate | label   |
+      | SCHEDULED   | 2025-04-10T00:00:00.000Z | Prep    |
+      | SCHEDULED   | 2025-04-20    | Preview |
+      | IN_PROGRESS | 2025-04-10    | View    |
+      | COMPLETED   | 2025-04-01    | Review  |
+
   # ─── Future ───────────────────────────────────────────────────────────────────
 
   @future

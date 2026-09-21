@@ -58,8 +58,13 @@ const TeamLineupView = () => {
   // @spec NAVLOAD-001,NAVLOAD-004,NAVLOAD-005,NAVLOAD-009
   const loaded = useLoaderData() as { lineup: TeamLineup | null; roster: RosterPlayer[]; nextGame: NextGameLineup | null };
   const { revalidate } = useRevalidator();
+  return <TeamLineupEditor gwId={gwId} teamId={teamId} isManagedTeam={gameWorld?.managedTeamId != null && String(gameWorld.managedTeamId) === teamId} loaded={loaded} revalidate={revalidate} />;
+};
+
+// @spec PREGAME-002 — shared editor accepts the canonical Lineup(gameId) card; the same slot
+// and validation UX is used for active templates and pre-game snapshots.
+const TeamLineupEditor = ({ gwId, teamId, isManagedTeam, loaded, revalidate, gameId, heading = 'Lineup', subtitle = 'Active lineup', embedded = false }: { gwId?: string; teamId?: string; isManagedTeam: boolean; loaded: { lineup: TeamLineup | null; roster: RosterPlayer[]; nextGame: NextGameLineup | null }; revalidate: () => void; gameId?: number; heading?: string; subtitle?: string; embedded?: boolean }) => {
   const previousTeamId = useRef(teamId);
-  const isManagedTeam = gameWorld?.managedTeamId != null && String(gameWorld.managedTeamId) === teamId;
   const [lineup, setLineup] = useState<TeamLineup | null>(null);
   const [roster, setRoster] = useState<RosterPlayer[]>([]);
   const [draft, setDraft] = useState<DraftEntry[]>([]);
@@ -138,12 +143,13 @@ const TeamLineupView = () => {
     [next[sourceIndex].playerId, next[targetIndex].playerId] = [next[targetIndex].playerId, next[sourceIndex].playerId];
     return next;
   });
-  // @spec LINEUI-014 — submit only the assigned entries to #254's wholesale PUT endpoint.
+  // @spec LINEUI-014,PREGAME-002 — submit the same complete draft to active or game snapshot endpoint.
   const saveLineup = async () => {
     if (!teamId) return;
     setSaveError(null);
     const entries: ActiveLineupEntry[] = draft.filter((entry): entry is ActiveLineupEntry => entry.role !== 'UNASSIGNED').map(({ playerId, role, battingOrder, fieldingPosition }) => ({ playerId, role, battingOrder, fieldingPosition }));
-    const response = await fetch(Endpoints.SaveTeamLineup.replace(':teamId', teamId), { method: 'PUT', mode: 'cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entries }) }).catch(() => null);
+    const endpoint = gameId == null ? Endpoints.SaveTeamLineup.replace(':teamId', teamId) : Endpoints.SaveTeamGameLineup.replace(':teamId', teamId).replace(':gameId', String(gameId));
+    const response = await fetch(endpoint, { method: gameId == null ? 'PUT' : 'PATCH', mode: 'cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entries }) }).catch(() => null);
     if (!response || !response.ok) { const body = response ? await response.json().catch(() => ({})) : {}; setSaveError(body?.error ?? 'Unable to save lineup'); return; }
     const saved = await response.json().catch(() => null);
     if (!isTeamLineup(saved)) { setSaveError('Unable to save lineup'); return; }
@@ -210,8 +216,8 @@ const TeamLineupView = () => {
     </div>;
   };
 
-  return <PageContainer as="main" style={{ padding: '24px 24px 48px' }}>
-    <header style={{ marginBottom: '20px' }}><h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700 }}>Lineup</h1><p style={{ margin: '6px 0 0', color: '#666', fontSize: '0.86rem' }}>Active lineup</p></header>
+  const content = <>
+    {!embedded && <header style={{ marginBottom: '20px' }}><h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700 }}>{heading}</h1><p style={{ margin: '6px 0 0', color: '#666', fontSize: '0.86rem' }}>{subtitle}</p></header>}
     {lineup && <>
       {isManagedTeam && <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
         {!editing ? <Button type="button" size="sm" onClick={enterEdit}>Edit Lineup</Button> : <><Button type="button" size="sm" onClick={saveLineup}>Save Lineup</Button><Button type="button" size="sm" onClick={cancelEdit}>Cancel</Button></>}
@@ -221,8 +227,8 @@ const TeamLineupView = () => {
       {activeTab === 'DEFENSIVE' && <Card as="section" data-testid="defensive-table" aria-label="Defensive lineup" style={panelStyle}>{defensiveRows.map((row) => renderRow(row, 'DEFENSIVE'))}{reserves.map((row) => renderRow(row, 'DEFENSIVE'))}{editing && <UnassignedBucket rows={unassigned} renderRow={renderRow} />}</Card>}
       {activeTab === 'BATTING' && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(230px, 0.55fr)', gap: '18px', alignItems: 'start' }}><Card as="section" data-testid="batting-table" aria-label="Batting order" style={panelStyle}>{battingRows.map((row) => renderRow(row, 'BATTING'))}{reserves.map((row) => renderRow(row, 'BATTING'))}{editing && <UnassignedBucket rows={unassigned} renderRow={renderRow} />}</Card>{startingPitcher && <Card as="section" data-testid="starting-pitcher" style={{ ...panelStyle, borderColor: '#71896e', background: '#f1f6ef' }}><SectionLabel>Starting pitcher</SectionLabel><LineupPlayerLink playerId={startingPitcher.playerId} players={players} gwId={gwId} /></Card>}</div>}
       {activeTab === 'BULLPEN' && <GameBullpenPanel game={nextGame} entries={gameDraft} players={players} roster={roster} gwId={gwId} editable={isManagedTeam && nextGame?.game.status === 'SCHEDULED'} error={gameSaveError} onChange={updateGameSlot} onSwap={swapGameSlots} onSave={saveGameLineup} />}
-    </>}
-  </PageContainer>;
+    </>}</>;
+  return embedded ? content : <PageContainer as="main" style={{ padding: '24px 24px 48px' }}>{content}</PageContainer>;
 };
 
 // @spec GBULL-006,GBULL-007
@@ -278,4 +284,4 @@ const ratingStyle: React.CSSProperties = { minWidth: '32px', textAlign: 'right',
 const tagStyle: React.CSSProperties = { minWidth: '58px', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', color: '#888' };
 const slotLabelStyle: React.CSSProperties = { minWidth: '78px', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', color: '#555' };
 
-export { TeamLineupView };
+export { TeamLineupView, TeamLineupEditor };

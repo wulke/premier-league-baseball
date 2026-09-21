@@ -152,7 +152,7 @@ router.get(Endpoints.GetTeamRoster, async (req: any, res: any) => {
 });
 
 router.get(Endpoints.GetTeamLineup, async (req: any, res: any) => {
-  // @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004,LSNAP-004
+  // @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004,LREAD-005,LSNAP-004,PREGAME-002
   const gwId = req.query.gwId == null ? undefined : Number(req.query.gwId);
   const gameId = req.query.gameId == null ? undefined : Number(req.query.gameId);
   await handlers.getTeamLineup(Number(req.params.teamId), gwId, gameId)
