@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useLoaderData, useParams, useRevalidator } from 'react-router';
+import { Link, useLoaderData, useParams, useRevalidator, useRouteLoaderData } from 'react-router';
 import { Endpoints } from '../../api/endpoints';
 import { TeamSeasonCalendar, TeamSeasonGame } from '../../api/models';
 import { Button, ErrorText, PageContainer, SectionLabel } from '../components/ui';
@@ -27,14 +27,27 @@ const formatGameDate = (value: string | null): string => {
 const monthLabel = (value: string): string =>
   formatUtcDate(value, { year: 'numeric', month: 'long' }) ?? 'Unscheduled';
 
+// @spec SIMUI-031 — date-only string compare avoids Date/timezone drift at midnight.
+const gameLinkLabel = (game: TeamSeasonGame, currentDate: string | null): string => {
+  if (game.status === 'IN_PROGRESS') return 'View';
+  if (game.status === 'COMPLETED') return 'Review';
+  return game.scheduledDate && currentDate && game.scheduledDate <= currentDate ? 'Prep' : 'Preview';
+};
+
 const GameRow = ({
   game,
   teamId,
+  gwId,
+  isManagedTeam,
+  currentDate,
   simulateStatus,
   onSimulate,
 }: {
   game: TeamSeasonGame;
   teamId: string;
+  gwId: string;
+  isManagedTeam: boolean;
+  currentDate: string | null;
   simulateStatus: SimulateRowStatus;
   onSimulate: () => void;
 }) => {
@@ -142,7 +155,17 @@ const GameRow = ({
       </div>
 
       {/* Result, status, or simulate action */}
-      <div style={{ textAlign: 'right', minWidth: '64px' }}>
+      <div style={{ textAlign: 'right', minWidth: '64px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
+        {/* @spec SIMUI-029,SIMUI-030 — link only on the managed team's own calendar */}
+        {isManagedTeam && (
+          <Link
+            to={`/${gwId}/${game.leagueId}/game/${game.gameId}`}
+            data-testid={`game-link-${game.gameId}`}
+            style={{ fontSize: '0.78rem', fontWeight: 600 }}
+          >
+            {gameLinkLabel(game, currentDate)}
+          </Link>
+        )}
         {renderResultCell()}
       </div>
     </div>
@@ -155,6 +178,11 @@ const TeamCalendar = () => {
   const { gwId, teamId } = useParams();
   // @spec NAVLOAD-001,NAVLOAD-003,NAVLOAD-005,NAVLOAD-007
   const loaded = useLoaderData() as { calendar: TeamSeasonCalendar | null; error: string | null };
+  // @spec SIMUI-029,SIMUI-030,SIMUI-031 — managedTeamId/currentDate come from the shared
+  // :gwId loader (no extra fetch), same mechanism as pre-game-prep.tsx/game-world.tsx.
+  const gameWorld = useRouteLoaderData('gwId') as any;
+  const isManagedTeam = gameWorld?.managedTeamId != null && Number(teamId) === gameWorld.managedTeamId;
+  const currentDate = gameWorld?.currentDate ?? null;
   const [calendar, setCalendar] = useState<TeamSeasonCalendar | null>(loaded.calendar);
   const [error, setError] = useState<string | null>(loaded.error);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -350,6 +378,9 @@ const TeamCalendar = () => {
               key={game.gameId}
               game={game}
               teamId={teamId!}
+              gwId={gwId!}
+              isManagedTeam={isManagedTeam}
+              currentDate={currentDate}
               simulateStatus={simulateState.get(game.gameId) ?? 'idle'}
               onSimulate={() => handleSimulate(game.gameId)}
             />

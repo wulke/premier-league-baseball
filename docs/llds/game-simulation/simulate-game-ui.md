@@ -169,6 +169,22 @@ or an element-wrapper around the matched page. See Edge Case Probe (u8).
 6. on 4xx → simulateState.set(gameId, 'error'); spinner → ⚠ icon; score unchanged.      # SIMUI-025
 ```
 
+### Flow A — `GameRow` navigation link (map #350, issue #365)
+
+```
+1. GameRow renders a link to /:gwId/:leagueId/game/:gameId, built from the row's own
+   TeamSeasonGame fields (leagueId, gameId) plus gwId from useParams — no extra fetch.  # SIMUI-029
+2. Guard: only rendered when teamId === gw.managedTeamId (the managed team's own calendar).
+   Other teams' calendar rows render no link.                                          # SIMUI-030
+3. Label derives from (game.status, game.scheduledDate vs. gw.currentDate):
+     SCHEDULED && scheduledDate <= currentDate → "Prep"
+     SCHEDULED && scheduledDate >  currentDate → "Preview"
+     IN_PROGRESS                               → "View"
+     COMPLETED                                 → "Review"                              # SIMUI-031
+4. The link sits alongside the existing Simulate button/result cell — it does not replace
+   the SIMUI-019..026 result-cell branching, and does not turn the row itself into a link.
+```
+
 Single-game success is a local in-place patch (no full re-fetch); the next batch-driven
 `refreshToken` change will re-fetch the whole list and supersede it (the re-fetched row already
 carries the new result — see u10).
@@ -193,6 +209,8 @@ surface something the proposal does not address.
 | u9 | **NEW** — `success-clean` auto-dismiss timer (~3s) | The `setTimeout` must be cleared on unmount and on any intervening status change (e.g. a later `error`, or component leaving the page) to avoid `setState` after unmount or clobbering a subsequent state. Use a `useEffect` cleanup that clears the stored timer when `batchStatus` changes. | SIMUI-013 |
 | u10 | Single-game in-place patch vs. a concurrent batch re-fetch | A single-game success patches local `games[gameId]`; if a batch `invalidate()` fires around the same time, the `refreshToken` change re-runs the fetch `useEffect` and replaces local state with the server list (which already includes the new result). Ordering is benign — the re-fetch wins and is authoritative — but the local patch is discardable, not load-bearing. | SIMUI-023/027 |
 | u11 | `gw.config.inProgress` field | Confirmed present — `GameWorld` page already reads `gw.config?.inProgress` today (`src/ui/pages/game-world.tsx`). No model change needed for the guard itself; only the `null`-guard ordering in u7. | SIMUI-009 |
+| u12 | **NEW** — `TeamCalendar` needs `gw.managedTeamId` and `gw.currentDate` for the row link's guard and label, but only ever reads route params today | Read via `useRouteLoaderData('gwId')`, the same mechanism `pre-game-prep.tsx`/`game-world.tsx` already use — no new fetch. `managedTeamId` compares against the route's `teamId` param (coerced to `Number`, matching the existing `isHome` comparison at `team-calendar.tsx:41`). | SIMUI-029/030 |
+| u13 | **NEW** — date-only comparison for "ready to sim" label branch | `scheduledDate` and `gw.currentDate` are both `DATEONLY` strings (`YYYY-MM-DD`); compare as strings (`<=`) rather than constructing `Date` objects, avoiding timezone drift at midnight boundaries. A `null` `scheduledDate` (unscheduled game) cannot be `<= currentDate`, so it falls to "Preview". | SIMUI-031 |
 
 ---
 
