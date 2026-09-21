@@ -33,6 +33,13 @@ Feature: Per-game lineup snapshot
     When the client reads Team 10's lineup for Game 43
     Then the game lineup response indicates the lineup was not found
 
+  @spec:LREAD-005
+  Scenario: A team cannot read or materialize another team's game lineup
+    Given Game 46 belongs to Team 11 in GameWorld 1
+    When the client reads Team 10's lineup for Game 46
+    Then the game lineup response indicates the lineup was not found
+    And no per-game lineup exists for Team 10 and Game 46
+
   @spec:LSNAP-005
   Scenario: A snapshot cannot target a missing Game
     When Team 10 attempts to snapshot missing Game 44
