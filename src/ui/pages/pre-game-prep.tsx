@@ -20,8 +20,9 @@ const PreGamePrep = () => {
   const [result, setResult] = useState<{ homeTeamResult: number; awayTeamResult: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const managedTeamId = gameWorld?.managedTeamId;
-  const isScheduledManagedGame = game != null && game.status === 'SCHEDULED' && managedTeamId != null && (game.homeTeamId === managedTeamId || game.awayTeamId === managedTeamId);
-  if (!isScheduledManagedGame) return <PageContainer as="main" style={{ padding: '24px' }}><h1>Game unavailable</h1><p>This pre-game screen is available only for your scheduled games.</p></PageContainer>;
+  const isManagedGame = game != null && managedTeamId != null && (game.homeTeamId === managedTeamId || game.awayTeamId === managedTeamId);
+  const isScheduledManagedGame = isManagedGame && game.status === 'SCHEDULED';
+  if (!isManagedGame) return <PageContainer as="main" style={{ padding: '24px' }}><h1>Game unavailable</h1><p>This pre-game screen is available only for your managed club's games.</p></PageContainer>;
 
   const opponentId = game.homeTeamId === managedTeamId ? game.awayTeamId : game.homeTeamId;
   const opponentName = game.homeTeamId === managedTeamId ? game.awayTeamName : game.homeTeamName;
@@ -37,8 +38,8 @@ const PreGamePrep = () => {
   return <PageContainer as="main" style={{ padding: '24px 24px 48px' }}>
     <header style={{ marginBottom: '20px' }}><SectionLabel>Pre-game prep</SectionLabel><h1 style={{ margin: '4px 0' }}>{game.homeTeamName} vs {game.awayTeamName}</h1><p style={{ margin: 0, color: '#666' }}>{game.scheduledDate ? (formatUtcDate(game.scheduledDate) ?? 'Date TBD') : 'Date TBD'} · {game.homeTeamId === managedTeamId ? 'Home' : 'Away'}</p></header>
     <Card as="section" aria-label="Opponent context" style={{ padding: '16px', marginBottom: '20px' }}><SectionLabel>Opponent</SectionLabel><strong>{opponentName}</strong><div style={{ marginTop: '8px', color: '#555' }}>Record: {record ? `${record.won}-${record.lost}${record.drawn ? `-${record.drawn}` : ''}` : '—'}</div><div style={{ marginTop: '4px', color: '#555' }}>Probable pitcher: {probablePitcher ? `${probablePitcher.givenName} ${probablePitcher.familyName}` : 'TBD'}</div></Card>
-    <section aria-label="Game lineup"><SectionLabel>Your game lineup</SectionLabel><TeamLineupEditor gwId={gwId} teamId={String(managedTeamId)} isManagedTeam loaded={{ lineup, roster, nextGame: null }} revalidate={revalidate} gameId={game.gameId} embedded /></section>
-    <section style={{ marginTop: '24px' }}><Button type="button" onClick={readyToSim} disabled={simulating}>{simulating ? 'Simulating…' : 'Ready to sim'}</Button>{result && <strong data-testid="pre-game-score" style={{ marginLeft: '12px' }}>{result.homeTeamResult}–{result.awayTeamResult}</strong>}{error && <ErrorText role="alert" style={{ marginLeft: '12px' }}>{error}</ErrorText>}</section>
+    {isScheduledManagedGame && <section aria-label="Game lineup"><SectionLabel>Your game lineup</SectionLabel><TeamLineupEditor gwId={gwId} teamId={String(managedTeamId)} isManagedTeam loaded={{ lineup, roster, nextGame: null }} revalidate={revalidate} gameId={game.gameId} embedded /></section>}
+    <section style={{ marginTop: '24px' }}>{isScheduledManagedGame && <Button type="button" onClick={readyToSim} disabled={simulating}>{simulating ? 'Simulating…' : 'Ready to sim'}</Button>}{(result ?? (game.status === 'COMPLETED' ? { homeTeamResult: game.homeTeamResult, awayTeamResult: game.awayTeamResult } : null)) && <strong data-testid="pre-game-score" style={{ marginLeft: '12px' }}>{(result ?? game).homeTeamResult}–{(result ?? game).awayTeamResult}</strong>}{error && <ErrorText role="alert" style={{ marginLeft: '12px' }}>{error}</ErrorText>}</section>
   </PageContainer>;
 };
 

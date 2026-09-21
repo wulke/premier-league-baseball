@@ -69,8 +69,15 @@ const preGamePrepLoader = async ({ params, request }: LoaderFunctionArgs) => {
   if (managedTeamId == null) return { game: null, lineup: null, roster: [], opponentRoster: [], standings: [] };
   const schedule = await readJson(`${Endpoints.GetTeamSchedule.replace(':teamId', managedTeamId)}?${new URLSearchParams({ gwId, leagueId: params.leagueId! })}`, request, { games: [] });
   const game = Array.isArray(schedule?.games) ? schedule.games.find((candidate: any) => String(candidate.gameId) === params.gameId) ?? null : null;
-  if (!game || game.status !== 'SCHEDULED') return { game: null, lineup: null, roster: [], opponentRoster: [], standings: [] };
+  if (!game) return { game: null, lineup: null, roster: [], opponentRoster: [], standings: [] };
   const opponentId = game.homeTeamId === managedTeamId ? game.awayTeamId : game.homeTeamId;
+  if (game.status !== 'SCHEDULED') {
+    const [opponentRoster, standings] = await Promise.all([
+      readJson(`${Endpoints.GetTeamRoster.replace(':teamId', opponentId)}?gwId=${gwId}`, request, []),
+      readJson(Endpoints.GetLeagueStandings.replace(':leagueId', params.leagueId!), request, []),
+    ]);
+    return { game, lineup: null, roster: [], opponentRoster: Array.isArray(opponentRoster) ? opponentRoster : [], standings: Array.isArray(standings) ? standings : [] };
+  }
   const [lineup, roster, opponentRoster, standings] = await Promise.all([
     readJson(`${Endpoints.GetTeamLineup.replace(':teamId', managedTeamId)}?${new URLSearchParams({ gwId, gameId: params.gameId! })}`, request, null),
     readJson(`${Endpoints.GetTeamRoster.replace(':teamId', managedTeamId)}?gwId=${gwId}`, request, []),
