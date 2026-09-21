@@ -203,7 +203,7 @@ Feature: Simulate Game UI
 
     Examples:
       | status      | scheduledDate | label   |
-      | SCHEDULED   | 2025-04-10    | Prep    |
+      | SCHEDULED   | 2025-04-10T00:00:00.000Z | Prep    |
       | SCHEDULED   | 2025-04-20    | Preview |
       | IN_PROGRESS | 2025-04-10    | View    |
       | COMPLETED   | 2025-04-01    | Review  |

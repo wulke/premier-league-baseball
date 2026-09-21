@@ -43,6 +43,9 @@ GET /api/team/:teamId/lineup?gameId=…&gwId=…
 
 ## Edge Case Probe
 
+- A game-scoped request names a game the requested team does not participate in -> the handler
+  returns 404 before calling `snapshotForGame`; no cross-team snapshot is materialized.
+
 | Condition | Handling |
 |---|---|
 | Team does not exist, or has no active lineup | 404; a read never constructs or selects a per-game snapshot. |

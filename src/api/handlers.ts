@@ -113,7 +113,7 @@ const getTeamRoster = async (teamId: number, gwId?: number) => {
   return await TeamFactory(teamId).getRoster();
 };
 
-// @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004,LSNAP-004,PREGAME-002
+// @spec LREAD-001,LREAD-002,LREAD-003,LREAD-004,LREAD-005,LSNAP-004,PREGAME-002
 const getTeamLineup = async (teamId: number, gwId?: number, gameId?: number) => {
   // @spec PREGAME-002 — opening prep freezes the existing active template once, before it is
   // edited. This is the same snapshot consumed by GameFactory at simulation time.

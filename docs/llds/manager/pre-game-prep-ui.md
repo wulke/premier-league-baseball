@@ -8,6 +8,12 @@ roster and game-scoped lineup card (`GET /api/team/:teamId/lineup?gwId=&gameId=`
 league standings plus opponent roster. The game-scoped lineup is the existing `Lineup(gameId)`
 snapshot; it is never a new per-game override type.
 
+The nested prep loader performs its own `GameWorld` read to obtain `managedTeamId` before it can
+scope its calendar and lineup requests. React Router executes matched loaders in parallel and does
+not provide a parent loader's resolved value to a child loader; the component reuses the parent
+`gwId` loader data once rendering begins. This bounded duplicate read is intentional until route
+loader context is introduced.
+
 ## Logic Flow
 
 1. Resolve `GameWorld.managedTeamId`; reject the route as unavailable when no managed club exists
