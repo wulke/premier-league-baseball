@@ -33,7 +33,7 @@ defineFeature(feature, (test) => {
   test('A managed club prepares and simulates its scheduled game', ({ given, when, then, and }) => {
     given('a managed club has a scheduled game and game lineup snapshot', () => { hasGame = true; });
     when("the manager opens that game's pre-game route", mount);
-    then('the page shows opponent record, probable pitcher, and the game lineup editor', async () => { await waitFor(() => expect(screen.getByText('Rivertown')).toBeInTheDocument()); expect(screen.getByText('Record: 8-4')).toBeInTheDocument(); expect(screen.getByText('Probable pitcher: Ace 30')).toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Edit Lineup' })).toBeInTheDocument(); });
+    then('the page shows opponent record, probable pitcher, and the game lineup editor', async () => { await waitFor(() => expect(screen.getByRole('button', { name: 'Edit Lineup' })).toBeInTheDocument()); expect(screen.getByText('Rivertown')).toBeInTheDocument(); expect(screen.getByText('Record: 8-4')).toBeInTheDocument(); expect(screen.getByText('Probable pitcher: Ace 30')).toBeInTheDocument(); });
     when('the manager selects "Ready to sim"', () => fireEvent.click(screen.getByRole('button', { name: 'Ready to sim' })));
     then('the completed score is shown', async () => await waitFor(() => expect(screen.getByTestId('pre-game-score')).toHaveTextContent('5–2')));
   });
