@@ -177,10 +177,11 @@ or an element-wrapper around the matched page. See Edge Case Probe (u8).
 2. Guard: only rendered when teamId === gw.managedTeamId (the managed team's own calendar).
    Other teams' calendar rows render no link.                                          # SIMUI-030
 3. Label derives from (game.status, game.scheduledDate vs. gw.currentDate):
-     SCHEDULED && scheduledDate <= currentDate → "Prep"
-     SCHEDULED && scheduledDate >  currentDate → "Preview"
-     IN_PROGRESS                               → "View"
-     COMPLETED                                 → "Review"                              # SIMUI-031
+     SCHEDULED && scheduledDate == null         → "Prep"   (PREGAME-005 exemption — see u14)
+     SCHEDULED && scheduledDate <= currentDate  → "Prep"
+     SCHEDULED && scheduledDate >  currentDate  → "Preview"
+     IN_PROGRESS                                → "View"
+     COMPLETED                                  → "Review"                             # SIMUI-031
 4. The link sits alongside the existing Simulate button/result cell — it does not replace
    the SIMUI-019..026 result-cell branching, and does not turn the row itself into a link.
 ```
@@ -210,7 +211,8 @@ surface something the proposal does not address.
 | u10 | Single-game in-place patch vs. a concurrent batch re-fetch | A single-game success patches local `games[gameId]`; if a batch `invalidate()` fires around the same time, the `refreshToken` change re-runs the fetch `useEffect` and replaces local state with the server list (which already includes the new result). Ordering is benign — the re-fetch wins and is authoritative — but the local patch is discardable, not load-bearing. | SIMUI-023/027 |
 | u11 | `gw.config.inProgress` field | Confirmed present — `GameWorld` page already reads `gw.config?.inProgress` today (`src/ui/pages/game-world.tsx`). No model change needed for the guard itself; only the `null`-guard ordering in u7. | SIMUI-009 |
 | u12 | **NEW** — `TeamCalendar` needs `gw.managedTeamId` and `gw.currentDate` for the row link's guard and label, but only ever reads route params today | Read via `useRouteLoaderData('gwId')`, the same mechanism `pre-game-prep.tsx`/`game-world.tsx` already use — no new fetch. `managedTeamId` compares against the route's `teamId` param (coerced to `Number`, matching the existing `isHome` comparison at `team-calendar.tsx:41`). | SIMUI-029/030 |
-| u13 | **NEW** — date-only comparison for "ready to sim" label branch | `scheduledDate` and `gw.currentDate` are both `DATEONLY` strings (`YYYY-MM-DD`); compare as strings (`<=`) rather than constructing `Date` objects, avoiding timezone drift at midnight boundaries. A `null` `scheduledDate` (unscheduled game) cannot be `<= currentDate`, so it falls to "Preview". | SIMUI-031 |
+| u13 | **NEW** — date-only comparison for "ready to sim" label branch | `scheduledDate` and `gw.currentDate` are both `DATEONLY` strings (`YYYY-MM-DD`); compare as strings (`<=`) rather than constructing `Date` objects, avoiding timezone drift at midnight boundaries. | SIMUI-031 |
+| u14 | **NEW** — null `scheduledDate` must label "Prep", not "Preview" | Corrected after PREGAME-005/#364 landed (`pre-game-prep-ui.md`): the backend's `simulate()` guard, and now `PreGamePrep`'s `isReadyToPrep`, treat a `null` `scheduledDate` as ready **unconditionally**, regardless of `gw.currentDate`. `gameLinkLabel` must check `scheduledDate == null` before the `<=` comparison and return "Prep" in that case — otherwise the calendar link reads "Preview" for a game the linked screen already treats as ready to sim. | SIMUI-031, PREGAME-005 |
 
 ---
 

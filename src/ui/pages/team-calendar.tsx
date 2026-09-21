@@ -27,11 +27,14 @@ const formatGameDate = (value: string | null): string => {
 const monthLabel = (value: string): string =>
   formatUtcDate(value, { year: 'numeric', month: 'long' }) ?? 'Unscheduled';
 
-// @spec SIMUI-031 — date-only string compare avoids Date/timezone drift at midnight.
+// @spec SIMUI-031 — date-only string compare avoids Date/timezone drift at midnight. A null
+// scheduledDate is ready unconditionally, mirroring PREGAME-005's exemption (the backend's
+// simulate() guard only runs its currentDate check when scheduledDate is set).
 const gameLinkLabel = (game: TeamSeasonGame, currentDate: string | null): string => {
   if (game.status === 'IN_PROGRESS') return 'View';
   if (game.status === 'COMPLETED') return 'Review';
-  return game.scheduledDate && currentDate && game.scheduledDate <= currentDate ? 'Prep' : 'Preview';
+  if (game.scheduledDate == null) return 'Prep';
+  return currentDate != null && game.scheduledDate <= currentDate ? 'Prep' : 'Preview';
 };
 
 const GameRow = ({
