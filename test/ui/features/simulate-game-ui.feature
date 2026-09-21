@@ -208,6 +208,14 @@ Feature: Simulate Game UI
       | IN_PROGRESS | 2025-04-10    | View    |
       | COMPLETED   | 2025-04-01    | Review  |
 
+  @spec:SIMUI-031
+  Scenario: Game screen link labels an unscheduled SCHEDULED game "Prep" regardless of currentDate
+    Given the managed team is team 1
+    And gw.currentDate is "2025-04-10"
+    And a Game exists with status "SCHEDULED" and no scheduledDate
+    When the TeamCalendar renders the GameRow for that game
+    Then the game screen link is labeled "Prep"
+
   # ─── Future ───────────────────────────────────────────────────────────────────
 
   @future

@@ -398,6 +398,11 @@ given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
     world.games.push(makeGame({ status: 'COMPLETED', homeTeamResult: Number(home), awayTeamResult: Number(away) }));
   });
 
+  // @spec SIMUI-031, PREGAME-005 — null scheduledDate is ready regardless of currentDate
+  given(/^a Game exists with status "([^"]+)" and no scheduledDate$/, (status: string) => {
+    world.games.push(makeGame({ status, scheduledDate: null }));
+  });
+
   when('the TeamCalendar renders the GameRow for that game', async () => {
     await ensureCalendar();
   });
