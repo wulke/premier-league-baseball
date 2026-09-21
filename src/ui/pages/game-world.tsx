@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Endpoints } from '../../api/endpoints';
-import { useParams, useNavigate, useRevalidator, useRouteLoaderData } from 'react-router';
+import { Link, useParams, useNavigate, useRevalidator, useRouteLoaderData } from 'react-router';
 import { getChampionDivisionId, getChampionTeamName } from '../champion';
 import { TeamSeasonGame } from '../../api/models';
 import { NotificationStream } from './notification-stream';
@@ -17,7 +17,24 @@ type LeagueSeasonSummary = {
   championName: string | null;
 };
 
-// @spec LIFE-001,SHB-001,SHB-002,SHB-003,ACTUI-001,ACTUI-005,GWHOME-001,GWHOME-002,GWHOME-003
+// @spec UNCLMUI-001,UNCLMUI-002 — the home page reuses the existing competition → TeamHub path
+// rather than adding a second team-claim mutation or picker.
+const ClaimTeamPrompt = ({ gwId, leagueId }: { gwId: string; leagueId?: number }) => (
+  <section data-testid="claim-team-prompt" style={{ marginBottom: '40px', padding: '28px', border: '1px solid #e5e5e5', borderRadius: '6px' }}>
+    <SectionLabel style={{ marginBottom: '10px' }}>Get Started</SectionLabel>
+    <h2 style={{ margin: '0 0 8px', fontSize: '1.2rem' }}>Claim a team to get started</h2>
+    <p style={{ margin: '0 0 16px', color: '#666' }}>
+      Browse available jobs, then choose a team to manage.
+    </p>
+    {leagueId != null && (
+      <Link data-testid="claim-team-link" to={`/${gwId}/${leagueId}`} style={{ color: '#222', fontWeight: 700 }}>
+        Browse available jobs
+      </Link>
+    )}
+  </section>
+);
+
+// @spec LIFE-001,SHB-001,SHB-002,SHB-003,ACTUI-001,ACTUI-005,GWHOME-001,GWHOME-002,GWHOME-003,UNCLMUI-001,UNCLMUI-002,UNCLMUI-003
 const GameWorld = () => {
   const { gwId } = useParams();
   // @spec RLDRUI-001,RLDRUI-003
@@ -156,6 +173,11 @@ const GameWorld = () => {
 
   const nextYear = gw.year + 1;
   const leagues: any[] = gw.Leagues ?? [];
+  // @spec UNCLMUI-002 — GameWorld's association read has no display-order contract, so use the
+  // lowest stable League id as the deterministic entry point to the existing TeamHub claim flow.
+  const claimLeagueId = leagues.reduce<number | undefined>((lowestId, league) =>
+    lowestId == null || league.id < lowestId ? league.id : lowestId,
+  undefined);
   const seasonComplete = leagueSeasonSummary.length > 0 && leagueSeasonSummary.every((league) => league.championName);
   const seasonLabel = gw.config?.inProgress
     ? `Season ${gw.year} · ${seasonComplete ? 'Complete' : 'In Progress'}`
@@ -210,6 +232,11 @@ const GameWorld = () => {
           </div>
         )}
       </div>
+
+      {/* @spec UNCLMUI-001,UNCLMUI-002 — TeamHub remains the only claim mutation surface. */}
+      {gw.managedTeamId == null && (
+        <ClaimTeamPrompt gwId={gwId!} leagueId={claimLeagueId} />
+      )}
 
       {/* @spec CALWUI-001,CALWUI-002,CALWUI-003,CALWUI-004,CALWUI-005,CALWUI-006,CALWUI-007 */}
       {gw.managedTeamId != null && gw.currentDate != null && (
