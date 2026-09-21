@@ -13,3 +13,21 @@ Feature: Pre-game prep UI
     Given a managed club does not have the requested game
     When the manager opens that game's pre-game route
     Then the game is unavailable and no simulation action is shown
+
+  @spec:PREGAME-005
+  Scenario: A future-dated scheduled game is a read-only preview
+    Given a managed club has a scheduled game after the GameWorld's current date
+    When the manager opens that game's pre-game route
+    Then the page shows opponent context but no lineup editor or "Ready to sim" button
+
+  @spec:PREGAME-005
+  Scenario: No current date configured treats the scheduled game as not ready
+    Given a managed club has a scheduled game and the GameWorld has no current date configured
+    When the manager opens that game's pre-game route
+    Then the page shows opponent context but no lineup editor or "Ready to sim" button
+
+  @spec:PREGAME-005
+  Scenario: A scheduled game with no scheduled date is always ready
+    Given a managed club has a scheduled game with no scheduled date and the GameWorld has no current date configured
+    When the manager opens that game's pre-game route
+    Then the page shows opponent record, probable pitcher, and the game lineup editor
