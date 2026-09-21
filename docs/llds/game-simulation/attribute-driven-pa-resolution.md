@@ -28,7 +28,9 @@ per-PA outcomes driven by player attributes, baserunners advanced for real, and 
   directly by tests with a caller-supplied transaction.
 - A minimal, types-only `EventEnvelope<TContext>` export — the smallest slice of the
   Event/Grading HLD's `events/` module this milestone needs.
-- Schema addition: `PlayerGameStats.outsRecorded` (new column).
+- Schema addition: `PlayerGameStats.outsRecorded` (new column). Application startup probes
+  existing SQLite `PlayerGameStats` tables and adds the non-null/defaulted column before any
+  simulation can persist an attribute-driven projection.
 - Schema addition: `MatchRules.innings` (new config field, default 9).
 
 Explicitly **not** in scope, each named to its owner:
