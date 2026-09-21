@@ -133,6 +133,55 @@ const GameFactory = (id?: number) => {
       }).then(({ dataValues }) => dataValues);
     },
 
+    // @spec BOXS-001,BOXS-002,BOXS-003,BOXS-004,BOXS-005
+    getBoxScore: async () => {
+      // Start at the Game primary key and traverse associations so this Game-owned read
+      // remains inside the domain boundary; PlayerGameStats, Player, Lineup, and
+      // LineupEntry are read-only included associations.
+      const game = await db.models.Game.findByPk(id, {
+        include: [
+          { model: db.models.PlayerGameStats, include: [{ model: db.models.Player }] },
+          { model: db.models.Lineup, include: [{ model: db.models.LineupEntry }] },
+          { model: db.models.Team, as: 'HomeTeam' },
+          { model: db.models.Team, as: 'AwayTeam' },
+        ],
+      });
+      if (!game) throw new DomainError('Not found', 404);
+      const row = game.dataValues;
+      if (row.status !== 'COMPLETED') throw new DomainError('game is not completed', 422);
+
+      const ownerByPlayer = new Map<number, any>();
+      (row.Lineups ?? []).forEach((lineup: any) => {
+        const lineupRow = lineup.dataValues;
+        (lineupRow.LineupEntries ?? []).forEach((entry: any) => ownerByPlayer.set(entry.dataValues.playerId, { teamId: lineupRow.teamId, ...entry.dataValues }));
+      });
+      const toPlayer = (stat: any) => {
+        const statRow = stat.dataValues; const player = statRow.Player?.dataValues ?? statRow.Player;
+        const entry = ownerByPlayer.get(statRow.playerId);
+        // A stat row without a frozen lineup entry cannot be accurately attributed to
+        // either side. Deliberately exclude it rather than using mutable Player.teamId.
+        if (!entry || !player) return null;
+        return {
+          id: player.id, givenName: player.givenName, familyName: player.familyName,
+          battingOrder: entry.battingOrder, fieldingPosition: entry.fieldingPosition, role: entry.role,
+          AB: statRow.AB, H: statRow.H, R: statRow.R, RBI: statRow.RBI, '2B': statRow['2B'], '3B': statRow['3B'], HR: statRow.HR, BB: statRow.BB, SO: statRow.SO,
+          GS: statRow.GS, outsRecorded: statRow.outsRecorded, IP: statRow.outsRecorded / 3,
+          pitchingH: statRow.pitchingH, pitchingBB: statRow.pitchingBB, pitchingSO: statRow.pitchingSO, ER: statRow.ER,
+          teamId: entry.teamId,
+        };
+      };
+      const roleRank: Record<string, number> = { STARTER: 0, BENCH: 1, BULLPEN: 2 };
+      const sortPlayers = (players: any[]) => players.sort((a, b) => (a.battingOrder ?? Infinity) - (b.battingOrder ?? Infinity) || roleRank[a.role] - roleRank[b.role] || a.id - b.id);
+      const sides: Record<number, any[]> = { [row.homeTeam]: [], [row.awayTeam]: [] };
+      (row.PlayerGameStats ?? []).map(toPlayer).filter((player: any): player is any => player != null).forEach((player: any) => { if (sides[player.teamId]) sides[player.teamId].push(player); });
+      const nameFor = (team: any, teamId: number) => team?.dataValues?.config?.name ?? team?.config?.name ?? `Team ${teamId}`;
+      return {
+        id: row.id,
+        home: { teamId: row.homeTeam, teamName: nameFor(row.HomeTeam, row.homeTeam), score: row.homeTeamResult, players: sortPlayers(sides[row.homeTeam]) },
+        away: { teamId: row.awayTeam, teamName: nameFor(row.AwayTeam, row.awayTeam), score: row.awayTeamResult, players: sortPlayers(sides[row.awayTeam]) },
+      };
+    },
+
     // result(): REMOVED (#190, LLD e4) — the unguarded blind-update path is deleted;
     // Game writes are reachable only through the guarded simulate paths below.
 

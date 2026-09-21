@@ -63,6 +63,10 @@ const applyAssociations = (sequelize) => {
   Team.hasMany(DivisionSeason, { foreignKey: 'teamId' });
   Division.hasMany(DivisionSeason, { foreignKey: 'divisionId' });
   // Game
+  // @spec BOXS-001,BOXS-003 — legacy homeTeam/awayTeam names are retained, but aliases
+  // make the read-only completed-game projection start from Game and include both Teams.
+  Game.belongsTo(Team, { as: 'HomeTeam', foreignKey: 'homeTeam', constraints: false });
+  Game.belongsTo(Team, { as: 'AwayTeam', foreignKey: 'awayTeam', constraints: false });
   // @spec PSTAT-001,PSTAT-004
   Game.hasMany(PlayerGameStats, { foreignKey: 'gameId' });
   // @spec ECP-001

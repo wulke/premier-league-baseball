@@ -174,46 +174,7 @@ const getPlayerStats = async (playerId: number, grain: 'season' | 'career' | 'la
 
 // @spec BOXS-001,BOXS-002,BOXS-003,BOXS-004,BOXS-005
 const getGameBoxScore = async (gameId: number) => {
-  const game = await db.models.Game.findByPk(gameId);
-  if (!game) throw new DomainError('Not found', 404);
-  const gameRow = game.dataValues;
-  if (gameRow.status !== 'COMPLETED') throw new DomainError('game is not completed', 422);
-
-  // A statistic has no teamId. The game-scoped lineup is the durable ownership record,
-  // so project it separately and match entries by playerId rather than current Player.teamId.
-  const [stats, lineups, teams] = await Promise.all([
-    db.models.PlayerGameStats.findAll({ where: { gameId }, include: [{ model: db.models.Player }] }),
-    db.models.Lineup.findAll({ where: { gameId }, include: [{ model: db.models.LineupEntry }] }),
-    db.models.Team.findAll({ where: { id: [gameRow.homeTeam, gameRow.awayTeam] } }),
-  ]);
-  const teamName = new Map(teams.map((team: any) => [team.dataValues.id, team.dataValues.config?.name ?? `Team ${team.dataValues.id}`]));
-  const ownerByPlayer = new Map<number, any>();
-  lineups.forEach((lineup: any) => {
-    const row = lineup.dataValues;
-    (row.LineupEntries ?? []).forEach((entry: any) => ownerByPlayer.set(entry.dataValues.playerId, { teamId: row.teamId, ...entry.dataValues }));
-  });
-  const toPlayer = (stat: any) => {
-    const row = stat.dataValues; const player = row.Player?.dataValues ?? row.Player;
-    const entry = ownerByPlayer.get(row.playerId);
-    if (!entry || !player) return null;
-    return {
-      id: player.id, givenName: player.givenName, familyName: player.familyName,
-      battingOrder: entry.battingOrder, fieldingPosition: entry.fieldingPosition, role: entry.role,
-      AB: row.AB, H: row.H, R: row.R, RBI: row.RBI, '2B': row['2B'], '3B': row['3B'], HR: row.HR, BB: row.BB, SO: row.SO,
-      GS: row.GS, outsRecorded: row.outsRecorded, IP: row.outsRecorded / 3,
-      pitchingH: row.pitchingH, pitchingBB: row.pitchingBB, pitchingSO: row.pitchingSO, ER: row.ER,
-      teamId: entry.teamId,
-    };
-  };
-  const roleRank: Record<string, number> = { STARTER: 0, BENCH: 1, BULLPEN: 2 };
-  const sortPlayers = (players: any[]) => players.sort((a, b) => (a.battingOrder ?? Infinity) - (b.battingOrder ?? Infinity) || roleRank[a.role] - roleRank[b.role] || a.id - b.id);
-  const sides: Record<number, any[]> = { [gameRow.homeTeam]: [], [gameRow.awayTeam]: [] };
-  stats.map(toPlayer).filter((player): player is any => player != null).forEach((player) => { if (sides[player.teamId]) sides[player.teamId].push(player); });
-  return {
-    id: gameRow.id,
-    home: { teamId: gameRow.homeTeam, teamName: teamName.get(gameRow.homeTeam), score: gameRow.homeTeamResult, players: sortPlayers(sides[gameRow.homeTeam]) },
-    away: { teamId: gameRow.awayTeam, teamName: teamName.get(gameRow.awayTeam), score: gameRow.awayTeamResult, players: sortPlayers(sides[gameRow.awayTeam]) },
-  };
+  return GameFactory(gameId).getBoxScore();
 };
 
 // @spec XFER-010,LEDIT-002 — common Team/GameWorld resolution and managed-club gate for

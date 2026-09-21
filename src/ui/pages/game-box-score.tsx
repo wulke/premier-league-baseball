@@ -11,7 +11,7 @@ type BoxScore = { id: number; home: BoxScoreSide; away: BoxScoreSide };
 const TeamBoxScore = ({ side, kind }: { side: BoxScoreSide; kind: 'home' | 'away' }) => <Card as="section" style={{ padding: '16px', overflowX: 'auto' }}>
   <h2 style={{ marginTop: 0 }}>{side.teamName} <output>{side.score}</output></h2>
   {side.players.length === 0 ? <p data-testid={`${kind}-box-score-empty`}>No stats recorded</p> : <table aria-label={`${side.teamName} box score`} style={{ width: '100%', borderCollapse: 'collapse' }}>
-    <thead><tr>{['Player', 'Pos', 'Role', 'AB', 'H', 'R', 'RBI', '2B', '3B', 'HR', 'BB', 'SO', 'IP', 'H', 'BB', 'SO', 'ER'].map((label, index) => <th key={`${label}-${index}`} style={{ textAlign: index < 3 ? 'left' : 'right', padding: '5px' }}>{label}</th>)}</tr></thead>
+    <thead><tr>{['Player', 'Pos', 'Role', 'AB', 'H', 'R', 'RBI', '2B', '3B', 'HR', 'BB', 'SO', 'IP', 'P-H', 'P-BB', 'P-SO', 'ER'].map((label, index) => <th key={`${label}-${index}`} style={{ textAlign: index < 3 ? 'left' : 'right', padding: '5px' }}>{label}</th>)}</tr></thead>
     <tbody>{side.players.map((player) => <tr key={player.id}><td style={{ padding: '5px' }}>{player.battingOrder != null ? `${player.battingOrder}. ` : ''}{player.givenName} {player.familyName}</td><td>{player.fieldingPosition ?? '—'}</td><td>{player.role}</td>{[player.AB, player.H, player.R, player.RBI, player['2B'], player['3B'], player.HR, player.BB, player.SO, player.IP, player.pitchingH, player.pitchingBB, player.pitchingSO, player.ER].map((stat, index) => <td key={index} style={{ textAlign: 'right' }}>{stat}</td>)}</tr>)}</tbody>
   </table>}
 </Card>;
