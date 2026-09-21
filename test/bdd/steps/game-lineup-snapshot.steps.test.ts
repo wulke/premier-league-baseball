@@ -1,4 +1,4 @@
-// @spec LSNAP-001,LSNAP-002,LSNAP-003,LSNAP-004,LSNAP-005,LEDIT-008
+// @spec LSNAP-001,LSNAP-002,LSNAP-003,LSNAP-004,LSNAP-005,LREAD-005,LEDIT-008
 // Per-game lineup snapshot acceptance bindings.
 import path from 'path';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
@@ -42,6 +42,13 @@ beforeEach(async () => { await db.sync({ force: true }); activeAtSnapshot = unde
 autoBindSteps(feature, [({ given, when, then }: any) => {
   given(/^GameWorld (\d+) exists for game lineup snapshots$/, async (gwId: string) => { await db.models.GameWorld.create({ id: Number(gwId), year: 2025, config: {} }); });
   given(/^Team (\d+) in GameWorld (\d+) has an active lineup for snapshots$/, async (teamId: string, gwId: string) => createActiveLineup(Number(teamId), Number(gwId)));
+  // @spec LREAD-005 — this separate team owns the game; Team 10 must not cause a snapshot
+  // under its own ID merely by passing the foreign game ID to the game-scoped read.
+  given(/^Game (\d+) belongs to Team (\d+) in GameWorld (\d+)$/, async (gameId: string, teamId: string, gwId: string) => {
+    const homeLeagueId = (await db.models.Team.findByPk(10).then((row: any) => row.dataValues)).homeLeagueId;
+    await db.models.Team.create({ id: Number(teamId), gameWorldId: Number(gwId), homeLeagueId, config: { name: `Foreign Team ${teamId}` } });
+    await db.models.Game.create({ id: Number(gameId), homeTeam: Number(teamId), awayTeam: Number(teamId), status: 'SCHEDULED' });
+  });
   given(/^Team (\d+) has an existing per-game override lineup for Game (\d+)$/, async (teamId: string, gameId: string) => {
     const team = await db.models.Team.findByPk(Number(teamId)).then((row: any) => row.dataValues);
     await db.models.Game.create({ id: Number(gameId), homeTeam: Number(teamId), awayTeam: Number(teamId) });
@@ -92,6 +99,10 @@ autoBindSteps(feature, [({ given, when, then }: any) => {
     expect(entries.map(({ lineupId, playerId, role, battingOrder, fieldingPosition }: any) => ({ lineupId, playerId, role, battingOrder, fieldingPosition }))).toEqual(existingLineup?.entries);
   });
   then('the game lineup response indicates the lineup was not found', () => expect(response?.statusCode).toBe(404));
+  // @spec LREAD-005
+  then(/^no per-game lineup exists for Team (\d+) and Game (\d+)$/, async (teamId: string, gameId: string) => {
+    await expect(db.models.Lineup.count({ where: { teamId: Number(teamId), gameId: Number(gameId) } })).resolves.toBe(0);
+  });
   then('the snapshot response indicates the Game was not found', async () => {
     expect(snapshotResponse?.statusCode).toBe(404);
     await expect(db.models.Lineup.count({ where: { teamId: 10, gameId: 44 } })).resolves.toBe(0);
