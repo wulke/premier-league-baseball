@@ -1,4 +1,4 @@
-// @spec PREGAME-001,PREGAME-002,PREGAME-003,PREGAME-004 (pre-game prep acceptance)
+// @spec PREGAME-001,PREGAME-002,PREGAME-003,PREGAME-004,PREGAME-005 (pre-game prep acceptance)
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -11,16 +11,20 @@ const player = (id: number, pitcher = false) => ({ id, givenName: pitcher ? 'Ace
 const lineup = { starters: [{ playerId: 1, battingOrder: 1, fieldingPosition: 'Shortstop', valid: true }, { playerId: 2, battingOrder: 9, fieldingPosition: 'Pitcher', valid: true }], startingPitcherId: 2, bench: [], bullpen: [] };
 let hasGame = true;
 let gameStatus = 'SCHEDULED';
+let currentDate: string | null = '2025-04-05';
+let scheduledDate = '2025-04-05T00:00:00.000Z';
 
 const mount = () => render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/1/5/game/40'] })} />);
 beforeEach(() => {
   hasGame = true;
   gameStatus = 'SCHEDULED';
+  currentDate = '2025-04-05';
+  scheduledDate = '2025-04-05T00:00:00.000Z';
   global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input); const method = init?.method ?? 'GET';
     const response = (body: any) => Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
-    if (/gameWorld\/1$/.test(url)) return response({ id: 1, managedTeamId: 10 });
-    if (/team\/10\/calendar/.test(url)) return response({ games: hasGame ? [{ gameId: 40, scheduledDate: '2025-04-05T00:00:00.000Z', homeTeamId: 10, homeTeamName: 'Mariners', awayTeamId: 11, awayTeamName: 'Rivertown', leagueId: 5, status: gameStatus, homeTeamResult: gameStatus === 'COMPLETED' ? 5 : null, awayTeamResult: gameStatus === 'COMPLETED' ? 2 : null }] : [] });
+    if (/gameWorld\/1$/.test(url)) return response({ id: 1, managedTeamId: 10, currentDate });
+    if (/team\/10\/calendar/.test(url)) return response({ games: hasGame ? [{ gameId: 40, scheduledDate, homeTeamId: 10, homeTeamName: 'Mariners', awayTeamId: 11, awayTeamName: 'Rivertown', leagueId: 5, status: gameStatus, homeTeamResult: gameStatus === 'COMPLETED' ? 5 : null, awayTeamResult: gameStatus === 'COMPLETED' ? 2 : null }] : [] });
     if (/team\/10\/lineup/.test(url)) return response(lineup);
     if (/team\/10\/roster/.test(url)) return response([player(1), player(2, true)]);
     if (/team\/11\/roster/.test(url)) return response([player(30, true)]);
@@ -43,5 +47,15 @@ defineFeature(feature, (test) => {
     given('a managed club does not have the requested game', () => { hasGame = false; });
     when("the manager opens that game's pre-game route", mount);
     then('the game is unavailable and no simulation action is shown', async () => { await waitFor(() => expect(screen.getByText('Game unavailable')).toBeInTheDocument()); expect(screen.queryByRole('button', { name: 'Ready to sim' })).toBeNull(); });
+  });
+  test('A future-dated scheduled game is a read-only preview', ({ given, when, then, and }) => {
+    given("a managed club has a scheduled game after the GameWorld's current date", () => { currentDate = '2025-04-01'; scheduledDate = '2025-04-05T00:00:00.000Z'; });
+    when("the manager opens that game's pre-game route", mount);
+    then('the page shows opponent context but no lineup editor or "Ready to sim" button', async () => { await waitFor(() => expect(screen.getByText('Rivertown')).toBeInTheDocument()); expect(screen.queryByRole('button', { name: 'Edit Lineup' })).toBeNull(); expect(screen.queryByRole('button', { name: 'Ready to sim' })).toBeNull(); });
+  });
+  test('No current date configured treats the scheduled game as not ready', ({ given, when, then, and }) => {
+    given('a managed club has a scheduled game and the GameWorld has no current date configured', () => { currentDate = null; scheduledDate = '2025-04-05T00:00:00.000Z'; });
+    when("the manager opens that game's pre-game route", mount);
+    then('the page shows opponent context but no lineup editor or "Ready to sim" button', async () => { await waitFor(() => expect(screen.getByText('Rivertown')).toBeInTheDocument()); expect(screen.queryByRole('button', { name: 'Edit Lineup' })).toBeNull(); expect(screen.queryByRole('button', { name: 'Ready to sim' })).toBeNull(); });
   });
 });
