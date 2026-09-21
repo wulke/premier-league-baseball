@@ -24,10 +24,13 @@ const PreGamePrep = () => {
   const isScheduledManagedGame = isManagedGame && game.status === 'SCHEDULED';
   if (!isManagedGame) return <PageContainer as="main" style={{ padding: '24px' }}><h1>Game unavailable</h1><p>This pre-game screen is available only for your managed club's games.</p></PageContainer>;
 
-  // @spec PREGAME-005 — same non-strict scheduledDate <= currentDate boundary as the backend's
-  // simulate() guard and simulateToday's batch loop; no currentDate means not-ready, not ready.
+  // @spec PREGAME-005 — mirrors the backend's simulate() guard exactly: a null scheduledDate
+  // skips the currentDate check there (and here), while a set scheduledDate requires a
+  // configured currentDate on or after it (the same non-strict boundary simulateToday's batch
+  // loop uses).
   const currentDate = gameWorld?.currentDate;
-  const isReadyToPrep = isScheduledManagedGame && currentDate != null && (game.scheduledDate ?? '').slice(0, 10) <= currentDate;
+  const isReadyToPrep = isScheduledManagedGame
+    && (game.scheduledDate == null || (currentDate != null && game.scheduledDate.slice(0, 10) <= currentDate));
 
   const opponentId = game.homeTeamId === managedTeamId ? game.awayTeamId : game.homeTeamId;
   const opponentName = game.homeTeamId === managedTeamId ? game.awayTeamName : game.homeTeamName;

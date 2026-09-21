@@ -12,7 +12,7 @@ const lineup = { starters: [{ playerId: 1, battingOrder: 1, fieldingPosition: 'S
 let hasGame = true;
 let gameStatus = 'SCHEDULED';
 let currentDate: string | null = '2025-04-05';
-let scheduledDate = '2025-04-05T00:00:00.000Z';
+let scheduledDate: string | null = '2025-04-05T00:00:00.000Z';
 
 const mount = () => render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/1/5/game/40'] })} />);
 beforeEach(() => {
@@ -57,5 +57,10 @@ defineFeature(feature, (test) => {
     given('a managed club has a scheduled game and the GameWorld has no current date configured', () => { currentDate = null; scheduledDate = '2025-04-05T00:00:00.000Z'; });
     when("the manager opens that game's pre-game route", mount);
     then('the page shows opponent context but no lineup editor or "Ready to sim" button', async () => { await waitFor(() => expect(screen.getByText('Rivertown')).toBeInTheDocument()); expect(screen.queryByRole('button', { name: 'Edit Lineup' })).toBeNull(); expect(screen.queryByRole('button', { name: 'Ready to sim' })).toBeNull(); });
+  });
+  test('A scheduled game with no scheduled date is always ready', ({ given, when, then, and }) => {
+    given('a managed club has a scheduled game with no scheduled date and the GameWorld has no current date configured', () => { currentDate = null; scheduledDate = null; });
+    when("the manager opens that game's pre-game route", mount);
+    then('the page shows opponent record, probable pitcher, and the game lineup editor', async () => { await waitFor(() => expect(screen.getByRole('button', { name: 'Edit Lineup' })).toBeInTheDocument()); expect(screen.getByText('Rivertown')).toBeInTheDocument(); expect(screen.getByText('Record: 8-4')).toBeInTheDocument(); expect(screen.getByText('Probable pitcher: Ace 30')).toBeInTheDocument(); });
   });
 });

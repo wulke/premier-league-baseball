@@ -16,14 +16,15 @@ snapshot; it is never a new per-game override type.
    the first pitcher in the opponent roster as the probable starter. Park and weather are excluded.
 3. Embed the active-lineup editor with the resolved game snapshot. Saving uses the existing
    `PATCH /api/team/:teamId/lineup/:gameId` wholesale snapshot replacement endpoint.
-4. A scheduled game exposes the lineup editor and **Ready to sim** only when its `scheduledDate`
-   is on or before `GameWorld.currentDate` — the same non-strict boundary the backend's
-   `simulate()` guard and `simulateToday`'s batch loop already use. A scheduled game whose
-   `scheduledDate` is after `currentDate` (or whose GameWorld has no `currentDate` configured)
-   renders the opponent-context section only, as a read-only preview: no lineup editor, no
-   **Ready to sim** control. **Ready to sim** posts to the existing `SimulateGame` mutation; on
-   success the route revalidates and shows the completed score. Non-managed, locked, and
-   not-yet-ready games expose no editing or simulation controls.
+4. A scheduled game exposes the lineup editor and **Ready to sim** only when it mirrors the
+   backend's `simulate()` readiness guard exactly: a null `scheduledDate` is ready unconditionally
+   (the backend skips its currentDate check in that case too), and a set `scheduledDate` is ready
+   only when it is on or before `GameWorld.currentDate` — the same non-strict boundary
+   `simulateToday`'s batch loop also uses. A scheduled game that isn't ready by that rule renders
+   the opponent-context section only, as a read-only preview: no lineup editor, no **Ready to sim**
+   control. **Ready to sim** posts to the existing `SimulateGame` mutation; on success the route
+   revalidates and shows the completed score. Non-managed, locked, and not-yet-ready games expose
+   no editing or simulation controls.
 
 ## Edge Case Probe
 
@@ -32,8 +33,12 @@ snapshot; it is never a new per-game override type.
   lineup snapshot before returning it, preserving the snapshot-on-simulate semantics.
 - Standings or pitcher data is absent -> render an em dash / "TBD" rather than blocking prep.
 - Simulate rejects (for example, future game date) -> retain the prep screen and show the API error.
-- A scheduled game's `scheduledDate` is after `GameWorld.currentDate` -> render the opponent-context
-  preview only; withhold the lineup editor and "Ready to sim" so the client never even attempts the
-  mutation the backend would 422 on.
-- `GameWorld.currentDate` is unset -> treat the scheduled game as not-ready (read-only), mirroring
-  the backend's own required-currentDate guard rather than assuming the game is ready.
+- A scheduled game's `scheduledDate` is set and after `GameWorld.currentDate` -> render the
+  opponent-context preview only; withhold the lineup editor and "Ready to sim" so the client never
+  even attempts the mutation the backend would 422 on.
+- A scheduled game's `scheduledDate` is set but `GameWorld.currentDate` is unset -> treat the game
+  as not-ready (read-only), mirroring the backend's own required-currentDate guard rather than
+  assuming the game is ready.
+- A scheduled game's `scheduledDate` is `null` -> ready regardless of `GameWorld.currentDate`
+  (including when `currentDate` is also unset), matching the backend's `simulate()`, which only
+  runs the currentDate check `if (scheduledDate != null)`.

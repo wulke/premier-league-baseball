@@ -25,3 +25,9 @@ Feature: Pre-game prep UI
     Given a managed club has a scheduled game and the GameWorld has no current date configured
     When the manager opens that game's pre-game route
     Then the page shows opponent context but no lineup editor or "Ready to sim" button
+
+  @spec:PREGAME-005
+  Scenario: A scheduled game with no scheduled date is always ready
+    Given a managed club has a scheduled game with no scheduled date and the GameWorld has no current date configured
+    When the manager opens that game's pre-game route
+    Then the page shows opponent record, probable pitcher, and the game lineup editor
