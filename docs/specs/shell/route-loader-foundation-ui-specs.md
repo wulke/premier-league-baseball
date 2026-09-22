@@ -66,5 +66,5 @@ the rows below cover routing/loader shape only. LLD: [`docs/llds/shell/route-loa
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
-- **Gherkin:** `test/ui/features/route-loader-foundation-ui.feature` — new scenarios tagged `STDRT-001`..`STDRT-004`.
+- **Gherkin:** `test/ui/features/league-dashboard-routing-ui.feature` (NEW, Red — kept separate from `route-loader-foundation-ui.feature` since that file already has a bound step-definition suite that auto-binds every scenario in it; a new feature file with no step definitions is this repo's established way to land Red scenarios without breaking CI, matching `league-dashboard-ui.feature`) — `STDRT-001`..`STDRT-004`.
 - **Code entry points (not yet implemented):** `src/ui/routes.tsx` (`leagueDashboardLoader`, `leagueStandingsLoader`, route split) — STDRT-001, STDRT-002, STDRT-003, STDRT-004.

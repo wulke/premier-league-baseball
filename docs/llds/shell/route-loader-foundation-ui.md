@@ -362,5 +362,5 @@ body unchanged except its identity-header block drops the champion banner/subtit
 | Content LLD | [`docs/llds/league/league-dashboard-ui.md`](../league/league-dashboard-ui.md) |
 | Decision records | [#297](https://github.com/wulke/premier-league-baseball/issues/297), [#321](https://github.com/wulke/premier-league-baseball/issues/321) |
 | EARS | `docs/specs/shell/route-loader-foundation-ui-specs.md` — `STDRT-001`..`STDRT-004` (appended) |
-| Gherkin | `test/ui/features/route-loader-foundation-ui.feature` — new scenarios tagged `STDRT-001`..`STDRT-004` |
+| Gherkin | `test/ui/features/league-dashboard-routing-ui.feature` (NEW, Red) — `STDRT-001`..`STDRT-004`. Kept out of `route-loader-foundation-ui.feature` deliberately: that file already has a bound step-definition suite (`route-loader-foundation-ui.steps.test.tsx`, `autoBindSteps`) covering every scenario in it, so appending step-def-less scenarios there fails CI at suite-collection time rather than landing as an inert Red state. |
 | Code entry points (not yet implemented) | `src/ui/routes.tsx` (`leagueDashboardLoader`, `leagueStandingsLoader`, route split) · `src/ui/pages/league-dashboard.tsx` (NEW) · `src/ui/pages/league.tsx` (`League` → `LeagueStandings` rename) · `src/ui/pages/index.tsx` (barrel) |
