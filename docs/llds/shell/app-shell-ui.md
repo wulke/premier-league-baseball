@@ -26,9 +26,11 @@ features and render their existing content inside this shell.
 - **`AppShell`** (`src/ui/components/app-shell.tsx`, **NEW**): a pathless layout-route element.
   Reads `gwId` from `useParams()`, mounts `GameWorldProvider`, and renders `<NavRail />` + the page
   `<Outlet />`. The one component rendered across every route.
-- **`NavRail`** (`src/ui/components/nav-rail.tsx`, **NEW**): the fixed FM-style sections (HOME /
-  WORLD / COMPETITIONS / dimmed fog trio), the app mark, and world-level display (current date
-  chip). Consumes `useGameWorldContext()`. Active highlighting derived from the router.
+- **`NavRail`** (`src/ui/components/nav-rail.tsx`, **NEW**): the fixed FM-style sections (WORLD /
+  COMPETITIONS / dimmed fog trio), an always-available branded home link, and world-level display
+  (current date chip). Consumes `useGameWorldContext()`. Active highlighting derived from the
+  router. The WORLD link prefixes its name with Heroicons' `HomeIcon` to distinguish the loaded
+  game world from the application home.
 - **`BatchSimulateControl`** (`src/ui/components/batch-simulate-control.tsx`, **NEW — RELOCATED**):
   the batch "Simulate Today" state machine (idle/submitting/success-clean/
   success-skipped/error), rendered inside the rail's WORLD section. Successful daily progression
@@ -47,6 +49,36 @@ No backend, data-model, or endpoint changes arise from this LLD.
 ---
 
 ## Interface / Data Model
+
+### NavRail home navigation refinement (#381)
+
+```tsx
+<Link data-testid="nav-home" to="/">Premier League Baseball</Link>
+<Link data-testid="nav-world-link" to={`/${gwId}`}>
+  <HomeIcon aria-hidden="true" />
+  {gw.config?.name}
+</Link>
+```
+
+The branded header is always a link, including while Home is active, so the primary app
+destination remains available without depending on a loaded GameWorld. It inherits the existing
+router-derived active style and `data-active` contract. The standalone `HOME` link is removed;
+no additional WORLD-section spacing is needed because the icon and label remain one inline link.
+
+## Logic Flow
+
+1. Derive Home activity from `pathname === '/'`.
+2. Render the branded `nav-home` header as the `/` link using that activity state.
+3. When `gw` exists, render the WORLD link with an `aria-hidden` Heroicons `HomeIcon` before its
+   existing world-name fallback.
+4. Render the remaining world, competition, and manager controls unchanged.
+
+## Edge Case Probe
+
+- On Home, the branded header remains a valid, active `/` link while WORLD stays absent.
+- On a loaded GameWorld route, the icon is decorative; the link's accessible name remains the
+  GameWorld name rather than a duplicate "home" announcement.
+- A missing `gw.config.name` retains the existing `Game World ${gwId}` fallback beside the icon.
 
 ### `GameWorldProvider` — unchanged contract, new mount site
 

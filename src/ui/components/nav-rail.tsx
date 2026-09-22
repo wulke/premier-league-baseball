@@ -1,5 +1,6 @@
 // @spec SHELL-004..SHELL-011
 import React from 'react';
+import { HomeIcon } from '@heroicons/react/24/outline';
 import { Link, useLocation, useParams, useRouteLoaderData } from 'react-router';
 import { BatchSimulateControl } from './batch-simulate-control';
 import { RapidSimulateControl } from './rapid-simulate-control';
@@ -42,18 +43,20 @@ const NavRail = () => {
     padding: '6px 0',
   });
 
+  // @spec SHELL-004 — the app mark is the always-available Home link; no separate HOME control.
+  const homeLinkStyle: React.CSSProperties = { ...linkStyle(pathname === '/'), fontWeight: 800, marginBottom: 20 };
+
   return (
     <aside data-testid="nav-rail" style={{ boxSizing: 'border-box', flex: '0 0 220px', width: 220, height: '100vh', position: 'sticky', top: 0, overflowY: 'auto', padding: 20, borderRight: '1px solid #ddd' }}>
-      <div data-testid="nav-mark" style={{ fontWeight: 800, marginBottom: 20 }}>
+      <Link data-testid="nav-home" data-active={pathname === '/' ? 'true' : 'false'} to="/" style={homeLinkStyle}>
         Premier League Baseball
-      </div>
-      <Link data-testid="nav-home" data-active={pathname === '/' ? 'true' : 'false'} to="/" style={linkStyle(pathname === '/')}>
-        HOME
       </Link>
       {gw && (
-        <section data-testid="nav-world" style={{ marginTop: 22 }}>
+        <section data-testid="nav-world">
           <SectionLabel as="div">WORLD</SectionLabel>
-          <Link data-testid="nav-world-link" data-active={worldActive ? 'true' : 'false'} to={`/${gwId}`} style={linkStyle(worldActive)}>
+          {/* @spec SHELL-006 — decorative Heroicons HomeIcon differentiates GameWorld from app Home. */}
+          <Link data-testid="nav-world-link" data-active={worldActive ? 'true' : 'false'} to={`/${gwId}`} style={{ ...linkStyle(worldActive), display: 'flex', alignItems: 'center', gap: 6 }}>
+            <HomeIcon data-testid="nav-world-home-icon" aria-hidden="true" style={{ width: 16, height: 16, flex: '0 0 auto' }} />
             {gw.config?.name ?? `Game World ${gwId}`}
           </Link>
           {/* @spec SIMUI-006,SIMUI-007 */}
