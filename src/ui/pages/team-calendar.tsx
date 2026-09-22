@@ -4,6 +4,7 @@ import { Endpoints } from '../../api/endpoints';
 import { TeamSeasonCalendar, TeamSeasonGame } from '../../api/models';
 import { Button, ErrorText, PageContainer, SectionLabel } from '../components/ui';
 import { TeamCrest } from '../components/team-crest';
+import { TeamLink } from '../components/team-link';
 import { formatUtcDate } from '../format-date';
 
 type CalendarFilter = 'all' | 'scheduled' | 'played';
@@ -57,6 +58,7 @@ const GameRow = ({
   const isHome = game.homeTeamId === Number(teamId);
   const isBye = game.awayTeamId === null;
   const opponent = isBye ? 'Bye' : (isHome ? game.awayTeamName : game.homeTeamName);
+  const opponentId = isBye ? null : (isHome ? game.awayTeamId : game.homeTeamId);
 
   // Flow A (SIMUI-019..026): the result cell branches on `game.status` first (COMPLETED /
   // IN_PROGRESS render their own indicator), then on the per-row `simulateStatus` for a
@@ -148,9 +150,10 @@ const GameRow = ({
       </div>
 
       {/* Opponent + competition */}
+      {/* @spec TEAMLINK-006 */}
       <div>
         <span style={{ fontWeight: 600 }}>
-          {isBye || isHome ? 'vs' : '@'} {opponent}
+          {isBye || isHome ? 'vs' : '@'} <TeamLink gwId={gwId} teamId={opponentId}>{opponent}</TeamLink>
         </span>
         <span style={{ marginLeft: '8px', fontSize: '0.78rem', color: '#999' }}>
           {game.divisionName}{game.roundLabel ? ` · ${game.roundLabel}` : ''}

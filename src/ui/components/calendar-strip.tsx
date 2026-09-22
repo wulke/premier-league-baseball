@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { TeamSeasonGame } from '../../api/models';
 import { Button } from './ui';
 import { TeamCrest } from './team-crest';
+import { TeamLink } from './team-link';
 
 // Adding a new DayEntry kind (e.g. training):
 //   1. Define its shape and add it to the `DayEntry` union below.
-//   2. Add a `kind -> render` mapping to DAY_ENTRY_RENDERERS.
+//   2. Add a `kind -> render` mapping in dayEntryRenderers.
 //   3. Populate entries of that kind from wherever their source data lives —
 //      CalendarStrip only groups/renders DayEntry[] by `date`; it has no
 //      opinion on where an entry comes from.
@@ -19,6 +20,7 @@ interface GameDayEntry {
 }
 
 interface CalendarStripProps {
+  gwId: string;
   currentDate: string;
   seasonStart: string | null;
   seasonEnd: string | null;
@@ -39,23 +41,25 @@ const boundDate = (iso: string | null): string | null => (iso == null ? null : i
 
 // @spec BADGEUI-009 — relocated from the retired "Today" scoreboard (#326 supersedes that
 // surface with this calendar strip); TeamCrest wiring/testId convention carried over as-is.
-const renderGameEntry = ({ game }: GameDayEntry) => (
+// @spec TEAMLINK-003 — home/away team names link to their Team View page.
+const renderGameEntry = (gwId: string) => ({ game }: GameDayEntry) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', padding: '2px 0' }}>
     <TeamCrest name={game.homeTeamName} badge={game.homeTeamBadge} size={16} testId={`calendar-entry-badge-${game.gameId}-home`} />
     <TeamCrest name={game.awayTeamName} badge={game.awayTeamBadge} size={16} testId={`calendar-entry-badge-${game.gameId}-away`} />
     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-      {game.homeTeamName} v {game.awayTeamName}
+      <TeamLink gwId={gwId} teamId={game.homeTeamId}>{game.homeTeamName}</TeamLink> v <TeamLink gwId={gwId} teamId={game.awayTeamId}>{game.awayTeamName}</TeamLink>
     </span>
   </div>
 );
 
-const DAY_ENTRY_RENDERERS: { [K in DayEntry['kind']]: (entry: Extract<DayEntry, { kind: K }>) => React.ReactNode } = {
-  game: renderGameEntry,
-};
+const dayEntryRenderers = (gwId: string): { [K in DayEntry['kind']]: (entry: Extract<DayEntry, { kind: K }>) => React.ReactNode } => ({
+  game: renderGameEntry(gwId),
+});
 
 // @spec CALWUI-001,CALWUI-002,CALWUI-003,CALWUI-004,CALWUI-005,CALWUI-006
-const CalendarStrip = ({ currentDate, seasonStart, seasonEnd, entries, onWindowChange }: CalendarStripProps) => {
+const CalendarStrip = ({ gwId, currentDate, seasonStart, seasonEnd, entries, onWindowChange }: CalendarStripProps) => {
   const [windowStart, setWindowStart] = useState(() => addDays(currentDate, -3));
+  const dayEntryRenderer = dayEntryRenderers(gwId);
 
   const entriesByDate = new Map<string, DayEntry[]>();
   entries.forEach((entry) => {
@@ -128,7 +132,7 @@ const CalendarStrip = ({ currentDate, seasonStart, seasonEnd, entries, onWindowC
               </div>
               {dayEntries.map((entry) => (
                 <div key={entry.id} data-testid={`calendar-entry-${entry.id}`}>
-                  {DAY_ENTRY_RENDERERS[entry.kind](entry as never)}
+                  {dayEntryRenderer[entry.kind](entry as never)}
                 </div>
               ))}
             </div>

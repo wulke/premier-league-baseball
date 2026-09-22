@@ -39,7 +39,7 @@ defineFeature(feature, (test) => {
   test('A managed club prepares and simulates its scheduled game', ({ given, when, then, and }) => {
     given('a managed club has a scheduled game and game lineup snapshot', () => { hasGame = true; });
     when("the manager opens that game's pre-game route", mount);
-    then('the page shows opponent record, probable pitcher, and the game lineup editor', async () => { await waitFor(() => expect(screen.getByRole('button', { name: 'Edit Lineup' })).toBeInTheDocument()); expect(screen.getByText('Rivertown')).toBeInTheDocument(); expect(screen.getByText('Record: 8-4')).toBeInTheDocument(); expect(screen.getByText('Probable pitcher: Ace 30')).toBeInTheDocument(); });
+    then('the page shows opponent record, probable pitcher, and the game lineup editor', async () => { await waitFor(() => expect(screen.getByRole('button', { name: 'Edit Lineup' })).toBeInTheDocument()); expect(screen.getAllByText('Rivertown').length).toBeGreaterThan(0); expect(screen.getByText('Record: 8-4')).toBeInTheDocument(); expect(screen.getByText('Probable pitcher: Ace 30')).toBeInTheDocument(); });
     when('the manager selects "Ready to sim"', () => fireEvent.click(screen.getByRole('button', { name: 'Ready to sim' })));
     then('the completed score is shown', async () => await waitFor(() => { expect(screen.getByTestId('pre-game-score')).toHaveTextContent('5–2'); expect(screen.queryByText('Game unavailable')).toBeNull(); expect(screen.queryByRole('button', { name: 'Ready to sim' })).toBeNull(); }));
   });
@@ -51,16 +51,16 @@ defineFeature(feature, (test) => {
   test('A future-dated scheduled game is a read-only preview', ({ given, when, then, and }) => {
     given("a managed club has a scheduled game after the GameWorld's current date", () => { currentDate = '2025-04-01'; scheduledDate = '2025-04-05T00:00:00.000Z'; });
     when("the manager opens that game's pre-game route", mount);
-    then('the page shows opponent context but no lineup editor or "Ready to sim" button', async () => { await waitFor(() => expect(screen.getByText('Rivertown')).toBeInTheDocument()); expect(screen.queryByRole('button', { name: 'Edit Lineup' })).toBeNull(); expect(screen.queryByRole('button', { name: 'Ready to sim' })).toBeNull(); });
+    then('the page shows opponent context but no lineup editor or "Ready to sim" button', async () => { await waitFor(() => expect(screen.getAllByText('Rivertown').length).toBeGreaterThan(0)); expect(screen.queryByRole('button', { name: 'Edit Lineup' })).toBeNull(); expect(screen.queryByRole('button', { name: 'Ready to sim' })).toBeNull(); });
   });
   test('No current date configured treats the scheduled game as not ready', ({ given, when, then, and }) => {
     given('a managed club has a scheduled game and the GameWorld has no current date configured', () => { currentDate = null; scheduledDate = '2025-04-05T00:00:00.000Z'; });
     when("the manager opens that game's pre-game route", mount);
-    then('the page shows opponent context but no lineup editor or "Ready to sim" button', async () => { await waitFor(() => expect(screen.getByText('Rivertown')).toBeInTheDocument()); expect(screen.queryByRole('button', { name: 'Edit Lineup' })).toBeNull(); expect(screen.queryByRole('button', { name: 'Ready to sim' })).toBeNull(); });
+    then('the page shows opponent context but no lineup editor or "Ready to sim" button', async () => { await waitFor(() => expect(screen.getAllByText('Rivertown').length).toBeGreaterThan(0)); expect(screen.queryByRole('button', { name: 'Edit Lineup' })).toBeNull(); expect(screen.queryByRole('button', { name: 'Ready to sim' })).toBeNull(); });
   });
   test('A scheduled game with no scheduled date is always ready', ({ given, when, then, and }) => {
     given('a managed club has a scheduled game with no scheduled date and the GameWorld has no current date configured', () => { currentDate = null; scheduledDate = null; });
     when("the manager opens that game's pre-game route", mount);
-    then('the page shows opponent record, probable pitcher, and the game lineup editor', async () => { await waitFor(() => expect(screen.getByRole('button', { name: 'Edit Lineup' })).toBeInTheDocument()); expect(screen.getByText('Rivertown')).toBeInTheDocument(); expect(screen.getByText('Record: 8-4')).toBeInTheDocument(); expect(screen.getByText('Probable pitcher: Ace 30')).toBeInTheDocument(); });
+    then('the page shows opponent record, probable pitcher, and the game lineup editor', async () => { await waitFor(() => expect(screen.getByRole('button', { name: 'Edit Lineup' })).toBeInTheDocument()); expect(screen.getAllByText('Rivertown').length).toBeGreaterThan(0); expect(screen.getByText('Record: 8-4')).toBeInTheDocument(); expect(screen.getByText('Probable pitcher: Ace 30')).toBeInTheDocument(); });
   });
 });
