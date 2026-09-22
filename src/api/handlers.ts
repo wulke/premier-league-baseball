@@ -40,6 +40,11 @@ const getLeagueBracket = async (leagueId: number) => {
   return await LeagueFactory(leagueId).getBracket();
 };
 
+// @spec TODAY-001,TODAY-002,TODAY-003,TODAY-004,TODAY-005,TODAY-006,TODAY-007
+const getLeagueToday = async (leagueId: number) => {
+  return await LeagueFactory(leagueId).getToday();
+};
+
 // @spec GWA-003,GWA-004,GWA-005
 const newGameWorld = async (config: NewGameWorld) => {
   return await GameWorldFactory().create(config);
@@ -266,6 +271,7 @@ export {
   getLeagueBracket,
   getLeague,
   getLeagueStandings,
+  getLeagueToday,
   getTeamSchedule,
   getTeamRoster,
   getTeamLineup,
