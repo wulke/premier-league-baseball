@@ -68,7 +68,15 @@ beforeEach(() => {
   }) as jest.Mock;
 });
 
-const renderLeague = async () => {
+// @spec MSUI-001,MSUI-002 — the division cards (standings table, seeded-from-groups label,
+// round teaser) live on the full standings page (STDRT-002); the champion banner instead moved
+// to the League Dashboard (LDASH-002), so that one scenario renders the Dashboard route.
+const renderLeagueStandings = async () => {
+  const router = createMemoryRouter(routes, { initialEntries: ['/1/162/standings'] });
+  render(<RouterProvider router={router} />);
+  await screen.findByRole('heading', { name: 'Champions League' });
+};
+const renderLeagueDashboard = async () => {
   const router = createMemoryRouter(routes, { initialEntries: ['/1/162'] });
   render(<RouterProvider router={router} />);
   await screen.findByRole('heading', { name: 'Champions League' });
@@ -82,7 +90,7 @@ const getCard = (name: string) => {
 defineFeature(feature, (test) => {
   test('Group-stage divisions render their existing standings tables', ({ given, when, then, and }) => {
     given('the player opens the Champions League on the existing League route', () => { renderMode = 'before'; });
-    when('the multi-stage League page renders before knockout advancement', renderLeague);
+    when('the multi-stage League page renders before knockout advancement', renderLeagueStandings);
     then(/^the "([^"]+)" card shows the standings table$/, (name: string) => {
       expect(within(getCard(name)).getByRole('columnheader', { name: 'Pos' })).toBeInTheDocument();
     });
@@ -93,7 +101,7 @@ defineFeature(feature, (test) => {
 
   test('The bracket identifies its completed group-stage origin after advancement', ({ given, when, then, and }) => {
     given('the player opens the Champions League on the existing League route', () => { renderMode = 'advanced'; });
-    when('the multi-stage League page renders after group-stage advancement', renderLeague);
+    when('the multi-stage League page renders after group-stage advancement', renderLeagueStandings);
     then(/^the "([^"]+)" card shows "([^"]+)"$/, (name: string, text: string) => {
       expect(within(getCard(name)).getByText(text)).toBeInTheDocument();
     });
@@ -104,7 +112,7 @@ defineFeature(feature, (test) => {
 
   test('The knockout champion drives the existing champion banner', ({ given, when, then }) => {
     given('the player opens the Champions League on the existing League route', () => { renderMode = 'champion'; });
-    when('the multi-stage League page renders with a knockout champion', renderLeague);
+    when('the multi-stage League page renders with a knockout champion', renderLeagueDashboard);
     then(/^the League identity block shows "([^"]+)"$/, (text: string) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });

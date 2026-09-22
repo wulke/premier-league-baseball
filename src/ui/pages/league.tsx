@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { DivisionStandings, LeagueDivisionBracket, TeamStanding } from '../../api/models';
 import { useLoaderData, useNavigate, useParams } from 'react-router';
 import { Collapsible } from 'radix-ui';
-import { formatLeagueChampionBanner, getChampionBracket, getChampionTeamName } from '../champion';
 import { Badge, Button, Card, PageContainer, SectionLabel, Table, Td, Th, Tr } from '../components/ui';
 import { TeamCrest } from '../components/team-crest';
 import { BracketView } from '../components/bracket-view';
 import { TeamRosterGrid } from '../components/team-roster-grid';
 
+// @spec LDASH-004 — reused unmodified by the League Dashboard's condensed standings widget.
 const StandingsTable = ({
   standings,
   onTeamClick,
@@ -156,8 +156,8 @@ const Division = ({
   );
 };
 
-// @spec UI-001,UI-003,UI-004,UI-005,UI-006,UI-007,UI-008,MSUI-001,MSUI-002,MSUI-003
-const League = () => {
+// @spec UI-001,UI-003,UI-004,UI-005,UI-006,UI-007,UI-008,MSUI-001,MSUI-002,MSUI-003,STDRT-002
+const LeagueStandings = () => {
   const { gwId, leagueId } = useParams();
   const navigate = useNavigate();
   // @spec NAVLOAD-001,NAVLOAD-004,NAVLOAD-005
@@ -167,18 +167,12 @@ const League = () => {
 
   // @spec ROSTUI-001
   const openTeamHub = (teamId: number) => navigate(`/${gwId}/team/${teamId}`);
-  const hasAnyStandings = standings.some((s) => s.standings.length > 0);
-  const hasAnyBracketRounds = divisionBrackets.some((division) => division.rounds.length > 0);
-  const championBanner = formatLeagueChampionBanner(
-    league,
-    getChampionTeamName(league, divisionBrackets),
-  );
-  const championDivision = getChampionBracket(league, divisionBrackets);
 
   return (
-    <PageContainer>
+    <PageContainer data-testid="league-standings-page">
 
-      {/* League identity */}
+      {/* @spec STDRT-002 — lightweight identity header: name + type badge only, no champion
+          banner/season-status subtitle (that moved to the League Dashboard). */}
       <div style={{ marginBottom: '32px' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '6px' }}>
           <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 700 }}>
@@ -190,15 +184,12 @@ const League = () => {
             </Badge>
           )}
         </div>
-        <p style={{ margin: 0, fontSize: '0.85rem', color: '#888' }}>
-          {championBanner ?? `${league.Divisions?.length ?? 0} division${league.Divisions?.length !== 1 ? 's' : ''}${hasAnyStandings || hasAnyBracketRounds ? ' · Season in progress' : ' · No active season'}`}
-        </p>
       </div>
 
       {/* Divisions */}
       <section>
         <SectionLabel style={{ marginBottom: '14px' }}>
-          {hasAnyStandings || hasAnyBracketRounds ? 'Standings' : 'Divisions'}
+          {standings.some((s) => s.standings.length > 0) || divisionBrackets.some((b) => b.rounds.length > 0) ? 'Standings' : 'Divisions'}
         </SectionLabel>
 
         {league.Divisions?.map((division: any) => (
@@ -216,4 +207,4 @@ const League = () => {
   );
 };
 
-export { League };
+export { LeagueStandings, StandingsTable };

@@ -1,7 +1,7 @@
 // @spec RLDRUI-001,RLDRUI-002,RLDRUI-004,RLDRUI-006 (LLD: docs/llds/shell/route-loader-foundation-ui.md)
 import React from 'react';
 import { createRoutesFromElements, Navigate, Route, type LoaderFunctionArgs, type RouteObject } from 'react-router';
-import { GameBoxScore, GameWorld, Home, League, PlayerDetail, PreGamePrep, TeamCalendar, TeamHub, TeamLineupView, TeamRoster, Transfers } from './pages';
+import { GameBoxScore, GameWorld, Home, LeagueDashboard, LeagueStandings, PlayerDetail, PreGamePrep, TeamCalendar, TeamHub, TeamLineupView, TeamRoster, Transfers } from './pages';
 import { AppShell } from './components/app-shell';
 import { Endpoints } from '../api/endpoints';
 
@@ -52,8 +52,29 @@ const teamLineupLoader = async ({ params, request }: LoaderFunctionArgs) => {
   ]);
   return { lineup, roster: Array.isArray(roster) ? roster : [], nextGame };
 };
-// @spec NAVLOAD-001,NAVLOAD-002,NAVLOAD-004
-const leagueLoader = async ({ params, request }: LoaderFunctionArgs) => {
+// @spec LDASH-001,STDRT-001,STDRT-004 — dashboard loader stays lean: GetLeague + GetLeagueToday
+// (reinstated per league-today.md), plus GetLeagueStandings/GetLeagueBracket reused verbatim
+// (same calls leagueStandingsLoader makes) so the dashboard's condensed widgets and the
+// full /standings page never drift on what "standings"/"brackets" mean.
+const leagueDashboardLoader = async ({ params, request }: LoaderFunctionArgs) => {
+  const leagueId = params.leagueId!;
+  const [league, today, standings, brackets] = await Promise.all([
+    readJson(Endpoints.GetLeague.replace(':leagueId', leagueId), request, null),
+    readJson(Endpoints.GetLeagueToday.replace(':leagueId', leagueId), request, []),
+    readJson(Endpoints.GetLeagueStandings.replace(':leagueId', leagueId), request, []),
+    readJson(Endpoints.GetLeagueBracket.replace(':leagueId', leagueId), request, []),
+  ]);
+  return {
+    league,
+    today: Array.isArray(today) ? today : [],
+    standings: Array.isArray(standings) ? standings : [],
+    brackets: Array.isArray(brackets) ? brackets : [],
+  };
+};
+// @spec STDRT-002 — renamed from the former leagueLoader; fetch shape UNCHANGED (still exactly
+// GetLeague + GetLeagueStandings + GetLeagueBracket, no GetLeagueToday) since /standings never
+// shows the Today section.
+const leagueStandingsLoader = async ({ params, request }: LoaderFunctionArgs) => {
   const leagueId = params.leagueId!;
   const [league, standings, brackets] = await Promise.all([
     readJson(Endpoints.GetLeague.replace(':leagueId', leagueId), request, null),
@@ -97,7 +118,10 @@ const routes: RouteObject[] = createRoutesFromElements(
     <Route index element={<Home />} />
     <Route path=":gwId" id="gwId" loader={gwLoader}>
       <Route index element={<GameWorld />} />
-      <Route path=":leagueId" element={<League />} loader={leagueLoader} />
+      {/* @spec LDASH-001,STDRT-001,STDRT-003 */}
+      <Route path=":leagueId" element={<LeagueDashboard />} loader={leagueDashboardLoader} />
+      {/* @spec STDRT-002 */}
+      <Route path=":leagueId/standings" element={<LeagueStandings />} loader={leagueStandingsLoader} />
       {/* @spec PREGAME-001,PREGAME-002,PREGAME-003,PREGAME-004 */}
       <Route path=":leagueId/game/:gameId" element={<PreGamePrep />} loader={preGamePrepLoader} />
       {/* @spec XFERUI-001,XFERUI-002,XFERUI-003,XFERUI-004,XFERUI-006 */}

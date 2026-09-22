@@ -2,6 +2,7 @@ export * from './game-world';
 export * from './game-box-score';
 export * from './home';
 export * from './league';
+export * from './league-dashboard';
 export * from './player-detail';
 export * from './pre-game-prep';
 export * from './team-calendar';
