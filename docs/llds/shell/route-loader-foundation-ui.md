@@ -256,3 +256,111 @@ semantics, zero new mechanism, and it needs no `:teamId`-route loader of its own
   (`/1/team/1/calendar`) correctly resolves the `:gwId` loader alongside the deeper route's
   element, matching today's direct-mount behavior for `simulate-game-ui`/
   `rapid-simulate-season-ui`'s cross-flow scenarios (SIMUI-027/028).
+
+## Amendment: League Dashboard / Standings Route Split (#321)
+
+> This section amends the route tree and `:leagueId` loader documented above — it is not a new
+> rollout batch of the `GameWorldProvider` migration (Batch 0 above is complete and unrelated to
+> this change). Content LLD: [`docs/llds/league/league-dashboard-ui.md`](../league/league-dashboard-ui.md).
+> EARS: `docs/specs/shell/route-loader-foundation-ui-specs.md` (`STDRT-001`..`STDRT-004`, appended).
+> Decision records: [#297](https://github.com/wulke/premier-league-baseball/issues/297), [#321 (this gate)](https://github.com/wulke/premier-league-baseball/issues/321).
+
+### Scope
+
+`:leagueId`'s single route/loader/element (lines 100 and 56–64 above) splits into two sibling
+routes. `/:gwId/:leagueId` becomes the League Dashboard; the League page's current full-page body
+(identity header, per-division `StandingsTable`/`BracketView`) relocates unmodified to a new
+`/:gwId/:leagueId/standings` route. **Breaking change, accepted per #297's `/grill-me`:** the old
+`/:gwId/:leagueId` URL's prior behavior (full standings/bracket page) is gone with no redirect —
+this is a single-player local game with no external bookmarking concern, so no transition/redirect
+mechanism is introduced.
+
+### Interface / Data Model (MODIFIED)
+
+```ts
+// src/ui/routes.tsx
+
+// @spec LDASH-001,STDRT-001,STDRT-004 — dashboard loader stays lean: GetLeague + GetLeagueToday
+// (reinstated per league-today.md), plus GetLeagueStandings/GetLeagueBracket reused verbatim
+// (same calls leagueStandingsLoader below makes) so the dashboard's condensed widgets and the
+// full /standings page never drift on what "standings"/"brackets" mean.
+const leagueDashboardLoader = async ({ params, request }: LoaderFunctionArgs) => {
+  const leagueId = params.leagueId!;
+  const [league, today, standings, brackets] = await Promise.all([
+    readJson(Endpoints.GetLeague.replace(':leagueId', leagueId), request, null),
+    readJson(Endpoints.GetLeagueToday.replace(':leagueId', leagueId), request, []),
+    readJson(Endpoints.GetLeagueStandings.replace(':leagueId', leagueId), request, []),
+    readJson(Endpoints.GetLeagueBracket.replace(':leagueId', leagueId), request, []),
+  ]);
+  return {
+    league,
+    today: Array.isArray(today) ? today : [],
+    standings: Array.isArray(standings) ? standings : [],
+    brackets: Array.isArray(brackets) ? brackets : [],
+  };
+};
+
+// @spec STDRT-002 — renamed from today's leagueLoader; fetch shape UNCHANGED (still exactly
+// GetLeague + GetLeagueStandings + GetLeagueBracket, no GetLeagueToday) since /standings never
+// shows the Today section.
+const leagueStandingsLoader = async ({ params, request }: LoaderFunctionArgs) => {
+  const leagueId = params.leagueId!;
+  const [league, standings, brackets] = await Promise.all([
+    readJson(Endpoints.GetLeague.replace(':leagueId', leagueId), request, null),
+    readJson(Endpoints.GetLeagueStandings.replace(':leagueId', leagueId), request, []),
+    readJson(Endpoints.GetLeagueBracket.replace(':leagueId', leagueId), request, []),
+  ]);
+  return { league, standings: Array.isArray(standings) ? standings : [], brackets: Array.isArray(brackets) ? brackets : [] };
+};
+```
+
+```tsx
+// Route tree, within the existing :gwId Route (replaces today's single
+// <Route path=":leagueId" element={<League/>} loader={leagueLoader}/> line):
+
+{/* @spec LDASH-001,STDRT-001,STDRT-003 */}
+<Route path=":leagueId" element={<LeagueDashboard />} loader={leagueDashboardLoader} />
+{/* @spec STDRT-002 */}
+<Route path=":leagueId/standings" element={<LeagueStandings />} loader={leagueStandingsLoader} />
+```
+
+`LeagueStandings` is today's `League` component (`src/ui/pages/league.tsx`), export renamed, JSX
+body unchanged except its identity-header block drops the champion banner/subtitle (moved to
+`LeagueDashboard` — see the content LLD's Logic Flow step 2), leaving name + type badge only, per
+#321's "lightweight header" decision. `LeagueDashboard` is a new component — see
+`docs/llds/league/league-dashboard-ui.md`.
+
+### Logic Flow (amendment)
+
+```
+1. Player navigates to /:gwId/:leagueId (a <Link> click, e.g. from GameWorld's Leagues list, or a
+   direct URL) -> matches the LeagueDashboard route -> leagueDashboardLoader runs.  # STDRT-001
+2. Player clicks the dashboard's "View full standings" CTA (LDASH-005) -> navigates to
+   /:gwId/:leagueId/standings -> matches the LeagueStandings route -> leagueStandingsLoader runs,
+   fetching the same three endpoints leagueLoader always has.                       # STDRT-002
+3. A pre-#321 URL/bookmark to /:gwId/:leagueId now resolves to the LeagueDashboard element
+   instead of the old full-page body. No loader throws, no errorElement fires, no redirect is
+   issued — the route simply now means something different, by design.             # STDRT-003
+4. If leagueDashboardLoader's GetLeagueToday call fails or returns non-ok, readJson's existing
+   fallback contract (line 23–26 above) resolves that slice to [], identical to how standings/
+   brackets already degrade to [] on failure today — no new error-handling path is introduced.
+                                                                                      # STDRT-004
+```
+
+### Edge Case Probe (amendment)
+
+| # | Condition | Handling | Spec |
+|---|---|---|---|
+| d1 | A `<Link>` elsewhere in the app still points at the pre-#321 `/:gwId/:leagueId` expecting the full standings/bracket body (e.g. any link built before this change) | Resolves to the Dashboard instead — accepted breaking change (see Scope). Any such link is a call site to audit/update at the Code stage, not a routing-layer concern. | STDRT-003 |
+| d2 | `leagueDashboardLoader`'s four fetches include one that 404s/network-fails while others succeed (e.g. `GetLeagueToday` fails, `GetLeague` succeeds) | Each call has its own `readJson` fallback (`null` for `league`, `[]` for the array-shaped slices) — a single slice's failure never fails the whole loader, matching `leagueLoader`'s existing per-call independence. | STDRT-004 |
+| d3 | Both `leagueDashboardLoader` and `leagueStandingsLoader` are in flight concurrently (player navigates Dashboard → Standings → back to Dashboard quickly) | Each is a distinct route match with its own `request.signal`; React Router cancels a superseded loader run exactly as `RLDRUI-004` already documents for the `:gwId` loader — no new cancellation mechanism needed, this is the same native behavior applied to two more loaders. | STDRT-001, STDRT-002 |
+
+### Traceability (amendment)
+
+| Layer | Artifact |
+|---|---|
+| Content LLD | [`docs/llds/league/league-dashboard-ui.md`](../league/league-dashboard-ui.md) |
+| Decision records | [#297](https://github.com/wulke/premier-league-baseball/issues/297), [#321](https://github.com/wulke/premier-league-baseball/issues/321) |
+| EARS | `docs/specs/shell/route-loader-foundation-ui-specs.md` — `STDRT-001`..`STDRT-004` (appended) |
+| Gherkin | `test/ui/features/route-loader-foundation-ui.feature` — new scenarios tagged `STDRT-001`..`STDRT-004` |
+| Code entry points (not yet implemented) | `src/ui/routes.tsx` (`leagueDashboardLoader`, `leagueStandingsLoader`, route split) · `src/ui/pages/league-dashboard.tsx` (NEW) · `src/ui/pages/league.tsx` (`League` → `LeagueStandings` rename) · `src/ui/pages/index.tsx` (barrel) |

@@ -65,3 +65,42 @@ Feature: Route-Loader Foundation
   # behavior — verified structurally: every UI BDD scenario in this suite renders through
   # that same shared `routes` export, so a regression here fails the whole UI suite, not
   # just this feature.
+
+  # ─── League Dashboard / Standings route split (#321) ────────────────────────────────────
+  # Content requirements for what each route renders live in league-dashboard-ui.feature;
+  # these scenarios cover routing/loader shape only.
+
+  @spec:STDRT-001
+  Scenario: The League Dashboard route fetches all four dashboard endpoints
+    Given League 1 "Premier League" exists in GameWorld 1
+    When the player opens "/1/1"
+    Then GET /api/league/1 is requested
+    And GET /api/league/1/today is requested
+    And GET /api/league/1/standings is requested
+    And GET /api/league/1/bracket is requested
+    And the League Dashboard page renders
+
+  @spec:STDRT-002
+  Scenario: The League Standings route fetches the unchanged three-endpoint set
+    Given League 1 "Premier League" exists in GameWorld 1
+    When the player opens "/1/1/standings"
+    Then GET /api/league/1 is requested
+    And GET /api/league/1/standings is requested
+    And GET /api/league/1/bracket is requested
+    And GET /api/league/1/today is not requested
+    And the League Standings page renders
+
+  @spec:STDRT-003
+  Scenario: The old league URL renders the Dashboard, not the old full standings body
+    Given League 1 "Premier League" exists in GameWorld 1
+    When the player opens "/1/1"
+    Then the League Dashboard page renders
+    And the app does not navigate to "/1/1/standings"
+
+  @spec:STDRT-004
+  Scenario: A failed Today fetch does not fail the League Dashboard route
+    Given League 1 "Premier League" exists in GameWorld 1
+    And GET /api/league/1/today returns a server error
+    When the player opens "/1/1"
+    Then the League Dashboard page renders
+    And the League Dashboard shows no Today section
