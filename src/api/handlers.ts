@@ -172,6 +172,11 @@ const getPlayerStats = async (playerId: number, grain: 'season' | 'career' | 'la
   return PlayerFactory(playerId).getStats({ grain, gwId });
 };
 
+// @spec BOXS-001,BOXS-002,BOXS-003,BOXS-004,BOXS-005
+const getGameBoxScore = async (gameId: number) => {
+  return GameFactory(gameId).getBoxScore();
+};
+
 // @spec XFER-010,LEDIT-002 — common Team/GameWorld resolution and managed-club gate for
 // mutations. Date eligibility is intentionally a transfer-only policy below.
 const resolveManagedTeamContext = async (teamId: number) => {
@@ -269,6 +274,7 @@ export {
   saveTeamGameLineup,
   getPlayerDetail,
   getPlayerStats,
+  getGameBoxScore,
   newGameWorld,
   setManagedClub,
   cutoverLeagueSeason,

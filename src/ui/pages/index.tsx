@@ -1,4 +1,5 @@
 export * from './game-world';
+export * from './game-box-score';
 export * from './home';
 export * from './league';
 export * from './player-detail';
