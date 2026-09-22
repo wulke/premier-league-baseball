@@ -29,6 +29,8 @@ interface WorldState {
 }
 
 let world: WorldState;
+// True between createLegacyLeague's DDL swap and the afterEach restore below.
+let legacySchemaActive = false;
 
 const readLeague = async () => {
   if (!world.leagueId) throw new Error('League is not set');
@@ -135,9 +137,23 @@ const registerSteps = ({ given, when, then }: any) => {
     await db.models.DivisionSeasonGame.create({ divisionSeasonId: season.dataValues.id, gameId: game.dataValues.id });
   });
 
+  // @spec SCL-012 — simulate the pre-migration schema with a raw DDL swap. The old
+  // approach (Sequelize removeColumn) recreates the table on SQLite; since #283 the
+  // Teams→Leagues FK makes that DROP fail on the Background's Team rows and corrupts
+  // the schema for the next test's db.sync({force:true}). Renaming the model-synced
+  // table aside and creating the legacy shape (no year/status columns) directly is
+  // equivalent and reversible — afterEach restores the modern table.
   const createLegacyLeague = async (withDivisionSeason: boolean) => {
-    await db.getQueryInterface().removeColumn('Leagues', 'status');
-    await db.getQueryInterface().removeColumn('Leagues', 'year');
+    legacySchemaActive = true;
+    await db.query('PRAGMA foreign_keys = OFF');
+    await db.query('ALTER TABLE Leagues RENAME TO Leagues_modern');
+    await db.query(`CREATE TABLE Leagues (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      config JSON,
+      gameWorldId INTEGER NOT NULL,
+      createdAt DATETIME NOT NULL,
+      updatedAt DATETIME NOT NULL
+    )`);
     await db.query(
       "INSERT INTO Leagues (config, gameWorldId, createdAt, updatedAt) VALUES ('{}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
     );
@@ -305,6 +321,17 @@ const registerSteps = ({ given, when, then }: any) => {
 beforeEach(async () => {
   await db.sync({ force: true });
   world = { teamIds: [] };
+});
+
+afterEach(async () => {
+  if (!legacySchemaActive) return;
+  legacySchemaActive = false;
+  const [tables] = await db.query("SELECT name FROM sqlite_master WHERE type='table' AND name = 'Leagues_modern'");
+  if ((tables as Array<{ name: string }>).length > 0) {
+    await db.query('DROP TABLE IF EXISTS Leagues');
+    await db.query('ALTER TABLE Leagues_modern RENAME TO Leagues');
+  }
+  await db.query('PRAGMA foreign_keys = ON');
 });
 
 autoBindSteps(feature, [registerSteps]);
