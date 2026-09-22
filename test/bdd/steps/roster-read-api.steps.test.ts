@@ -91,7 +91,10 @@ const registerSteps = ({ given, when, then }: any) => {
   });
 
   given(/^Team (\d+) belongs to GameWorld (\d+)$/, async (teamId: string, gwId: string) => {
-    await db.models.Team.findOrCreate({ where: { id: Number(teamId) }, defaults: { gameWorldId: Number(gwId), config: { name: 'Roster Team' } } });
+    // @spec TLO-001 — homeLeagueId is NOT NULL since per-League team ownership (#283);
+    // create a container League first, mirroring the no-roster step below.
+    const league = await db.models.League.create({ gameWorldId: Number(gwId), config: {} }).then(({ dataValues }) => dataValues);
+    await db.models.Team.findOrCreate({ where: { id: Number(teamId) }, defaults: { gameWorldId: Number(gwId), homeLeagueId: league.id, config: { name: 'Roster Team' } } });
     scenarioWorld.teamId = Number(teamId);
   });
 

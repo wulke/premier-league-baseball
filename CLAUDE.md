@@ -14,11 +14,14 @@ npm run clean          # Remove dist/
 npm run start          # Run Node server (requires built dist/)
 
 # Test
-npm test               # Run all Jest tests (Node + JSDOM)
-npm run test:bdd       # Run backend Gherkin tests (Node)
-npm run test:ui        # Run React UI Gherkin tests (JSDOM)
-npm run test:coverage  # Run tests with coverage report
-npm run test:single    # Run tests single-threaded
+npm test               # Run all Jest tests (Node + JSDOM) — full suite, CI's job; avoid locally
+npm run test:backend   # Backend project only (test/db + test/bdd)
+npm run test:ui        # UI project only (JSDOM)
+npm run test:affected  # Tier 1 — only tests related to files changed vs origin/main
+npm run typecheck     # Tier 0 — tsc --noEmit
+npm run test:bdd      # Backend Gherkin tests only (Node)
+npm run test:coverage # Run tests with coverage report
+npm run test:single   # Run tests single-threaded
 
 # Docker
 npm run build:docker   # Build Docker image
@@ -60,7 +63,23 @@ The `docs/architecture` directory maintains the implementation-agnostic designs 
 - `docs/architecture/prd` -> Product Requirement Documents for major technical tasks.
 - `docs/architecture/standards` -> constitution-style backend conventions (domain layer ownership, schema modeling, error handling, testing, API contract) that every feature is expected to conform to, not restate.
 
-### Testing Strategy (BDD)
+## Testing Protocol (agents MUST follow)
+
+The full test suite (~3.5 min, saturates all cores) runs in **CI only** (`.github/workflows/ci.yml` — jobs `typecheck`, `backend-tests`, `ui-tests`). Never run the full suite locally to "validate" a change.
+
+| Tier | Command | When |
+|---|---|---|
+| 0 | `npm run typecheck` | Every change, before committing |
+| 1 | `npm run test:affected` | Every change — runs only tests related to files changed vs `origin/main` |
+| 1' | `npx jest <single-file>` | While iterating on one feature (e.g. its `.steps.test.tsx`) |
+| 2 | full suite | **CI only** — push the branch/PR and let GitHub run it |
+
+Rules:
+- Before committing: run Tier 0 + Tier 1. That is sufficient local validation.
+- After pushing: do not re-run tests locally; the PR checks are authoritative. If CI fails, reproduce locally with **only** the failing test file(s), fix, push again.
+- If a machine feels sluggish anyway: `--maxWorkers=50%` halves core saturation.
+
+## Testing Strategy (BDD)
 
 - **Backend:** Uses `jest-cucumber` in a `node` environment. Mocks the database or uses an in-memory SQLite instance.
 - **Frontend:** Uses `jest-cucumber` + `React Testing Library` in a `jsdom` environment. Mocks `fetch` / API responses via `test/ui/test-utils.tsx`.

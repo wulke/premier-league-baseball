@@ -8,4 +8,6 @@ node_modules
 .envrc
 .claude
 .vscode
-scripts
+scripts/do-work.sh
+scripts/prompt.md
+.jest-cache
