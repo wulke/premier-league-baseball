@@ -227,6 +227,13 @@ const GameWorldFactory = (id?: number): IGameWorld => {
           });
         }
 
+        // @spec GWD-002 — Notification.belongsTo(GameWorld) is allowNull: false; must be
+        // cleared before GameWorld.destroy() or SQLITE_CONSTRAINT fires (#373).
+        await db.models.Notification.destroy({
+          where: { gameWorldId },
+          transaction,
+        });
+
         if (divisionSeasonIds.length > 0) {
           await db.models.DivisionSeasonGame.destroy({
             where: { divisionSeasonId: { [Op.in]: divisionSeasonIds } },
@@ -243,6 +250,12 @@ const GameWorldFactory = (id?: number): IGameWorld => {
           const orphanGameIds = gameIds.filter((gameId) => !remainingGameIds.has(gameId));
 
           if (orphanGameIds.length > 0) {
+            // @spec GWD-002 — GameEvent.belongsTo(Game) is allowNull: false; must be cleared
+            // before Game.destroy() for the same orphaned ids or SQLITE_CONSTRAINT fires (#373).
+            await db.models.GameEvent.destroy({
+              where: { gameId: { [Op.in]: orphanGameIds } },
+              transaction,
+            });
             await db.models.Game.destroy({
               where: { id: { [Op.in]: orphanGameIds } },
               transaction,
