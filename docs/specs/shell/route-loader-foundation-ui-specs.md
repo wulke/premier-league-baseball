@@ -48,3 +48,23 @@ tracked by their own batch LLDs/specs (Batches 1–5, `docs/llds/route-loader-<b
   - `src/ui/context/game-world-context.tsx` — DELETED (superseded by RLDRUI-001…004)
   - `src/ui/components/{app-shell,nav-rail,batch-simulate-control,rapid-simulate-control}.tsx` — RLDRUI-001, RLDRUI-003
   - `src/ui/pages/{game-world,team-hub,team-calendar}.tsx` — RLDRUI-001, RLDRUI-003, RLDRUI-005
+
+## Amendment: League Dashboard / Standings Route Split (#321)
+
+Amends the `:leagueId` route/loader documented above (still governed by `RLDRUI-006`'s shared
+`RouteObject[]` invariant) to split it into two sibling routes. Content requirements for what each
+page renders live in `docs/specs/league/league-dashboard-ui-specs.md` (`LDASH-001`..`LDASH-010`);
+the rows below cover routing/loader shape only. LLD: [`docs/llds/shell/route-loader-foundation-ui.md`](../../llds/shell/route-loader-foundation-ui.md)'s
+"Amendment: League Dashboard / Standings Route Split" section.
+
+| ID | Requirement | Status |
+|---|---|---|
+| STDRT-001 | WHEN a route at `/:gwId/:leagueId` is matched THE system SHALL invoke a dashboard loader that fetches `GetLeague`, `GetLeagueToday`, `GetLeagueStandings`, and `GetLeagueBracket` concurrently and renders `LeagueDashboard` with the combined result, replacing today's single `leagueLoader`+`League` pairing at that path | [ ] → #321 |
+| STDRT-002 | WHEN a route at `/:gwId/:leagueId/standings` is matched THE system SHALL invoke a loader that fetches `GetLeague`, `GetLeagueStandings`, and `GetLeagueBracket` concurrently (unchanged from today's `leagueLoader` fetch shape) and renders `LeagueStandings` (today's `League` component, renamed, with its identity header reduced to name + type badge only) | [ ] → #321 |
+| STDRT-003 | WHEN the application resolves `/:gwId/:leagueId` after this change THE system SHALL render the League Dashboard, NOT the pre-#321 full standings/bracket body, and SHALL NOT redirect to `/standings` or show a deprecation/transition notice — an accepted breaking change to the old URL's behavior, per #297's `/grill-me` (single-player local game, no external bookmarking concern) | [ ] → #321 |
+| STDRT-004 | WHEN the dashboard loader's `GetLeagueToday` call fails or returns non-ok THE system SHALL resolve that slice to `[]` independent of the other three calls' outcomes, matching the existing per-call `readJson` fallback contract already used for `standings`/`brackets` | [ ] → #321 |
+
+*Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
+
+- **Gherkin:** `test/ui/features/league-dashboard-routing-ui.feature` (NEW, Red — kept separate from `route-loader-foundation-ui.feature` since that file already has a bound step-definition suite that auto-binds every scenario in it; a new feature file with no step definitions is this repo's established way to land Red scenarios without breaking CI, matching `league-dashboard-ui.feature`) — `STDRT-001`..`STDRT-004`.
+- **Code entry points (not yet implemented):** `src/ui/routes.tsx` (`leagueDashboardLoader`, `leagueStandingsLoader`, route split) — STDRT-001, STDRT-002, STDRT-003, STDRT-004.

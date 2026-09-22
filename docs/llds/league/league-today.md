@@ -5,6 +5,17 @@
 > UI sibling: [`league-today-ui.md`](./league-today-ui.md) ·
 > Decision record: [#101](https://github.com/wulke/premier-league-baseball/issues/101), resolved via `/grill-me`
 
+## Status note (#321)
+
+Removed as dead code by [#326](https://github.com/wulke/premier-league-baseball/issues/326) after
+its only caller (the old `game-world.tsx` Today scoreboard) was replaced by `CalendarStrip`. Slated
+for **reinstatement, unmodified**, as the data source for the new League Dashboard's Today matchup
+banner — see [`docs/llds/league/league-dashboard-ui.md`](./league-dashboard-ui.md)'s "Reinstatement
+dependency" note. Nothing below changes; the endpoint comes back exactly as documented here. Status
+markers in `league-today-specs.md` stay `[x]` (historical) until the Code stage of the
+implementation issue actually restores the code, per this repo's convention of cascading status
+changes at Code, not at a design gate.
+
 ## Scope
 
 One new League-level read-only endpoint exposing a rolling "last 3 days + next 3 days" window of

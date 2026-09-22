@@ -10,6 +10,12 @@ the codebase — replaced by the team-level, cross-competition, arbitrary-range 
 historical record of the pre-#326 behavior; rows are left `[x]` rather than relabeled, matching
 how this repo records other supersessions (e.g. `ROST-004`/`XFER-022`).
 
+**Slated for reinstatement, unmodified, by [#321](https://github.com/wulke/premier-league-baseball/issues/321)**
+as the data source for the new League Dashboard's Today matchup banner (`docs/specs/league/league-dashboard-ui-specs.md`,
+`LDASH-003`) — see `docs/llds/league/league-dashboard-ui.md`'s "Reinstatement dependency" note.
+Rows below stay `[x]` (historical) until the Code stage of that implementation issue actually
+restores the endpoint.
+
 | ID | Requirement | Status |
 |---|---|---|
 | TODAY-001 | WHEN GET /api/league/:leagueId/today is called IF no League with that id exists THE system SHALL reject the request | [x] → #110 |
