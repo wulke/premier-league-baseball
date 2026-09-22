@@ -8,6 +8,7 @@ import db from '../../../src/db/client';
 import { Endpoints } from '../../../src/api/endpoints';
 import { router } from '../../../src/api/router';
 import { migrateLeagueYearAndStatus } from '../../../src/db/migrations/league-year-status';
+import { createLegacyLeagueSchemaSwap } from '../../db/legacy-league-schema';
 
 const ROUND_ROBIN_FORMAT = {
   structure: 'ROUND_ROBIN' as const,
@@ -29,8 +30,8 @@ interface WorldState {
 }
 
 let world: WorldState;
-// True between createLegacyLeague's DDL swap and the afterEach restore below.
-let legacySchemaActive = false;
+// SCL-012 legacy-schema swap (shared helper: test/db/legacy-league-schema.ts).
+const legacySchema = createLegacyLeagueSchemaSwap(db);
 
 const readLeague = async () => {
   if (!world.leagueId) throw new Error('League is not set');
@@ -144,16 +145,7 @@ const registerSteps = ({ given, when, then }: any) => {
   // table aside and creating the legacy shape (no year/status columns) directly is
   // equivalent and reversible — afterEach restores the modern table.
   const createLegacyLeague = async (withDivisionSeason: boolean) => {
-    legacySchemaActive = true;
-    await db.query('PRAGMA foreign_keys = OFF');
-    await db.query('ALTER TABLE Leagues RENAME TO Leagues_modern');
-    await db.query(`CREATE TABLE Leagues (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      config JSON,
-      gameWorldId INTEGER NOT NULL,
-      createdAt DATETIME NOT NULL,
-      updatedAt DATETIME NOT NULL
-    )`);
+    await legacySchema.swap();
     await db.query(
       "INSERT INTO Leagues (config, gameWorldId, createdAt, updatedAt) VALUES ('{}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
     );
@@ -323,15 +315,6 @@ beforeEach(async () => {
   world = { teamIds: [] };
 });
 
-afterEach(async () => {
-  if (!legacySchemaActive) return;
-  legacySchemaActive = false;
-  const [tables] = await db.query("SELECT name FROM sqlite_master WHERE type='table' AND name = 'Leagues_modern'");
-  if ((tables as Array<{ name: string }>).length > 0) {
-    await db.query('DROP TABLE IF EXISTS Leagues');
-    await db.query('ALTER TABLE Leagues_modern RENAME TO Leagues');
-  }
-  await db.query('PRAGMA foreign_keys = ON');
-});
+afterEach(() => legacySchema.restore());
 
 autoBindSteps(feature, [registerSteps]);

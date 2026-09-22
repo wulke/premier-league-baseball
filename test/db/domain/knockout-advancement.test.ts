@@ -36,9 +36,10 @@ const setupBracket = async (teamCount: number, format: any): Promise<Bracket> =>
   // TLO-004 — League container precedes its Teams (homeLeagueId), Divisions follow
   const league = await LeagueFactory().createContainer(gw.id, leagueConfig);
   const teamConfigs: TeamConfig[] = [...Array(teamCount).keys()].map((i) => ({ name: `KO Team ${i}` }));
-  // Fixed rosterSeed: with it, generateRoster derives ratings from Date.now(), so the
+  // Without a fixed rosterSeed, generateRoster derives ratings from Date.now(), so the
   // same simulation seed can produce different scores (and Bo1 ties) across runs.
-  const teams = await Promise.all(teamConfigs.map((cfg, i) => TeamFactory().create(gw.id, cfg, { homeLeagueId: league.id, rosterSeed: 100 + i })));  await LeagueFactory(league.id).createDivisions(leagueConfig, teams.map(({ id }) => id));
+  const teams = await Promise.all(teamConfigs.map((cfg, i) => TeamFactory().create(gw.id, cfg, { homeLeagueId: league.id, rosterSeed: 100 + i })));
+  await LeagueFactory(league.id).createDivisions(leagueConfig, teams.map(({ id }) => id));
   const divId = await db.models.League.findByPk(league.id, { include: db.models.Division })
     .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
   const currentYear = gw.year;
