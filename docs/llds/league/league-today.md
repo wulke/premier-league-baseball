@@ -5,16 +5,16 @@
 > UI sibling: [`league-today-ui.md`](./league-today-ui.md) ·
 > Decision record: [#101](https://github.com/wulke/premier-league-baseball/issues/101), resolved via `/grill-me`
 
-## Status note (#321)
+## Status note (#297)
 
 Removed as dead code by [#326](https://github.com/wulke/premier-league-baseball/issues/326) after
-its only caller (the old `game-world.tsx` Today scoreboard) was replaced by `CalendarStrip`. Slated
-for **reinstatement, unmodified**, as the data source for the new League Dashboard's Today matchup
-banner — see [`docs/llds/league/league-dashboard-ui.md`](./league-dashboard-ui.md)'s "Reinstatement
-dependency" note. Nothing below changes; the endpoint comes back exactly as documented here. Status
-markers in `league-today-specs.md` stay `[x]` (historical) until the Code stage of the
-implementation issue actually restores the code, per this repo's convention of cascading status
-changes at Code, not at a design gate.
+its only caller (the old `game-world.tsx` Today scoreboard) was replaced by `CalendarStrip`.
+**Reinstated, unmodified, by [#297](https://github.com/wulke/premier-league-baseball/issues/297)**
+as the data source for the League Dashboard's Today matchup banner — see
+[`docs/llds/league/league-dashboard-ui.md`](./league-dashboard-ui.md)'s "Reinstatement dependency"
+note. The endpoint is back exactly as documented below, except `TeamSeasonGame`'s shape now
+includes the fields the type gained since original authorship (`year`, `homeTeamBadge`,
+`awayTeamBadge`, `leagueId`, `leagueName`) — see `src/db/domain/league.ts`'s `getToday`.
 
 ## Scope
 

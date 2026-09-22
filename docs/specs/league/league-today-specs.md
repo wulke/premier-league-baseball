@@ -3,18 +3,17 @@
 Backend requirements for the League-level rolling-window snapshot endpoint
 (`GET /api/league/:leagueId/today`, `src/api/handlers.ts`, `src/db/domain/league.ts`).
 
-**Superseded and removed by [#326](https://github.com/wulke/premier-league-baseball/issues/326).**
-`GET /api/league/:leagueId/today`, `LeagueFactory.getToday`, and their tests no longer exist in
-the codebase — replaced by the team-level, cross-competition, arbitrary-range query in
-`docs/specs/game-world/home-calendar-strip-specs.md` (`CALW-001`..). Retained below as the
-historical record of the pre-#326 behavior; rows are left `[x]` rather than relabeled, matching
-how this repo records other supersessions (e.g. `ROST-004`/`XFER-022`).
-
-**Slated for reinstatement, unmodified, by [#321](https://github.com/wulke/premier-league-baseball/issues/321)**
-as the data source for the new League Dashboard's Today matchup banner (`docs/specs/league/league-dashboard-ui-specs.md`,
-`LDASH-003`) — see `docs/llds/league/league-dashboard-ui.md`'s "Reinstatement dependency" note.
-Rows below stay `[x]` (historical) until the Code stage of that implementation issue actually
-restores the endpoint.
+**Reinstated by [#297](https://github.com/wulke/premier-league-baseball/issues/297).**
+`GET /api/league/:leagueId/today`, `LeagueFactory.getToday`, and their tests were removed as dead
+code by [#326](https://github.com/wulke/premier-league-baseball/issues/326) (superseded at the
+time by the team-level, cross-competition, arbitrary-range query in
+`docs/specs/game-world/home-calendar-strip-specs.md`, `CALW-001`..) and are back, unmodified, as
+the data source for the League Dashboard's Today matchup banner
+(`docs/specs/league/league-dashboard-ui-specs.md`, `LDASH-003`) — see
+`docs/llds/league/league-dashboard-ui.md`'s "Reinstatement dependency" note. The `TeamSeasonGame`
+shape returned now also carries `year`/`homeTeamBadge`/`awayTeamBadge`/`leagueId`/`leagueName`,
+matching the model's current definition (`src/api/models.ts`) rather than its shape at original
+authorship — no row below changes meaning as a result.
 
 | ID | Requirement | Status |
 |---|---|---|

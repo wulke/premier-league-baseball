@@ -9,6 +9,8 @@ const enum Endpoints {
   GetLeagueBracket = '/api/league/:leagueId/bracket',
   // @spec LRD-003,LRD-004,LRD-005
   GetLeagueStandings = '/api/league/:leagueId/standings',
+  // @spec TODAY-001,TODAY-002,TODAY-003,TODAY-004,TODAY-005,TODAY-006,TODAY-007,LDASH-003
+  GetLeagueToday = '/api/league/:leagueId/today',
   // @spec LRD-001,LRD-002
   GetLeague = '/api/league/:leagueId',
   // @spec SCL-015

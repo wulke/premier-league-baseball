@@ -63,9 +63,10 @@ const bracket = () => [{
   ],
 }];
 
-// @spec BRKT-001..BRKT-008
+// @spec BRKT-001..BRKT-008 — the interactive bracket tree lives on the full standings page
+// (STDRT-002); the League Dashboard only ever shows a non-interactive teaser (LDASH-006/LDASH-010).
 const renderLeague = async () => {
-  const router = createMemoryRouter(routes, { initialEntries: ['/1/313'] });
+  const router = createMemoryRouter(routes, { initialEntries: ['/1/313/standings'] });
   render(<RouterProvider router={router} />);
   await screen.findByRole('heading', { name: 'League Cup' });
 };

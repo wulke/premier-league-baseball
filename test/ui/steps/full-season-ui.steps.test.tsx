@@ -1,7 +1,7 @@
 // @spec:UI-001 @spec:UI-003 @spec:UI-004 @spec:UI-005 @spec:UI-006 @spec:UI-007 @spec:UI-008 @spec:UI-010 @spec:LIFE-001 @spec:SHB-001 @spec:SHB-002 @spec:SHB-003,RLDRUI-006
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import routes from '../../../src/ui/routes';
 
@@ -481,8 +481,18 @@ const renderCalendar = async () => {
   await screen.findByRole('heading', { name: 'River City' });
 };
 
+// @spec LDASH-002 — the League Dashboard route; carries the champion banner/identity block and
+// team-click navigation that this suite's regression scenarios were written against.
 const renderLeague = async (leagueId: string) => {
   mountAt(`/1/${leagueId}`);
+  await screen.findByRole('heading', { name: currentLeagueResponses[leagueId].league.config.name });
+};
+
+// @spec STDRT-002 — the full standings page, needed only by the scenario that expands an
+// interactive bracket series (LDASH-010 makes the Dashboard's own teaser non-interactive).
+const renderLeagueStandings = async (leagueId: string) => {
+  cleanup();
+  mountAt(`/1/${leagueId}/standings`);
   await screen.findByRole('heading', { name: currentLeagueResponses[leagueId].league.config.name });
 };
 
@@ -690,7 +700,11 @@ defineFeature(feature, (test) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
 
-    when(/^the player expands the "([^"]+)" knockout series$/, (teamName: string) => {
+    when(/^the player expands the "([^"]+)" knockout series$/, async (teamName: string) => {
+      // The Dashboard's own bracket section for a fully-resolved division shows a champion
+      // line (LDASH-007), not an expandable series — the expand affordance only exists on the
+      // full standings page (STDRT-002).
+      await renderLeagueStandings(currentLeagueId!);
       fireEvent.click(
         within(getDivisionCard(currentLeagueId!, 'League Cup')).getByRole('button', { name: new RegExp(teamName, 'i') }),
       );
