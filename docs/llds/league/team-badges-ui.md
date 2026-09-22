@@ -13,9 +13,7 @@ scoreboard. Threads a `badge` field through the read DTOs whose factories build 
 `Map<teamId, name>` lookup (`TeamStanding`, `TeamSeasonGame`, `TeamSeasonSchedule`); the division
 team-list grid needs no DTO change since it already receives the raw `Team.config` object.
 
-**Out of scope**: `BracketView`/`BracketGame` team names (`division.ts`'s `toBracketGame`/
-`buildBracketTies`, `docs/llds/league/knockout-bracket.md`'s + `bracket-tree-ui.md`'s surface) —
-not one of the four surfaces named in the HLD; a future extension, not this slice. Player-detail's
+**Out of scope**: Player-detail's
 `team: { id, name }` reference (`player.ts:198`) — not a standalone team-identity label. The badge
 asset pipeline itself — `team-badges-pyramid.md`.
 
@@ -61,6 +59,11 @@ Frontend call sites (all import TeamCrest):
   league.tsx TeamRoster (division grid) → <TeamCrest name={team.config?.name} badge={team.config?.badge} />     # BADGEUI-003 (no DTO change — raw config already in hand)
   team-calendar.tsx identity header   → <TeamCrest name={calendar.teamName} badge={calendar.teamBadge} />       # BADGEUI-004
   game-world.tsx Today scoreboard     → <TeamCrest name={teamName} badge={game.homeTeamBadge|awayTeamBadge} />  # BADGEUI-005 (replaces direct teamBadgeText(...) call)
+  bracket-view.tsx bracket rows       → <TeamCrest name={teamName} badge={teamBadge} size={18} />                 # BADGEUI-010
+  team-calendar.tsx game rows         → <TeamCrest name={opponent} badge={opponentBadge} size={18} />             # BADGEUI-010
+  pre-game-prep.tsx matchup/opponent  → <TeamCrest name={teamName} badge={teamBadge} size={22} />                 # BADGEUI-010
+  game-box-score.tsx score/header     → <TeamCrest name={teamName} badge={teamBadge} size={22} />                 # BADGEUI-010
+  action-items-panel.tsx next game    → <TeamCrest name={opponent} badge={opponentBadge} size={18} />             # BADGEUI-010
 ```
 
 ### Key decisions embedded in this flow
@@ -75,6 +78,10 @@ Frontend call sites (all import TeamCrest):
 - **Failure recovery lives entirely client-side (`onError`)**, not as a second "does this badge
   exist" field from the backend — consistent with `team-badges-pyramid.md`'s decision that `badge`
   is always a computed path, never conditionally omitted.
+- **Badge fields travel with every name-only game/bracket projection.** `BracketTeam` and
+  `BracketGame` add optional badges from the already-included `DivisionSeason.Team`; box-score
+  sides read the already-included Home/Away Team. Schedule-based views reuse their existing badge
+  fields, so no new requests are introduced.
 
 ## Edge Case Probe
 
@@ -84,6 +91,7 @@ Frontend call sites (all import TeamCrest):
 | u2 | `badge` is `undefined`/`null` (e.g. `europe-32` Champions League teams, which never set `key`/`badge`) | `TeamCrest` renders the initials fallback directly — no `<img>` element attempted at all. | BADGEUI-002 |
 | u3 | `name` is the `'Bye'` sentinel (`TeamSeasonGame.awayTeamName` for a bye slot) | `teamBadgeText('Bye')` computes `'B'` — same fallback path as any other name-only team, no special-casing needed. | BADGEUI-003 |
 | u4 | Existing Today-scoreboard Gherkin scenarios asserting the initials text (`TODAYUI-...`) | Unaffected — `teamBadgeText`'s algorithm is relocated verbatim into `TeamCrest`, not changed; those scenarios keep passing against the same computed text. | BADGEUI-004 |
+| u5 | A historical/placeholder team has no badge | The same initials fallback renders in brackets, box scores, prep, schedules, and action items. | BADGEUI-010 |
 
 ## Traceability
 

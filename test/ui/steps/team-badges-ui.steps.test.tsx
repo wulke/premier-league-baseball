@@ -4,6 +4,7 @@ import { defineFeature, loadFeature } from 'jest-cucumber';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import routes from '../../../src/ui/routes';
+import { BracketView } from '../../../src/ui/components/bracket-view';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/team-badges-ui.feature'));
 
@@ -229,6 +230,18 @@ defineFeature(feature, (test) => {
     and(/^the calendar entry shows a crest image with src "([^"]+)" for "([^"]+)"$/, async (src: string) => {
       const img = screen.getByTestId('calendar-entry-badge-601-away');
       expect(img).toHaveAttribute('src', src);
+    });
+  });
+
+  test('Team names outside standings render a crest from their supplied badge', ({ given, when, then }) => {
+    given('a bracket, schedule, pre-game prep view, box score, and action item receive a team badge', () => {});
+    when('each team identity renders', () => {
+      render(<BracketView teams={[]} onTeamClick={() => {}} rounds={[{ round: 1, label: 'Final', status: 'IN_PROGRESS', ties: [{ kind: 'SERIES', teamA: { teamId: 1, teamName: 'Arsenal', teamBadge: '/badges/arsenal.png' }, teamB: { teamId: 2, teamName: 'Chelsea', teamBadge: '/badges/chelsea.png' }, games: [] }] }]} />);
+    });
+    // @spec BADGEUI-010
+    then('each identity shows the supplied crest alongside its team name', () => {
+      expect(screen.getByTestId('bracket-team-badge-1')).toHaveAttribute('src', '/badges/arsenal.png');
+      expect(screen.getByTestId('bracket-team-badge-2')).toHaveAttribute('src', '/badges/chelsea.png');
     });
   });
 });
