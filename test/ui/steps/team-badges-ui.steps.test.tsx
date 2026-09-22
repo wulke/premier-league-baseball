@@ -1,4 +1,4 @@
-// @spec BADGEUI-001,BADGEUI-002,BADGEUI-003,BADGEUI-005,BADGEUI-006,BADGEUI-007,BADGEUI-008,BADGEUI-009
+// @spec BADGEUI-001,BADGEUI-002,BADGEUI-003,BADGEUI-005,BADGEUI-006,BADGEUI-007,BADGEUI-008,BADGEUI-009,BADGEUI-010
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';

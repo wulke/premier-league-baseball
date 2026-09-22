@@ -38,9 +38,9 @@ const divisionChampionName = (division: any, bracket: LeagueDivisionBracket): st
 // plain text rather than a navigation target.
 const TeamName = ({ name }: { name: string | null }) => <>{name ?? 'TBD'}</>;
 
-// @spec LDASH-009 — clickable team identity, wired into condensed rows/teaser ties/roster
+// @spec LDASH-009,BADGEUI-010 — clickable team identity, wired into condensed rows/teaser ties/roster
 // grid/champion line.
-const TeamButton = ({ teamId, name, onClick }: { teamId: number | null; name: string | null; onClick: (teamId: number) => void }) => {
+const TeamButton = ({ teamId, name, badge, onClick }: { teamId: number | null; name: string | null; badge?: string | null; onClick: (teamId: number) => void }) => {
   if (teamId == null) return <TeamName name={name} />;
   return (
     <Button
@@ -49,6 +49,8 @@ const TeamButton = ({ teamId, name, onClick }: { teamId: number | null; name: st
       onClick={() => onClick(teamId)}
       style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, textDecoration: 'underline', textDecorationColor: '#ccc', textUnderlineOffset: '3px' }}
     >
+      {/* @spec BADGEUI-010 */}
+      <TeamCrest name={name ?? `Team ${teamId}`} badge={badge} size={18} testId={`dashboard-team-badge-${teamId}`} />
       {name ?? `Team ${teamId}`}
     </Button>
   );
@@ -106,9 +108,9 @@ const BracketTeaser = ({ division, round, onTeamClick }: { division: any; round:
         data-testid={`bracket-teaser-tie-${division.id}-${i}`}
         style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '4px 0' }}
       >
-        <TeamButton teamId={tie.teamA.teamId} name={tie.teamA.teamName} onClick={onTeamClick} />
+        <TeamButton teamId={tie.teamA.teamId} name={tie.teamA.teamName} badge={tie.teamA.teamBadge} onClick={onTeamClick} />
         <span style={{ color: '#aaa' }}>vs</span>
-        <TeamButton teamId={tie.teamB?.teamId ?? null} name={tie.teamB?.teamName ?? 'Bye'} onClick={onTeamClick} />
+        <TeamButton teamId={tie.teamB?.teamId ?? null} name={tie.teamB?.teamName ?? 'Bye'} badge={tie.teamB?.teamBadge} onClick={onTeamClick} />
       </div>
     ))}
   </div>
@@ -158,7 +160,7 @@ const DashboardDivision = ({
           return (
             <p data-testid={`division-champion-${division.id}`} style={{ margin: 0, fontWeight: 600, fontSize: '0.85rem' }}>
               Champion: {championName == null ? null : (
-                <TeamButton teamId={divisionBracket!.champion!.teamId} name={championName} onClick={onTeamClick} />
+                <TeamButton teamId={divisionBracket!.champion!.teamId} name={championName} badge={division.Teams?.find((team: any) => team.id === divisionBracket!.champion!.teamId)?.config?.badge} onClick={onTeamClick} />
               )}
             </p>
           );

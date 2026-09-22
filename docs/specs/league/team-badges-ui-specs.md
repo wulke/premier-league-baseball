@@ -15,7 +15,7 @@ team-identity surfaces (`src/ui/components/team-crest.tsx`, `src/ui/pages/league
 | BADGEUI-007 | WHEN a team identity renders in a division's team-list grid THE UI SHALL render `TeamCrest` using the raw `Team.config.name`/`Team.config.badge` already available on that row, with no new API field | [ ] |
 | BADGEUI-008 | WHEN a team identity renders as the team-calendar page's identity header THE UI SHALL render `TeamCrest` using `TeamSeasonSchedule.teamBadge` | [ ] |
 | BADGEUI-009 | WHEN a team identity renders in the GameWorld home calendar strip's day entries THE UI SHALL render `TeamCrest` using `TeamSeasonGame.homeTeamBadge`/`awayTeamBadge`, replacing the prior direct `teamBadgeText(...)` call | [ ] |
-| BADGEUI-010 | WHEN a team name renders in a bracket, team-calendar game row, pre-game prep view, game box score, or next-game action item THE UI SHALL render `TeamCrest` alongside that name, using badge data already present in the projection or included alongside it | [ ] → #382 |
+| BADGEUI-010 | WHEN a team name renders in a bracket, team-calendar game row, pre-game prep view, game box score, or next-game action item THE UI SHALL render `TeamCrest` alongside that name, using badge data already present in the projection or included alongside it | [x] → #382 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 

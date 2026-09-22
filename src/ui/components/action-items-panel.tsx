@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router';
 import { Badge, Card, SectionLabel } from './ui';
+import { TeamCrest } from './team-crest';
 
 // Registering a new action-item producer (e.g. "contract expiring in <30 days"):
 //   1. In the domain/feature that owns the underlying condition, compute ActionItem[]
@@ -22,6 +23,7 @@ export interface ActionItem {
   severity: ActionItemSeverity;
   href?: string;
   ctaLabel?: string;
+  team?: { name: string; badge?: string | null };
 }
 
 interface ActionItemsPanelProps {
@@ -50,7 +52,7 @@ const sortBySeverity = (items: ActionItem[]): ActionItem[] =>
     .sort((a, b) => SEVERITY_RANK[a.item.severity] - SEVERITY_RANK[b.item.severity] || a.index - b.index)
     .map(({ item }) => item);
 
-// @spec ACTUI-001,ACTUI-002,ACTUI-003,ACTUI-004
+// @spec ACTUI-001,ACTUI-002,ACTUI-003,ACTUI-004,BADGEUI-010
 const ActionItemsPanel = ({ items }: ActionItemsPanelProps) => {
   const navigate = useNavigate();
 
@@ -85,6 +87,7 @@ const ActionItemsPanel = ({ items }: ActionItemsPanelProps) => {
                 <Badge data-testid={`action-item-severity-${item.id}`} style={SEVERITY_BADGE_STYLE[item.severity]}>
                   {item.severity}
                 </Badge>
+                {item.team && <TeamCrest name={item.team.name} badge={item.team.badge} size={18} testId={`action-item-team-badge-${item.id}`} />}
                 <span data-testid={`action-item-label-${item.id}`} style={{ fontSize: '0.9rem' }}>
                   {item.label}
                 </span>

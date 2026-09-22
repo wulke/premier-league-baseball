@@ -239,7 +239,7 @@ const DivisionFactory = (id?: number): IDivision => {
     return updated.dataValues;
   };
 
-  // @spec API-002,API-003,API-004
+  // @spec API-002,API-003,API-004,BADGEUI-010
   const getBracket = async (year: number): Promise<DivisionBracket> => {
     const division = await db.models.Division.findByPk(id);
     if (!division) throw Error(`Failed to load Division '${id}'`);
@@ -258,8 +258,8 @@ const DivisionFactory = (id?: number): IDivision => {
       ]
     });
 
-    const teamNameById = new Map<number, string>(
-      divisionSeasons.map((ds: any) => [ds.dataValues.teamId, ds.dataValues.Team?.config?.name ?? `Team ${ds.dataValues.teamId}`]),
+    const teamById = new Map<number, { name: string; badge?: string }>(
+      divisionSeasons.map((ds: any) => [ds.dataValues.teamId, { name: ds.dataValues.Team?.config?.name ?? `Team ${ds.dataValues.teamId}`, badge: ds.dataValues.Team?.config?.badge }]),
     );
     const bracketSlotByTeamId = new Map<number, number>(
       divisionSeasons.map((ds: any) => [ds.dataValues.teamId, ds.dataValues.bracketSlot ?? Number.MAX_SAFE_INTEGER]),
@@ -280,7 +280,7 @@ const DivisionFactory = (id?: number): IDivision => {
       .sort((a, b) => a - b);
     const rounds: BracketRound[] = roundNumbers.map((round) => {
       const roundGames = games.filter((g: any) => g.round === round);
-      const ties = buildBracketTies(roundGames, teamNameById, bracketSlotByTeamId);
+      const ties = buildBracketTies(roundGames, teamById, bracketSlotByTeamId);
       const allDecided = ties.every((tie) => tie.kind === 'BYE' || tie.winnerTeamId != null);
 
       return {
@@ -399,7 +399,7 @@ const DivisionFactory = (id?: number): IDivision => {
 
 const buildBracketTies = (
   games: any[],
-  teamNameById: Map<number, string>,
+  teamById: Map<number, { name: string; badge?: string }>,
   bracketSlotByTeamId: Map<number, number>,
 ): BracketTie[] => {
   const tiesByPair = new Map<string, any[]>();
@@ -423,10 +423,10 @@ const buildBracketTies = (
       order: bracketSlotByTeamId.get(game.homeTeam) ?? Number.MAX_SAFE_INTEGER,
       tie: {
         kind: 'BYE',
-        teamA: { teamId: game.homeTeam, teamName: teamNameById.get(game.homeTeam) ?? `Team ${game.homeTeam}` },
+        teamA: { teamId: game.homeTeam, teamName: teamById.get(game.homeTeam)?.name ?? `Team ${game.homeTeam}`, teamBadge: teamById.get(game.homeTeam)?.badge },
         teamB: null,
         winnerTeamId: game.homeTeam,
-        games: [toBracketGame(game, teamNameById)],
+        games: [toBracketGame(game, teamById)],
       },
     });
   });
@@ -445,10 +445,10 @@ const buildBracketTies = (
       ),
       tie: {
         kind: 'SERIES',
-        teamA: { teamId: teamAId, teamName: teamNameById.get(teamAId) ?? `Team ${teamAId}` },
-        teamB: { teamId: teamBId, teamName: teamNameById.get(teamBId) ?? `Team ${teamBId}` },
+        teamA: { teamId: teamAId, teamName: teamById.get(teamAId)?.name ?? `Team ${teamAId}`, teamBadge: teamById.get(teamAId)?.badge },
+        teamB: { teamId: teamBId, teamName: teamById.get(teamBId)?.name ?? `Team ${teamBId}`, teamBadge: teamById.get(teamBId)?.badge },
         ...(winnerTeamId != null ? { winnerTeamId } : {}),
-        games: orderedGames.map((game) => toBracketGame(game, teamNameById)),
+        games: orderedGames.map((game) => toBracketGame(game, teamById)),
       },
     });
   });
@@ -456,13 +456,15 @@ const buildBracketTies = (
   return tieEntries.sort((a, b) => a.order - b.order).map(({ tie }) => tie);
 };
 
-const toBracketGame = (game: any, teamNameById: Map<number, string>): BracketGame => ({
+const toBracketGame = (game: any, teamById: Map<number, { name: string; badge?: string }>): BracketGame => ({
   gameId: game.id,
   status: game.status,
   homeTeamId: game.homeTeam,
-  homeTeamName: teamNameById.get(game.homeTeam) ?? `Team ${game.homeTeam}`,
+  homeTeamName: teamById.get(game.homeTeam)?.name ?? `Team ${game.homeTeam}`,
+  homeTeamBadge: teamById.get(game.homeTeam)?.badge,
   awayTeamId: game.awayTeam,
-  awayTeamName: game.awayTeam == null ? null : (teamNameById.get(game.awayTeam) ?? `Team ${game.awayTeam}`),
+  awayTeamName: game.awayTeam == null ? null : (teamById.get(game.awayTeam)?.name ?? `Team ${game.awayTeam}`),
+  awayTeamBadge: game.awayTeam == null ? null : teamById.get(game.awayTeam)?.badge,
   homeTeamResult: game.homeTeamResult,
   awayTeamResult: game.awayTeamResult,
 });

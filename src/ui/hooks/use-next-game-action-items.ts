@@ -25,7 +25,7 @@ const nextScheduledGame = (games: TeamSeasonGame[]): TeamSeasonGame | undefined 
 const isReadyToPrep = (game: TeamSeasonGame, currentDate: string | null | undefined): boolean =>
   game.scheduledDate == null || (currentDate != null && game.scheduledDate.slice(0, 10) <= currentDate);
 
-// @spec NGAI-001,NGAI-002,NGAI-003,NGAI-004,NGAI-005,NGAI-006 — the first real ActionItemsPanel
+// @spec NGAI-001,NGAI-002,NGAI-003,NGAI-004,NGAI-005,NGAI-006,BADGEUI-010 — the first real ActionItemsPanel
 // producer: the managed team's next ready-to-sim game, surfaced once per league.
 const useNextGameActionItems = (
   gwId: string | undefined,
@@ -63,6 +63,7 @@ const useNextGameActionItems = (
       if (!game || !isReadyToPrep(game, currentDate)) return null;
 
       const opponentName = game.homeTeamId === managedTeamId ? game.awayTeamName : game.homeTeamName;
+      const opponentBadge = game.homeTeamId === managedTeamId ? game.awayTeamBadge : game.homeTeamBadge;
 
       return {
         id: `next-game-league-${league.id}`,
@@ -70,6 +71,7 @@ const useNextGameActionItems = (
         severity: 'warning',
         href: `/${gwId}/${league.id}/game/${game.gameId}`,
         ctaLabel: 'Prep',
+        team: { name: opponentName, badge: opponentBadge }, // @spec BADGEUI-010
       };
     }))
       .then((results) => {

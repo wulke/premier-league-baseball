@@ -106,7 +106,7 @@ const getGameSummary = (tie: Extract<BracketTie, { kind: 'SERIES' }>, gameIndex:
 const resultFor = (teamId: number | null, winnerTeamId: number | undefined) =>
   !winnerTeamId || !teamId ? 'neutral' : teamId === winnerTeamId ? 'winner' : 'loser';
 
-// @spec BRKT-001,BRKT-002,BRKT-003,BRKT-004,BRKT-005,BRKT-006,BRKT-007,BRKT-008
+// @spec BRKT-001,BRKT-002,BRKT-003,BRKT-004,BRKT-005,BRKT-006,BRKT-007,BRKT-008,BADGEUI-010
 const BracketView = ({ rounds, teams, onTeamClick }: { rounds: BracketRound[]; teams: any[]; onTeamClick: (teamId: number) => void }) => {
   const [expandedSeries, setExpandedSeries] = useState<Record<string, boolean>>({});
 
@@ -137,10 +137,10 @@ const BracketView = ({ rounds, teams, onTeamClick }: { rounds: BracketRound[]; t
                 <TieNode key={key} data-testid={`bracket-node-${round.round}-${tieIndex}`} data-connects-to={connectsTo} onClick={toggle} role={isSeries ? 'button' : undefined} tabIndex={isSeries ? 0 : undefined} onKeyDown={(event) => { if (isSeries && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); toggle(); } }}>
                   <NodeShell data-testid={`bracket-node-shell-${round.round}-${tieIndex}`} data-bracket-coordinate={`${round.round}-${tieIndex}`}>
                     <TeamRow role="link" tabIndex={tie.teamA.teamId == null ? undefined : 0} data-testid={`bracket-team-${round.round}-${tieIndex}-${tie.teamA.teamId ?? 'tbd'}`} data-bracket-result={teamAResult} onClick={(event) => { event.stopPropagation(); if (tie.teamA.teamId != null) onTeamClick(tie.teamA.teamId); }} onKeyDown={(event) => { if (tie.teamA.teamId != null && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); event.stopPropagation(); onTeamClick(tie.teamA.teamId); } }}>
-                      <TeamCrest name={tie.teamA.teamName ?? 'TBD'} size={18} /> {tie.teamA.teamName ?? 'TBD'}
+                      <TeamCrest name={tie.teamA.teamName ?? 'TBD'} badge={tie.teamA.teamBadge} size={18} testId={`bracket-team-badge-${tie.teamA.teamId ?? 'tbd'}`} /> {tie.teamA.teamName ?? 'TBD'}
                     </TeamRow>
                     <TeamRow role={tie.kind === 'BYE' ? undefined : 'link'} tabIndex={tie.kind === 'SERIES' && tie.teamB.teamId != null ? 0 : undefined} data-testid={`bracket-team-${round.round}-${tieIndex}-${tie.kind === 'BYE' ? 'bye' : tie.teamB.teamId ?? 'tbd'}`} data-bracket-result={teamBResult} onClick={(event) => { event.stopPropagation(); if (tie.kind === 'SERIES' && tie.teamB.teamId != null) onTeamClick(tie.teamB.teamId); }} onKeyDown={(event) => { if (tie.kind === 'SERIES' && tie.teamB.teamId != null && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); event.stopPropagation(); onTeamClick(tie.teamB.teamId); } }}>
-                      {tie.kind === 'BYE' ? 'Bye' : <><TeamCrest name={tie.teamB.teamName ?? 'TBD'} size={18} /> {tie.teamB.teamName ?? 'TBD'}</>}
+                      {tie.kind === 'BYE' ? 'Bye' : <><TeamCrest name={tie.teamB.teamName ?? 'TBD'} badge={tie.teamB.teamBadge} size={18} testId={`bracket-team-badge-${tie.teamB.teamId ?? 'tbd'}`} /> {tie.teamB.teamName ?? 'TBD'}</>}
                     </TeamRow>
                     {tie.kind === 'BYE' ? <div style={{ padding: '0 8px', fontSize: '0.7rem', color: '#666' }}><span>{tie.teamA.teamName ?? 'TBD'} vs Bye</span> · Auto-advanced: {tie.teamA.teamName ?? 'TBD'}</div> : <div style={{ padding: '0 8px', fontSize: '0.68rem', color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getSeriesSummary(tie)} <Badge>{expanded ? 'Hide games' : 'Show games'}</Badge></div>}
                   </NodeShell>

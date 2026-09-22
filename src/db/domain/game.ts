@@ -133,7 +133,7 @@ const GameFactory = (id?: number) => {
       }).then(({ dataValues }) => dataValues);
     },
 
-    // @spec BOXS-001,BOXS-002,BOXS-003,BOXS-004,BOXS-005
+    // @spec BOXS-001,BOXS-002,BOXS-003,BOXS-004,BOXS-005,BADGEUI-010
     getBoxScore: async () => {
       // Start at the Game primary key and traverse associations so this Game-owned read
       // remains inside the domain boundary; PlayerGameStats, Player, Lineup, and
@@ -175,10 +175,11 @@ const GameFactory = (id?: number) => {
       const sides: Record<number, any[]> = { [row.homeTeam]: [], [row.awayTeam]: [] };
       (row.PlayerGameStats ?? []).map(toPlayer).filter((player: any): player is any => player != null).forEach((player: any) => { if (sides[player.teamId]) sides[player.teamId].push(player); });
       const nameFor = (team: any, teamId: number) => team?.dataValues?.config?.name ?? team?.config?.name ?? `Team ${teamId}`;
+      const badgeFor = (team: any) => team?.dataValues?.config?.badge ?? team?.config?.badge;
       return {
         id: row.id,
-        home: { teamId: row.homeTeam, teamName: nameFor(row.HomeTeam, row.homeTeam), score: row.homeTeamResult, players: sortPlayers(sides[row.homeTeam]) },
-        away: { teamId: row.awayTeam, teamName: nameFor(row.AwayTeam, row.awayTeam), score: row.awayTeamResult, players: sortPlayers(sides[row.awayTeam]) },
+        home: { teamId: row.homeTeam, teamName: nameFor(row.HomeTeam, row.homeTeam), teamBadge: badgeFor(row.HomeTeam), score: row.homeTeamResult, players: sortPlayers(sides[row.homeTeam]) }, // @spec BADGEUI-010
+        away: { teamId: row.awayTeam, teamName: nameFor(row.AwayTeam, row.awayTeam), teamBadge: badgeFor(row.AwayTeam), score: row.awayTeamResult, players: sortPlayers(sides[row.awayTeam]) }, // @spec BADGEUI-010
       };
     },
 
