@@ -11,10 +11,19 @@ Defines the cascade-delete contract for `GameWorldFactory(id).delete()` in
 is a **hard delete** — there is no soft-delete/archive flag anywhere in the schema today, and none
 is introduced here. Deletion removes the `GameWorld` row and every row transitively owned by it
 (Leagues, Teams, Players, Divisions, DivisionSeasons, Games reachable only through those
-DivisionSeasons, Contracts, PlayerGameStats, SeasonResults). No restriction is placed on deleting a
-GameWorld with `config.inProgress === true` — any GameWorld can be deleted at any time. The
-`League.gameWorldId` / `Team.gameWorldId` nullable-by-omission inconsistency (see Edge Case Probe
-e6) is a pre-existing data-integrity gap and is explicitly **out of scope** for this LLD.
+DivisionSeasons, Contracts, PlayerGameStats, SeasonResults, Notifications, GameEvents). No
+restriction is placed on deleting a GameWorld with `config.inProgress === true` — any GameWorld can
+be deleted at any time. The `League.gameWorldId` / `Team.gameWorldId` nullable-by-omission
+inconsistency (see Edge Case Probe e6) is a pre-existing data-integrity gap and is explicitly **out
+of scope** for this LLD.
+
+**Bug note (#373):** `Notification.belongsTo(GameWorld)` (`associations.ts:97`, `allowNull: false`)
+and `GameEvent.belongsTo(Game)` (`associations.ts:83`, `allowNull: false`) were omitted from the
+original cascade — a GameWorld with any Notification row, or a Game with any GameEvent row, hits
+`SQLITE_CONSTRAINT: FOREIGN KEY constraint failed` on delete. Both are now covered by step 4 below.
+Cascade ownership stays hand-rolled in this method (no `onDelete: 'CASCADE'` on any association);
+moving that to the DB/Sequelize layer is a larger structural change and is out of scope for this
+fix.
 
 Out of scope: UI (hover icon, confirm modal, optimistic list removal) — see the sibling UI LLD.
 
@@ -79,15 +88,17 @@ enforcement as the only safety net.
    a. PlayerGameStats.destroy({ where: { [Op.or]: [{ playerId: playerIds }, { gameId: gameIds }] } })
    b. ContractFactory-owned `deleteForGameWorld({ playerIds, teamIds }, { transaction })`
    c. SeasonResult.destroy({ where: { divisionId: divisionIds } })
-   d. DivisionSeasonGame.destroy({ where: { divisionSeasonId: divisionSeasonIds } })
-   e. orphanGameIds = gameIds MINUS (gameId still referenced by any remaining DivisionSeasonGame row)
+   d. Notification.destroy({ where: { gameWorldId: id } })                   # see Edge Case Probe e10 (#373)
+   e. DivisionSeasonGame.destroy({ where: { divisionSeasonId: divisionSeasonIds } })
+   f. orphanGameIds = gameIds MINUS (gameId still referenced by any remaining DivisionSeasonGame row)
+      GameEvent.destroy({ where: { gameId: orphanGameIds } })                # see Edge Case Probe e11 (#373)
       Game.destroy({ where: { id: orphanGameIds } })                         # see Edge Case Probe e3
-   f. DivisionSeason.destroy({ where: { id: divisionSeasonIds } })
-   g. Division.destroy({ where: { id: divisionIds } })
-   h. Player.destroy({ where: { gameWorldId: id } })
-   i. Team.destroy({ where: { gameWorldId: id } })
-   j. League.destroy({ where: { gameWorldId: id } })
-   k. GameWorld.destroy({ where: { id } })
+   g. DivisionSeason.destroy({ where: { id: divisionSeasonIds } })
+   h. Division.destroy({ where: { id: divisionIds } })
+   i. Player.destroy({ where: { gameWorldId: id } })
+   j. Team.destroy({ where: { gameWorldId: id } })
+   k. League.destroy({ where: { gameWorldId: id } })
+   l. GameWorld.destroy({ where: { id } })
 5. Commit the transaction.
 6. If any step in (3)-(5) throws: roll back the transaction, rethrow the original error.
 7. Return { id }.
@@ -106,6 +117,8 @@ enforcement as the only safety net.
 | e7 | `SeasonResult.championTeamId` (nullable FK to `Team`) outlives its `Team` row | Not possible by construction: `SeasonResult` rows scoped to this GameWorld's Divisions are deleted (step 4c) strictly before `Team` rows are deleted (step 4i), so no dangling reference is ever written. | GWD-002 |
 | e8 | `League.gameWorldId` / `Team.gameWorldId` are nullable by omission (no explicit column definition), unlike `Player.gameWorldId` (`allowNull: false`) | Out of scope for this LLD — flagged as a pre-existing data-integrity gap. Deletion here is scoped by explicit `gameWorldId` queries regardless of the column's nullability, so it does not affect this cascade's correctness. | — |
 | e9 | `deleteGameWorld` is called with no id | `GameWorldFactory()` (no id) has no `delete` capability — `delete()` requires the factory to have been constructed with an id; calling it without one throws synchronously, matching `newSeason`'s `if (!id) throw Error(...)` guard. | GWD-001 |
+| e10 | GameWorld has one or more `Notification` rows (`Notification.gameWorldId`, `allowNull: false`) | `Notification.destroy({ where: { gameWorldId: id } })` runs inside the transaction before `GameWorld.destroy`, so no Notification row ever outlives its GameWorld. (#373) | GWD-002 |
+| e11 | A `Game` row about to be orphan-deleted (step 4f) has `GameEvent` rows (`GameEvent.gameId`, `allowNull: false`) | `GameEvent.destroy({ where: { gameId: orphanGameIds } })` runs immediately before `Game.destroy` for the same `orphanGameIds`, so no GameEvent row ever outlives its Game. A Game that survives (still referenced by another GameWorld's DivisionSeason, e5) keeps its GameEvents untouched. (#373) | GWD-002 |
 
 ## Traceability
 
