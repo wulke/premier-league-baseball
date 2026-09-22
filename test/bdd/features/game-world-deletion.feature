@@ -2,9 +2,10 @@ Feature: GameWorld Deletion
 
   The player can permanently delete a GameWorld. Deleting a GameWorld hard-deletes it
   together with everything it owns: Leagues, Teams, Players, Divisions, DivisionSeasons,
-  Contracts, PlayerGameStats, SeasonResults, and any Games reachable only through those
-  DivisionSeasons. There is no restriction based on whether a season is in progress, and
-  no undo — a failure partway through leaves everything untouched.
+  Contracts, PlayerGameStats, SeasonResults, Notifications, and any Games (together with
+  their GameEvents) reachable only through those DivisionSeasons. There is no restriction
+  based on whether a season is in progress, and no undo — a failure partway through leaves
+  everything untouched.
 
   Background:
     Given a GameWorld exists with id 1 and year 2025
@@ -13,6 +14,8 @@ Feature: GameWorld Deletion
     And each Team has a Contract for each of its Players
     And a Game exists in GameWorld 1's DivisionSeason with PlayerGameStats recorded
     And a SeasonResult exists for GameWorld 1's Division
+    And a Notification exists for GameWorld 1
+    And a GameEvent exists for GameWorld 1's Game
 
   # ─── Happy Path ─────────────────────────────────────────────────────────────
 
@@ -25,6 +28,8 @@ Feature: GameWorld Deletion
     And GameWorld 1's Contracts and PlayerGameStats no longer exist
     And GameWorld 1's SeasonResult no longer exists
     And GameWorld 1's Game no longer exists
+    And GameWorld 1's Notification no longer exists
+    And GameWorld 1's Game's GameEvent no longer exists
 
   @spec:GWD-002
   Scenario: Deleting a GameWorld does not affect a Game shared with another GameWorld's DivisionSeason
@@ -36,6 +41,7 @@ Feature: GameWorld Deletion
     And GameWorld 1's Game still exists
     And GameWorld 2's PlayerGameStats on GameWorld 1's Game still exist
     And GameWorld 2's DivisionSeason is still linked to that Game
+    And GameWorld 1's Game's GameEvent still exists
 
   # ─── In-Progress Restriction ────────────────────────────────────────────────
 
@@ -65,3 +71,4 @@ Feature: GameWorld Deletion
     And GameWorld 1 still exists
     And GameWorld 1's Leagues, Teams, Players, Divisions, and DivisionSeasons still exist
     And GameWorld 1's Contracts, PlayerGameStats, SeasonResult, and Game still exist
+    And GameWorld 1's Notification and GameEvent still exist

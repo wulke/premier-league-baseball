@@ -130,7 +130,21 @@ const createFixture = async (id: number, { inProgress = false } = {}) => {
     championTeamId: teams[0].id,
   }).then(({ dataValues }) => dataValues);
 
-  return { gameWorld, league, division, teams, players, divisionSeasons, game, seasonResult };
+  const notification = await db.models.Notification.create({
+    gameWorldId: id,
+    teamId: teams[0].id,
+    type: 'GAME_RESULT',
+    payload: { message: 'fixture notification' },
+  }).then(({ dataValues }) => dataValues);
+
+  const gameEvent = await db.models.GameEvent.create({
+    gameId: game.id,
+    type: 'PITCH',
+    sequence: 1,
+    context: {},
+  }).then(({ dataValues }) => dataValues);
+
+  return { gameWorld, league, division, teams, players, divisionSeasons, game, seasonResult, notification, gameEvent };
 };
 
 const deleteGameWorld = async (world: WorldState, id: number) => {
@@ -205,6 +219,14 @@ const registerSteps = ({ given, when, then, and }: any) => {
 
   given(/^a SeasonResult exists for GameWorld (\d+)'s Division$/, async () => {
     await expect(db.models.SeasonResult.count({ where: { divisionId: scenarioWorld.gw1.division.id } })).resolves.toBe(1);
+  });
+
+  given(/^a Notification exists for GameWorld (\d+)$/, async () => {
+    await expect(db.models.Notification.count({ where: { gameWorldId: scenarioWorld.gw1.gameWorld.id } })).resolves.toBe(1);
+  });
+
+  given(/^a GameEvent exists for GameWorld (\d+)'s Game$/, async () => {
+    await expect(db.models.GameEvent.count({ where: { gameId: scenarioWorld.gw1.game.id } })).resolves.toBe(1);
   });
 
   given(/^a second GameWorld exists with id (\d+) and its own League, Division, and DivisionSeason$/, async (gwId: string) => {
@@ -284,6 +306,18 @@ const registerSteps = ({ given, when, then, and }: any) => {
     await expect(db.models.Game.findByPk(scenarioWorld.gw1.game.id)).resolves.not.toBeNull();
   });
 
+  then(/^GameWorld (\d+)'s Notification no longer exists$/, async () => {
+    await expect(db.models.Notification.count({ where: { gameWorldId: scenarioWorld.gw1.gameWorld.id } })).resolves.toBe(0);
+  });
+
+  then(/^GameWorld (\d+)'s Game's GameEvent no longer exists$/, async () => {
+    await expect(db.models.GameEvent.count({ where: { gameId: scenarioWorld.gw1.game.id } })).resolves.toBe(0);
+  });
+
+  then(/^GameWorld (\d+)'s Game's GameEvent still exists$/, async () => {
+    await expect(db.models.GameEvent.count({ where: { gameId: scenarioWorld.gw1.game.id } })).resolves.toBe(1);
+  });
+
   then(/^GameWorld (\d+)'s DivisionSeason is still linked to that Game$/, async () => {
     await expect(db.models.DivisionSeasonGame.count({
       where: {
@@ -339,6 +373,11 @@ const registerSteps = ({ given, when, then, and }: any) => {
     await expect(db.models.PlayerGameStats.count({ where: { gameId: scenarioWorld.gw1.game.id } })).resolves.toBe(2);
     await expect(db.models.SeasonResult.count({ where: { divisionId: scenarioWorld.gw1.division.id } })).resolves.toBe(1);
     await expect(db.models.Game.findByPk(scenarioWorld.gw1.game.id)).resolves.not.toBeNull();
+  });
+
+  then(/^GameWorld (\d+)'s Notification and GameEvent still exist$/, async () => {
+    await expect(db.models.Notification.count({ where: { gameWorldId: scenarioWorld.gw1.gameWorld.id } })).resolves.toBe(1);
+    await expect(db.models.GameEvent.count({ where: { gameId: scenarioWorld.gw1.game.id } })).resolves.toBe(1);
   });
 };
 
