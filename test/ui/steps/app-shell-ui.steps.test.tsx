@@ -68,9 +68,12 @@ const registerSteps = ({ given, when, then }: any) => {
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
     expect(screen.getByTestId('nav-rail')).toBeInTheDocument();
   });
-  then('the rail shows the app mark, HOME link, and disabled fog trio', () => {
-    expect(screen.getByTestId('nav-mark')).toBeInTheDocument();
-    expect(screen.getByTestId('nav-home')).toBeInTheDocument();
+  // @spec SHELL-004
+  then('the rail shows an active branded home link, no standalone HOME link, and disabled fog trio', () => {
+    expect(screen.getByTestId('nav-home')).toHaveAttribute('href', '/');
+    expect(screen.getByTestId('nav-home')).toHaveAttribute('data-active', 'true');
+    expect(screen.getByTestId('nav-home')).toHaveTextContent('Premier League Baseball');
+    expect(screen.queryByText('HOME')).toBeNull();
     expect(screen.getAllByTestId(/nav-fog-/)).toHaveLength(3);
   });
   then('the rail has no WORLD or COMPETITIONS section', () => {
@@ -84,7 +87,12 @@ const registerSteps = ({ given, when, then }: any) => {
     expect(screen.getByTestId('nav-current-date')).toHaveStyle({ color: '#888' });
   });
   then('no GET request is made for an undefined GameWorld', () => expect(calls).not.toContain('/api/gameWorld/undefined'));
+  // @spec SHELL-006
   then('the rail shows WORLD linked to "/1"', () => expect(screen.getByTestId('nav-world-link')).toHaveAttribute('href', '/1'));
+  // @spec SHELL-006
+  then('the WORLD link prefixes its name with a decorative home icon', () => {
+    expect(screen.getByTestId('nav-world-home-icon')).toHaveAttribute('aria-hidden', 'true');
+  });
   then('the rail shows a competition link to "/1/7"', () => expect(screen.getByTestId('nav-league-7')).toHaveAttribute('href', '/1/7'));
   then('the competition link is active', () => expect(screen.getByTestId('nav-league-7')).toHaveAttribute('data-active', 'true'));
   then('no page-local app header or breadcrumb is rendered', () => { expect(screen.queryByTestId('app-header')).toBeNull(); expect(screen.queryByText(/←/)).toBeNull(); });

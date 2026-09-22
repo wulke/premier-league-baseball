@@ -3,10 +3,10 @@ Feature: App Shell left nav rail
   The persistent shell owns navigation and world-level actions on every route.
 
   @spec:SHELL-001 @spec:SHELL-002 @spec:SHELL-004 @spec:SHELL-005
-  Scenario: Home renders persistent HOME-only chrome
+  Scenario: Home renders persistent branded home navigation
     Given the player opens the Home route
     Then the App Shell and NavRail are present
-    And the rail shows the app mark, HOME link, and disabled fog trio
+    And the rail shows an active branded home link, no standalone HOME link, and disabled fog trio
     And the rail has no WORLD or COMPETITIONS section
 
   @spec:SHELL-003
@@ -19,6 +19,7 @@ Feature: App Shell left nav rail
     Given GameWorld 1 is named "Test World" with league 7 named "Premier"
     When the player opens the League route for GameWorld 1 and league 7
     Then the rail shows WORLD linked to "/1"
+    And the WORLD link prefixes its name with a decorative home icon
     And the rail shows a competition link to "/1/7"
     And the competition link is active
 
