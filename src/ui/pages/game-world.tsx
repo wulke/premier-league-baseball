@@ -259,6 +259,7 @@ const GameWorld = () => {
           <BatchSimulateControl prominent disabled={simulateBusy} onBusyChange={setSimulateBusy} />
 
           <CalendarStrip
+            gwId={gwId!}
             currentDate={gw.currentDate}
             seasonStart={seasonBounds.start}
             seasonEnd={seasonBounds.end}

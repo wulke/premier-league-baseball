@@ -4,6 +4,7 @@ import { useLoaderData, useParams, useRevalidator, useRouteLoaderData } from 're
 import { Endpoints } from '../../api/endpoints';
 import { RosterPlayer, TeamLineup, TeamSeasonGame } from '../../api/models';
 import { Button, Card, ErrorText, PageContainer, SectionLabel } from '../components/ui';
+import { TeamLink } from '../components/team-link';
 import { formatUtcDate } from '../format-date';
 import { TeamLineupEditor } from './team-lineup';
 
@@ -44,8 +45,9 @@ const PreGamePrep = () => {
   };
 
   return <PageContainer as="main" style={{ padding: '24px 24px 48px' }}>
-    <header style={{ marginBottom: '20px' }}><SectionLabel>Pre-game prep</SectionLabel><h1 style={{ margin: '4px 0' }}>{game.homeTeamName} vs {game.awayTeamName}</h1><p style={{ margin: 0, color: '#666' }}>{game.scheduledDate ? (formatUtcDate(game.scheduledDate) ?? 'Date TBD') : 'Date TBD'} · {game.homeTeamId === managedTeamId ? 'Home' : 'Away'}</p></header>
-    <Card as="section" aria-label="Opponent context" style={{ padding: '16px', marginBottom: '20px' }}><SectionLabel>Opponent</SectionLabel><strong>{opponentName}</strong><div style={{ marginTop: '8px', color: '#555' }}>Record: {record ? `${record.won}-${record.lost}${record.drawn ? `-${record.drawn}` : ''}` : '—'}</div><div style={{ marginTop: '4px', color: '#555' }}>Probable pitcher: {probablePitcher ? `${probablePitcher.givenName} ${probablePitcher.familyName}` : 'TBD'}</div></Card>
+    {/* @spec TEAMLINK-005 */}
+    <header style={{ marginBottom: '20px' }}><SectionLabel>Pre-game prep</SectionLabel><h1 style={{ margin: '4px 0' }}><TeamLink gwId={gwId} teamId={game.homeTeamId}>{game.homeTeamName}</TeamLink> vs <TeamLink gwId={gwId} teamId={game.awayTeamId}>{game.awayTeamName}</TeamLink></h1><p style={{ margin: 0, color: '#666' }}>{game.scheduledDate ? (formatUtcDate(game.scheduledDate) ?? 'Date TBD') : 'Date TBD'} · {game.homeTeamId === managedTeamId ? 'Home' : 'Away'}</p></header>
+    <Card as="section" aria-label="Opponent context" style={{ padding: '16px', marginBottom: '20px' }}><SectionLabel>Opponent</SectionLabel><strong><TeamLink gwId={gwId} teamId={opponentId}>{opponentName}</TeamLink></strong><div style={{ marginTop: '8px', color: '#555' }}>Record: {record ? `${record.won}-${record.lost}${record.drawn ? `-${record.drawn}` : ''}` : '—'}</div><div style={{ marginTop: '4px', color: '#555' }}>Probable pitcher: {probablePitcher ? `${probablePitcher.givenName} ${probablePitcher.familyName}` : 'TBD'}</div></Card>
     {isReadyToPrep && <section aria-label="Game lineup"><SectionLabel>Your game lineup</SectionLabel><TeamLineupEditor gwId={gwId} teamId={String(managedTeamId)} isManagedTeam loaded={{ lineup, roster, nextGame: null }} revalidate={revalidate} gameId={game.gameId} embedded /></section>}
     <section style={{ marginTop: '24px' }}>{isReadyToPrep && <Button type="button" onClick={readyToSim} disabled={simulating}>{simulating ? 'Simulating…' : 'Ready to sim'}</Button>}{(result ?? (game.status === 'COMPLETED' ? { homeTeamResult: game.homeTeamResult, awayTeamResult: game.awayTeamResult } : null)) && <strong data-testid="pre-game-score" style={{ marginLeft: '12px' }}>{(result ?? game).homeTeamResult}–{(result ?? game).awayTeamResult}</strong>}{error && <ErrorText role="alert" style={{ marginLeft: '12px' }}>{error}</ErrorText>}</section>
   </PageContainer>;

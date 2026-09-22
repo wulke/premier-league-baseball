@@ -7,6 +7,15 @@ import routes from '../../../src/ui/routes';
 
 jest.setTimeout(30000);
 
+// @spec TEAMLINK-006 — team-calendar's opponent name is now wrapped in its own element
+// (TeamLink), so a "vs <opponent>" match must span the parent + child text rather than a
+// single node's own textContent (the standard RTL pattern for text split by markup).
+const textAcrossMarkup = (regex: RegExp) => (_content: string, element: Element | null) => {
+  if (!element) return false;
+  const hasText = (node: Element) => regex.test(node.textContent || '');
+  return hasText(element) && Array.from(element.children).every((child) => !hasText(child));
+};
+
 type MockGame = {
   gameId: number;
   divisionId: number;
@@ -607,7 +616,7 @@ defineFeature(feature, (test) => {
 
     then(/^the calendar shows opponent "([^"]+)"$/, async (label: string) => {
       await waitFor(() => {
-        expect(screen.getByText(new RegExp(`vs ${label}`, 'i'))).toBeInTheDocument();
+        expect(screen.getByText(textAcrossMarkup(new RegExp(`vs ${label}`, 'i')))).toBeInTheDocument();
       });
     });
 
@@ -627,7 +636,7 @@ defineFeature(feature, (test) => {
 
     then('the knockout bye remains visible', async () => {
       await waitFor(() => {
-        expect(screen.getByText(/vs Bye/i)).toBeInTheDocument();
+        expect(screen.getByText(textAcrossMarkup(/vs Bye/i))).toBeInTheDocument();
       });
     });
   });
