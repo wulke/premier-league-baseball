@@ -1,5 +1,5 @@
 // @spec PARP-002,PARP-004,PARP-005,PARP-006,PARP-007,PARP-008,PARP-009,PARP-010,PARP-011,
-// PARP-012,PARP-013,PARP-014,PARP-015,PARP-016,PARP-017,PARP-018
+// PARP-012,PARP-013,PARP-014,PARP-015,PARP-016,PARP-017,PARP-018,PARP-020
 // (attribute-driven-pa-resolution acceptance — PARP-001/PARP-003 are unit-level only, see
 // docs/specs/game-simulation/attribute-driven-pa-resolution-specs.md)
 import path from 'path';
@@ -349,6 +349,22 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
   given("a synthetic lineup whose startingPitcherId is not present among its batting order", () => {
     const lineup = buildLineup(1);
     lineup.startingPitcherId = 999999;
+    gameFixture = { gameId: 1, home: lineup, away: buildLineup(2) };
+  });
+  // @spec PARP-020 — ratings-less participants must fail fast: NaN PA weights resolve every
+  // roll to the 'HR' fallback, outs never accrue, and the inning loop never terminates.
+  given('a synthetic lineup whose leadoff batter lacks all simulation ratings', () => {
+    const lineup = buildLineup(1);
+    lineup.battingOrder = lineup.battingOrder.map((entry) => (
+      entry.battingOrder === 1 ? { ...entry, attributes: { positions: {} as any, pitches: [] } as unknown as PlayerAttributes } : entry
+    ));
+    gameFixture = { gameId: 1, home: lineup, away: buildLineup(2) };
+  });
+  given('a synthetic lineup whose starting pitcher lacks all simulation ratings', () => {
+    const lineup = buildLineup(1);
+    lineup.battingOrder = lineup.battingOrder.map((entry) => (
+      entry.playerId === lineup.startingPitcherId ? { ...entry, attributes: { positions: {} as any, pitches: [] } as unknown as PlayerAttributes } : entry
+    ));
     gameFixture = { gameId: 1, home: lineup, away: buildLineup(2) };
   });
   when('the engine simulates a game with that lineup', () => {

@@ -1,4 +1,4 @@
-import { DefaultMatchRules } from '../../../api/models';
+import { DefaultMatchRules, PlayerAttributes, PlayerSimulationAttributeKey } from '../../../api/models';
 import { mulberry32 } from '../identity';
 import { EventEnvelope } from '../events/envelope';
 import { BaserunningContext, PlateAppearanceResolutionContext } from './events';
@@ -7,6 +7,7 @@ import { deriveGameSeed } from './seed';
 import { resolvePA } from './pa-resolver';
 import { advanceRunners, BaseState } from './baserunning';
 import { projectPlayerGameStats } from './stat-projection';
+import { readAttribute } from './attribute-read';
 import { SyntheticLineup, SyntheticLineupEntry } from './synthetic-lineup';
 
 // @spec PARP-015 — pure-function invariant, not a domain/API-boundary DomainError (backend-standards §3).
@@ -38,6 +39,31 @@ const pitcherEntry = (lineup: SyntheticLineup): Pick<SyntheticLineupEntry, 'play
   lineup.startingPitcher ?? lineup.battingOrder.find((entry) => entry.playerId === lineup.startingPitcherId)!
 );
 
+// @spec PARP-020 — the attributes resolvePA actually reads. A participant missing these
+// keys NaN-poisons the PA weights: every roll falls through to the 'HR' fallback, no out
+// ever accrues, and the inning loop never terminates (verified repro: heap exhaustion).
+const BATTER_ATTRIBUTE_KEYS: readonly PlayerSimulationAttributeKey[] = ['contact', 'discipline', 'power'];
+const PITCHER_ATTRIBUTE_KEYS: readonly PlayerSimulationAttributeKey[] = ['accuracy', 'armStrength'];
+
+// @spec PARP-020 — fail fast, mirroring validateLineup (plain Error, thrown before any
+// RNG state is consumed), instead of silently simulating degenerate outcomes.
+const validateSimulationAttributes = (
+  lineup: SyntheticLineup,
+  keys: readonly PlayerSimulationAttributeKey[],
+  participants: Array<Pick<SyntheticLineupEntry, 'playerId' | 'attributes'>>,
+): void => {
+  for (const participant of participants) {
+    for (const key of keys) {
+      const { iv, ev } = readAttribute(participant.attributes as PlayerAttributes, key);
+      if (!Number.isFinite(iv) || !Number.isFinite(ev)) {
+        throw new Error(
+          `SyntheticLineup for team ${lineup.teamId}: player ${participant.playerId} lacks numeric '${key}'`,
+        );
+      }
+    }
+  }
+};
+
 // @spec PARP-008,PARP-009,PARP-010,PARP-011,PARP-016,PARP-017
 export class AttributeDrivenSimulationEngine implements SimulationEngine {
   constructor(private readonly seed?: number) {}
@@ -47,6 +73,11 @@ export class AttributeDrivenSimulationEngine implements SimulationEngine {
     const { home, away } = ctx.lineups;
     validateLineup(home);   // PARP-015
     validateLineup(away);
+    // @spec PARP-020 — every participant the loop reads must carry numeric ratings.
+    [home, away].forEach((lineup) => {
+      validateSimulationAttributes(lineup, BATTER_ATTRIBUTE_KEYS, lineup.battingOrder);
+      validateSimulationAttributes(lineup, PITCHER_ATTRIBUTE_KEYS, [pitcherEntry(lineup)]);
+    });
 
     const innings = ctx.matchRules?.innings ?? DefaultMatchRules.innings ?? 9;   // PARP-010
     const rng = mulberry32(deriveGameSeed(this.seed ?? Date.now(), ctx.gameId));
