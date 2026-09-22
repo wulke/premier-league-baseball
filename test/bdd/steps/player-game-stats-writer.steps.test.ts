@@ -16,11 +16,13 @@ let gameWorldId: number;
 let leagueId: number;
 let duplicateError: unknown;
 
-// @spec PGSW-001,PGSW-002 — scenario fixture construction.
+// @spec PGSW-001,PGSW-002 — scenario fixture construction. Flat neutral ratings: the
+// authored path (SIM-021/022) routes complete lineups to the attribute engine, whose
+// PARP-020 guard rejects participants without numeric simulation attributes.
 const createPlayer = async (teamId: number, gameWorldId: number, index: number) => (
   db.models.Player.create({
     teamId, gameWorldId, givenName: `Player${teamId}-${index}`, familyName: 'Writer', countryCode: 'US', bats: 'R', throws: 'R', birthDate: new Date('2000-01-01'),
-    attributes: { positions: {}, pitches: [] },
+    attributes: { positions: {}, pitches: [], contact: 50, discipline: 50, power: 50, accuracy: 50, armStrength: 50 },
   }).then(({ dataValues }: any) => dataValues)
 );
 
@@ -109,8 +111,11 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
   });
   // @spec PGSW-001,PGSW-003,PGSW-004
   then('both teams have player game-stat rows for the game', async () => {
-    await expect(db.models.PlayerGameStats.count({ where: { gameId: game.id, playerId: homePlayers.map(({ id }) => id) } })).resolves.toBe(10);
-    await expect(db.models.PlayerGameStats.count({ where: { gameId: game.id, playerId: awayPlayers.map(({ id }) => id) } })).resolves.toBe(10);
+    // Authored path (SIM-021/022): the projection covers each side's 9-man batting order;
+    // the 10th bullpen arm is a legacy-writer-only concept (see PGSW-002 scenarios, which
+    // still ride the writer and assert 10 rows for the complete side).
+    await expect(db.models.PlayerGameStats.count({ where: { gameId: game.id, playerId: homePlayers.map(({ id }) => id) } })).resolves.toBe(9);
+    await expect(db.models.PlayerGameStats.count({ where: { gameId: game.id, playerId: awayPlayers.map(({ id }) => id) } })).resolves.toBe(9);
   });
   // @spec PGSW-003
   and("each team's player runs equal its completed game score", async () => {
@@ -126,14 +131,16 @@ autoBindSteps(feature, [({ given, when, then, and }: any) => {
     await expect(db.models.PlayerGameStats.count({ where: { gameId: game.id, GS: true } })).resolves.toBe(2);
     await expect(db.models.PlayerGameStats.count({ where: { gameId: game.id, playerId: starters, GS: true } })).resolves.toBe(2);
   });
-  // @spec PGSW-004
+  // @spec PGSW-004 (authored path: PARP-014 — the projection accrues `outsRecorded` on the
+  // single starting pitcher instead of fabricating `IP`; a no-bullpen side has exactly
+  // one pitcher, so he owns every out his team recorded).
   then('each no-bullpen starter owns all pitching innings', async () => {
     for (const players of [homePlayers, awayPlayers]) {
       const rows = await db.models.PlayerGameStats.findAll({ where: { gameId: game.id, playerId: players.map(({ id }) => id) } })
         .then((result: any[]) => result.map(({ dataValues }) => dataValues));
       const starter = rows.find((row: any) => row.GS);
-      expect(starter.IP).toBeGreaterThan(0);
-      expect(rows.reduce((sum: number, row: any) => sum + row.IP, 0)).toBe(starter.IP);
+      expect(starter.outsRecorded).toBeGreaterThan(0);
+      expect(rows.reduce((sum: number, row: any) => sum + row.outsRecorded, 0)).toBe(starter.outsRecorded);
     }
   });
   // @spec PGSW-002

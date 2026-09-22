@@ -5,6 +5,7 @@ import { GameWorldFactory, LeagueFactory } from '../../../src/db/domain';
 import * as handlers from '../../../src/api/handlers';
 import { useDefaultGameWorld } from '../../../src/api/models';
 import { generateIdentity, LEAGUE_COMPOSITIONS, mulberry32 } from '../../../src/db/domain/identity';
+import * as identity from '../../../src/db/domain/identity';
 import { MIN_ROSTER_SIZE } from '../../../src/db/domain/contract';
 
 const ROUND_ROBIN_FORMAT = { structure: 'ROUND_ROBIN' as const, legs: 'ONE_LEG' as const, winsToAdvance: 'Bo1' as const };
@@ -130,7 +131,8 @@ describe('Team home-League ownership (#283)', () => {
   // @spec TLO-002,TLO-004,TLO-006
   it('@spec TLO-002 @spec TLO-004 @spec TLO-006 assigns deterministic per-League composition across two independent parent Leagues', async () => {
     const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(168);
-    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+    // PID-005 — headcount/ratings draw from the seeded rng; mock the mulberry32 seam.
+    const randomSpy = jest.spyOn(identity, 'mulberry32').mockReturnValue(() => 0);
     try {
       const created = await GameWorldFactory().create({
         name: 'Premier League',

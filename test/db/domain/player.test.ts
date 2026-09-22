@@ -5,6 +5,7 @@ import { MAX_ROSTER_SIZE, MIN_ROSTER_SIZE, SEASON_END_DAY, SEASON_END_MONTH } fr
 import { PlayerFactory, allocateRosterSlots, primaryPosition } from '../../../src/db/domain/player';
 import { GameWorldFactory } from '../../../src/db/domain/game-world';
 import { generateIdentity, LEAGUE_COMPOSITIONS, mulberry32, resolveComposition } from '../../../src/db/domain/identity';
+import * as identity from '../../../src/db/domain/identity';
 
 const nonPitcherAttributes: PlayerAttributes = {
   contact: 71,
@@ -183,7 +184,10 @@ describe('Player model + attribute schema', () => {
 
   // @spec PCON-001,PCON-003,PCON-004,PCON-007,PCON-008,PID-002,PID-006,PID-010,PARP-001
   it('@spec PCON-001 @spec PCON-003 @spec PCON-004 @spec PCON-007 @spec PCON-008 @spec PID-002 @spec PID-006 @spec PID-010 @spec PARP-001 generates a minimum-size roster with identity columns, IV/EV baselines, and DATE contracts', async () => {
-    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+    // PID-005 — headcount and ratings draw from the seeded rng (not Math.random), so the
+    // constant-stream mock moves to the mulberry32 seam. A constant stream is
+    // order-independent, keeping the deep rating/identity assertions intact.
+    const randomSpy = jest.spyOn(identity, 'mulberry32').mockReturnValue(() => 0);
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2052 }).then(({ dataValues }) => dataValues);
     await db.models.League.bulkCreate([
       { gameWorldId: gameWorld.id, config: { name: 'Premier League', compositionKey: 'PREMIER_LEAGUE' } },
@@ -274,7 +278,7 @@ describe('Player model + attribute schema', () => {
 
   // @spec PCON-001
   it('@spec PCON-001 generates a maximum-size roster when the random headcount hits the upper bound', async () => {
-    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0.999999);
+    const randomSpy = jest.spyOn(identity, 'mulberry32').mockReturnValue(() => 0.999999);
     const gameWorld = await db.models.GameWorld.create({ config: {}, year: 2053 }).then(({ dataValues }) => dataValues);
     const league = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
     const team = await db.models.Team.create({

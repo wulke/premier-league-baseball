@@ -8,6 +8,7 @@ import db from '../../../src/db/client';
 import { Endpoints } from '../../../src/api/endpoints';
 import { router } from '../../../src/api/router';
 import { migrateLeagueYearAndStatus } from '../../../src/db/migrations/league-year-status';
+import { createLegacyLeagueSchemaSwap } from '../../db/legacy-league-schema';
 
 const ROUND_ROBIN_FORMAT = {
   structure: 'ROUND_ROBIN' as const,
@@ -29,6 +30,8 @@ interface WorldState {
 }
 
 let world: WorldState;
+// SCL-012 legacy-schema swap (shared helper: test/db/legacy-league-schema.ts).
+const legacySchema = createLegacyLeagueSchemaSwap(db);
 
 const readLeague = async () => {
   if (!world.leagueId) throw new Error('League is not set');
@@ -135,9 +138,14 @@ const registerSteps = ({ given, when, then }: any) => {
     await db.models.DivisionSeasonGame.create({ divisionSeasonId: season.dataValues.id, gameId: game.dataValues.id });
   });
 
+  // @spec SCL-012 — simulate the pre-migration schema with a raw DDL swap. The old
+  // approach (Sequelize removeColumn) recreates the table on SQLite; since #283 the
+  // Teams→Leagues FK makes that DROP fail on the Background's Team rows and corrupts
+  // the schema for the next test's db.sync({force:true}). Renaming the model-synced
+  // table aside and creating the legacy shape (no year/status columns) directly is
+  // equivalent and reversible — afterEach restores the modern table.
   const createLegacyLeague = async (withDivisionSeason: boolean) => {
-    await db.getQueryInterface().removeColumn('Leagues', 'status');
-    await db.getQueryInterface().removeColumn('Leagues', 'year');
+    await legacySchema.swap();
     await db.query(
       "INSERT INTO Leagues (config, gameWorldId, createdAt, updatedAt) VALUES ('{}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
     );
@@ -306,5 +314,7 @@ beforeEach(async () => {
   await db.sync({ force: true });
   world = { teamIds: [] };
 });
+
+afterEach(() => legacySchema.restore());
 
 autoBindSteps(feature, [registerSteps]);

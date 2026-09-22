@@ -46,7 +46,7 @@ Tiered validation; the full suite becomes a **CI-only** required check
      League and passes `homeLeagueId` (NOT NULL since per-League team ownership,
      commit `8ccaaa0`, PR #286/#283; the Red commit `675f85e` landed 5 min before
      the Green schema change and the fixture was never cascaded).
-   - ❌ `season-calendar-lifecycle` (2 tests) — broken by `8ccaaa0`. The SCL-012
+   - ✅ `season-calendar-lifecycle` (2 tests) — fixed: SCL-012 fixture now
      legacy-migration scenarios build a legacy schema via SQLite
      `removeColumn('Leagues', 'status'/'year')`, which Sequelize implements as a
      table **recreate**; under the post-#283 schema the re-`sync` at test setup
@@ -54,7 +54,7 @@ Tiered validation; the full suite becomes a **CI-only** required check
      direction: construct legacy state without `removeColumn` (e.g. separate
      minimal table or raw `CREATE TABLE` + `ALTER`), or gate the fixture on the
      migration's column detection only.
-   - ❌ `player-game-stats-writer` (suite OOM) — regression after `b9a77ed`
+   - ✅ `player-game-stats-writer` (suite OOM) — fixed via PARP-020 (was a regression after `b9a77ed`)
      (passed 7/7 in 5 s there; OOMs at HEAD during `GameFactory.simulate`).
      Root cause (repro'd): the fixture's players carry
      `attributes: { positions: {}, pitches: [] }`; `readAttribute` returns

@@ -13,6 +13,18 @@ distributor, to be superseded by #191/#192 play-by-play simulation.
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 
+## Routing after the authored-lineup pipeline (#191/#192)
+
+The specs above describe the legacy distributor. Since SIM-021/022, `GameFactory.simulate`
+routes games whose **both** sides resolve a complete authored lineup to
+`AttributeDrivenSimulationEngine`, whose projection (PARP-011..014) writes those rows
+instead of this writer — covering batting-order participants (9/side), `GS` on the
+starting pitcher, and `outsRecorded` in place of fabricated `IP`. The legacy distributor
+still runs when the authored context is unavailable (one side missing/incomplete — the
+PGSW-002 scenarios, which keep asserting 10 rows incl. bullpen on the complete side) and
+remains directly invocable (PGSW-005). The acceptance scenarios bind each path
+accordingly; the writer itself is unchanged.
+
 ## Traceability
 
 - HLD: `docs/high-level-design.md` — Per-Player Game Event Writer (Box-Score Distributor)

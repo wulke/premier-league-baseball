@@ -2,11 +2,19 @@
 import db from '../../../src/db/client';
 import { migrateLeagueYearAndStatus } from '../../../src/db/migrations/league-year-status';
 import { migrateManagedClubPointer } from '../../../src/db/migrations/managed-club-pointer';
+import { createLegacyLeagueSchemaSwap } from '../legacy-league-schema';
 
 describe('League year/status migration', () => {
   beforeEach(async () => {
     await db.sync({ force: true });
   });
+
+  // Post-#283, Team.homeLeagueId creates a Teams→Leagues FK and the model inserts carry
+  // status/year defaults, so Sequelize's removeColumn (a SQLite table recreate) breaks.
+  // Swap in the legacy-shaped table via raw DDL instead — reversible in afterEach
+  // (shared helper, see test/db/legacy-league-schema.ts).
+  const legacySchema = createLegacyLeagueSchemaSwap(db);
+  afterEach(() => legacySchema.restore());
 
   const createLegacyLeague = async (gameWorldId: number): Promise<number> => {
     await db.query(
@@ -20,13 +28,13 @@ describe('League year/status migration', () => {
   // @spec SCL-012
   it('backfills an existing League with DivisionSeason history as IN_SEASON', async () => {
     const gameWorld = await db.models.GameWorld.create({ year: 2030, config: {} }).then(({ dataValues }) => dataValues);
-    await db.getQueryInterface().removeColumn('Leagues', 'status');
-    await db.getQueryInterface().removeColumn('Leagues', 'year');
+    // Model-created rows (whose inserts carry status/year defaults) precede the swap.
+    const teamLeague = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
+    const team = await db.models.Team.create({ gameWorldId: gameWorld.id, homeLeagueId: teamLeague.id, config: {} }).then(({ dataValues }) => dataValues);
+    await legacySchema.swap();
     const leagueId = await createLegacyLeague(gameWorld.id);
     const division = await db.models.Division.create({ config: {} }).then(({ dataValues }) => dataValues);
     await db.query('UPDATE Divisions SET leagueId = ? WHERE id = ?', { replacements: [leagueId, division.id] });
-    const teamLeague = await db.models.League.create({ gameWorldId: gameWorld.id, config: {} }).then(({ dataValues }) => dataValues);
-    const team = await db.models.Team.create({ gameWorldId: gameWorld.id, homeLeagueId: teamLeague.id, config: {} }).then(({ dataValues }) => dataValues);
     await db.models.DivisionSeason.create({ divisionId: division.id, teamId: team.id, year: 1999 });
 
     await migrateLeagueYearAndStatus(db);
@@ -38,8 +46,7 @@ describe('League year/status migration', () => {
   // @spec SCL-012
   it('backfills an existing League without DivisionSeason history as CUTOVER', async () => {
     const gameWorld = await db.models.GameWorld.create({ year: 2032, config: {} }).then(({ dataValues }) => dataValues);
-    await db.getQueryInterface().removeColumn('Leagues', 'status');
-    await db.getQueryInterface().removeColumn('Leagues', 'year');
+    await legacySchema.swap();
     const leagueId = await createLegacyLeague(gameWorld.id);
 
     await migrateLeagueYearAndStatus(db);

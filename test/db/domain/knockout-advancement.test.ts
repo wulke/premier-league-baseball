@@ -2,13 +2,13 @@
 //
 // Coverage for round-advancement, tiebreak resolution, seeding, and champion recording.
 //
-// Two complementary strategies keep the suite deterministic despite `source-map-support`
-// calling `Math.random` (quicksort) during Sequelize SQLite queries — which makes a plain
-// finite-queue mock unreliable:
-//   • Integration scenarios drive the shared completion path (`GameFactory.simulate()` single
-//     and `simulateBatch()` batch) with `mockHomeWins`, which routes only the scoring draws
-//     originating in `game.ts` (every other call is left alone). This proves the advancement
-//     hook actually fires from both completion paths.
+// Determinism note: integration scenarios drive the shared completion path
+// (`GameFactory.simulate()` single and `simulateBatch()` batch) with a **pinned seed**
+// (PARP-017 — seed-stable outcome chains). Generated rosters resolve authored lineups, so
+// scoring comes from the attribute-driven engine's own seeded RNG — an unseeded run derives
+// seeds from Date.now() and can end a Bo1 leg level (CUP-004 leaves ties unresolved), which
+// made advancement flaky. Winners are always asserted from the recorded result, never from
+// the seed.
 //   • Detail scenarios (tiebreaks, seeding) set game results directly and invoke
 //     `advanceKnockoutRound` directly for full score/pairing control.
 
@@ -36,7 +36,9 @@ const setupBracket = async (teamCount: number, format: any): Promise<Bracket> =>
   // TLO-004 — League container precedes its Teams (homeLeagueId), Divisions follow
   const league = await LeagueFactory().createContainer(gw.id, leagueConfig);
   const teamConfigs: TeamConfig[] = [...Array(teamCount).keys()].map((i) => ({ name: `KO Team ${i}` }));
-  const teams = await Promise.all(teamConfigs.map((cfg) => TeamFactory().create(gw.id, cfg, { homeLeagueId: league.id })));
+  // Without a fixed rosterSeed, generateRoster derives ratings from Date.now(), so the
+  // same simulation seed can produce different scores (and Bo1 ties) across runs.
+  const teams = await Promise.all(teamConfigs.map((cfg, i) => TeamFactory().create(gw.id, cfg, { homeLeagueId: league.id, rosterSeed: 100 + i })));
   await LeagueFactory(league.id).createDivisions(leagueConfig, teams.map(({ id }) => id));
   const divId = await db.models.League.findByPk(league.id, { include: db.models.Division })
     .then((l) => { if (!l) throw Error(); return l.dataValues.Divisions[0].id; });
@@ -92,19 +94,8 @@ const completeRoundGames = async (
   }
 };
 
-// Makes every simulated game decisive. `simulate()` / `simulateBatch()` draw home then away
-// scores on two ADJACENT `Math.random()` calls (no DB call between them), so a repeating
-// [winScore, 0] cycle always lands the pair on (winScore, 0) or (0, winScore) — a strict
-// win, never a draw — regardless of source-map-support's own Math.random noise. The winner
-// (home vs away) is non-deterministic, so callers assert against the computed result.
-const mockDecisiveGames = (winScore = 5) => {
-  let i = 0;
-  return jest.spyOn(Math, 'random').mockImplementation(() => {
-    const v = i % 2 === 0 ? winScore / 10 : 0;
-    i += 1;
-    return v;
-  });
-};
+// Pinned seed for the integration scenarios (see determinism note above).
+const SEED = 2;
 
 // Winner (teamId) of the final game in a bracket, computed from the actual (decisive) result.
 const finalWinner = async (divId: number, year: number): Promise<number> => {
@@ -120,7 +111,7 @@ const simulateRoundSingle = async (divId: number, year: number, round: number) =
     .filter((g) => g.status !== 'COMPLETED')
     .sort((a, b) => a.id - b.id);
   for (const g of pending) {
-    await GameFactory(g.id).simulate();
+    await GameFactory(g.id).simulate({ seed: SEED });
   }
 };
 
@@ -134,7 +125,6 @@ describe('Knockout round-advancement (CUP-001..008)', () => {
   it('@spec CUP-001 @spec CUP-002 advances rounds and records a champion via single-game simulate', async () => {
     // 4-team ONE_LEG FIXED: every simulated game is decisive (winner computed from results).
     const { divId, year } = await setupBracket(4, ONE_LEG_FIXED);
-    mockDecisiveGames();
 
     await simulateRoundSingle(divId, year, 1); // 2 semifinals → generates the final
     expect((await gamesInRound(divId, year, 2))).toHaveLength(1);
@@ -146,21 +136,19 @@ describe('Knockout round-advancement (CUP-001..008)', () => {
   // @spec CUP-001 @spec CUP-002
   it('@spec CUP-001 @spec CUP-002 advances rounds and records a champion via batch simulate', async () => {
     const { gw, divId, year } = await setupBracket(4, ONE_LEG_FIXED);
-    mockDecisiveGames();
 
-    await GameFactory().simulateBatch(gw.id, '2030-01-01'); // round 1 → generates the final
+    await GameFactory().simulateBatch(gw.id, '2030-01-01', { seed: SEED }); // round 1 → generates the final
     expect((await gamesInRound(divId, year, 2))).toHaveLength(1);
 
-    await GameFactory().simulateBatch(gw.id, '2030-01-01'); // the final → champion
+    await GameFactory().simulateBatch(gw.id, '2030-01-01', { seed: SEED }); // the final → champion
     expect((await getChampion(divId, year))?.championTeamId).toBe(await finalWinner(divId, year));
   });
 
   // @spec CUP-001
   it('@spec CUP-001 round-advancement only fires once per round when multiple games complete in one batch', async () => {
     const { gw, divId, year } = await setupBracket(4, ONE_LEG_FIXED);
-    mockDecisiveGames();
 
-    await GameFactory().simulateBatch(gw.id, '2030-01-01'); // both semifinals in one batch
+    await GameFactory().simulateBatch(gw.id, '2030-01-01', { seed: SEED }); // both semifinals in one batch
 
     expect((await gamesInRound(divId, year, 2))).toHaveLength(1); // exactly one final
     expect((await gamesInRound(divId, year, 3))).toHaveLength(0);

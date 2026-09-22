@@ -159,6 +159,20 @@ Feature: Attribute-driven PA-resolution pipeline
     When the engine simulates a game with that lineup
     Then a plain Error is thrown
 
+  @spec:PARP-020
+  Scenario: A lineup participant without required simulation attributes is rejected
+    Given a synthetic lineup whose leadoff batter lacks all simulation ratings
+    When the engine simulates a game with that lineup
+    Then a plain Error is thrown
+    And no RNG state is consumed
+
+  @spec:PARP-020
+  Scenario: A starting pitcher without required simulation attributes is rejected
+    Given a synthetic lineup whose starting pitcher lacks all simulation ratings
+    When the engine simulates a game with that lineup
+    Then a plain Error is thrown
+    And no RNG state is consumed
+
   # ─── Persistence ────────────────────────────────────────────────────────────────
 
   @spec:PARP-018
