@@ -2,6 +2,7 @@
 import db from '../../../src/db/client';
 import { TeamFactory } from '../../../src/db/domain';
 import { generateIdentity, LEAGUE_COMPOSITIONS, mulberry32 } from '../../../src/db/domain/identity';
+import * as identity from '../../../src/db/domain/identity';
 
 const ONE_LEG_KNOCKOUT_FIXED_FORMAT = {
   structure: 'KNOCKOUT' as const,
@@ -197,7 +198,8 @@ describe('TeamFactory', () => {
 
   // @spec PCON-001,PCON-004,PCON-007,PID-010
   it('@spec PCON-001 @spec PCON-004 @spec PCON-007 @spec PID-010 creates an initial roster with matching contracts after the team row exists', async () => {
-    const randomSpy = jest.spyOn(Math, 'random').mockReturnValue(0);
+    // PID-005 — headcount/ratings draw from the seeded rng; mock the mulberry32 seam.
+    const randomSpy = jest.spyOn(identity, 'mulberry32').mockReturnValue(() => 0);
     const gw = await db.models.GameWorld.create({ config: {}, year: 2054 }).then((m) => m.dataValues);
     const homeLeague = await db.models.League.create({
       gameWorldId: gw.id,

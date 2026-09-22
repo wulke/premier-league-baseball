@@ -50,8 +50,9 @@ const FIELDER_POSITIONS: PlayerPosition[] = PLAYER_POSITIONS.filter(
 
 const PLAYER_PITCH_TYPES = ['Fastball', 'Curveball', 'Slider', 'Changeup'] as const;
 
-// @spec PCON-001,PCON-003
-const randomRating = () => Math.floor(Math.random() * 100) + 1;
+// @spec PCON-001,PCON-003,PID-005 — ratings are drawn from the caller's seeded rng,
+// never Math.random, so a roster is reproducible from its seed (PID-005).
+const randomRating = (rng: () => number) => Math.floor(rng() * 100) + 1;
 
 // @spec PCON-002
 const allocateRosterSlots = (headcount: number): PlayerPosition[] => {
@@ -73,15 +74,15 @@ const allocateRosterSlots = (headcount: number): PlayerPosition[] => {
 
 // @spec PCON-003,PARP-001 — new players persist innate baselines with zero earned effort;
 // the future event/reward writer, not generation, owns EV changes.
-const generatePlayerAttributes = (): PlayerAttributes => {
+const generatePlayerAttributes = (rng: () => number): PlayerAttributes => {
   const ratings = {
-    contact: randomRating(),
-    power: randomRating(),
-    armStrength: randomRating(),
-    accuracy: randomRating(),
-    reaction: randomRating(),
-    vision: randomRating(),
-    discipline: randomRating(),
+    contact: randomRating(rng),
+    power: randomRating(rng),
+    armStrength: randomRating(rng),
+    accuracy: randomRating(rng),
+    reaction: randomRating(rng),
+    vision: randomRating(rng),
+    discipline: randomRating(rng),
   };
   return {
     ...ratings,
@@ -95,14 +96,14 @@ const generatePlayerAttributes = (): PlayerAttributes => {
       discipline: { iv: ratings.discipline, ev: 0 },
     },
     positions: PLAYER_POSITIONS.reduce<Record<PlayerPosition, number>>((positions, position) => {
-      positions[position] = randomRating();
+      positions[position] = randomRating(rng);
       return positions;
     }, {} as Record<PlayerPosition, number>),
     pitches: PLAYER_PITCH_TYPES.map((type) => ({
       type,
-      velocity: randomRating(),
-      control: randomRating(),
-      spin: randomRating(),
+      velocity: randomRating(rng),
+      control: randomRating(rng),
+      spin: randomRating(rng),
     })),
   };
 };
@@ -168,21 +169,25 @@ const PlayerFactory = (playerId?: number): IPlayer => {
         return gw.dataValues.year;
       });
 
-      const headcount = MIN_ROSTER_SIZE + Math.floor(Math.random() * (MAX_ROSTER_SIZE - MIN_ROSTER_SIZE + 1));
+      // @spec PID-005 — one rng stream for the whole call (headcount included), so a
+      // roster is fully reproducible from its seed with no cross-call coupling.
+      const rng = mulberry32(seed);
+      const headcount = MIN_ROSTER_SIZE + Math.floor(rng() * (MAX_ROSTER_SIZE - MIN_ROSTER_SIZE + 1));
       const slots = allocateRosterSlots(headcount);
       const composition = resolveComposition(compositionKey);
-      const rng = mulberry32(seed);
       const players = await db.models.Player.bulkCreate(
         slots.map(() => ({
           teamId,
           gameWorldId,
-          attributes: generatePlayerAttributes(),
+          attributes: generatePlayerAttributes(rng),
           ...generateIdentity(composition, rng, year),
         }))
       , { transaction }).then((rows) => rows.map(({ dataValues }) => dataValues));
 
       // @spec XFER-021 — ContractFactory-owned initial minting reuses the shared season-end anchor.
-      await createInitialRosterContracts(teamId, players.map((player) => player.id), year, { transaction });
+      // @spec PID-005,XFER-024 — initial contract terms draw from the same seeded rng,
+      // so a roster (players AND contracts) is reproducible from its seed.
+      await createInitialRosterContracts(teamId, players.map((player) => player.id), year, { transaction }, rng);
 
       // @spec LIN-003
       await LineupFactory().generateActive(teamId, gameWorldId, players, { transaction, matchRules });
