@@ -1,4 +1,4 @@
-// @spec BOXSUI-001,BOXSUI-002
+// @spec BOXSUI-001,BOXSUI-002,BADGEUI-010
 import path from 'path';
 import React from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
@@ -20,6 +20,12 @@ defineFeature(feature, (test) => {
     given('GET /api/game/42 returns a completed box score with no away players', () => { boxScore = base(); boxScore.away.players = []; });
     when('the user navigates to the game box score route', async () => { global.fetch = jest.fn((input: RequestInfo | URL) => Promise.resolve({ ok: true, json: () => Promise.resolve(input.toString() === '/api/gameWorld/1' ? { id: 1, config: {} } : boxScore) })) as jest.Mock; render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/1/game/42'] })} />); });
     then('the away box score says "No stats recorded" while home rows remain visible', async () => { expect(await screen.findByTestId('away-box-score-empty')).toHaveTextContent('No stats recorded'); expect(screen.getByText(/Home Starter/)).toBeInTheDocument(); });
+  });
+  test('Box score team headings render supplied crests', ({ given, when, then }) => {
+    given('GET /api/game/42 returns a completed box score with team badges', () => { boxScore = base(); boxScore.home.teamBadge = '/badges/home.png'; boxScore.away.teamBadge = '/badges/away.png'; });
+    when('the user navigates to the game box score route', async () => { global.fetch = jest.fn((input: RequestInfo | URL) => Promise.resolve({ ok: true, json: () => Promise.resolve(input.toString() === '/api/gameWorld/1' ? { id: 1, config: {} } : boxScore) })) as jest.Mock; render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/1/game/42'] })} />); });
+    // @spec BADGEUI-010
+    then('both box score team headings show their crest images', async () => { expect(await screen.findByTestId('box-score-team-badge-10')).toHaveAttribute('src', '/badges/home.png'); expect(screen.getByTestId('box-score-team-badge-20')).toHaveAttribute('src', '/badges/away.png'); });
   });
 });
 afterEach(() => cleanup());

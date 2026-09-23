@@ -38,6 +38,7 @@ const gameLinkLabel = (game: TeamSeasonGame, currentDate: string | null): string
   return currentDate != null && game.scheduledDate.slice(0, 10) <= currentDate ? 'Prep' : 'Preview';
 };
 
+// @spec BADGEUI-010
 const GameRow = ({
   game,
   teamId,
@@ -59,6 +60,7 @@ const GameRow = ({
   const isBye = game.awayTeamId === null;
   const opponent = isBye ? 'Bye' : (isHome ? game.awayTeamName : game.homeTeamName);
   const opponentId = isBye ? null : (isHome ? game.awayTeamId : game.homeTeamId);
+  const opponentBadge = isBye ? null : (isHome ? game.awayTeamBadge : game.homeTeamBadge);
 
   // Flow A (SIMUI-019..026): the result cell branches on `game.status` first (COMPLETED /
   // IN_PROGRESS render their own indicator), then on the per-row `simulateStatus` for a
@@ -153,7 +155,7 @@ const GameRow = ({
       {/* @spec TEAMLINK-006 */}
       <div>
         <span style={{ fontWeight: 600 }}>
-          {isBye || isHome ? 'vs' : '@'} <TeamLink gwId={gwId} teamId={opponentId}>{opponent}</TeamLink>
+          <span>{isBye || isHome ? 'vs' : '@'} <TeamLink gwId={gwId} teamId={opponentId}>{opponent}</TeamLink></span> <TeamCrest name={opponent} badge={opponentBadge} size={18} testId={`calendar-opponent-badge-${game.gameId}`} />
         </span>
         <span style={{ marginLeft: '8px', fontSize: '0.78rem', color: '#999' }}>
           {game.divisionName}{game.roundLabel ? ` · ${game.roundLabel}` : ''}

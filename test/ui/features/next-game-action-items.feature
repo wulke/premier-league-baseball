@@ -43,3 +43,9 @@ Feature: Next-Game Action Item Producer
     When the GameWorld 1 home page loads
     And the manager clicks the action item for League 10
     Then the browser navigates to "/1/10/game/100"
+
+  @spec:BADGEUI-010
+  Scenario: A ready next-game action item renders the opponent crest
+    Given League 10 "American League" has a SCHEDULED game 100 for Team A vs "Team B" scheduled "2026-04-10"
+    When the GameWorld 1 home page loads
+    Then the action item for League 10 shows Team B's crest image

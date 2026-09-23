@@ -1,4 +1,4 @@
-// @spec PREGAME-001,PREGAME-002,PREGAME-003,PREGAME-004,PREGAME-005 (pre-game prep acceptance)
+// @spec PREGAME-001,PREGAME-002,PREGAME-003,PREGAME-004,PREGAME-005,BADGEUI-010 (pre-game prep acceptance)
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -24,7 +24,7 @@ beforeEach(() => {
     const url = String(input); const method = init?.method ?? 'GET';
     const response = (body: any) => Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
     if (/gameWorld\/1$/.test(url)) return response({ id: 1, managedTeamId: 10, currentDate });
-    if (/team\/10\/calendar/.test(url)) return response({ games: hasGame ? [{ gameId: 40, scheduledDate, homeTeamId: 10, homeTeamName: 'Mariners', awayTeamId: 11, awayTeamName: 'Rivertown', leagueId: 5, status: gameStatus, homeTeamResult: gameStatus === 'COMPLETED' ? 5 : null, awayTeamResult: gameStatus === 'COMPLETED' ? 2 : null }] : [] });
+    if (/team\/10\/calendar/.test(url)) return response({ games: hasGame ? [{ gameId: 40, scheduledDate, homeTeamId: 10, homeTeamName: 'Mariners', homeTeamBadge: '/badges/mariners.png', awayTeamId: 11, awayTeamName: 'Rivertown', awayTeamBadge: '/badges/rivertown.png', leagueId: 5, status: gameStatus, homeTeamResult: gameStatus === 'COMPLETED' ? 5 : null, awayTeamResult: gameStatus === 'COMPLETED' ? 2 : null }] : [] });
     if (/team\/10\/lineup/.test(url)) return response(lineup);
     if (/team\/10\/roster/.test(url)) return response([player(1), player(2, true)]);
     if (/team\/11\/roster/.test(url)) return response([player(30, true)]);
@@ -62,5 +62,11 @@ defineFeature(feature, (test) => {
     given('a managed club has a scheduled game with no scheduled date and the GameWorld has no current date configured', () => { currentDate = null; scheduledDate = null; });
     when("the manager opens that game's pre-game route", mount);
     then('the page shows opponent record, probable pitcher, and the game lineup editor', async () => { await waitFor(() => expect(screen.getByRole('button', { name: 'Edit Lineup' })).toBeInTheDocument()); expect(screen.getAllByText('Rivertown').length).toBeGreaterThan(0); expect(screen.getByText('Record: 8-4')).toBeInTheDocument(); expect(screen.getByText('Probable pitcher: Ace 30')).toBeInTheDocument(); });
+  });
+  test('Pre-game team identities render supplied crests', ({ given, when, then }) => {
+    given('a managed club has a scheduled game and game lineup snapshot', () => { hasGame = true; });
+    when("the manager opens that game's pre-game route", mount);
+    // @spec BADGEUI-010
+    then('the pre-game matchup and opponent context show their crest images', async () => { await waitFor(() => expect(screen.getByTestId('pre-game-team-badge-10')).toHaveAttribute('src', '/badges/mariners.png')); expect(screen.getByTestId('pre-game-team-badge-11')).toHaveAttribute('src', '/badges/rivertown.png'); expect(screen.getByTestId('pre-game-opponent-badge-11')).toHaveAttribute('src', '/badges/rivertown.png'); });
   });
 });

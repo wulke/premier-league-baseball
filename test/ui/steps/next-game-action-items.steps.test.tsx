@@ -1,4 +1,4 @@
-// @spec NGAI-001,NGAI-002,NGAI-003,NGAI-004,NGAI-005,NGAI-006
+// @spec NGAI-001,NGAI-002,NGAI-003,NGAI-004,NGAI-005,NGAI-006,BADGEUI-010
 import React from 'react';
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -22,6 +22,7 @@ let leagues: Array<{ id: number; name: string }> = [];
 let leagueGames: Record<number, any[]> = {};
 
 const opponentTeamIdByName: Record<string, number> = { 'Team B': 2, 'Team C': 3 };
+const opponentBadgeByName: Record<string, string> = { 'Team B': '/badges/team-b.png', 'Team C': '/badges/team-c.png' };
 
 const installFetch = () => {
   global.fetch = jest.fn((input: RequestInfo | URL) => {
@@ -76,8 +77,10 @@ const addLeagueGame = (leagueId: number, leagueName: string, gameId: number, opp
       scheduledDate: `${scheduledDate}T00:00:00.000Z`,
       homeTeamId: managedTeamId,
       homeTeamName: 'Team A',
+      homeTeamBadge: '/badges/team-a.png',
       awayTeamId: opponentTeamIdByName[opponentName],
       awayTeamName: opponentName,
+      awayTeamBadge: opponentBadgeByName[opponentName],
       divisionId: 1,
       divisionName: 'Division',
       leagueId,
@@ -175,6 +178,17 @@ defineFeature(feature, (test) => {
 
     then('the browser navigates to "/1/10/game/100"', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/1/10/game/100');
+    });
+  });
+  test('A ready next-game action item renders the opponent crest', ({ given, when, then }) => {
+    given('GameWorld 1 exists with currentDate "2026-04-10" and Team A as managed team 1', () => { currentDate = '2026-04-10'; });
+    given('League 10 "American League" has a SCHEDULED game 100 for Team A vs "Team B" scheduled "2026-04-10"', () => {
+      addLeagueGame(10, 'American League', 100, 'Team B', '2026-04-10');
+    });
+    when('the GameWorld 1 home page loads', renderHarness);
+    // @spec BADGEUI-010
+    then("the action item for League 10 shows Team B's crest image", async () => {
+      expect(await screen.findByTestId('action-item-team-badge-next-game-league-10')).toHaveAttribute('src', '/badges/team-b.png');
     });
   });
 });

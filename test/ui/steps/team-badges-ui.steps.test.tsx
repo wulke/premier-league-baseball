@@ -1,4 +1,4 @@
-// @spec BADGEUI-001,BADGEUI-002,BADGEUI-003,BADGEUI-005,BADGEUI-006,BADGEUI-007,BADGEUI-008,BADGEUI-009
+// @spec BADGEUI-001,BADGEUI-002,BADGEUI-003,BADGEUI-005,BADGEUI-006,BADGEUI-007,BADGEUI-008,BADGEUI-009,BADGEUI-010
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -229,6 +229,17 @@ defineFeature(feature, (test) => {
     and(/^the calendar entry shows a crest image with src "([^"]+)" for "([^"]+)"$/, async (src: string) => {
       const img = screen.getByTestId('calendar-entry-badge-601-away');
       expect(img).toHaveAttribute('src', src);
+    });
+  });
+
+  test('A team-calendar game row renders the opponent crest', ({ given, when, then }) => {
+    given(/^GET \/api\/team\/7\/calendar returns an Arsenal game against Chelsea with badge "([^"]+)"$/, (badge: string) => {
+      calendarFixture = { teamId: 7, teamName: 'Arsenal', teamBadge: '/badges/arsenal.png', games: [{ gameId: 701, scheduledDate: '2025-06-10T00:00:00.000Z', homeTeamId: 7, homeTeamName: 'Arsenal', homeTeamBadge: '/badges/arsenal.png', awayTeamId: 8, awayTeamName: 'Chelsea', awayTeamBadge: badge, divisionId: 1, divisionName: 'Premier League', leagueId: 1, leagueName: 'Premier League', homeTeamResult: null, awayTeamResult: null, status: 'SCHEDULED' }] };
+    });
+    when('the TeamCalendar page loads', renderTeamCalendar);
+    // @spec BADGEUI-010
+    then(/^the game row shows a crest image with src "([^"]+)" for Chelsea$/, async (badge: string) => {
+      expect(await screen.findByTestId('calendar-opponent-badge-701')).toHaveAttribute('src', badge);
     });
   });
 });

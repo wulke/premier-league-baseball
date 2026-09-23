@@ -69,6 +69,10 @@ Feature: Team Crest Rendering
     Then the calendar entry shows a crest image with src "/badges/arsenal.png" for "Arsenal"
     And the calendar entry shows a crest image with src "/badges/chelsea.png" for "Chelsea"
 
-  # ─── Deferred: BracketView / knockout series team names (→ future map) ──────
-  # No scenario in v1: the knockout BracketView surface (docs/llds/league/knockout-bracket.md,
-  # bracket-tree-ui.md) is explicitly out of scope for this slice — see team-badges-ui.md's Scope.
+  # ─── Remaining Team References ──────────────────────────────────────────────
+
+  @spec:BADGEUI-010
+  Scenario: A team-calendar game row renders the opponent crest
+    Given GET /api/team/7/calendar returns an Arsenal game against Chelsea with badge "/badges/chelsea.png"
+    When the TeamCalendar page loads
+    Then the game row shows a crest image with src "/badges/chelsea.png" for Chelsea

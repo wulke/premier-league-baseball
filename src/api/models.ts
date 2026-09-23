@@ -218,6 +218,7 @@ interface DivisionStandings {
 interface BracketTeam {
   teamId: number | null;
   teamName: string | null;
+  teamBadge?: string; // @spec BADGEUI-010
 }
 
 interface BracketGame {
@@ -225,8 +226,10 @@ interface BracketGame {
   status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED';
   homeTeamId: number;
   homeTeamName: string;
+  homeTeamBadge?: string; // @spec BADGEUI-010
   awayTeamId: number | null;
   awayTeamName: string | null;
+  awayTeamBadge?: string | null; // @spec BADGEUI-010
   homeTeamResult: number | null;
   awayTeamResult: number | null;
 }
