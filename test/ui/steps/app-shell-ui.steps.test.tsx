@@ -1,8 +1,8 @@
-// @spec SHELL-001..SHELL-011, SIMUI-006,SIMUI-007 (AppShell + NavRail acceptance; real MemoryRouter locations).
+// @spec SHELL-001..SHELL-011, LDASH-001,LDASH-005, SIMUI-006,SIMUI-007 (AppShell + NavRail acceptance; real MemoryRouter locations).
 import { act } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import path from 'path';
 import routes from '../../../src/ui/routes';
 
@@ -16,10 +16,11 @@ let world = {
   Leagues: [{ id: 7, config: { name: 'Premier' } }],
 };
 let calls: string[] = [];
+let router: ReturnType<typeof createMemoryRouter>;
 
 const response = (body: unknown) => ({ ok: true, json: () => Promise.resolve(body) });
 const renderAt = async (entry: string) => {
-  const router = createMemoryRouter(routes, { initialEntries: [entry] });
+  router = createMemoryRouter(routes, { initialEntries: [entry] });
   render(<RouterProvider router={router} />);
   await act(async () => {
     await Promise.resolve();
@@ -95,6 +96,19 @@ const registerSteps = ({ given, when, then }: any) => {
   });
   then('the rail shows a competition link to "/1/7"', () => expect(screen.getByTestId('nav-league-7')).toHaveAttribute('href', '/1/7'));
   then('the competition link is active', () => expect(screen.getByTestId('nav-league-7')).toHaveAttribute('data-active', 'true'));
+  // @spec SHELL-007,LDASH-001 — the rail is the GameWorld-to-dashboard entry point.
+  when(/^the player selects the "([^"]+)" competition from the rail$/, async (name: string) => {
+    fireEvent.click(screen.getByRole('link', { name }));
+    await screen.findByTestId('league-dashboard-page');
+  });
+  // @spec LDASH-001
+  then('the League Dashboard page renders', () => expect(screen.getByTestId('league-dashboard-page')).toBeInTheDocument());
+  // @spec LDASH-005
+  when(/^the player selects "([^"]+)"$/, (name: string) => fireEvent.click(screen.getByRole('link', { name })));
+  // @spec LDASH-005
+  then(/^the app navigates to "([^"]+)"$/, async (target: string) => {
+    await waitFor(() => expect(router.state.location.pathname).toBe(target));
+  });
   then('no page-local app header or breadcrumb is rendered', () => { expect(screen.queryByTestId('app-header')).toBeNull(); expect(screen.queryByText(/←/)).toBeNull(); });
   // @spec SHELL-011
   then('the App Shell separates viewport scrolling between the rail and main content', () => {
