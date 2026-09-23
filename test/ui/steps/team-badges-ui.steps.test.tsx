@@ -4,7 +4,6 @@ import { defineFeature, loadFeature } from 'jest-cucumber';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import routes from '../../../src/ui/routes';
-import { BracketView } from '../../../src/ui/components/bracket-view';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/team-badges-ui.feature'));
 
@@ -233,15 +232,14 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('Team names outside standings render a crest from their supplied badge', ({ given, when, then }) => {
-    given('a bracket, schedule, pre-game prep view, box score, and action item receive a team badge', () => {});
-    when('each team identity renders', () => {
-      render(<BracketView teams={[]} onTeamClick={() => {}} rounds={[{ round: 1, label: 'Final', status: 'IN_PROGRESS', ties: [{ kind: 'SERIES', teamA: { teamId: 1, teamName: 'Arsenal', teamBadge: '/badges/arsenal.png' }, teamB: { teamId: 2, teamName: 'Chelsea', teamBadge: '/badges/chelsea.png' }, games: [] }] }]} />);
+  test('A team-calendar game row renders the opponent crest', ({ given, when, then }) => {
+    given(/^GET \/api\/team\/7\/calendar returns an Arsenal game against Chelsea with badge "([^"]+)"$/, (badge: string) => {
+      calendarFixture = { teamId: 7, teamName: 'Arsenal', teamBadge: '/badges/arsenal.png', games: [{ gameId: 701, scheduledDate: '2025-06-10T00:00:00.000Z', homeTeamId: 7, homeTeamName: 'Arsenal', homeTeamBadge: '/badges/arsenal.png', awayTeamId: 8, awayTeamName: 'Chelsea', awayTeamBadge: badge, divisionId: 1, divisionName: 'Premier League', leagueId: 1, leagueName: 'Premier League', homeTeamResult: null, awayTeamResult: null, status: 'SCHEDULED' }] };
     });
+    when('the TeamCalendar page loads', renderTeamCalendar);
     // @spec BADGEUI-010
-    then('each identity shows the supplied crest alongside its team name', () => {
-      expect(screen.getByTestId('bracket-team-badge-1')).toHaveAttribute('src', '/badges/arsenal.png');
-      expect(screen.getByTestId('bracket-team-badge-2')).toHaveAttribute('src', '/badges/chelsea.png');
+    then(/^the game row shows a crest image with src "([^"]+)" for Chelsea$/, async (badge: string) => {
+      expect(await screen.findByTestId('calendar-opponent-badge-701')).toHaveAttribute('src', badge);
     });
   });
 });

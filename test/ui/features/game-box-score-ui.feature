@@ -11,3 +11,9 @@ Feature: Game box score page
     Given GET /api/game/42 returns a completed box score with no away players
     When the user navigates to the game box score route
     Then the away box score says "No stats recorded" while home rows remain visible
+
+  @spec:BADGEUI-010
+  Scenario: Box score team headings render supplied crests
+    Given GET /api/game/42 returns a completed box score with team badges
+    When the user navigates to the game box score route
+    Then both box score team headings show their crest images

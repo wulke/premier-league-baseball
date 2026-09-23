@@ -72,7 +72,7 @@ Feature: Team Crest Rendering
   # ─── Remaining Team References ──────────────────────────────────────────────
 
   @spec:BADGEUI-010
-  Scenario: Team names outside standings render a crest from their supplied badge
-    Given a bracket, schedule, pre-game prep view, box score, and action item receive a team badge
-    When each team identity renders
-    Then each identity shows the supplied crest alongside its team name
+  Scenario: A team-calendar game row renders the opponent crest
+    Given GET /api/team/7/calendar returns an Arsenal game against Chelsea with badge "/badges/chelsea.png"
+    When the TeamCalendar page loads
+    Then the game row shows a crest image with src "/badges/chelsea.png" for Chelsea

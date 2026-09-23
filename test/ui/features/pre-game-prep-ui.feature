@@ -31,3 +31,9 @@ Feature: Pre-game prep UI
     Given a managed club has a scheduled game with no scheduled date and the GameWorld has no current date configured
     When the manager opens that game's pre-game route
     Then the page shows opponent record, probable pitcher, and the game lineup editor
+
+  @spec:BADGEUI-010
+  Scenario: Pre-game team identities render supplied crests
+    Given a managed club has a scheduled game and game lineup snapshot
+    When the manager opens that game's pre-game route
+    Then the pre-game matchup and opponent context show their crest images
