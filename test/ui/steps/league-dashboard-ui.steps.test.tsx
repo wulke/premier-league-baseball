@@ -153,10 +153,10 @@ defineFeature(feature, (test) => {
       expect(within(widget).getAllByRole('row')).toHaveLength(Number(rows) + 1); // +1 header row
     });
     and(/^the League Dashboard shows exactly one "([^"]+)" link$/, (label: string) => {
-      expect(screen.getAllByRole('button', { name: label })).toHaveLength(1);
+      expect(screen.getAllByRole('link', { name: label })).toHaveLength(1);
     });
     when(/^the player clicks "([^"]+)"$/, (label: string) => {
-      fireEvent.click(screen.getByRole('button', { name: label }));
+      fireEvent.click(screen.getByRole('link', { name: label }));
     });
     then(/^the app navigates to "([^"]+)"$/, async (target: string) => {
       await waitFor(() => expect(router.state.location.pathname).toBe(target));

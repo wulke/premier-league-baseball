@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLoaderData, useNavigate, useParams } from 'react-router';
+import { Link, useLoaderData, useNavigate, useParams } from 'react-router';
 import { BracketRound, DivisionStandings, LeagueDivisionBracket, TeamSeasonGame, TeamStanding } from '../../api/models';
 import { formatLeagueChampionBanner, getChampionTeamName } from '../champion';
 import { Badge, Button, Card, PageContainer, SectionLabel } from '../components/ui';
@@ -181,8 +181,6 @@ const LeagueDashboard = () => {
 
   // @spec LDASH-009
   const openTeamHub = (teamId: number) => navigate(`/${gwId}/team/${teamId}`);
-  const openStandings = () => navigate(`/${gwId}/${leagueId}/standings`);
-
   const hasAnyStandings = standings.some((s) => s.standings.length > 0);
   const hasAnyBracketRounds = brackets.some((division) => division.rounds.length > 0);
   const championBanner = formatLeagueChampionBanner(league, getChampionTeamName(league, brackets));
@@ -217,7 +215,7 @@ const LeagueDashboard = () => {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
           <SectionLabel>Divisions</SectionLabel>
           {/* @spec LDASH-005 */}
-          <Button intent="secondary" size="sm" onClick={openStandings}>View full standings</Button>
+          <Button as={Link} intent="secondary" size="sm" to={`/${gwId}/${leagueId}/standings`}>View full standings</Button>
         </div>
 
         {league.Divisions?.map((division: any) => (
