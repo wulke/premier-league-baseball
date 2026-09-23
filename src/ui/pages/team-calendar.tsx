@@ -38,6 +38,13 @@ const gameLinkLabel = (game: TeamSeasonGame, currentDate: string | null): string
   return currentDate != null && game.scheduledDate.slice(0, 10) <= currentDate ? 'Prep' : 'Preview';
 };
 
+// @spec SIMUI-029 — completed games bypass the league-scoped prep route so the
+// existing box-score loader receives the completed game's canonical route shape.
+const gameLinkDestination = (gwId: string, game: TeamSeasonGame): string =>
+  game.status === 'COMPLETED'
+    ? `/${gwId}/game/${game.gameId}`
+    : `/${gwId}/${game.leagueId}/game/${game.gameId}`;
+
 // @spec BADGEUI-010
 const GameRow = ({
   game,
@@ -167,7 +174,7 @@ const GameRow = ({
         {/* @spec SIMUI-029,SIMUI-030 — link only on the managed team's own calendar */}
         {isManagedTeam && (
           <Link
-            to={`/${gwId}/${game.leagueId}/game/${game.gameId}`}
+            to={gameLinkDestination(gwId, game)}
             data-testid={`game-link-${game.gameId}`}
             style={{ fontSize: '0.78rem', fontWeight: 600 }}
           >

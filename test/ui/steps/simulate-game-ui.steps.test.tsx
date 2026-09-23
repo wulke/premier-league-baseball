@@ -69,6 +69,8 @@ interface WorldState {
   mounted: 'none' | 'appheader' | 'calendar' | 'crossflow';
   // Cross-flow (SIMUI-027/028) calendar data after a batch-driven re-fetch
   calendarFetchCount: number;
+  // Box-score payload exposed by the completed-game click-through regression.
+  boxScores: Map<number, Record<string, unknown>>;
 }
 
 const createWorld = (): WorldState => ({
@@ -88,6 +90,7 @@ const createWorld = (): WorldState => ({
   fetchCalls: [],
   mounted: 'none',
   calendarFetchCount: 0,
+  boxScores: new Map(),
 });
 
 let world = createWorld();
@@ -135,6 +138,10 @@ const installFetch = () => {
       return Promise.resolve(
         resolveWith(200, { teamId: 1, teamName: 'Test Team', year: 2025, games: world.games }),
       );
+    }
+    if (method === 'GET' && /\/api\/game\/\d+$/.test(url)) {
+      const gameId = Number(url.match(/\/api\/game\/(\d+)$/)![1]);
+      return Promise.resolve(resolveWith(200, world.boxScores.get(gameId) ?? {}));
     }
     // League / standings / other: benign defaults so SIMUI-008 page renders don't crash.
     if (method === 'GET' && /\/api\/league\/\d+$/.test(url)) {
@@ -436,6 +443,27 @@ given(/^gw\.config\.inProgress is (true|false)$/, (flag: string) => {
   // @spec SIMUI-031
   then(/^the game screen link is labeled "([^"]+)"$/, (label: string) => {
     expect(screen.queryAllByTestId(/^game-link-\d+$/)[0]).toHaveTextContent(label);
+  });
+
+  // @spec SIMUI-029
+  given('GET /api/game for that completed game returns a box score', () => {
+    const game = world.games.at(-1)!;
+    world.boxScores.set(Number(game.gameId), {
+      id: game.gameId,
+      home: { teamId: 1, teamName: 'Home Team', score: 6, players: [] },
+      away: { teamId: 2, teamName: 'Away Team', score: 2, players: [] },
+    });
+  });
+
+  // @spec SIMUI-029
+  when('the player clicks the completed game\'s "Review" link', async () => {
+    fireEvent.click(screen.getByTestId(`game-link-${world.games.at(-1)!.gameId}`));
+    await flush();
+  });
+
+  // @spec SIMUI-029
+  then('the completed game\'s box score is shown', async () => {
+    expect(await screen.findByTestId('game-box-score')).toBeInTheDocument();
   });
 
   given(/^a "Simulate" button is visible for game (\d+)$/, async (gameId: string) => {
