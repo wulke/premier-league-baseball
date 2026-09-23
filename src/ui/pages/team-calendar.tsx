@@ -155,7 +155,7 @@ const GameRow = ({
       {/* @spec TEAMLINK-006 */}
       <div>
         <span style={{ fontWeight: 600 }}>
-          {isBye || isHome ? 'vs' : '@'} <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><TeamCrest name={opponent} badge={opponentBadge} size={18} testId={`calendar-opponent-badge-${game.gameId}`} /><TeamLink gwId={gwId} teamId={opponentId}>{opponent}</TeamLink></span>
+          <span>{isBye || isHome ? 'vs' : '@'} <TeamLink gwId={gwId} teamId={opponentId}>{opponent}</TeamLink></span> <TeamCrest name={opponent} badge={opponentBadge} size={18} testId={`calendar-opponent-badge-${game.gameId}`} />
         </span>
         <span style={{ marginLeft: '8px', fontSize: '0.78rem', color: '#999' }}>
           {game.divisionName}{game.roundLabel ? ` · ${game.roundLabel}` : ''}
