@@ -221,8 +221,11 @@ For each render (driven by context gw + router):
        - `gw.currentDate === null` renders the muted `No date set` placeholder in the same
          WORLD display slot.                                                                        # SIMUI-007
        - <BatchSimulateControl/> renders inside WORLD (its own guard hides it when inactive).      # SIMUI-009..018
-  3. COMPETITIONS section renders only when gw?.Leagues is a non-empty array:
+3. COMPETITIONS section renders only when gw?.Leagues is a non-empty array:
        - one link per league (league.config?.name ?? `League ${id}`) → /:gwId/:leagueId.           # SHELL-*
+       - the link is the season-neutral entry point for every league dashboard: a player can open
+         a regular league before a season starts as well as during an active season, then use that
+         dashboard's existing `View full standings` link when they need the complete table.       # SHELL-007
   4. Active highlighting (derived, never stored):
        HOME          active when pathname === "/".
        WORLD         active when gwId matches AND pathname === `/${gwId}` (no deeper route).
@@ -272,6 +275,7 @@ intent.
 | s11 | **Back-link breadcrumbs are dropped, not relocated** | `AppHeader`'s `backLink`/`backLabel` props retire with the component. The rail makes hierarchical back-links redundant (#10 consolidates navigation). No replacement breadcrumb is built; pages that previously relied on the back-link for navigation now rely on the rail's HOME/WORLD/COMPETITIONS links. (Deliberate; flagged in HLD trade-offs.) | SHELL-nav |
 | s12 | Future-date skips appear after a successful daily batch | The backend retains them in the diagnostic ledger while advancing `currentDate` to `nextDate`. The UI therefore shows the successful next-game-day summary, not a “could not be simulated” warning. Only an in-progress game that prevents advancement remains a warning. | SIMUI-029 |
 | s13 | A page is taller than the viewport, or the rail itself has more links than fit | The shell stays `height: 100vh` with hidden outer overflow; `main` owns `overflowY: auto`, while the sticky rail owns its own `overflowY: auto`. Neither region enlarges the document and scrolling one does not displace the other. | SHELL-011 |
+| s14 | A regular league has no active season yet | Its row remains in `gw.Leagues`, so the rail still links to `/:gwId/:leagueId`; the League Dashboard owns the pre-season fallback content. Navigation must not be gated on `currentDate` or `config.inProgress`. | SHELL-007 |
 
 ---
 

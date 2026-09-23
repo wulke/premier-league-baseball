@@ -30,6 +30,15 @@ Feature: App Shell left nav rail
     Then the rail shows WORLD linked to "/1"
     And the rail has no COMPETITIONS section
 
+  @spec:SHELL-007 @spec:LDASH-001 @spec:LDASH-005
+  Scenario: A competition rail link leads from the GameWorld home to full standings
+    Given GameWorld 1 is named "Test World" with league 7 named "Premier"
+    When the player opens the GameWorld route for GameWorld 1
+    And the player selects the "Premier" competition from the rail
+    Then the League Dashboard page renders
+    When the player selects "View full standings"
+    Then the app navigates to "/1/7/standings"
+
   @spec:SIMUI-006
   Scenario: NavRail WORLD section displays the currentDate chip when currentDate is set
     Given GameWorld 1 has currentDate "2025-04-10"
