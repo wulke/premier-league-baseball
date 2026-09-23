@@ -172,8 +172,10 @@ or an element-wrapper around the matched page. See Edge Case Probe (u8).
 ### Flow A — `GameRow` navigation link (map #350, issue #365)
 
 ```
-1. GameRow renders a link to /:gwId/:leagueId/game/:gameId, built from the row's own
-   TeamSeasonGame fields (leagueId, gameId) plus gwId from useParams — no extra fetch.  # SIMUI-029
+1. GameRow renders a status-aware link built from the row's own TeamSeasonGame fields plus
+   gwId from useParams — SCHEDULED and IN_PROGRESS use
+   /:gwId/:leagueId/game/:gameId for the prep screen, while COMPLETED uses
+   /:gwId/game/:gameId for the box score — no extra fetch.  # SIMUI-029
 2. Guard: only rendered when teamId === gw.managedTeamId (the managed team's own calendar).
    Other teams' calendar rows render no link.                                          # SIMUI-030
 3. Label derives from (game.status, game.scheduledDate vs. gw.currentDate):
@@ -213,6 +215,7 @@ surface something the proposal does not address.
 | u12 | **NEW** — `TeamCalendar` needs `gw.managedTeamId` and `gw.currentDate` for the row link's guard and label, but only ever reads route params today | Read via `useRouteLoaderData('gwId')`, the same mechanism `pre-game-prep.tsx`/`game-world.tsx` already use — no new fetch. `managedTeamId` compares against the route's `teamId` param (coerced to `Number`, matching the existing `isHome` comparison at `team-calendar.tsx:41`). | SIMUI-029/030 |
 | u13 | **NEW** — date-only comparison for "ready to sim" label branch | `scheduledDate` and `gw.currentDate` are both `DATEONLY` strings (`YYYY-MM-DD`); compare as strings (`<=`) rather than constructing `Date` objects, avoiding timezone drift at midnight boundaries. | SIMUI-031 |
 | u14 | **NEW** — null `scheduledDate` must label "Prep", not "Preview" | Corrected after PREGAME-005/#364 landed (`pre-game-prep-ui.md`): the backend's `simulate()` guard, and now `PreGamePrep`'s `isReadyToPrep`, treat a `null` `scheduledDate` as ready **unconditionally**, regardless of `gw.currentDate`. `gameLinkLabel` must check `scheduledDate == null` before the `<=` comparison and return "Prep" in that case — otherwise the calendar link reads "Preview" for a game the linked screen already treats as ready to sim. | SIMUI-031, PREGAME-005 |
+| u15 | A completed row retains its league-prefixed prep href | Choose the completed-game route shape (`/:gwId/game/:gameId`) before rendering the link; this invokes the existing box-score route loader instead of `PreGamePrep`, which has no box-score table or onward link. | SIMUI-029 |
 
 ---
 

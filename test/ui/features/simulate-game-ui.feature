@@ -216,6 +216,15 @@ Feature: Simulate Game UI
     When the TeamCalendar renders the GameRow for that game
     Then the game screen link is labeled "Prep"
 
+  @spec:SIMUI-029
+  Scenario: Reviewing a completed calendar game opens its box score
+    Given the managed team is team 1
+    And a Game exists with status "COMPLETED" and scheduledDate "2025-04-01"
+    And GET /api/game for that completed game returns a box score
+    When the TeamCalendar renders the GameRow for that game
+    And the player clicks the completed game's "Review" link
+    Then the completed game's box score is shown
+
   # ─── Future ───────────────────────────────────────────────────────────────────
 
   @future
