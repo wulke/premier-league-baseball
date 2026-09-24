@@ -27,7 +27,7 @@ not yet wired into `GameFactory`/`resolveSimulationEngine()` (see [#192](https:/
 | PARP-017 | WHEN a game is simulated by AttributeDrivenSimulationEngine with a pinned seed THE system SHALL reproduce an identical event chain and PlayerGameStats projection across runs and machines | [x] → #191 |
 | PARP-018 | WHEN persistPlayerGameStats is called a second time for the same (playerId, gameId) THE system SHALL reject the write via the existing PlayerGameStats unique index rather than silently upserting | [x] → #191 |
 | PARP-019 | WHEN PA resolution consumes an attribute IF its current-game formula is evaluated THE system SHALL use `0.3 × IV + 0.9 × EV` for that input, so equal-IV players with distinct earned effort can produce distinct seed-stable outcomes | [x] → #193 |
-| PARP-020 | WHEN AttributeDrivenSimulationEngine.simulateGame is called with a lineup participant lacking a numeric value for any simulation attribute the engine reads (batters: contact, discipline, power; pitchers: accuracy, armStrength) THE system SHALL throw a plain Error before simulating any inning, rather than resolving NaN-weighted plate appearances | [x] |
+| PARP-020 | WHEN AttributeDrivenSimulationEngine.simulateGame is called with a lineup participant lacking a numeric value for any simulation attribute the engine reads (batters: contact, discipline, power; pitchers: accuracy, armStrength) THE system SHALL throw a plain Error before simulating any inning, rather than resolving NaN-weighted plate appearances | [x] → #377 |
 
 `PARP-001` (attribute-read seam pass-through) and `PARP-003` (outcome-weight floor before
 normalizing) are internal algorithm invariants of `readAttribute`/`resolvePA` with no
