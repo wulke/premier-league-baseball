@@ -171,7 +171,7 @@ const DashboardDivision = ({
   );
 };
 
-// @spec LDASH-001,LDASH-002,LDASH-003,LDASH-005,LDASH-009
+// @spec LDASH-001,LDASH-002,LDASH-003,LDASH-005,LDASH-009,LDASH-011
 const LeagueDashboard = () => {
   const { gwId, leagueId } = useParams();
   const navigate = useNavigate();
@@ -201,16 +201,7 @@ const LeagueDashboard = () => {
         </p>
       </div>
 
-      {/* @spec LDASH-003 */}
-      {today.length > 0 && (
-        <section data-testid="today-section" style={{ marginBottom: '32px' }}>
-          <SectionLabel style={{ marginBottom: '10px' }}>Today</SectionLabel>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-            {today.map((game) => <TodayTile key={game.gameId} game={game} />)}
-          </div>
-        </section>
-      )}
-
+      {/* @spec LDASH-004,LDASH-005,LDASH-006,LDASH-007,LDASH-008,LDASH-011 */}
       <section>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
           <SectionLabel>Divisions</SectionLabel>
@@ -228,6 +219,16 @@ const LeagueDashboard = () => {
           />
         ))}
       </section>
+
+      {/* @spec LDASH-003,LDASH-011 — shared Today follows every division snapshot. */}
+      {today.length > 0 && (
+        <section data-testid="today-section" style={{ marginTop: '20px' }}>
+          <SectionLabel style={{ marginBottom: '10px' }}>Today</SectionLabel>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+            {today.map((game) => <TodayTile key={game.gameId} game={game} />)}
+          </div>
+        </section>
+      )}
     </PageContainer>
   );
 };
