@@ -1,4 +1,4 @@
-// @spec SHELL-001..SHELL-011, LDASH-001,LDASH-005, SIMUI-006,SIMUI-007 (AppShell + NavRail acceptance; real MemoryRouter locations).
+// @spec SHELL-001..SHELL-013, LDASH-001,LDASH-005, SIMUI-006,SIMUI-007 (AppShell + NavRail acceptance; real MemoryRouter locations).
 import { act } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { autoBindSteps, loadFeature } from 'jest-cucumber';
@@ -8,7 +8,7 @@ import routes from '../../../src/ui/routes';
 
 const feature = loadFeature(path.resolve(__dirname, '../features/app-shell-ui.feature'));
 
-let world = {
+let world: any = {
   id: 1,
   year: 2025,
   currentDate: '2025-04-10',
@@ -57,6 +57,14 @@ const registerSteps = ({ given, when, then }: any) => {
     world.Leagues[0].config.name = league;
   });
   given('GameWorld 1 has no leagues', () => { world.Leagues = []; });
+  given('GameWorld 1 has managed Team 10 whose Primary Home League is 7', () => {
+    world.managedTeamId = 10;
+    world.Teams = [{ id: 10, homeLeagueId: 7 }];
+  });
+  given(/^GameWorld 1 also has league (\d+) named "([^"]+)"$/, (id: string, name: string) => {
+    world.Leagues.push({ id: Number(id), config: { name } });
+  });
+  given('GameWorld 1 has no managed team', () => { world.managedTeamId = null; });
   given(/^GameWorld 1 has currentDate "([^"]+)"$/, (currentDate: string) => { world.currentDate = currentDate; });
   given('GameWorld 1 has currentDate null', () => { world.currentDate = null as any; });
   when('the player opens the League route for GameWorld 1 and league 7', () => renderAt('/1/7'));
@@ -95,10 +103,25 @@ const registerSteps = ({ given, when, then }: any) => {
     expect(screen.getByTestId('nav-world-home-icon')).toHaveAttribute('aria-hidden', 'true');
   });
   then('the rail shows a competition link to "/1/7"', () => expect(screen.getByTestId('nav-league-7')).toHaveAttribute('href', '/1/7'));
-  then('the competition link is active', () => expect(screen.getByTestId('nav-league-7')).toHaveAttribute('data-active', 'true'));
+  // @spec SHELL-007,SHELL-013
+  then(/^the COMPETITIONS selector shows only one control with "([^"]+)" selected$/, (name: string) => {
+    const selector = screen.getByTestId('nav-competition-selector') as HTMLSelectElement;
+    expect(screen.getByTestId('nav-competitions')).toContainElement(selector);
+    expect(selector.selectedOptions).toHaveLength(1);
+    expect(selector.selectedOptions[0]).toHaveTextContent(name);
+  });
+  // @spec SHELL-012
+  when(/^the player selects league (\d+) from the COMPETITIONS selector$/, (leagueId: string) => {
+    fireEvent.change(screen.getByTestId('nav-competition-selector'), { target: { value: leagueId } });
+  });
+  // @spec SHELL-013
+  then(/^the COMPETITIONS selector has "([^"]+)" selected$/, (name: string) => {
+    expect((screen.getByTestId('nav-competition-selector') as HTMLSelectElement).selectedOptions[0]).toHaveTextContent(name);
+  });
   // @spec SHELL-007,LDASH-001 — the rail is the GameWorld-to-dashboard entry point.
   when(/^the player selects the "([^"]+)" competition from the rail$/, async (name: string) => {
-    fireEvent.click(screen.getByRole('link', { name }));
+    const league = world.Leagues.find((candidate: any) => candidate.config?.name === name);
+    fireEvent.change(screen.getByTestId('nav-competition-selector'), { target: { value: String(league.id) } });
     await screen.findByTestId('league-dashboard-page');
   });
   // @spec LDASH-001
