@@ -42,13 +42,15 @@ const TeamHub = () => {
 
   return (
     <>
-      <header style={{ maxWidth: '960px', margin: '0 auto', padding: '20px 24px 0' }}>
-        {/* @spec MCLUI-001 — copy-only job-market framing; availability remains unconditional. */}
-        <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700 }}>Job Market</h1>
-        <p style={{ margin: '4px 0 0', color: '#666', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          Available Jobs
-        </p>
-      </header>
+      {!isManaged && (
+        <header style={{ maxWidth: '960px', margin: '0 auto', padding: '20px 24px 0' }}>
+          {/* @spec MCLUI-001,MCLUI-002 — unclaimed teams are available jobs; the managed hub omits this framing. */}
+          <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700 }}>Job Market</h1>
+          <p style={{ margin: '4px 0 0', color: '#666', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Available Jobs
+          </p>
+        </header>
+      )}
       <nav
         data-testid="team-hub-tabs"
         aria-label="Team sections"
