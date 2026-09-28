@@ -1,4 +1,4 @@
-// @spec GWHOME-001,GWHOME-002,GWHOME-003
+// @spec GWHOME-001,GWHOME-002,GWHOME-003,SHELL-007
 import path from 'path';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { defineFeature, loadFeature } from 'jest-cucumber';
@@ -25,6 +25,7 @@ const installFetch = () => {
         managedTeamId: 10,
         config: { name: 'Test World', inProgress: true },
         Leagues: [{ id: 7, config: { name: 'Premier League', type: 'League' } }],
+        Teams: [{ id: 10, homeLeagueId: 7 }],
       });
     }
     if (url === '/api/gameWorld/1/notifications') return response([]);
@@ -40,7 +41,7 @@ beforeEach(() => {
 });
 
 defineFeature(feature, (test) => {
-  test('Recent Activity follows the manager content while competitions remain in the rail', ({ given, when, then, and }) => {
+  test('Recent Activity follows the manager content while the home competition remains in the rail', ({ given, when, then, and }) => {
     given('GameWorld 1 has a managed club, a current date, and Premier League competition 7', () => {});
     when('the player opens the GameWorld 1 home page', async () => {
       const router = createMemoryRouter(routes, { initialEntries: ['/1'] });
@@ -61,10 +62,10 @@ defineFeature(feature, (test) => {
     and('the page does not show a Leagues card section', () => {
       expect(screen.queryByText('Leagues', { exact: true })).toBeNull();
     });
-    // @spec GWHOME-003
-    and('the COMPETITIONS rail shows a link to Premier League', () => {
-      expect(screen.getByTestId('nav-competitions')).toContainElement(screen.getByTestId('nav-league-7'));
-      expect(screen.getByTestId('nav-league-7')).toHaveTextContent('Premier League');
+    // @spec SHELL-007
+    and('the COMPETITIONS rail shows Premier League as the selected home competition', () => {
+      expect(screen.getByTestId('nav-competitions')).toContainElement(screen.getByTestId('nav-competition-selector'));
+      expect(screen.getByTestId('nav-competition-selector')).toHaveValue('7');
     });
   });
 });

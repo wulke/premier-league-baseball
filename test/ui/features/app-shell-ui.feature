@@ -14,14 +14,28 @@ Feature: App Shell left nav rail
     Given the player opens the Home route
     Then no GET request is made for an undefined GameWorld
 
-  @spec:SHELL-006 @spec:SHELL-007 @spec:SHELL-009
-  Scenario: A world route shows world and competition links with router-derived active state
-    Given GameWorld 1 is named "Test World" with league 7 named "Premier"
-    When the player opens the League route for GameWorld 1 and league 7
-    Then the rail shows WORLD linked to "/1"
-    And the WORLD link prefixes its name with a decorative home icon
-    And the rail shows a competition link to "/1/7"
-    And the competition link is active
+  @spec:SHELL-007 @spec:SHELL-012 @spec:SHELL-013
+  Scenario: Competition selector defaults to the managed club's home league and navigates on change
+    Given GameWorld 1 has managed Team 10 whose Primary Home League is 7
+    And GameWorld 1 also has league 8 named "League Cup"
+    When the player opens the GameWorld route for GameWorld 1
+    Then the COMPETITIONS selector shows only one control with "Premier" selected
+    When the player selects league 8 from the COMPETITIONS selector
+    Then the app navigates to "/1/8"
+    And the COMPETITIONS selector has "League Cup" selected
+
+  @spec:SHELL-013
+  Scenario: Competition selector reflects a directly-routed non-home league
+    Given GameWorld 1 has managed Team 10 whose Primary Home League is 7
+    And GameWorld 1 also has league 8 named "League Cup"
+    When the player opens the League route for GameWorld 1 and league 8
+    Then the COMPETITIONS selector has "League Cup" selected
+
+  @spec:SHELL-007
+  Scenario: An unclaimed world hides the competitions selector
+    Given GameWorld 1 has no managed team
+    When the player opens the GameWorld route for GameWorld 1
+    Then the rail has no COMPETITIONS section
 
   @spec:SHELL-007
   Scenario: A world without leagues renders no competition links
@@ -30,9 +44,10 @@ Feature: App Shell left nav rail
     Then the rail shows WORLD linked to "/1"
     And the rail has no COMPETITIONS section
 
-  @spec:SHELL-007 @spec:LDASH-001 @spec:LDASH-005
+  @spec:SHELL-007 @spec:SHELL-012 @spec:LDASH-001 @spec:LDASH-005
   Scenario: A competition rail link leads from the GameWorld home to full standings
     Given GameWorld 1 is named "Test World" with league 7 named "Premier"
+    And GameWorld 1 has managed Team 10 whose Primary Home League is 7
     When the player opens the GameWorld route for GameWorld 1
     And the player selects the "Premier" competition from the rail
     Then the League Dashboard page renders
@@ -51,12 +66,13 @@ Feature: App Shell left nav rail
     When the player opens the GameWorld route for GameWorld 1
     Then the WORLD section displays "No date set" in a muted style
 
-  @spec:SHELL-008
+  @spec:SHELL-007 @spec:SHELL-013
   Scenario: Active league highlighting survives a GameWorld refresh
     Given GameWorld 1 is named "Test World" with league 7 named "Premier"
+    And GameWorld 1 has managed Team 10 whose Primary Home League is 7
     When the player opens the League route for GameWorld 1 and league 7
     And the GameWorld refreshes
-    Then the competition link is active
+    Then the COMPETITIONS selector has "Premier" selected
 
   @spec:SHELL-010
   Scenario: Navigation lives in the rail rather than page-local headers

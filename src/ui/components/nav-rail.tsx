@@ -1,7 +1,7 @@
-// @spec SHELL-004..SHELL-011
+// @spec SHELL-004..SHELL-013
 import React from 'react';
 import { HomeIcon } from '@heroicons/react/24/outline';
-import { Link, useLocation, useParams, useRouteLoaderData } from 'react-router';
+import { Link, useLocation, useNavigate, useParams, useRouteLoaderData } from 'react-router';
 import { BatchSimulateControl } from './batch-simulate-control';
 import { RapidSimulateControl } from './rapid-simulate-control';
 import { SectionLabel } from './ui';
@@ -22,12 +22,13 @@ const managedLinkStyle: React.CSSProperties = {
   padding: '6px 0',
 };
 
-// @spec SHELL-004..SHELL-011, SIMUI-006,SIMUI-007
+// @spec SHELL-004..SHELL-013, SIMUI-006,SIMUI-007
 const NavRail = () => {
   // @spec RLDRUI-001 — gw comes from the :gwId route's loader; undefined on Home (no match).
   const gw = useRouteLoaderData('gwId') as any;
   const { pathname } = useLocation();
   const { gwId, leagueId } = useParams();
+  const navigate = useNavigate();
   // @spec CALWUI-009,RSSUI-006 — shared with the home-page CTA through AppShell.
   const { simulateBusy, setSimulateBusy } = useSimulateBusy();
   const worldActive = Boolean(gwId && pathname === `/${gwId}`);
@@ -35,6 +36,15 @@ const NavRail = () => {
   // @spec MCLUI-004,MCLUI-005 — the managed-club trio lights up only when a club is claimed.
   const managedTeamId = gw?.managedTeamId;
   const claimed = managedTeamId != null;
+  // @spec SHELL-007,SHELL-013 — homeLeagueId is the durable Primary Home League. The
+  // current route wins only when it names a league in this world; no local/session state.
+  const managedTeam = Array.isArray(gw?.Teams)
+    ? gw.Teams.find((team: any) => String(team.id) === String(managedTeamId))
+    : null;
+  const primaryHomeLeague = managedTeam == null
+    ? null
+    : leagues.find((league: any) => String(league.id) === String(managedTeam.homeLeagueId)) ?? null;
+  const selectedLeague = leagues.find((league: any) => String(league.id) === leagueId) ?? primaryHomeLeague;
   const linkStyle = (active: boolean): React.CSSProperties => ({
     color: active ? '#000' : '#666',
     fontWeight: active ? 700 : 500,
@@ -69,17 +79,25 @@ const NavRail = () => {
           <RapidSimulateControl disabled={simulateBusy} onBusyChange={setSimulateBusy} />
         </section>
       )}
-      {gw && leagues.length > 0 && (
+      {gw && primaryHomeLeague && selectedLeague && (
         <section data-testid="nav-competitions" style={{ marginTop: 22 }}>
           <SectionLabel as="div">COMPETITIONS</SectionLabel>
-          {leagues.map((league: any) => {
-            const active = String(league.id) === leagueId;
-            return (
-              <Link key={league.id} data-testid={`nav-league-${league.id}`} data-active={active ? 'true' : 'false'} to={`/${gwId}/${league.id}`} style={linkStyle(active)}>
-                {league.config?.name ?? `League ${league.id}`}
-              </Link>
-            );
-          })}
+          {/* @spec SHELL-007,SHELL-012,SHELL-013 — one bounded control replaces the
+              unbounded link list; changing it changes the route-selected competition. */}
+          <label htmlFor="nav-competition-selector" style={{ display: 'block', color: '#666', fontSize: '0.85rem', margin: '6px 0' }}>
+            Selected competition
+          </label>
+          <select
+            id="nav-competition-selector"
+            data-testid="nav-competition-selector"
+            value={String(selectedLeague.id)}
+            onChange={(event) => navigate(`/${gwId}/${event.target.value}`)}
+            style={{ boxSizing: 'border-box', width: '100%' }}
+          >
+            {leagues.map((league: any) => (
+              <option key={league.id} value={league.id}>{league.config?.name ?? `League ${league.id}`}</option>
+            ))}
+          </select>
         </section>
       )}
       <section style={{ marginTop: 30, color: '#aaa' }} aria-disabled={claimed ? undefined : 'true'}>
