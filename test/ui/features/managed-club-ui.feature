@@ -25,6 +25,7 @@ Feature: Managed Club UI
   Scenario: Leaving the managed job posts null and reflects without a reload
     Given GameWorld 1 has Team 10 as its managed club
     When the player navigates to Team 10's hub
+    Then the hub does not show the "Job Market" / "Available Jobs" framing
     Then the hub shows a "Leave this job" action
     When the player leaves Team 10's job
     Then the client POSTs managed-club with teamId null
