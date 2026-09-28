@@ -24,6 +24,13 @@ Feature: App Shell left nav rail
     Then the app navigates to "/1/8"
     And the COMPETITIONS selector has "League Cup" selected
 
+  @spec:SHELL-013
+  Scenario: Competition selector reflects a directly-routed non-home league
+    Given GameWorld 1 has managed Team 10 whose Primary Home League is 7
+    And GameWorld 1 also has league 8 named "League Cup"
+    When the player opens the League route for GameWorld 1 and league 8
+    Then the COMPETITIONS selector has "League Cup" selected
+
   @spec:SHELL-007
   Scenario: An unclaimed world hides the competitions selector
     Given GameWorld 1 has no managed team

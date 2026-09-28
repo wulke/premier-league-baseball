@@ -67,7 +67,7 @@ const registerSteps = ({ given, when, then }: any) => {
   given('GameWorld 1 has no managed team', () => { world.managedTeamId = null; });
   given(/^GameWorld 1 has currentDate "([^"]+)"$/, (currentDate: string) => { world.currentDate = currentDate; });
   given('GameWorld 1 has currentDate null', () => { world.currentDate = null as any; });
-  when('the player opens the League route for GameWorld 1 and league 7', () => renderAt('/1/7'));
+  when(/^the player opens the League route for GameWorld 1 and league (\d+)$/, (leagueId: string) => renderAt(`/1/${leagueId}`));
   when('the player opens the GameWorld route for GameWorld 1', () => renderAt('/1'));
   when('the GameWorld refreshes', async () => {
     await act(async () => { screen.getByTestId('shell-invalidate').click(); });
@@ -102,7 +102,6 @@ const registerSteps = ({ given, when, then }: any) => {
   then('the WORLD link prefixes its name with a decorative home icon', () => {
     expect(screen.getByTestId('nav-world-home-icon')).toHaveAttribute('aria-hidden', 'true');
   });
-  then('the rail shows a competition link to "/1/7"', () => expect(screen.getByTestId('nav-league-7')).toHaveAttribute('href', '/1/7'));
   // @spec SHELL-007,SHELL-013
   then(/^the COMPETITIONS selector shows only one control with "([^"]+)" selected$/, (name: string) => {
     const selector = screen.getByTestId('nav-competition-selector') as HTMLSelectElement;
