@@ -69,8 +69,8 @@ no bespoke manager page.
 TeamHub (src/ui/pages/team-hub.tsx) renders inside AppShell (GameWorldProvider):
   reads gw.managedTeamId + teamId from route/context
   isManaged = managedTeamId === Number(teamId)
-  render hub header: "Job Market" / "Available Jobs" + tab bar +
-    (isManaged ? "Leave this job" : "Take this job")
+  if unclaimed, render hub header: "Job Market" / "Available Jobs"
+  render tab bar + (isManaged ? "Leave this job" : "Take this job")
   on click:
     POST /api/gameWorld/:gwId/managed-club { teamId: isManaged ? null : Number(teamId) }   // MCLUI-001/002
       → on response: invalidate()                                                          // MCLUI-003
@@ -90,6 +90,9 @@ NavRail (src/ui/components/nav-rail.tsx):
 - **Vocabulary is preparatory, not eligibility logic** — every team remains an available job in
   this slice. A future AI-manager map may filter the market, but this copy change must not add
   availability data, filtering, or endpoint behavior.
+- **Job-market framing is only for an unclaimed hub** — once the viewed team is the managed
+  club, the hub remains its ordinary team surface and omits the "Job Market" / "Available Jobs"
+  header. This is presentational only: it does not change which teams can be claimed.
 - **`invalidate()` is the reflect mechanism** — the setter's response body is not trusted to
   patch local state; the context re-GETs and `managedTeamId` flows back through `gw`, so the hub
   action and the rail update from one source of truth (MCLUI-003). Matches the App Shell LLD
@@ -107,6 +110,7 @@ NavRail (src/ui/components/nav-rail.tsx):
 | u4 | Nav rail on the Home route (`/`, no `gwId`) | `gw` is null → trio stays dimmed (`nav-fog-*`); no managed-club links render outside a world. | MCLUI-005 |
 | u5 | "Transfers" item | Always dimmed — no transfers surface exists yet (#140). Never lights up in this slice. | MCLUI-005 |
 | u6 | Direct nav to a non-managed team's hub | `isManaged` false → "Take this job"; taking it re-points `managedTeamId` away from any prior club (lifelong-mutable, map #137). | MCLUI-001 |
+| u7 | Direct nav to the managed team's hub | `isManaged` true → omit the Job Market / Available Jobs header and show "Leave this job". | MCLUI-002 |
 
 ## Traceability
 

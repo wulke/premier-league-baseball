@@ -79,6 +79,10 @@ const registerSteps = ({ given, when, then }: any) => {
     expect(await screen.findByRole('heading', { name: 'Job Market' })).toBeInTheDocument();
     expect(screen.getByText('Available Jobs')).toBeInTheDocument();
   });
+  then('the hub does not show the "Job Market" / "Available Jobs" framing', () => {
+    expect(screen.queryByRole('heading', { name: 'Job Market' })).toBeNull();
+    expect(screen.queryByText('Available Jobs')).toBeNull();
+  });
   then('the hub shows a "Take this job" action', async () => {
     expect(await screen.findByRole('button', { name: 'Take this job' })).toBeInTheDocument();
   });
