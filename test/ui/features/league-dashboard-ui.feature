@@ -34,6 +34,13 @@ Feature: League Dashboard
     When the player opens the League Dashboard for League 1
     Then the League Dashboard does not show a Today section
 
+  @spec:LDASH-011
+  Scenario: Division standings appear above the shared Today section
+    Given GetLeagueToday for League 1 returns a completed game "River City 4–2 Southgate United"
+    When the player opens the League Dashboard for League 1
+    Then the "Top Flight" condensed standings widget appears before the Today section
+    And the "Playoffs" section appears before the Today section
+
   @spec:LDASH-004 @spec:LDASH-005
   Scenario: A round-robin division's condensed widget shows only its top 5 teams
     Given the "Top Flight" division has standings for 8 teams

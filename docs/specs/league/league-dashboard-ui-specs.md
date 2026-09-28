@@ -17,6 +17,7 @@ where this page sits in the route tree and what its loader fetches.
 | LDASH-008 | WHEN a `ROUND_ROBIN` division has no standings rows, OR a `KNOCKOUT` division has no generated bracket rounds, THE League Dashboard SHALL render the existing `TeamRosterGrid` pre-season fallback for that division's teams in place of its condensed widget/teaser, unchanged from today's `league.tsx`/`BracketView` empty-state presentation | [x] → #297 |
 | LDASH-009 | WHEN the player clicks a team identity anywhere on the League Dashboard (condensed standings row, bracket teaser tie, roster-grid fallback, or division champion line) THE system SHALL navigate to `/:gwId/team/:teamId`, identical to today's `League` page's team-click behavior | [x] → #297 |
 | LDASH-010 | WHEN the player clicks a series tie inside a bracket teaser THE system SHALL NOT expand it to per-game rows and SHALL NOT render `BracketView`'s round-to-round tree connectors — the teaser exposes only the team-identity navigation of `LDASH-009`, not `BracketView`'s interactive affordances | [x] → #297 |
+| LDASH-011 | WHEN the League Dashboard has one or more division snapshot widgets and one or more Today games THE system SHALL render the complete shared division snapshot section, including every division's condensed standings, bracket teaser, or existing fallback, before the single shared Today section; THE system SHALL NOT split, collapse, or duplicate Today per division | [x] → #393 |
 
 *Status: `[ ]` Active, `[x]` Implemented, `[D]` Deferred.*
 

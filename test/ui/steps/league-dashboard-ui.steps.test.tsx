@@ -1,4 +1,4 @@
-// @spec LDASH-001,LDASH-002,LDASH-003,LDASH-004,LDASH-005,LDASH-006,LDASH-007,LDASH-008,LDASH-009,LDASH-010
+// @spec LDASH-001,LDASH-002,LDASH-003,LDASH-004,LDASH-005,LDASH-006,LDASH-007,LDASH-008,LDASH-009,LDASH-010,LDASH-011
 import path from 'path';
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -136,6 +136,28 @@ defineFeature(feature, (test) => {
     when('the player opens the League Dashboard for League 1', openDashboard);
     then('the League Dashboard does not show a Today section', () => {
       expect(screen.queryByTestId('today-section')).toBeNull();
+    });
+  });
+
+  test('Division standings appear above the shared Today section', ({ given, when, then, and }) => {
+    bindBackground(given, and);
+    given(/^GetLeagueToday for League 1 returns a completed game "([^"]+)"$/, () => {
+      today = [{
+        gameId: 501, year: 2025, scheduledDate: '2025-04-10', homeTeamId: 101, homeTeamName: 'River City',
+        awayTeamId: 202, awayTeamName: 'Southgate United', divisionId: divisionIds['Top Flight'], divisionName: 'Top Flight',
+        leagueId: 1, leagueName: 'Premier League', roundLabel: 'Round 1', homeTeamResult: 4, awayTeamResult: 2, status: 'COMPLETED',
+      }];
+    });
+    when('the player opens the League Dashboard for League 1', openDashboard);
+    then(/^the "([^"]+)" condensed standings widget appears before the Today section$/, (divisionName: string) => {
+      const standingsWidget = screen.getByTestId(`condensed-standings-${findDivision(divisionName).id}`);
+      const todaySection = screen.getByTestId('today-section');
+      expect(standingsWidget.compareDocumentPosition(todaySection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+    and(/^the "([^"]+)" section appears before the Today section$/, (divisionName: string) => {
+      const divisionSection = screen.getByTestId(`division-section-${findDivision(divisionName).id}`);
+      const todaySection = screen.getByTestId('today-section');
+      expect(divisionSection.compareDocumentPosition(todaySection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
   });
 

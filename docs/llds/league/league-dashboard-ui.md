@@ -130,13 +130,11 @@ today.
    WHERE it lives: it moves from the shared page to the dashboard-only page. LeagueStandings's
    own header drops the banner/subtitle entirely per the routing amendment's STDRT decision.)
 
-3. Today section (LDASH-003):
-     if (today.length === 0) render nothing
-     else render one horizontal scoreboard banner per game, in backend chronological order —
-       same per-game presentation contract as the retired TODAYUI-007/008 (status label, two
-       team lanes with names, available scores, winner marker on unequal completed scores) —
-       just scoped to this one league's `today` array instead of a per-league loop across
-       every league in the GameWorld.
+3. Division snapshot section (LDASH-004..LDASH-008):
+     render the single "View full standings" CTA, then render every division in `league.Divisions`
+     before the shared Today section. This keeps all condensed division standings at the top of
+     the dashboard; knockout teasers and pre-season fallbacks remain in their existing division
+     slots rather than creating a second, division-scoped Today layout.                              # LDASH-011
 
 4. For each division in league.Divisions:
      divisionStandings = standings.find(s => s.divisionId === division.id)
@@ -163,7 +161,14 @@ today.
 5. One "View full standings" CTA per league section (not per division), linking to
    `/${gwId}/${leagueId}/standings`                                                          # LDASH-005
 
-6. onTeamClick(teamId) = navigate(`/${gwId}/team/${teamId}`) — identical to today's League page,
+6. Today section (LDASH-003):
+     if (today.length === 0) render nothing
+     else render one horizontal scoreboard banner per game, in backend chronological order —
+       same per-game presentation contract as the retired TODAYUI-007/008 (status label, two
+       team lanes with names, available scores, winner marker on unequal completed scores) —
+       just scoped to this one league's `today` array, after the complete shared division snapshot.
+
+7. onTeamClick(teamId) = navigate(`/${gwId}/team/${teamId}`) — identical to today's League page,
    wired into every widget's team-name click (condensed rows, teaser tie names, roster grid,
    champion line)                                                                            # LDASH-009
 ```
@@ -180,6 +185,7 @@ today.
 | d6 | The league's champion-producing division is a non-top-tier knockout division that is also independently fully resolved (rare multi-stage shape) | Identity header's `LDASH-002` banner and this division's `LDASH-007` teaser-slot champion line can both render simultaneously — they answer different questions ("who won the league" vs. "who won this specific bracket") and are not deduplicated against each other. | LDASH-002, LDASH-007 |
 | d7 | League has zero Divisions | `league.Divisions` is empty/undefined — the divisions loop (step 4) renders nothing; identity header and Today section (if any) still render. No new empty-state message is introduced beyond what `league.tsx` already omits today. | LDASH-001 |
 | d8 | `GetLeagueToday`'s window includes games from a division not otherwise shown in this league page (shouldn't happen — `today` is already league-scoped server-side per `TODAY-*`) | Not handled client-side; trusts the backend's league scoping (`TODAY-001`..`TODAY-007`), same trust boundary the retired GameWorld-home Today section had. | LDASH-003 |
+| d9 | Multiple divisions, some without standings or with bracket teasers, and a non-empty Today response | The one shared division snapshot section (including its unchanged empty-state/fallback content) renders in full before the one shared Today section. Today is not split, condensed, or duplicated per division. | LDASH-011 |
 
 ## Traceability
 
@@ -190,6 +196,6 @@ today.
 | Routing/loader sibling | [`docs/llds/shell/route-loader-foundation-ui.md`](../shell/route-loader-foundation-ui.md) — `STDRT-001`..`STDRT-004` |
 | Reinstated backend LLD (unmodified content, reactivated) | [`docs/llds/league/league-today.md`](./league-today.md) — `TODAY-001`..`TODAY-007` |
 | Reused sibling LLDs (unmodified) | [`docs/llds/league/bracket-tree-ui.md`](./bracket-tree-ui.md), [`docs/llds/league/multi-stage-season-ui.md`](./multi-stage-season-ui.md), [`docs/llds/league/team-badges-ui.md`](./team-badges-ui.md) |
-| EARS | `docs/specs/league/league-dashboard-ui-specs.md` — `LDASH-001`..`LDASH-010` (NEW) |
+| EARS | `docs/specs/league/league-dashboard-ui-specs.md` — `LDASH-001`..`LDASH-011` |
 | Gherkin | `test/ui/features/league-dashboard-ui.feature` (NEW, Red) |
 | Code entry points (not yet implemented — Code stage of a follow-up issue) | `src/ui/pages/league-dashboard.tsx` (NEW) · `src/ui/pages/league.tsx` (export renamed `League` → `LeagueStandings`) · `src/ui/pages/index.tsx` (barrel) · `src/ui/routes.tsx` (route split — see routing LLD) · `src/api/endpoints.ts`/`src/api/handlers.ts`/`src/db/domain/league.ts` (reinstate `GetLeagueToday`/`getLeagueToday`/`LeagueFactory.getToday`, per `league-today.md`) |
